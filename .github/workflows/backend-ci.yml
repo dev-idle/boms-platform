@@ -26,9 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
@@ -37,7 +37,8 @@ jobs:
         run: make ci
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        # v7+ required for golangci-lint v2 (v6 only supports v1.x).
+        uses: golangci/golangci-lint-action@v7
         with:
           # v1.x does not support Go 1.26 (see go.mod toolchain); v2.9+ does.
           version: v2.12.2
