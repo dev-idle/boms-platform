@@ -1,0 +1,10 @@
+packages:
+  - .
+
+# pnpm 11+: lifecycle scripts only for listed deps (supply-chain default).
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+
+# Registry default is 1440m; fresh security patches can be younger — keep installs predictable for app deps.
+minimumReleaseAge: 0
