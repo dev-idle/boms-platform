@@ -1,8 +1,7 @@
+version: "2"
+
 run:
-  timeout: 4m
   tests: true
-  skip-dirs:
-    - internal/adapter/repository/postgres/sqlcgen
 
 linters:
   enable:
@@ -11,6 +10,9 @@ linters:
     - ineffassign
     - staticcheck
     - sqlclosecheck
+  exclusions:
+    paths:
+      - internal/adapter/repository/postgres/sqlcgen
 
 issues:
   max-same-issues: 50
