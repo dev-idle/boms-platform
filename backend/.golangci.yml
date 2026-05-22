@@ -16,14 +16,13 @@ linters:
     - noctx
     # Security (OWASP-style static analysis for Go)
     - gosec
+  settings:
+    gosec:
+      excludes:
+        - G104 # overlaps with errcheck on non-test code
   exclusions:
     paths:
       - internal/adapter/repository/postgres/sqlcgen
-
-linters-settings:
-  gosec:
-    excludes:
-      - G104 # overlaps with errcheck on non-test code
 
 issues:
   max-same-issues: 50
