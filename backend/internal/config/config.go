@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strings"
 	"time"
@@ -100,6 +101,15 @@ func Load() (*Config, error) {
 
 	setDefaults(v)
 
+	maxConns, err := int32FromInt("postgres.max_conns", v.GetInt("postgres.max_conns"))
+	if err != nil {
+		return nil, err
+	}
+	minConns, err := int32FromInt("postgres.min_conns", v.GetInt("postgres.min_conns"))
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		App: AppConfig{
 			Name:  v.GetString("app.name"),
@@ -127,8 +137,8 @@ func Load() (*Config, error) {
 		},
 		Postgres: PostgresConfig{
 			URL:                v.GetString("postgres.url"),
-			MaxConns:           int32(v.GetInt("postgres.max_conns")),
-			MinConns:           int32(v.GetInt("postgres.min_conns")),
+			MaxConns:           maxConns,
+			MinConns:           minConns,
 			MaxConnLifetime:    v.GetDuration("postgres.max_conn_lifetime"),
 			MaxConnIdleTime:    v.GetDuration("postgres.max_conn_idle_time"),
 			HealthCheckTimeout: v.GetDuration("postgres.health_timeout"),
@@ -288,6 +298,13 @@ func postgresTLSExplicitlyDisabled(raw string) bool {
 	}
 	mode := strings.ToLower(strings.TrimSpace(u.Query().Get("sslmode")))
 	return mode == "disable" || mode == "allow"
+}
+
+func int32FromInt(field string, n int) (int32, error) {
+	if n < math.MinInt32 || n > math.MaxInt32 {
+		return 0, fmt.Errorf("%s: value %d out of int32 range", field, n)
+	}
+	return int32(n), nil
 }
 
 func splitAndTrim(s string) []string {

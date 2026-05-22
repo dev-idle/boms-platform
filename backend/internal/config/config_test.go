@@ -19,7 +19,7 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 		},
 		Rate: config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		Postgres: config.PostgresConfig{
-			URL:                "postgres://u:p@host/db?sslmode=disable",
+			URL:                "postgres://host/db?sslmode=disable",
 			MaxConns:           5,
 			MinConns:           0,
 			MaxConnLifetime:    time.Hour,
@@ -47,7 +47,7 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 func TestValidate_DevelopmentAllowsSSLDisable(t *testing.T) {
 	t.Parallel()
 	cfg := minimalDevConfig()
-	cfg.Postgres.URL = "postgres://u:p@host/db?sslmode=disable"
+	cfg.Postgres.URL = "postgres://host/db?sslmode=disable"
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func minimalDevConfig() *config.Config {
 		},
 		Rate: config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		Postgres: config.PostgresConfig{
-			URL:      "postgres://u:p@host/db?sslmode=require",
+			URL:      "postgres://host/db?sslmode=require",
 			MaxConns: 5, MinConns: 0,
 			MaxConnLifetime: time.Hour, MaxConnIdleTime: time.Minute, HealthCheckTimeout: time.Second,
 		},
