@@ -7,20 +7,20 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 From this directory:
 
 ```bash
-corepack enable   # optional if pnpm is already on PATH at 11.0.9
+corepack enable   # optional if pnpm is already on PATH at 11.2.2
 pnpm install
 pnpm dev
 ```
 
-If `corepack enable` fails on Windows (permissions under `Program Files`), use `npx pnpm@11.0.9 install` or install pnpm from [pnpm.io/installation](https://pnpm.io/installation).
+If `corepack enable` fails on Windows (permissions under `Program Files`), use `npx pnpm@11.2.2 install` or install pnpm from [pnpm.io/installation](https://pnpm.io/installation).
 
 If the shell says **`pnpm` is not recognized** (Windows), install the CLI once (same major as `packageManager`), then restart the terminal:
 
 ```bash
-npm install -g pnpm@11.0.9
+npm install -g pnpm@11.2.2
 ```
 
-Node’s installer normally puts `%AppData%\npm` on your user `PATH`. If the error persists, add that folder in **Settings → System → About → Advanced system settings → Environment Variables**. As a one-off without PATH changes, from `frontend` you can run `npx pnpm@11.0.9 dev`.
+Node’s installer normally puts `%AppData%\npm` on your user `PATH`. If the error persists, add that folder in **Settings → System → About → Advanced system settings → Environment Variables**. As a one-off without PATH changes, from `frontend` you can run `npx pnpm@11.2.2 dev`.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
