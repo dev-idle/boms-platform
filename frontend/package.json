@@ -12,7 +12,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ci": "pnpm run typecheck && pnpm run lint && pnpm run build",
+    "audit:ci": "pnpm audit --audit-level=high"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.13",

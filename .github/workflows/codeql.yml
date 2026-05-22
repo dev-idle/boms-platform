@@ -1,0 +1,80 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main, master, develop, idle]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/codeql.yml"
+  pull_request:
+    branches: [main, master, develop, idle]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/codeql.yml"
+  schedule:
+    # Weekly security scan (UTC Monday 06:00)
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            paths: backend
+          - language: javascript-typescript
+            paths: frontend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - uses: actions/setup-go@v6
+        if: matrix.language == 'go'
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - uses: pnpm/action-setup@v4
+        if: matrix.language == 'javascript-typescript'
+        with:
+          version: 11.2.2
+
+      - uses: actions/setup-node@v5
+        if: matrix.language == 'javascript-typescript'
+        with:
+          node-version-file: frontend/.node-version
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend deps (CodeQL index)
+        if: matrix.language == 'javascript-typescript'
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
