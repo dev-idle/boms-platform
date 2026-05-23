@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -21,6 +22,9 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
+
+// Test fixtures — not real credentials (gosec G101).
+const testPasswordHashFixture = "test-password-hash-fixture"
 
 func TestUserRepository_Integration(t *testing.T) {
 	if testing.Short() {
@@ -56,7 +60,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	t.Run("CRUD round trip", func(t *testing.T) {
 		created, err := repo.Create(ctx, port.CreateUserParams{
 			Email:        "alice@example.com",
-			PasswordHash: "$argon2id$v=19$m=65536,t=3,p=1$dummy",
+			PasswordHash: testPasswordHashFixture,
 			Role:         domainuser.RoleCustomer,
 		})
 		require.NoError(t, err)
@@ -113,7 +117,7 @@ func startPostgres(ctx context.Context, t *testing.T) (*tcpostgres.PostgresConta
 		"postgres:16-alpine",
 		tcpostgres.WithDatabase("boms_test"),
 		tcpostgres.WithUsername("boms"),
-		tcpostgres.WithPassword("boms"),
+		tcpostgres.WithPassword("boms"), //nolint:gosec // G101: ephemeral testcontainer password
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
 		),
@@ -132,7 +136,10 @@ func applyMigrations(ctx context.Context, connStr string) error {
 	}
 	defer pool.Close()
 
-	dir := filepath.Join("..", "..", "..", "..", "migrations")
+	dir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "migrations"))
+	if err != nil {
+		return err
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
@@ -145,7 +152,7 @@ func applyMigrations(ctx context.Context, connStr string) error {
 	}
 	sort.Strings(files)
 	for _, name := range files {
-		body, err := os.ReadFile(filepath.Join(dir, name))
+		body, err := readMigrationSQL(dir, name)
 		if err != nil {
 			return err
 		}
@@ -154,4 +161,17 @@ func applyMigrations(ctx context.Context, connStr string) error {
 		}
 	}
 	return nil
+}
+
+func readMigrationSQL(baseDir, name string) ([]byte, error) {
+	if name != filepath.Base(name) || strings.Contains(name, "..") {
+		return nil, fmt.Errorf("invalid migration filename: %q", name)
+	}
+	path := filepath.Join(baseDir, name)
+	clean := filepath.Clean(path)
+	rel, err := filepath.Rel(baseDir, clean)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return nil, fmt.Errorf("migration path outside base: %q", name)
+	}
+	return os.ReadFile(clean) //nolint:gosec // G304: path constrained to migrations/ basenames from ReadDir
 }

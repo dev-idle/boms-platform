@@ -135,6 +135,27 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	argon2Memory, err := uint32FromInt("argon2.memory", v.GetInt("argon2.memory"))
+	if err != nil {
+		return nil, err
+	}
+	argon2Iterations, err := uint32FromInt("argon2.iterations", v.GetInt("argon2.iterations"))
+	if err != nil {
+		return nil, err
+	}
+	argon2Parallelism, err := uint8FromInt("argon2.parallelism", v.GetInt("argon2.parallelism"))
+	if err != nil {
+		return nil, err
+	}
+	argon2SaltLength, err := uint32FromInt("argon2.salt_length", v.GetInt("argon2.salt_length"))
+	if err != nil {
+		return nil, err
+	}
+	argon2KeyLength, err := uint32FromInt("argon2.key_length", v.GetInt("argon2.key_length"))
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		App: AppConfig{
 			Name:  v.GetString("app.name"),
@@ -204,11 +225,11 @@ func Load() (*Config, error) {
 			Domain: v.GetString("cookie.domain"),
 		},
 		Argon2: Argon2Config{
-			Memory:      uint32(v.GetInt("argon2.memory")),
-			Iterations:  uint32(v.GetInt("argon2.iterations")),
-			Parallelism: uint8(v.GetInt("argon2.parallelism")),
-			SaltLength:  uint32(v.GetInt("argon2.salt_length")),
-			KeyLength:   uint32(v.GetInt("argon2.key_length")),
+			Memory:      argon2Memory,
+			Iterations:  argon2Iterations,
+			Parallelism: argon2Parallelism,
+			SaltLength:  argon2SaltLength,
+			KeyLength:   argon2KeyLength,
 		},
 	}
 
@@ -390,6 +411,20 @@ func int32FromInt(field string, n int) (int32, error) {
 		return 0, fmt.Errorf("%s: value %d out of int32 range", field, n)
 	}
 	return int32(n), nil
+}
+
+func uint32FromInt(field string, n int) (uint32, error) {
+	if n < 0 || int64(n) > int64(^uint32(0)) {
+		return 0, fmt.Errorf("%s: value %d out of uint32 range", field, n)
+	}
+	return uint32(n), nil
+}
+
+func uint8FromInt(field string, n int) (uint8, error) {
+	if n < 0 || n > math.MaxUint8 {
+		return 0, fmt.Errorf("%s: value %d out of uint8 range", field, n)
+	}
+	return uint8(n), nil
 }
 
 func splitAndTrim(s string) []string {
