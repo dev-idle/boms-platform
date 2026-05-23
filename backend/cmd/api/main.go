@@ -13,18 +13,26 @@ import (
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
 	"github.com/boms/backend/internal/config"
 	v1 "github.com/boms/backend/internal/handler/v1"
+	"github.com/boms/backend/internal/infrastructure/crypto"
+	jwtinfra "github.com/boms/backend/internal/infrastructure/jwt"
 	"github.com/boms/backend/internal/infrastructure/logger"
 	"github.com/boms/backend/internal/middleware"
 	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/usecase"
-
-	_ "github.com/golang-jwt/jwt/v5" // pin JWT module until auth adapter exists
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
+
+// authInfrastructure groups auth adapters wired for upcoming HTTP routes.
+type authInfrastructure struct {
+	hasher       port.PasswordHasher
+	tokens       port.TokenSigner
+	users        port.UserRepository
+	sessionStore port.SessionStore
+}
 
 func main() {
 	_ = godotenv.Load()
@@ -56,6 +64,27 @@ func main() {
 	}
 	defer func() { _ = redisClient.Close() }()
 
+	hasher := crypto.NewArgon2Hasher(cfg.Argon2)
+
+	if err := jwtinfra.EnsureDevSeed(&cfg.JWT, cfg.App.Env == "development"); err != nil {
+		zlog.Fatal("jwt_seed", zap.Error(err))
+	}
+	tokenSigner, err := jwtinfra.NewEdDSASigner(cfg.JWT)
+	if err != nil {
+		zlog.Fatal("jwt_signer", zap.Error(err))
+	}
+
+	userRepo := postgresrepo.NewUserRepository(pgPool)
+	sessionStore := redisrepo.NewSessionStore(redisClient, cfg.Session.TTL)
+
+	auth := authInfrastructure{
+		hasher:       hasher,
+		tokens:       tokenSigner,
+		users:        userRepo,
+		sessionStore: sessionStore,
+	}
+	_ = auth // auth routes will consume this bundle
+
 	var asynqClose func() error
 	if cfg.Asynq.Enabled {
 		client, err := queue.NewAsynqClient(cfg.Redis)
@@ -70,7 +99,7 @@ func main() {
 	if cfg.Redis.HealthCheckTimeout > readinessTimeout {
 		readinessTimeout = cfg.Redis.HealthCheckTimeout
 	}
-	readiness := usecase.NewReadiness(resources, readinessTimeout+time.Second)
+	readiness := usecase.NewReadiness(resources, readinessTimeout+time.Second, zlog)
 	health := v1.NewHealthHandler(readiness)
 
 	app := newFiberApp(cfg, zlog)

@@ -1,8 +1,11 @@
-.PHONY: help tidy build run dev test lint fmt vet clean docker-up docker-down sqlc sqlc-vet ci
+.PHONY: help tidy build run dev test lint fmt vet clean docker-up docker-down sqlc sqlc-vet sqlc-check ci \
+	atlas-install atlas-diff atlas-validate atlas-apply atlas-hash
 
 APP_NAME := boms-api
 MAIN_PKG := ./cmd/api
 SQLC   := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+ATLAS  ?= atlas
+ATLAS_DEV_URL ?= docker://postgres/16/dev?search_path=public
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -47,7 +50,29 @@ sqlc: ## sqlc generate
 sqlc-vet: ## sqlc vet
 	$(SQLC) vet
 
-ci: ## verify + sqlc vet + vet (tests: make test; CI runs -race once)
+sqlc-check: sqlc ## Regenerate sqlc and fail if sqlcgen/ drifted
+	git diff --exit-code internal/adapter/repository/postgres/sqlcgen/
+
+ci: ## verify + sqlc vet + sqlc drift + vet (tests: make test; CI runs -race once)
 	go mod verify
 	$(SQLC) vet
+	@$(MAKE) sqlc-check
 	go vet ./...
+
+atlas-install: ## Install Atlas CLI (Linux/macOS; Windows: see atlas.hcl header)
+	curl -sSf https://atlasgo.sh | sh
+
+atlas-diff: ## Generate migration from db/schema.hcl (usage: make atlas-diff NAME=add_users)
+ifndef NAME
+	$(error NAME is required, e.g. make atlas-diff NAME=add_users)
+endif
+	$(ATLAS) migrate diff $(NAME) --env local
+
+atlas-validate: ## Validate migrations/ checksums and SQL
+	$(ATLAS) migrate validate --dir "file://migrations"
+
+atlas-apply: ## Apply pending migrations to POSTGRES_URL (Neon)
+	$(ATLAS) migrate apply --env local
+
+atlas-hash: ## Recompute migrations/atlas.sum after editing SQL by hand
+	$(ATLAS) migrate hash --dir "file://migrations"

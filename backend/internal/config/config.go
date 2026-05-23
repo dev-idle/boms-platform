@@ -23,6 +23,9 @@ type Config struct {
 	Asynq    AsynqConfig
 	Log      LogConfig
 	JWT      JWTConfig
+	Session  SessionConfig
+	Cookie   CookieConfig
+	Argon2   Argon2Config
 }
 
 type AppConfig struct {
@@ -86,10 +89,32 @@ type LogConfig struct {
 }
 
 type JWTConfig struct {
-	AccessSecret  string
-	RefreshSecret string
-	AccessTTL     time.Duration
-	RefreshTTL    time.Duration
+	Ed25519PrivateKey string // base64-encoded 32-byte seed (JWT_ED25519_PRIVATE_KEY)
+	Issuer            string
+	Audience          string
+	AccessTTL         time.Duration
+	RefreshTTL        time.Duration
+}
+
+// SessionConfig controls server-side session persistence in Redis.
+type SessionConfig struct {
+	TTL time.Duration
+}
+
+// CookieConfig holds HttpOnly cookie settings for future auth handlers.
+type CookieConfig struct {
+	Name   string
+	Secure bool
+	Domain string
+}
+
+// Argon2Config tunes the Argon2id password hasher (memory in KiB).
+type Argon2Config struct {
+	Memory      uint32
+	Iterations  uint32
+	Parallelism uint8
+	SaltLength  uint32
+	KeyLength   uint32
 }
 
 // Load reads configuration from environment variables (set defaults with Viper;
@@ -164,10 +189,26 @@ func Load() (*Config, error) {
 			EnableStacktrace: v.GetBool("log.enable_stacktrace"),
 		},
 		JWT: JWTConfig{
-			AccessSecret:  v.GetString("jwt.access_secret"),
-			RefreshSecret: v.GetString("jwt.refresh_secret"),
-			AccessTTL:     v.GetDuration("jwt.access_ttl"),
-			RefreshTTL:    v.GetDuration("jwt.refresh_ttl"),
+			Ed25519PrivateKey: v.GetString("jwt.ed25519_private_key"),
+			Issuer:            v.GetString("jwt.issuer"),
+			Audience:          v.GetString("jwt.audience"),
+			AccessTTL:         v.GetDuration("jwt.access_ttl"),
+			RefreshTTL:        v.GetDuration("jwt.refresh_ttl"),
+		},
+		Session: SessionConfig{
+			TTL: v.GetDuration("session.ttl"),
+		},
+		Cookie: CookieConfig{
+			Name:   v.GetString("cookie.name"),
+			Secure: v.GetBool("cookie.secure"),
+			Domain: v.GetString("cookie.domain"),
+		},
+		Argon2: Argon2Config{
+			Memory:      uint32(v.GetInt("argon2.memory")),
+			Iterations:  uint32(v.GetInt("argon2.iterations")),
+			Parallelism: uint8(v.GetInt("argon2.parallelism")),
+			SaltLength:  uint32(v.GetInt("argon2.salt_length")),
+			KeyLength:   uint32(v.GetInt("argon2.key_length")),
 		},
 	}
 
@@ -223,8 +264,22 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log.enable_caller", false)
 	v.SetDefault("log.enable_stacktrace", false)
 
+	v.SetDefault("jwt.issuer", "boms-api")
+	v.SetDefault("jwt.audience", "boms")
 	v.SetDefault("jwt.access_ttl", 15*time.Minute)
 	v.SetDefault("jwt.refresh_ttl", 168*time.Hour)
+
+	v.SetDefault("session.ttl", 168*time.Hour)
+
+	v.SetDefault("cookie.name", "boms_session")
+	v.SetDefault("cookie.secure", false)
+	v.SetDefault("cookie.domain", "")
+
+	v.SetDefault("argon2.memory", 65536)
+	v.SetDefault("argon2.iterations", 3)
+	v.SetDefault("argon2.parallelism", 1)
+	v.SetDefault("argon2.salt_length", 16)
+	v.SetDefault("argon2.key_length", 32)
 }
 
 // Validate enforces production-safe constraints. Call after Load.
@@ -263,6 +318,33 @@ func (c *Config) Validate() error {
 	if c.Redis.PoolSize < 1 {
 		return errors.New("redis.pool_size must be at least 1")
 	}
+	if c.JWT.AccessTTL <= 0 {
+		return errors.New("jwt.access_ttl must be positive")
+	}
+	if c.JWT.RefreshTTL <= 0 {
+		return errors.New("jwt.refresh_ttl must be positive")
+	}
+	if c.Session.TTL <= 0 {
+		return errors.New("session.ttl must be positive")
+	}
+	if strings.TrimSpace(c.Cookie.Name) == "" {
+		return errors.New("cookie.name must be set")
+	}
+	if c.Argon2.Memory < 8*1024 {
+		return errors.New("argon2.memory must be at least 8192 KiB")
+	}
+	if c.Argon2.Iterations < 1 {
+		return errors.New("argon2.iterations must be at least 1")
+	}
+	if c.Argon2.Parallelism < 1 {
+		return errors.New("argon2.parallelism must be at least 1")
+	}
+	if c.Argon2.SaltLength < 8 {
+		return errors.New("argon2.salt_length must be at least 8")
+	}
+	if c.Argon2.KeyLength < 16 {
+		return errors.New("argon2.key_length must be at least 16")
+	}
 
 	env := strings.ToLower(strings.TrimSpace(c.App.Env))
 	if env == "production" || env == "staging" {
@@ -277,11 +359,14 @@ func (c *Config) Validate() error {
 				return errors.New("cors: wildcard origin is incompatible with allow_credentials")
 			}
 		}
-		if len(c.JWT.AccessSecret) < 32 {
-			return errors.New("jwt.access_secret must be at least 32 characters in non-development environments")
+		if strings.TrimSpace(c.JWT.Ed25519PrivateKey) == "" {
+			return errors.New("jwt.ed25519_private_key is required in non-development environments")
 		}
-		if len(c.JWT.RefreshSecret) < 32 {
-			return errors.New("jwt.refresh_secret must be at least 32 characters in non-development environments")
+		if strings.TrimSpace(c.JWT.Issuer) == "" {
+			return errors.New("jwt.issuer is required in non-development environments")
+		}
+		if strings.TrimSpace(c.JWT.Audience) == "" {
+			return errors.New("jwt.audience is required in non-development environments")
 		}
 		if postgresTLSExplicitlyDisabled(c.Postgres.URL) {
 			return errors.New("postgres.url must not disable TLS (sslmode=disable/allow) in staging/production")

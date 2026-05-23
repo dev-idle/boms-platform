@@ -36,12 +36,13 @@ func ErrorHandler(log *zap.Logger) fiber.ErrorHandler {
 			})
 		}
 
-		log.Error("unhandled_error",
+		fields := []zap.Field{
 			zap.Error(err),
 			zap.String("path", c.Path()),
 			zap.String("method", c.Method()),
-			zap.String("request_id", response.RequestIDFromCtx(c)),
-		)
+		}
+		fields = append(fields, response.ZapCorrelationFields(c)...)
+		log.Error("unhandled_error", fields...)
 
 		return response.Error(c, fiber.StatusInternalServerError, &response.ErrorBody{
 			Code:    errors.ErrInternal.Code,

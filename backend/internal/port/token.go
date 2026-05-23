@@ -1,13 +1,24 @@
 package port
 
-// TokenIssuer defines outbound auth token operations (implement in adapter when adding auth).
-type TokenIssuer interface {
-	IssueAccessToken(subject string, claims map[string]any) (string, error)
-	IssueRefreshToken(subject string) (string, error)
+// AccessTokenClaims are signed into access JWTs (token_use=access, includes role).
+type AccessTokenClaims struct {
+	Subject   string
+	Role      string
+	SessionID string
+	JTI       string
 }
 
-// TokenValidator validates JWTs without embedding business rules.
-type TokenValidator interface {
-	ParseAccessToken(token string) (subject string, err error)
-	ParseRefreshToken(token string) (subject string, err error)
+// RefreshTokenClaims are signed into refresh JWTs (token_use=refresh, no role).
+type RefreshTokenClaims struct {
+	Subject   string
+	SessionID string
+	JTI       string
+}
+
+// TokenSigner issues and validates EdDSA JWTs (infrastructure/jwt).
+type TokenSigner interface {
+	SignAccess(claims AccessTokenClaims) (string, error)
+	SignRefresh(claims RefreshTokenClaims) (string, error)
+	ParseAccess(token string) (AccessTokenClaims, error)
+	ParseRefresh(token string) (RefreshTokenClaims, error)
 }

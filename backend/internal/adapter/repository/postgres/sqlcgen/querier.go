@@ -6,13 +6,51 @@ package sqlcgen
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
+	//CreateUser
+	//
+	//  INSERT INTO users (email, password_hash, role)
+	//  VALUES ($1, $2, $3)
+	//  RETURNING id, email, password_hash, role, email_verified_at, created_at, updated_at, deleted_at
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	//GetUserByEmail
+	//
+	//  SELECT id, email, password_hash, role, email_verified_at, created_at, updated_at, deleted_at
+	//  FROM users
+	//  WHERE email = $1
+	//    AND deleted_at IS NULL
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	//GetUserByID
+	//
+	//  SELECT id, email, password_hash, role, email_verified_at, created_at, updated_at, deleted_at
+	//  FROM users
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	//Ping
 	//
 	//  SELECT 1 AS ok
 	Ping(ctx context.Context) (int32, error)
+	//SoftDeleteUser
+	//
+	//  UPDATE users
+	//  SET deleted_at = now(),
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	SoftDeleteUser(ctx context.Context, id uuid.UUID) (int64, error)
+	//UpdateUserPassword
+	//
+	//  UPDATE users
+	//  SET password_hash = $2,
+	//      updated_at    = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

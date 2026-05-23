@@ -54,7 +54,10 @@ func metaWithRequestID(c *fiber.Ctx, base map[string]any) map[string]any {
 	if rid == "" {
 		return base
 	}
-	out := map[string]any{"request_id": rid}
+	out := map[string]any{
+		"request_id": rid,
+		"trace_id":   rid, // same correlation id (spec / observability)
+	}
 	for k, v := range base {
 		out[k] = v
 	}
@@ -82,6 +85,7 @@ func EnsureRequestID(c *fiber.Ctx) string {
 		return id
 	}
 	id := uuid.NewString()
+	c.Locals("requestid", id)
 	c.Locals("request_id", id)
 	c.Set(fiber.HeaderXRequestID, id)
 	return id

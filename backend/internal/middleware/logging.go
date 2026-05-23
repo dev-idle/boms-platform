@@ -22,9 +22,7 @@ func RequestLogger(log *zap.Logger) fiber.Handler {
 			zap.String("remote_ip", c.IP()),
 			zap.Int("bytes_out", len(c.Response().Body())),
 		}
-		if rid := response.RequestIDFromCtx(c); rid != "" {
-			fields = append(fields, zap.String("request_id", rid))
-		}
+		fields = append(fields, response.ZapCorrelationFields(c)...)
 		if ua := c.Get(fiber.HeaderUserAgent); ua != "" {
 			fields = append(fields, zap.String("user_agent", ua))
 		}

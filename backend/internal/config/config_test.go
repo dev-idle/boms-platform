@@ -1,12 +1,21 @@
 package config_test
 
 import (
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/boms/backend/internal/config"
 )
+
+func base64Seed() string {
+	seed := make([]byte, 32)
+	for i := range seed {
+		seed[i] = byte(i + 10)
+	}
+	return base64.StdEncoding.EncodeToString(seed)
+}
 
 func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 	t.Parallel()
@@ -33,10 +42,16 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 		},
 		CORS: config.CORSConfig{AllowOrigins: []string{"https://app.example.com"}},
 		JWT: config.JWTConfig{
-			AccessSecret:  strings.Repeat("a", 32),
-			RefreshSecret: strings.Repeat("b", 32),
-			AccessTTL:     time.Minute,
-			RefreshTTL:    time.Hour,
+			Ed25519PrivateKey: base64Seed(),
+			Issuer:            "boms-api",
+			Audience:          "boms",
+			AccessTTL:         time.Minute,
+			RefreshTTL:        time.Hour,
+		},
+		Session: config.SessionConfig{TTL: time.Hour},
+		Cookie:  config.CookieConfig{Name: "boms_session"},
+		Argon2: config.Argon2Config{
+			Memory: 65536, Iterations: 3, Parallelism: 1, SaltLength: 16, KeyLength: 32,
 		},
 	}
 	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "TLS") {
@@ -83,6 +98,15 @@ func minimalDevConfig() *config.Config {
 			Addr: "127.0.0.1:6379", PoolSize: 5,
 			DialTimeout: time.Second, ReadTimeout: time.Second, WriteTimeout: time.Second,
 			HealthCheckTimeout: time.Second,
+		},
+		JWT: config.JWTConfig{
+			AccessTTL:  time.Minute,
+			RefreshTTL: time.Hour,
+		},
+		Session: config.SessionConfig{TTL: time.Hour},
+		Cookie:  config.CookieConfig{Name: "boms_session"},
+		Argon2: config.Argon2Config{
+			Memory: 65536, Iterations: 3, Parallelism: 1, SaltLength: 16, KeyLength: 32,
 		},
 	}
 }

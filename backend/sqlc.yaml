@@ -1,7 +1,7 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    # DDL for sqlc analysis — keep aligned with Neon / migration tool output.
+    # DDL for sqlc analysis — keep aligned with db/schema.hcl + migrations/ (Atlas).
     schema: "internal/adapter/repository/postgres/sql/schema"
     queries: "internal/adapter/repository/postgres/sql/query"
     strict_function_checks: true

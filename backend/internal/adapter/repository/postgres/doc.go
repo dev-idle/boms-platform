@@ -1,3 +1,3 @@
 // Package postgres: pgx pool + sqlx + sqlc (sql/{schema,query}, generated sqlcgen/).
-// Keep sql/schema in sync with migrations on Neon; regenerate: make sqlc / make sqlc-vet.
+// Schema source of truth: db/schema.hcl + migrations/ (Atlas). Keep sql/schema in sync; regenerate: make sqlc.
 package postgres

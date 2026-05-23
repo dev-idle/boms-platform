@@ -61,16 +61,18 @@ func Wrap(status int, code, message string, err error) *AppError {
 	return &AppError{StatusCode: status, Code: code, Message: message, Err: err}
 }
 
-// Common constructors for future features (no auth logic here).
+// Common constructors for handlers and adapters.
 var (
-	ErrNotFound           = New(http.StatusNotFound, "not_found", "Resource not found")
-	ErrConflict           = New(http.StatusConflict, "conflict", "Resource conflict")
-	ErrValidation         = New(http.StatusBadRequest, "validation_error", "Validation failed")
-	ErrUnauthorized       = New(http.StatusUnauthorized, "unauthorized", "Unauthorized")
-	ErrForbidden          = New(http.StatusForbidden, "forbidden", "Forbidden")
-	ErrInternal           = New(http.StatusInternalServerError, "internal_error", "Internal server error")
-	ErrServiceUnavailable = New(http.StatusServiceUnavailable, "service_unavailable", "Service unavailable")
-	ErrTooManyRequests    = New(http.StatusTooManyRequests, "rate_limited", "Too many requests")
+	ErrNotFound            = New(http.StatusNotFound, "not_found", "Resource not found")
+	ErrConflict            = New(http.StatusConflict, "conflict", "Resource conflict")
+	ErrValidation          = New(http.StatusBadRequest, "validation_error", "Validation failed")
+	ErrUnauthorized        = New(http.StatusUnauthorized, "unauthorized", "Unauthorized")
+	ErrInvalidCredentials  = New(http.StatusUnauthorized, "invalid_credentials", "Invalid credentials")
+	ErrSessionRevoked      = New(http.StatusUnauthorized, "session_revoked", "Session revoked")
+	ErrForbidden           = New(http.StatusForbidden, "forbidden", "Forbidden")
+	ErrInternal            = New(http.StatusInternalServerError, "internal_error", "Internal server error")
+	ErrServiceUnavailable  = New(http.StatusServiceUnavailable, "service_unavailable", "Service unavailable")
+	ErrTooManyRequests     = New(http.StatusTooManyRequests, "rate_limited", "Too many requests")
 )
 
 // FromFiberError maps *fiber.Error to AppError.

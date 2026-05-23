@@ -1,0 +1,47 @@
+name: Backend Atlas
+
+on:
+  push:
+    paths:
+      - "backend/db/**"
+      - "backend/migrations/**"
+      - "backend/internal/adapter/repository/postgres/sql/**"
+      - "backend/atlas.hcl"
+      - ".github/workflows/backend-atlas.yml"
+  pull_request:
+    paths:
+      - "backend/db/**"
+      - "backend/migrations/**"
+      - "backend/internal/adapter/repository/postgres/sql/**"
+      - "backend/atlas.hcl"
+      - ".github/workflows/backend-atlas.yml"
+
+defaults:
+  run:
+    working-directory: backend
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-atlas-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  atlas:
+    name: Atlas (validate + schema sync)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Atlas CLI
+        run: curl -sSf https://atlasgo.sh | sh
+
+      - name: Validate migration directory
+        run: atlas migrate validate --dir "file://migrations"
+
+      - name: Ensure migrations match db/schema.hcl
+        run: |
+          atlas migrate diff drift_check --env local
+          test -z "$(git status --porcelain migrations/)"
