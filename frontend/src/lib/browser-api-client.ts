@@ -15,6 +15,13 @@ export type BrowserRequestInit = Omit<RequestInit, "body"> & {
   skipAuth?: boolean;
   /** Skip 401 refresh-and-retry (auth endpoints). */
   skipRefreshRetry?: boolean;
+  /** Return successful envelope meta alongside data. */
+  withMeta?: boolean;
+};
+
+export type BrowserRequestWithMetaResult<T> = {
+  data: T;
+  meta?: Record<string, unknown>;
 };
 
 function isAuthLoopPath(path: string): boolean {
@@ -58,7 +65,7 @@ async function executeRequest<T>(
   init: BrowserRequestInit,
   isRetry: boolean,
 ): Promise<T> {
-  const { json, schema, skipAuth, skipRefreshRetry, ...rest } = init;
+  const { json, schema, skipAuth, skipRefreshRetry, withMeta, ...rest } = init;
   const headers = new Headers(rest.headers);
 
   if (!headers.has("Accept")) {
@@ -145,7 +152,20 @@ async function executeRequest<T>(
         message: "Response failed schema validation",
       });
     }
+    if (withMeta) {
+      return {
+        data: parsed.data,
+        meta: envelope.data.meta as Record<string, unknown> | undefined,
+      } as T;
+    }
     return parsed.data as T;
+  }
+
+  if (withMeta) {
+    return {
+      data,
+      meta: envelope.data.meta as Record<string, unknown> | undefined,
+    } as T;
   }
 
   return data as T;
@@ -163,4 +183,18 @@ export async function browserRequestVoid(
   init: BrowserRequestInit = {},
 ): Promise<void> {
   await executeRequest<void>(path, init, false);
+}
+
+export async function browserRequestWithMeta<T>(
+  path: string,
+  init: BrowserRequestInit = {},
+): Promise<BrowserRequestWithMetaResult<T>> {
+  return executeRequest<BrowserRequestWithMetaResult<T>>(
+    path,
+    {
+      ...init,
+      withMeta: true,
+    },
+    false,
+  );
 }

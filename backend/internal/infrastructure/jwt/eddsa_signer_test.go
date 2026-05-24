@@ -122,7 +122,7 @@ func TestEdDSASigner(t *testing.T) {
 		claims := jwt.MapClaims{
 			"iss": "boms-api", "aud": "boms", "sub": "u", "token_use": "access",
 			"role": "customer",
-			"exp": time.Now().Add(time.Hour).Unix(),
+			"exp":  time.Now().Add(time.Hour).Unix(),
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
 		raw, err := token.SignedString(priv)

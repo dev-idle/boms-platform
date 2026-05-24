@@ -180,3 +180,35 @@ func forbidden(c *fiber.Ctx) error {
 		Message: "Insufficient permissions",
 	})
 }
+
+// RequirePasswordChanged blocks authenticated users who must change their password.
+// Allow GET /api/v1/me and PATCH /api/v1/me/password via route wiring — chain only on restricted routes.
+func RequirePasswordChanged(users port.UserRepository) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		userID, ok := GetUserID(c)
+		if !ok {
+			return c.Next()
+		}
+		ctx := c.UserContext()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		user, err := users.GetByID(ctx, userID)
+		if err != nil {
+			if errors.Is(err, apperrors.ErrNotFound) {
+				return unauthorized(c)
+			}
+			return response.Error(c, fiber.StatusInternalServerError, &response.ErrorBody{
+				Code:    apperrors.ErrInternal.Code,
+				Message: apperrors.ErrInternal.Message,
+			})
+		}
+		if user.MustChangePassword {
+			return response.Error(c, fiber.StatusForbidden, &response.ErrorBody{
+				Code:    "PASSWORD_CHANGE_REQUIRED",
+				Message: "Password change required before accessing this resource",
+			})
+		}
+		return c.Next()
+	}
+}

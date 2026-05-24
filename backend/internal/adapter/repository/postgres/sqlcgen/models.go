@@ -18,6 +18,9 @@ type UserRole string
 const (
 	UserRoleCustomer UserRole = "customer"
 	UserRoleAdmin    UserRole = "admin"
+	UserRoleStaff    UserRole = "staff"
+	UserRoleBaker    UserRole = "baker"
+	UserRoleManager  UserRole = "manager"
 )
 
 func (e *UserRole) Scan(src interface{}) error {
@@ -55,13 +58,29 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 	return string(ns.UserRole), nil
 }
 
-type User struct {
-	ID              uuid.UUID    `db:"id" json:"id"`
-	Email           string       `db:"email" json:"email"`
-	PasswordHash    string       `db:"password_hash" json:"passwordHash"`
-	Role            UserRole     `db:"role" json:"role"`
-	EmailVerifiedAt sql.NullTime `db:"email_verified_at" json:"emailVerifiedAt"`
-	CreatedAt       time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt       time.Time    `db:"updated_at" json:"updatedAt"`
-	DeletedAt       sql.NullTime `db:"deleted_at" json:"deletedAt"`
+type AdminProfile struct {
+	UserID    uuid.UUID      `db:"user_id" json:"userId"`
+	FullName  string         `db:"full_name" json:"fullName"`
+	Phone     sql.NullString `db:"phone" json:"phone"`
+	CreatedAt time.Time      `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time      `db:"updated_at" json:"updatedAt"`
+}
+
+type CustomerProfile struct {
+	UserID      uuid.UUID      `db:"user_id" json:"userId"`
+	DisplayName sql.NullString `db:"display_name" json:"displayName"`
+	Phone       sql.NullString `db:"phone" json:"phone"`
+	CreatedAt   time.Time      `db:"created_at" json:"createdAt"`
+	UpdatedAt   time.Time      `db:"updated_at" json:"updatedAt"`
+}
+
+type StaffProfile struct {
+	UserID       uuid.UUID      `db:"user_id" json:"userId"`
+	FullName     string         `db:"full_name" json:"fullName"`
+	Phone        sql.NullString `db:"phone" json:"phone"`
+	EmployeeCode string         `db:"employee_code" json:"employeeCode"`
+	HireDate     time.Time      `db:"hire_date" json:"hireDate"`
+	Shift        string         `db:"shift" json:"shift"`
+	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
+	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
 }

@@ -316,6 +316,94 @@ func TestRequireRole(t *testing.T) {
 	})
 }
 
+type mockPasswordUserRepo struct {
+	mock.Mock
+}
+
+func (m *mockPasswordUserRepo) Create(ctx context.Context, params port.CreateUserParams) (*domainuser.User, error) {
+	panic("not implemented")
+}
+func (m *mockPasswordUserRepo) AdminCreate(ctx context.Context, params port.CreateUserParams) (*domainuser.User, error) {
+	panic("not implemented")
+}
+func (m *mockPasswordUserRepo) GetByEmail(ctx context.Context, email string) (*domainuser.User, error) {
+	panic("not implemented")
+}
+func (m *mockPasswordUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domainuser.User), args.Error(1)
+}
+func (m *mockPasswordUserRepo) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
+	panic("not implemented")
+}
+func (m *mockPasswordUserRepo) UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error {
+	panic("not implemented")
+}
+func (m *mockPasswordUserRepo) UpdateRole(ctx context.Context, id uuid.UUID, role domainuser.Role) error {
+	panic("not implemented")
+}
+func (m *mockPasswordUserRepo) SetMustChangePassword(ctx context.Context, id uuid.UUID) error {
+	panic("not implemented")
+}
+func (m *mockPasswordUserRepo) ClearMustChangePassword(ctx context.Context, id uuid.UUID) error {
+	panic("not implemented")
+}
+func (m *mockPasswordUserRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	panic("not implemented")
+}
+func (m *mockPasswordUserRepo) AdminList(ctx context.Context, params port.AdminListUsersParams) ([]port.AdminListUser, int64, error) {
+	panic("not implemented")
+}
+
+func TestRequirePasswordChanged(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+
+	t.Run("allows when password change not required", func(t *testing.T) {
+		t.Parallel()
+		repo := new(mockPasswordUserRepo)
+		repo.On("GetByID", mock.Anything, userID).Return(&domainuser.User{
+			ID:                 userID,
+			MustChangePassword: false,
+		}, nil)
+
+		app := fiber.New()
+		app.Get("/", func(c *fiber.Ctx) error {
+			c.Locals("auth_user_id", userID)
+			return c.Next()
+		}, middleware.RequirePasswordChanged(repo), func(c *fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusOK)
+		})
+		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+	})
+
+	t.Run("blocks when password change required", func(t *testing.T) {
+		t.Parallel()
+		repo := new(mockPasswordUserRepo)
+		repo.On("GetByID", mock.Anything, userID).Return(&domainuser.User{
+			ID:                 userID,
+			MustChangePassword: true,
+		}, nil)
+
+		app := fiber.New()
+		app.Get("/", func(c *fiber.Ctx) error {
+			c.Locals("auth_user_id", userID)
+			return c.Next()
+		}, middleware.RequirePasswordChanged(repo), func(c *fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusOK)
+		})
+		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+			assertErrorCode(t, resp, "PASSWORD_CHANGE_REQUIRED")
+		})
+	})
+}
+
 func assertErrorCode(t *testing.T, resp *http.Response, code string) {
 	t.Helper()
 	body, err := io.ReadAll(resp.Body)

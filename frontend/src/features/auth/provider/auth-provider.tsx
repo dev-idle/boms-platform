@@ -3,8 +3,9 @@
 import { useEffect, type ReactNode } from "react";
 
 import { useAuthStore } from "@/stores/auth-store";
+import { getMe } from "@/features/user/api";
 
-import { getMe } from "../api";
+import { MustChangePasswordGate } from "../components";
 import {
   ensureRefreshScheduled,
   refreshNow,
@@ -91,6 +92,7 @@ export function AuthProvider({ initialAuthHint, children }: AuthProviderProps) {
   return (
     <>
       <AuthBootstrapEffect initialAuthHint={initialAuthHint} />
+      <MustChangePasswordGate />
       {children}
     </>
   );

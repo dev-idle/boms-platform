@@ -11,13 +11,16 @@ import (
 	"github.com/boms/backend/internal/adapter/queue"
 	postgresrepo "github.com/boms/backend/internal/adapter/repository/postgres"
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
+	"github.com/boms/backend/internal/bootstrap"
 	"github.com/boms/backend/internal/config"
+	domainuser "github.com/boms/backend/internal/domain/user"
 	v1 "github.com/boms/backend/internal/handler/v1"
 	"github.com/boms/backend/internal/infrastructure/crypto"
 	jwtinfra "github.com/boms/backend/internal/infrastructure/jwt"
 	"github.com/boms/backend/internal/infrastructure/logger"
 	"github.com/boms/backend/internal/middleware"
 	"github.com/boms/backend/internal/port"
+	"github.com/boms/backend/internal/service/auditlogger"
 	"github.com/boms/backend/internal/usecase"
 
 	"github.com/gofiber/fiber/v2"
@@ -67,13 +70,27 @@ func main() {
 	}
 
 	userRepo := postgresrepo.NewUserRepository(pgPool)
+	customerProfileRepo := postgresrepo.NewCustomerProfileRepository(pgPool)
+	staffProfileRepo := postgresrepo.NewStaffProfileRepository(pgPool)
+	adminProfileRepo := postgresrepo.NewAdminProfileRepository(pgPool)
+	auditLogRepo := postgresrepo.NewAuditLogRepository(pgPool)
 	sessionStore := redisrepo.NewSessionStore(redisClient, cfg.Session.TTL)
+	auditLogger := auditlogger.NewService(auditLogRepo)
 
-	authUC, err := usecase.NewAuthUsecase(userRepo, sessionStore, hasher, tokenSigner, zlog)
+	authUC, err := usecase.NewAuthUsecase(userRepo, customerProfileRepo, pgPool, sessionStore, hasher, tokenSigner, zlog)
 	if err != nil {
 		zlog.Fatal("auth_usecase", zap.Error(err))
 	}
+	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, hasher, auditLogger)
+	adminUserUC := usecase.NewAdminUserUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger)
+
+	if err := bootstrap.EnsureDevAdmin(rootCtx, cfg, userRepo, adminProfileRepo, hasher, pgPool); err != nil {
+		zlog.Fatal("seed_admin", zap.Error(err))
+	}
+
 	authHandler := v1.NewAuthHandler(authUC, cfg)
+	meHandler := v1.NewMeHandler(meUC)
+	adminUserHandler := v1.NewAdminUserHandler(adminUserUC)
 
 	var asynqClose func() error
 	if cfg.Asynq.Enabled {
@@ -102,7 +119,35 @@ func main() {
 	authGroup.Post("/login", middleware.AuthAttemptRateLimit(rdb), authHandler.Login)
 	authGroup.Post("/refresh", middleware.AuthRefreshRateLimit(rdb), authHandler.Refresh)
 	authGroup.Post("/logout", middleware.AuthLogoutRateLimit(rdb), middleware.OptionalAuth(tokenSigner), authHandler.Logout)
-	authGroup.Get("/me", middleware.RequireAuth(tokenSigner), authHandler.Me)
+
+	passwordChanged := middleware.RequirePasswordChanged(userRepo)
+
+	app.Get("/api/v1/me", middleware.RequireAuth(tokenSigner), meHandler.Get)
+	app.Patch("/api/v1/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, meHandler.Patch)
+	app.Patch("/api/v1/me/password", middleware.RequireAuthWithSession(tokenSigner, sessionStore), meHandler.PatchPassword)
+	app.Delete("/api/v1/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, meHandler.Delete)
+
+	adminRead := app.Group(
+		"/api/v1/admin/users",
+		middleware.RequireAuth(tokenSigner),
+		middleware.RequireRole(domainuser.RoleAdmin),
+		passwordChanged,
+	)
+	adminRead.Get("", adminUserHandler.List)
+	adminRead.Get("/:id", adminUserHandler.Get)
+
+	adminWrite := app.Group(
+		"/api/v1/admin/users",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleAdmin),
+		passwordChanged,
+		middleware.AdminWriteRateLimit(rdb),
+	)
+	adminWrite.Post("", adminUserHandler.Create)
+	adminWrite.Patch("/:id", adminUserHandler.PatchProfile)
+	adminWrite.Patch("/:id/role", adminUserHandler.PatchRole)
+	adminWrite.Patch("/:id/disable", adminUserHandler.PatchDisable)
+	adminWrite.Post("/:id/revoke-sessions", adminUserHandler.RevokeSessions)
 
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 	go func() {
@@ -152,6 +197,7 @@ func newFiberApp(cfg *config.Config, log *zap.Logger) *fiber.App {
 	app := fiber.New(fcfg)
 
 	app.Use(requestid.New())
+	app.Use(middleware.AttachRequestMeta())
 	app.Use(middleware.SecurityHeaders(cfg.HTTP))
 	app.Use(middleware.Recover(log))
 	app.Use(middleware.RequestLogger(log))

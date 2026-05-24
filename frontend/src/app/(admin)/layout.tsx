@@ -17,6 +17,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <Link href={ROUTE.admin.products}>Products</Link>
             <Link href={ROUTE.admin.orders}>Orders</Link>
             <Link href={ROUTE.admin.users}>Users</Link>
+            <Link href={ROUTE.admin.account.profile}>My profile</Link>
+            <Link href={ROUTE.admin.account.password}>Password</Link>
           </nav>
           <div className="mt-auto pt-6">
             <LogoutButton className="w-full" variant="outline" />

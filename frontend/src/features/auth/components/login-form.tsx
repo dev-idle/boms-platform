@@ -21,16 +21,17 @@ import { isApiError } from "@/lib/errors";
 import { validateNext } from "@/lib/validate-next";
 
 import { useLogin } from "../hooks";
-import { mapValidationDetailsToFormErrors } from "../lib/validation-messages";
+import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 import { loginSchema, type LoginInput } from "../schemas";
 import { AuthenticatedRedirect } from "./authenticated-redirect";
 
 type LoginFormProps = {
   next?: string;
   registered?: boolean;
+  changed?: boolean;
 };
 
-export function LoginForm({ next, registered }: LoginFormProps) {
+export function LoginForm({ next, registered, changed }: LoginFormProps) {
   const login = useLogin();
 
   const form = useForm<LoginInput>({
@@ -46,6 +47,12 @@ export function LoginForm({ next, registered }: LoginFormProps) {
       toast.success("Account created. Sign in to continue.");
     }
   }, [registered]);
+
+  useEffect(() => {
+    if (changed) {
+      toast.success("Password changed. Sign in again.");
+    }
+  }, [changed]);
 
   function onSubmit(values: LoginInput) {
     login.mutate(

@@ -100,3 +100,13 @@ func AuthUserRateLimit(rdb *goredis.Client) fiber.Handler {
 		return "rl:ip:" + c.IP() + ":auth"
 	}, 60, time.Minute)
 }
+
+// AdminWriteRateLimit limits admin write operations to 30/min per user.
+func AdminWriteRateLimit(rdb *goredis.Client) fiber.Handler {
+	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":admin_write"
+		}
+		return "rl:ip:" + c.IP() + ":admin_write"
+	}, 30, time.Minute)
+}

@@ -14,3 +14,10 @@ export const ADMIN_ROLES: readonly UserRole[] = [
   USER_ROLE.admin,
   USER_ROLE.manager,
 ] as const;
+
+/** Roles using the operational staff profile. */
+export const STAFF_ROLES: readonly UserRole[] = [
+  USER_ROLE.staff,
+  USER_ROLE.baker,
+  USER_ROLE.manager,
+] as const;

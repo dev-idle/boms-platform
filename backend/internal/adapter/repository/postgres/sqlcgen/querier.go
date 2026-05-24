@@ -11,38 +11,215 @@ import (
 )
 
 type Querier interface {
+	//AdminCreate
+	//
+	//  INSERT INTO users (email, password_hash, role, must_change_password)
+	//  VALUES ($1, $2, $3, $4)
+	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	AdminCreate(ctx context.Context, arg AdminCreateParams) (AdminCreateRow, error)
+	//AdminList
+	//
+	//  SELECT
+	//      u.id,
+	//      u.email,
+	//      u.role,
+	//      u.email_verified_at,
+	//      u.must_change_password,
+	//      u.created_at,
+	//      u.updated_at,
+	//      u.deleted_at,
+	//      cp.display_name,
+	//      COALESCE(sp.full_name, ap.full_name) AS full_name,
+	//      COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
+	//      sp.employee_code,
+	//      sp.hire_date,
+	//      sp.shift
+	//  FROM users u
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+	//  LEFT JOIN admin_profiles ap ON ap.user_id = u.id
+	//  WHERE (
+	//      $1::text = ''
+	//      OR u.email ILIKE '%' || $1 || '%'
+	//      OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
+	//      OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
+	//  )
+	//  ORDER BY u.created_at DESC
+	//  LIMIT $2 OFFSET $3
+	AdminList(ctx context.Context, arg AdminListParams) ([]AdminListRow, error)
+	//AdminListCount
+	//
+	//  SELECT COUNT(*)
+	//  FROM users u
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+	//  LEFT JOIN admin_profiles ap ON ap.user_id = u.id
+	//  WHERE (
+	//      $1::text = ''
+	//      OR u.email ILIKE '%' || $1 || '%'
+	//      OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
+	//      OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
+	//  )
+	AdminListCount(ctx context.Context, dollar_1 string) (int64, error)
+	//ClearMustChangePassword
+	//
+	//  UPDATE users
+	//  SET must_change_password = false,
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	ClearMustChangePassword(ctx context.Context, id uuid.UUID) (int64, error)
+	//CreateAdminProfile
+	//
+	//  INSERT INTO admin_profiles (user_id, full_name, phone)
+	//  VALUES ($1, $2, $3)
+	//  RETURNING user_id, full_name, phone, created_at, updated_at
+	CreateAdminProfile(ctx context.Context, arg CreateAdminProfileParams) (AdminProfile, error)
+	//CreateAuditLog
+	//
+	//  INSERT INTO audit_logs (
+	//      actor_id,
+	//      actor_role,
+	//      action,
+	//      target_id,
+	//      target_type,
+	//      before_jsonb,
+	//      after_jsonb,
+	//      ip,
+	//      user_agent
+	//  )
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')::inet, $9)
+	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) error
+	//CreateCustomerProfile
+	//
+	//  INSERT INTO customer_profiles (user_id, display_name, phone)
+	//  VALUES ($1, $2, $3)
+	//  RETURNING user_id, display_name, phone, created_at, updated_at
+	CreateCustomerProfile(ctx context.Context, arg CreateCustomerProfileParams) (CustomerProfile, error)
+	//CreateStaffProfile
+	//
+	//  INSERT INTO staff_profiles (user_id, full_name, phone, employee_code, hire_date, shift)
+	//  VALUES ($1, $2, $3, $4, $5, $6)
+	//  RETURNING user_id, full_name, phone, employee_code, hire_date, shift, created_at, updated_at
+	CreateStaffProfile(ctx context.Context, arg CreateStaffProfileParams) (StaffProfile, error)
 	//CreateUser
 	//
-	//  INSERT INTO users (email, password_hash, role)
-	//  VALUES ($1, $2, $3)
-	//  RETURNING id, email, password_hash, role, email_verified_at, created_at, updated_at, deleted_at
-	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	//  INSERT INTO users (email, password_hash, role, must_change_password)
+	//  VALUES ($1, $2, $3, $4)
+	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	//DeleteAdminProfileByUserID
+	//
+	//  DELETE FROM admin_profiles
+	//  WHERE user_id = $1
+	DeleteAdminProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	//DeleteCustomerProfileByUserID
+	//
+	//  DELETE FROM customer_profiles
+	//  WHERE user_id = $1
+	DeleteCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	//DeleteStaffProfileByUserID
+	//
+	//  DELETE FROM staff_profiles
+	//  WHERE user_id = $1
+	DeleteStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	//GetAdminProfileByUserID
+	//
+	//  SELECT user_id, full_name, phone, created_at, updated_at
+	//  FROM admin_profiles
+	//  WHERE user_id = $1
+	GetAdminProfileByUserID(ctx context.Context, userID uuid.UUID) (AdminProfile, error)
+	//GetCustomerProfileByUserID
+	//
+	//  SELECT user_id, display_name, phone, created_at, updated_at
+	//  FROM customer_profiles
+	//  WHERE user_id = $1
+	GetCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (CustomerProfile, error)
+	//GetStaffProfileByUserID
+	//
+	//  SELECT user_id, full_name, phone, employee_code, hire_date, shift, created_at, updated_at
+	//  FROM staff_profiles
+	//  WHERE user_id = $1
+	GetStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (StaffProfile, error)
 	//GetUserByEmail
 	//
-	//  SELECT id, email, password_hash, role, email_verified_at, created_at, updated_at, deleted_at
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
 	//  FROM users
 	//  WHERE email = $1
 	//    AND deleted_at IS NULL
-	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	//GetUserByID
 	//
-	//  SELECT id, email, password_hash, role, email_verified_at, created_at, updated_at, deleted_at
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
 	//  FROM users
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
+	//GetUserByIDForUpdate
+	//
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	//  FROM users
+	//  WHERE id = $1
+	//  FOR UPDATE
+	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (GetUserByIDForUpdateRow, error)
 	//Ping
 	//
 	//  SELECT 1 AS ok
 	Ping(ctx context.Context) (int32, error)
-	//SoftDeleteUser
+	//SetMustChangePassword
+	//
+	//  UPDATE users
+	//  SET must_change_password = true,
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	SetMustChangePassword(ctx context.Context, id uuid.UUID) (int64, error)
+	//SoftDelete
 	//
 	//  UPDATE users
 	//  SET deleted_at = now(),
 	//      updated_at = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	SoftDeleteUser(ctx context.Context, id uuid.UUID) (int64, error)
+	SoftDelete(ctx context.Context, id uuid.UUID) (int64, error)
+	//UpdateAdminProfileByUserID
+	//
+	//  UPDATE admin_profiles
+	//  SET full_name = $2,
+	//      phone = $3,
+	//      updated_at = now()
+	//  WHERE user_id = $1
+	//  RETURNING user_id, full_name, phone, created_at, updated_at
+	UpdateAdminProfileByUserID(ctx context.Context, arg UpdateAdminProfileByUserIDParams) (AdminProfile, error)
+	//UpdateCustomerProfileByUserID
+	//
+	//  UPDATE customer_profiles
+	//  SET display_name = $2,
+	//      phone = $3,
+	//      updated_at = now()
+	//  WHERE user_id = $1
+	//  RETURNING user_id, display_name, phone, created_at, updated_at
+	UpdateCustomerProfileByUserID(ctx context.Context, arg UpdateCustomerProfileByUserIDParams) (CustomerProfile, error)
+	//UpdateRole
+	//
+	//  UPDATE users
+	//  SET role = $2,
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	UpdateRole(ctx context.Context, arg UpdateRoleParams) (int64, error)
+	//UpdateStaffProfileByUserID
+	//
+	//  UPDATE staff_profiles
+	//  SET full_name = $2,
+	//      phone = $3,
+	//      employee_code = $4,
+	//      hire_date = $5,
+	//      shift = $6,
+	//      updated_at = now()
+	//  WHERE user_id = $1
+	//  RETURNING user_id, full_name, phone, employee_code, hire_date, shift, created_at, updated_at
+	UpdateStaffProfileByUserID(ctx context.Context, arg UpdateStaffProfileByUserIDParams) (StaffProfile, error)
 	//UpdateUserPassword
 	//
 	//  UPDATE users

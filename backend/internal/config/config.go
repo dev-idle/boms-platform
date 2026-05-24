@@ -26,6 +26,7 @@ type Config struct {
 	Session  SessionConfig
 	Cookie   CookieConfig
 	Argon2   Argon2Config
+	Seed     SeedConfig
 }
 
 type AppConfig struct {
@@ -115,6 +116,13 @@ type Argon2Config struct {
 	Parallelism uint8
 	SaltLength  uint32
 	KeyLength   uint32
+}
+
+type SeedConfig struct {
+	DevAdminEmail    string
+	DevAdminPassword string
+	DevAdminFullName string
+	DevAdminPhone    string
 }
 
 // Load reads configuration from environment variables (set defaults with Viper;
@@ -231,6 +239,12 @@ func Load() (*Config, error) {
 			SaltLength:  argon2SaltLength,
 			KeyLength:   argon2KeyLength,
 		},
+		Seed: SeedConfig{
+			DevAdminEmail:    v.GetString("seed.dev_admin_email"),
+			DevAdminPassword: v.GetString("seed.dev_admin_password"),
+			DevAdminFullName: v.GetString("seed.dev_admin_full_name"),
+			DevAdminPhone:    v.GetString("seed.dev_admin_phone"),
+		},
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -301,6 +315,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("argon2.parallelism", 1)
 	v.SetDefault("argon2.salt_length", 16)
 	v.SetDefault("argon2.key_length", 32)
+
+	v.SetDefault("seed.dev_admin_email", "")
+	v.SetDefault("seed.dev_admin_password", "")
+	v.SetDefault("seed.dev_admin_full_name", "Development Admin")
+	v.SetDefault("seed.dev_admin_phone", "")
 }
 
 // Validate enforces production-safe constraints. Call after Load.
@@ -368,6 +387,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Argon2.KeyLength < 16 {
 		return errors.New("argon2.key_length must be at least 16")
+	}
+	if strings.TrimSpace(c.Seed.DevAdminEmail) != "" && strings.TrimSpace(c.Seed.DevAdminPassword) == "" {
+		return errors.New("seed.dev_admin_password is required when seed.dev_admin_email is set")
 	}
 
 	env := strings.ToLower(strings.TrimSpace(c.App.Env))

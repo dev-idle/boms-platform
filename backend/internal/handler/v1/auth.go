@@ -84,11 +84,17 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return err
 	}
 	writeRefreshCookie(c, h.cfg, refresh)
+	var mustChange *bool
+	if user.MustChangePassword {
+		v := true
+		mustChange = &v
+	}
 	return response.OK(c, dto.TokenResponse{
-		AccessToken: access,
-		TokenType:   "Bearer",
-		ExpiresIn:   int(h.cfg.JWT.AccessTTL.Seconds()),
-		User:        toUserResponse(user),
+		AccessToken:        access,
+		TokenType:          "Bearer",
+		ExpiresIn:          int(h.cfg.JWT.AccessTTL.Seconds()),
+		User:               toUserResponse(user),
+		MustChangePassword: mustChange,
 	})
 }
 
@@ -135,29 +141,6 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	h.usecase.LogoutHybrid(c.UserContext(), bearerUserID, bearerSessionID, hasBearer, c.Cookies(h.cfg.Cookie.Name))
 	clearRefreshCookie(c, h.cfg)
 	return response.NoContent(c)
-}
-
-// Me handles GET /api/v1/auth/me.
-func (h *AuthHandler) Me(c *fiber.Ctx) error {
-	response.EnsureRequestID(c)
-	userID, ok := middleware.GetUserID(c)
-	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, &response.ErrorBody{
-			Code:    "UNAUTHORIZED",
-			Message: "Authentication required",
-		})
-	}
-	user, err := h.usecase.Me(c.UserContext(), userID)
-	if err != nil {
-		if errors.Is(err, usecase.ErrUserNotFound) {
-			return response.Error(c, fiber.StatusUnauthorized, &response.ErrorBody{
-				Code:    "SESSION_REVOKED",
-				Message: "Session revoked",
-			})
-		}
-		return err
-	}
-	return response.OK(c, toUserResponse(user))
 }
 
 func toUserResponse(u *domainuser.User) dto.UserResponse {

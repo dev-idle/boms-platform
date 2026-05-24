@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -25,44 +26,89 @@ func NewUserRepository(pool *Pool) *UserRepository {
 	return &UserRepository{queries: pool.Queries()}
 }
 
+func (r *UserRepository) q(ctx context.Context) *sqlcgen.Queries {
+	if tx := txFromContext(ctx); tx != nil {
+		return r.queries.WithTx(tx)
+	}
+	return r.queries
+}
+
 // Create implements port.UserRepository.
 func (r *UserRepository) Create(ctx context.Context, params port.CreateUserParams) (*domainuser.User, error) {
 	role, err := toSQLRole(params.Role)
 	if err != nil {
 		return nil, err
 	}
-	row, err := r.queries.CreateUser(ctx, sqlcgen.CreateUserParams{
-		Email:        params.Email,
-		PasswordHash: params.PasswordHash,
-		Role:         role,
+	row, err := r.q(ctx).CreateUser(ctx, sqlcgen.CreateUserParams{
+		Email:              params.Email,
+		PasswordHash:       params.PasswordHash,
+		Role:               role,
+		MustChangePassword: params.MustChangePassword,
 	})
 	if err != nil {
 		return nil, mapUserQueryError(err, "create user")
 	}
-	return mapUser(row), nil
+	return mapUserFields(
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+	), nil
+}
+
+// AdminCreate implements port.UserRepository.
+func (r *UserRepository) AdminCreate(ctx context.Context, params port.CreateUserParams) (*domainuser.User, error) {
+	role, err := toSQLRole(params.Role)
+	if err != nil {
+		return nil, err
+	}
+	row, err := r.q(ctx).AdminCreate(ctx, sqlcgen.AdminCreateParams{
+		Email:              params.Email,
+		PasswordHash:       params.PasswordHash,
+		Role:               role,
+		MustChangePassword: params.MustChangePassword,
+	})
+	if err != nil {
+		return nil, mapUserQueryError(err, "admin create user")
+	}
+	return mapUserFields(
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+	), nil
 }
 
 // GetByEmail implements port.UserRepository.
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domainuser.User, error) {
-	row, err := r.queries.GetUserByEmail(ctx, email)
+	row, err := r.q(ctx).GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, mapUserQueryError(err, "get user by email")
 	}
-	return mapUser(row), nil
+	return mapUserFields(
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+	), nil
 }
 
 // GetByID implements port.UserRepository.
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
-	row, err := r.queries.GetUserByID(ctx, id)
+	row, err := r.q(ctx).GetUserByID(ctx, id)
 	if err != nil {
 		return nil, mapUserQueryError(err, "get user by id")
 	}
-	return mapUser(row), nil
+	return mapUserFields(
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+	), nil
+}
+
+// GetByIDForUpdate implements port.UserRepository.
+func (r *UserRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
+	row, err := r.q(ctx).GetUserByIDForUpdate(ctx, id)
+	if err != nil {
+		return nil, mapUserQueryError(err, "get user by id for update")
+	}
+	return mapUserFields(
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+	), nil
 }
 
 // UpdatePassword implements port.UserRepository.
 func (r *UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
-	rows, err := r.queries.UpdateUserPassword(ctx, sqlcgen.UpdateUserPasswordParams{
+	rows, err := r.q(ctx).UpdateUserPassword(ctx, sqlcgen.UpdateUserPasswordParams{
 		ID:           id,
 		PasswordHash: passwordHash,
 	})
@@ -75,9 +121,52 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, passw
 	return nil
 }
 
+// UpdateRole implements port.UserRepository.
+func (r *UserRepository) UpdateRole(ctx context.Context, id uuid.UUID, role domainuser.Role) error {
+	sqlRole, err := toSQLRole(role)
+	if err != nil {
+		return err
+	}
+	rows, err := r.q(ctx).UpdateRole(ctx, sqlcgen.UpdateRoleParams{
+		ID:   id,
+		Role: sqlRole,
+	})
+	if err != nil {
+		return mapUserQueryError(err, "update user role")
+	}
+	if rows == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
+// SetMustChangePassword implements port.UserRepository.
+func (r *UserRepository) SetMustChangePassword(ctx context.Context, id uuid.UUID) error {
+	rows, err := r.q(ctx).SetMustChangePassword(ctx, id)
+	if err != nil {
+		return mapUserQueryError(err, "set must change password")
+	}
+	if rows == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
+// ClearMustChangePassword implements port.UserRepository.
+func (r *UserRepository) ClearMustChangePassword(ctx context.Context, id uuid.UUID) error {
+	rows, err := r.q(ctx).ClearMustChangePassword(ctx, id)
+	if err != nil {
+		return mapUserQueryError(err, "clear must change password")
+	}
+	if rows == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
 // SoftDelete implements port.UserRepository.
 func (r *UserRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
-	rows, err := r.queries.SoftDeleteUser(ctx, id)
+	rows, err := r.q(ctx).SoftDelete(ctx, id)
 	if err != nil {
 		return mapUserQueryError(err, "soft delete user")
 	}
@@ -85,6 +174,51 @@ func (r *UserRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
 		return apperrors.ErrNotFound
 	}
 	return nil
+}
+
+// AdminList implements port.UserRepository.
+func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUsersParams) ([]port.AdminListUser, int64, error) {
+	rows, err := r.q(ctx).AdminList(ctx, sqlcgen.AdminListParams{
+		Column1: params.Search,
+		Limit:   params.Limit,
+		Offset:  params.Offset,
+	})
+	if err != nil {
+		return nil, 0, mapUserQueryError(err, "admin list users")
+	}
+	total, err := r.q(ctx).AdminListCount(ctx, params.Search)
+	if err != nil {
+		return nil, 0, mapUserQueryError(err, "admin list count")
+	}
+
+	out := make([]port.AdminListUser, 0, len(rows))
+	for _, row := range rows {
+		item := port.AdminListUser{
+			ID:                 row.ID,
+			Email:              row.Email,
+			Role:               fromSQLRole(row.Role),
+			EmailVerified:      row.EmailVerifiedAt.Valid,
+			MustChangePassword: row.MustChangePassword,
+			CreatedAt:          row.CreatedAt,
+			UpdatedAt:          row.UpdatedAt,
+			FullName:           stringPtrOrNil(row.FullName),
+			Phone:              nullStringPtr(row.Phone),
+			EmployeeCode:       nullStringPtr(row.EmployeeCode),
+			Shift:              nullStringPtr(row.Shift),
+			DisplayName:        nullStringPtr(row.DisplayName),
+		}
+		if row.DeletedAt.Valid {
+			t := row.DeletedAt.Time
+			item.DeletedAt = &t
+		}
+		if row.HireDate.Valid {
+			t := row.HireDate.Time
+			item.HireDate = &t
+		}
+		out = append(out, item)
+	}
+
+	return out, total, nil
 }
 
 func mapUserQueryError(err error, op string) error {
@@ -98,18 +232,27 @@ func mapUserQueryError(err error, op string) error {
 	return fmt.Errorf("%s: %w", op, err)
 }
 
-func mapUser(row sqlcgen.User) *domainuser.User {
+func mapUserFields(
+	id uuid.UUID,
+	email, passwordHash string,
+	role sqlcgen.UserRole,
+	emailVerifiedAt sql.NullTime,
+	mustChangePassword bool,
+	createdAt, updatedAt time.Time,
+	deletedAt sql.NullTime,
+) *domainuser.User {
 	user := &domainuser.User{
-		ID:           row.ID,
-		Email:        row.Email,
-		PasswordHash: row.PasswordHash,
-		Role:         fromSQLRole(row.Role),
-		EmailVerified: row.EmailVerifiedAt.Valid,
-		CreatedAt:    row.CreatedAt,
-		UpdatedAt:    row.UpdatedAt,
+		ID:                 id,
+		Email:              email,
+		PasswordHash:       passwordHash,
+		Role:               fromSQLRole(role),
+		EmailVerified:      emailVerifiedAt.Valid,
+		MustChangePassword: mustChangePassword,
+		CreatedAt:          createdAt,
+		UpdatedAt:          updatedAt,
 	}
-	if row.DeletedAt.Valid {
-		t := row.DeletedAt.Time
+	if deletedAt.Valid {
+		t := deletedAt.Time
 		user.DeletedAt = &t
 	}
 	return user
@@ -119,6 +262,12 @@ func toSQLRole(role domainuser.Role) (sqlcgen.UserRole, error) {
 	switch role {
 	case domainuser.RoleCustomer:
 		return sqlcgen.UserRoleCustomer, nil
+	case domainuser.RoleStaff:
+		return sqlcgen.UserRoleStaff, nil
+	case domainuser.RoleBaker:
+		return sqlcgen.UserRoleBaker, nil
+	case domainuser.RoleManager:
+		return sqlcgen.UserRoleManager, nil
 	case domainuser.RoleAdmin:
 		return sqlcgen.UserRoleAdmin, nil
 	default:
@@ -128,6 +277,22 @@ func toSQLRole(role domainuser.Role) (sqlcgen.UserRole, error) {
 
 func fromSQLRole(role sqlcgen.UserRole) domainuser.Role {
 	return domainuser.Role(role)
+}
+
+func nullStringPtr(v sql.NullString) *string {
+	if !v.Valid {
+		return nil
+	}
+	s := v.String
+	return &s
+}
+
+func stringPtrOrNil(v string) *string {
+	if v == "" {
+		return nil
+	}
+	s := v
+	return &s
 }
 
 var _ port.UserRepository = (*UserRepository)(nil)

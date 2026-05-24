@@ -1,25 +1,28 @@
 /**
  * Auth feature — public API for app and cross-feature consumers.
  *
- * Internal: api/, components/, hooks/, lib/validation-messages, provider/, schemas/
+ * Internal: api/, components/, hooks/, provider/, schemas/
  * Client session infra: @/lib/auth (refresh manager — shared with browser-api-client)
  */
-export { getMe, login, logout, register } from "./api";
+export { login, logout, register } from "./api";
+export { getMe } from "@/features/user/api";
 export {
   AdminGate,
   AuthenticatedRedirect,
   LoginForm,
   LogoutButton,
+  MustChangePasswordGate,
   RegisterForm,
   RoleGate,
+  StaffGate,
 } from "./components";
 export {
-  authQueryKeys,
   meQueryOptions,
   useLogin,
   useLogout,
   useMe,
   useRegister,
+  userQueryKeys,
 } from "./hooks";
 export type { LoginMutationVariables } from "./hooks";
 export { AuthBootstrap, AuthProvider, useAuthStatus } from "./provider";

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -106,4 +107,24 @@ func (p *Pool) Ping(ctx context.Context) error {
 		return fmt.Errorf("postgres pool is nil")
 	}
 	return p.inner.Ping(ctx)
+}
+
+// WithTx runs fn in a SQL transaction and commits on success.
+func (p *Pool) WithTx(ctx context.Context, fn func(txCtx context.Context) error) error {
+	if p == nil || p.sqlxDB == nil || p.sqlxDB.DB == nil {
+		return fmt.Errorf("postgres pool is nil")
+	}
+	tx, err := p.sqlxDB.DB.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	txCtx := withTx(ctx, tx)
+	if err := fn(txCtx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
 }

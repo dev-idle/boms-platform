@@ -25,10 +25,11 @@ type UserResponse struct {
 
 // TokenResponse is returned from login with access token metadata and user profile.
 type TokenResponse struct {
-	AccessToken string       `json:"access_token"`
-	TokenType   string       `json:"token_type"`
-	ExpiresIn   int          `json:"expires_in"`
-	User        UserResponse `json:"user"`
+	AccessToken        string       `json:"access_token"`
+	TokenType          string       `json:"token_type"`
+	ExpiresIn          int          `json:"expires_in"`
+	User               UserResponse `json:"user"`
+	MustChangePassword *bool        `json:"must_change_password,omitempty"`
 }
 
 // RefreshResponse is returned from refresh (user profile omitted — client already has it).

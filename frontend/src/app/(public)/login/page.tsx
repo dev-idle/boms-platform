@@ -5,6 +5,7 @@ type LoginPageProps = {
   searchParams: Promise<{
     next?: string;
     registered?: string;
+    changed?: string;
   }>;
 };
 
@@ -16,6 +17,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <LoginForm
       next={safeNext}
       registered={params.registered === "1"}
+      changed={params.changed === "1"}
     />
   );
 }

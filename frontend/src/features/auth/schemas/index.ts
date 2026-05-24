@@ -23,6 +23,7 @@ export const tokenResponseSchema = z.object({
   token_type: z.string(),
   expires_in: z.number().int().positive(),
   user: userSchema,
+  must_change_password: z.boolean().optional(),
 });
 
 export const refreshResponseSchema = z.object({

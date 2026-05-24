@@ -30,18 +30,22 @@ var (
 
 // AuthUsecase implements registration, login, refresh rotation, and session lifecycle.
 type AuthUsecase struct {
-	userRepo     port.UserRepository
-	sessionStore port.SessionStore
-	hasher       port.PasswordHasher
-	signer       port.TokenSigner
-	log          *zap.Logger
-	dummyHash    string
+	userRepo            port.UserRepository
+	customerProfileRepo port.CustomerProfileRepository
+	txManager           port.TxManager
+	sessionStore        port.SessionStore
+	hasher              port.PasswordHasher
+	signer              port.TokenSigner
+	log                 *zap.Logger
+	dummyHash           string
 }
 
 // NewAuthUsecase wires auth dependencies and precomputes a timing-safe dummy password hash
 // using the configured Argon2 parameters (once per process).
 func NewAuthUsecase(
 	userRepo port.UserRepository,
+	customerProfileRepo port.CustomerProfileRepository,
+	txManager port.TxManager,
 	sessionStore port.SessionStore,
 	hasher port.PasswordHasher,
 	signer port.TokenSigner,
@@ -52,12 +56,14 @@ func NewAuthUsecase(
 		return nil, fmt.Errorf("init timing-safe dummy hash: %w", err)
 	}
 	return &AuthUsecase{
-		userRepo:     userRepo,
-		sessionStore: sessionStore,
-		hasher:       hasher,
-		signer:       signer,
-		log:          log,
-		dummyHash:    dummyHash,
+		userRepo:            userRepo,
+		customerProfileRepo: customerProfileRepo,
+		txManager:           txManager,
+		sessionStore:        sessionStore,
+		hasher:              hasher,
+		signer:              signer,
+		log:                 log,
+		dummyHash:           dummyHash,
 	}, nil
 }
 
@@ -68,11 +74,31 @@ func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
-	user, err := a.userRepo.Create(ctx, port.CreateUserParams{
-		Email:        req.Email,
-		PasswordHash: hash,
-		Role:         domainuser.RoleCustomer,
-	})
+	var user *domainuser.User
+	runWithTx := func(txCtx context.Context) error {
+		var createErr error
+		user, createErr = a.userRepo.Create(txCtx, port.CreateUserParams{
+			Email:              req.Email,
+			PasswordHash:       hash,
+			Role:               domainuser.RoleCustomer,
+			MustChangePassword: false,
+		})
+		if createErr != nil {
+			return createErr
+		}
+		if a.customerProfileRepo == nil {
+			return fmt.Errorf("customer profile repository is required")
+		}
+		_, createErr = a.customerProfileRepo.Create(txCtx, port.UpsertCustomerProfileParams{
+			UserID: user.ID,
+		})
+		return createErr
+	}
+	if a.txManager != nil {
+		err = a.txManager.WithTx(ctx, runWithTx)
+	} else {
+		err = runWithTx(ctx)
+	}
 	if err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
 			return nil, ErrEmailExists
@@ -259,18 +285,6 @@ func (a *AuthUsecase) revokeSessionBestEffort(ctx context.Context, userID, sessi
 	}
 }
 
-// Me returns the current user profile.
-func (a *AuthUsecase) Me(ctx context.Context, userID uuid.UUID) (*domainuser.User, error) {
-	user, err := a.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, apperrors.ErrNotFound) {
-			return nil, ErrUserNotFound
-		}
-		return nil, fmt.Errorf("get user: %w", err)
-	}
-	return user, nil
-}
-
 // ChangePassword verifies the old password, updates the hash, and revokes all sessions.
 func (a *AuthUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldPwd, newPwd string) error {
 	user, err := a.userRepo.GetByID(ctx, userID)
@@ -289,6 +303,9 @@ func (a *AuthUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldP
 	}
 	if err := a.userRepo.UpdatePassword(ctx, userID, hash); err != nil {
 		return fmt.Errorf("update password: %w", err)
+	}
+	if err := a.userRepo.ClearMustChangePassword(ctx, userID); err != nil && !errors.Is(err, apperrors.ErrNotFound) {
+		return fmt.Errorf("clear must-change-password: %w", err)
 	}
 	if err := a.sessionStore.DeleteAllForUser(ctx, userID.String()); err != nil {
 		return fmt.Errorf("revoke sessions: %w", err)

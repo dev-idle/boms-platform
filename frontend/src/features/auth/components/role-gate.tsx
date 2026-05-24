@@ -3,12 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
-import { ADMIN_ROLES } from "@/constants/roles";
+import { ADMIN_ROLES, STAFF_ROLES, type UserRole } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { useAuthStore } from "@/stores/auth-store";
 
 type RoleGateProps = {
-  allowedRoles: readonly string[];
+  allowedRoles: readonly UserRole[];
   children: ReactNode;
   fallbackTo?: string;
 };
@@ -48,4 +48,8 @@ export function RoleGate({
 
 export function AdminGate({ children }: { children: ReactNode }) {
   return <RoleGate allowedRoles={ADMIN_ROLES}>{children}</RoleGate>;
+}
+
+export function StaffGate({ children }: { children: ReactNode }) {
+  return <RoleGate allowedRoles={STAFF_ROLES}>{children}</RoleGate>;
 }

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import type { UserRole } from "@/constants/roles";
-import type { User } from "@/features/auth/schemas";
+import type { Me } from "@/features/user/types";
 
 export type AuthStatus = "idle" | "authenticated" | "unauthenticated";
 
@@ -12,7 +12,7 @@ export type UserSummary = {
 };
 
 type AuthState = {
-  user: User | null;
+  user: Me | null;
   userSummary: UserSummary | null;
   accessToken: string | null;
   expiresAt: number | null;
@@ -20,11 +20,11 @@ type AuthState = {
   setAuth: (params: {
     accessToken: string;
     expiresIn: number;
-    user: User;
+    user: Me;
   }) => void;
   setTokens: (params: { accessToken: string; expiresIn: number }) => void;
   clearAuth: () => void;
-  updateUser: (user: User) => void;
+  updateUser: (user: Me) => void;
   setStatus: (status: AuthStatus) => void;
 };
 

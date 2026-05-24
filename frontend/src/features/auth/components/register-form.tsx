@@ -19,7 +19,7 @@ import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 
 import { useRegister } from "../hooks";
-import { mapValidationDetailsToFormErrors } from "../lib/validation-messages";
+import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 import { registerSchema, type RegisterInput } from "../schemas";
 import { AuthenticatedRedirect } from "./authenticated-redirect";
 

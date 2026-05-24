@@ -25,6 +25,17 @@ func OK(c *fiber.Ctx, data any) error {
 	return JSON(c, fiber.StatusOK, true, data, nil, MetaFromCtx(c, nil))
 }
 
+// OKPaginated sends a 200 response and injects meta.pagination.
+func OKPaginated(c *fiber.Ctx, data any, page, pageSize int, total int64) error {
+	return JSON(c, fiber.StatusOK, true, data, nil, MetaFromCtx(c, map[string]any{
+		"pagination": map[string]any{
+			"page":      page,
+			"page_size": pageSize,
+			"total":     total,
+		},
+	}))
+}
+
 // MetaFromCtx builds meta including request_id for handlers outside middleware.
 func MetaFromCtx(c *fiber.Ctx, base map[string]any) map[string]any {
 	return metaWithRequestID(c, base)

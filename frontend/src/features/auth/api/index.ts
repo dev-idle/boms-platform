@@ -36,13 +36,6 @@ export async function login(body: LoginInput): Promise<TokenResponse> {
   });
 }
 
-export async function getMe(): Promise<User> {
-  return browserRequest<User>("/api/v1/auth/me", {
-    method: "GET",
-    schema: userSchema,
-  });
-}
-
 export async function logout(): Promise<void> {
   await browserRequestVoid("/api/v1/auth/logout", {
     method: "POST",

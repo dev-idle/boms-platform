@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	redisadapter "github.com/boms/backend/internal/adapter/repository/redis"
 	"github.com/boms/backend/internal/config"
 	domainsession "github.com/boms/backend/internal/domain/session"
 	apperrors "github.com/boms/backend/internal/shared/errors"
-	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
