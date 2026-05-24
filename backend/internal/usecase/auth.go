@@ -17,9 +17,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// TimingSafeDummyPassword is hashed once at usecase construction to produce dummyHash.
-// Never used as a real credential; kept unexported from HTTP layer.
-const TimingSafeDummyPassword = "boms-timing-safe-dummy-credential"
+// TimingSafeDummySeed is hashed once at usecase construction to produce dummyHash for login timing equalization.
+// Not a user password and never accepted as valid credentials.
+const TimingSafeDummySeed = "boms-timing-equalization-seed-v1"
 
 var (
 	// ErrEmailExists is returned when registering a duplicate email.
@@ -47,7 +47,7 @@ func NewAuthUsecase(
 	signer port.TokenSigner,
 	log *zap.Logger,
 ) (*AuthUsecase, error) {
-	dummyHash, err := hasher.Hash(TimingSafeDummyPassword)
+	dummyHash, err := hasher.Hash(TimingSafeDummySeed)
 	if err != nil {
 		return nil, fmt.Errorf("init timing-safe dummy hash: %w", err)
 	}

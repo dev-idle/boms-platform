@@ -99,7 +99,7 @@ func (m *mockSigner) ParseRefresh(token string) (port.RefreshTokenClaims, error)
 
 func newAuthUC(t *testing.T, users *mockUserRepo, sessions *mockSessionStore, hasher *mockHasher, signer *mockSigner) *usecase.AuthUsecase {
 	t.Helper()
-	hasher.On("Hash", usecase.TimingSafeDummyPassword).Return("dummy-hash", nil).Once()
+	hasher.On("Hash", usecase.TimingSafeDummySeed).Return("dummy-hash", nil).Once()
 	uc, err := usecase.NewAuthUsecase(users, sessions, hasher, signer, nil)
 	require.NoError(t, err)
 	return uc
