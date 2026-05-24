@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import type { ZodType } from "zod";
 
 import { getServerEnv } from "@/lib/env";
-import { BomsApiError, BomsValidationError } from "@/types/api";
+import { BomsApiError, BomsValidationError } from "@/lib/errors";
 
 type Json = Record<string, unknown> | unknown[] | string | number | boolean | null;
 

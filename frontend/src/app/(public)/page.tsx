@@ -1,10 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  AUTH_ACCESS_COOKIE,
-  AUTH_REFRESH_COOKIE,
-} from "@/constants/cookies";
+import { AUTH_REFRESH_COOKIE } from "@/constants/cookies";
 import { ROUTE } from "@/constants/routes";
 
 export default function HomePage() {
@@ -19,15 +16,11 @@ export default function HomePage() {
             BOMS storefront
           </h1>
           <p className="text-lg leading-relaxed text-zinc-600 dark:text-zinc-300">
-            RSC-first ordering surface. Authenticated areas require HttpOnly{" "}
-            <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">
-              {AUTH_ACCESS_COOKIE}
-            </code>{" "}
-            and{" "}
+            Access tokens live in memory only. Refresh sessions use the HttpOnly{" "}
             <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">
               {AUTH_REFRESH_COOKIE}
             </code>{" "}
-            cookies issued by Fiber.
+            cookie on <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">/api/v1/auth</code>.
           </p>
         </div>
         <div className="flex flex-wrap gap-3 text-sm font-medium">

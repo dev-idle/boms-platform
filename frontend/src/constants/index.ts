@@ -1,14 +1,10 @@
+export { AUTH_REFRESH_COOKIE } from "./cookies";
+export { ADMIN_ROLES, USER_ROLE } from "./roles";
+export type { UserRole } from "./roles";
 export {
-  AUTH_ACCESS_COOKIE,
-  AUTH_REFRESH_COOKIE,
-  ROLE_COOKIE,
-} from "./cookies";
-export {
+  ADMIN_ROUTE_PREFIXES,
+  CUSTOMER_ROUTE_PREFIXES,
   PROTECTED_ROUTE_PREFIXES,
-  PUBLIC_AUTH_ROUTE_PREFIXES,
   ROUTE,
 } from "./routes";
-export type {
-  ProtectedRoutePrefix,
-  PublicAuthRoutePrefix,
-} from "./routes";
+export type { ProtectedRoutePrefix } from "./routes";

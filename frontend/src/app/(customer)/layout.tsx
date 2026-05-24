@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ROUTE } from "@/constants/routes";
+import { LogoutButton } from "@/features/auth";
 
 export default function CustomerLayout({ children }: { children: ReactNode }) {
   return (
@@ -11,9 +12,12 @@ export default function CustomerLayout({ children }: { children: ReactNode }) {
           <Link href={ROUTE.products}>Products</Link>
           <Link href={ROUTE.cart}>Cart</Link>
           <Link href={ROUTE.orders}>Orders</Link>
-          <Link className="ml-auto text-zinc-500 dark:text-zinc-400" href={ROUTE.home}>
-            Exit
-          </Link>
+          <div className="ml-auto flex items-center gap-3">
+            <Link className="text-zinc-500 dark:text-zinc-400" href={ROUTE.home}>
+              Home
+            </Link>
+            <LogoutButton />
+          </div>
         </nav>
       </header>
       <div className="mx-auto max-w-5xl px-6 py-10">{children}</div>

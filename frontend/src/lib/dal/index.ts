@@ -1,5 +1,5 @@
 /**
- * Data access layer — the only import surface for Fiber from server code.
- * Do not import `@/lib/api-client` outside this folder.
+ * Data access layer (server outbound adapters → Fiber).
+ * Only import from RSC, Server Actions, or route handlers — never from Client Components.
  */
-export { dalFiberHealth } from "./fiber";
+export { dalFiberHealth } from "./health.dal";

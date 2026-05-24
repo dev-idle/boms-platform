@@ -3,17 +3,10 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { NextProxy, NextRequest } from "next/server";
 
-import {
-  AUTH_ACCESS_COOKIE,
-  AUTH_REFRESH_COOKIE,
-  ROLE_COOKIE,
-} from "@/constants/cookies";
-import {
-  PROTECTED_ROUTE_PREFIXES,
-  PUBLIC_AUTH_ROUTE_PREFIXES,
-  ROUTE,
-} from "@/constants/routes";
+import { AUTH_REFRESH_COOKIE } from "@/constants/cookies";
+import { PROTECTED_ROUTE_PREFIXES, ROUTE } from "@/constants/routes";
 import { getBackendOrigin, getServerEnv } from "@/lib/env";
+import { validateNext } from "@/lib/validate-next";
 
 function isProtectedPath(pathname: string): boolean {
   return PROTECTED_ROUTE_PREFIXES.some(
@@ -21,25 +14,8 @@ function isProtectedPath(pathname: string): boolean {
   );
 }
 
-function isPublicAuthPath(pathname: string): boolean {
-  return PUBLIC_AUTH_ROUTE_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
-}
-
-function hasAuthCookies(request: NextRequest): boolean {
-  return (
-    request.cookies.has(AUTH_ACCESS_COOKIE) &&
-    request.cookies.has(AUTH_REFRESH_COOKIE)
-  );
-}
-
-function resolveUserRole(request: NextRequest): string {
-  const raw = request.cookies.get(ROLE_COOKIE)?.value ?? "";
-  if (/^[a-z0-9:_-]{1,64}$/i.test(raw)) {
-    return raw;
-  }
-  return hasAuthCookies(request) ? "authenticated" : "anonymous";
+function hasRefreshCookie(request: NextRequest): boolean {
+  return request.cookies.has(AUTH_REFRESH_COOKIE);
 }
 
 function stripUntrustedInboundHeaders(request: NextRequest): Headers {
@@ -48,6 +24,7 @@ function stripUntrustedInboundHeaders(request: NextRequest): Headers {
     "x-internal-secret",
     "x-user-role",
     "x-request-id",
+    "x-auth-hint",
   ] as const;
   for (const name of blocked) {
     headers.delete(name);
@@ -63,11 +40,10 @@ function applyResourceHints(response: NextResponse, backendOrigin: string): void
 /**
  * Network boundary for BOMS. Runs before route rendering (Node runtime by default).
  *
- * HTTP 103 Early Hints are not emitted here because `NextResponse` does not expose a
- * portable multi-status composition path across hosts. `Link: rel=preconnect` hints
- * warm browser connection pools toward Fiber similarly to CDN Early Hints for APIs.
+ * Cookie presence is a coarse gate only — client bootstrap validates the session.
+ * Role checks happen in client RoleGate / server API RequireRole.
  */
-export const proxy: NextProxy = (request, event) => {
+export const proxy: NextProxy = (request) => {
   const { pathname, search } = request.nextUrl;
 
   if (pathname.startsWith("/_next") || pathname.startsWith("/favicon.ico")) {
@@ -85,21 +61,20 @@ export const proxy: NextProxy = (request, event) => {
   }
 
   const requestId = randomUUID();
-  const role = resolveUserRole(request);
+  const authHint = hasRefreshCookie(request) ? "present" : "absent";
 
-  if (isProtectedPath(pathname) && !hasAuthCookies(request)) {
+  if (isProtectedPath(pathname) && !hasRefreshCookie(request)) {
     const login = new URL(ROUTE.login, request.url);
-    login.searchParams.set("next", `${pathname}${search}`);
+    const nextPath = validateNext(`${pathname}${search}`);
+    if (nextPath) {
+      login.searchParams.set("next", nextPath);
+    }
     return NextResponse.redirect(login);
-  }
-
-  if (isPublicAuthPath(pathname) && hasAuthCookies(request)) {
-    return NextResponse.redirect(new URL(ROUTE.home, request.url));
   }
 
   const requestHeaders = stripUntrustedInboundHeaders(request);
   requestHeaders.set("X-Request-ID", requestId);
-  requestHeaders.set("X-User-Role", role);
+  requestHeaders.set("X-Auth-Hint", authHint);
   requestHeaders.set("X-Internal-Secret", env.INTERNAL_PROXY_SECRET);
 
   const response = NextResponse.next({
@@ -108,17 +83,6 @@ export const proxy: NextProxy = (request, event) => {
 
   response.headers.set("X-Request-ID", requestId);
   applyResourceHints(response, getBackendOrigin());
-
-  const warmUrl = `${getBackendOrigin()}/health`;
-  event.waitUntil(
-    fetch(warmUrl, {
-      method: "HEAD",
-      headers: {
-        "X-Internal-Secret": env.INTERNAL_PROXY_SECRET,
-        "X-Request-ID": requestId,
-      },
-    }).catch(() => undefined),
-  );
 
   return response;
 };

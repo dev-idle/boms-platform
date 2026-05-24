@@ -16,17 +16,19 @@ export const ROUTE = {
   },
 } as const;
 
-export const PROTECTED_ROUTE_PREFIXES = [
-  ROUTE.products,
-  ROUTE.cart,
-  ROUTE.orders,
+export const ADMIN_ROUTE_PREFIXES = [
   ROUTE.admin.dashboard,
 ] as const;
 
-export const PUBLIC_AUTH_ROUTE_PREFIXES = [
-  ROUTE.login,
-  ROUTE.register,
+export const CUSTOMER_ROUTE_PREFIXES = [
+  ROUTE.products,
+  ROUTE.cart,
+  ROUTE.orders,
+] as const;
+
+export const PROTECTED_ROUTE_PREFIXES = [
+  ...CUSTOMER_ROUTE_PREFIXES,
+  ...ADMIN_ROUTE_PREFIXES,
 ] as const;
 
 export type ProtectedRoutePrefix = (typeof PROTECTED_ROUTE_PREFIXES)[number];
-export type PublicAuthRoutePrefix = (typeof PUBLIC_AUTH_ROUTE_PREFIXES)[number];

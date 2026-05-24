@@ -1,3 +1,2 @@
-export const AUTH_ACCESS_COOKIE = "access_token";
-export const AUTH_REFRESH_COOKIE = "refresh_token";
-export const ROLE_COOKIE = "boms_role";
+/** HttpOnly refresh session cookie issued by Fiber (name configurable on backend). */
+export const AUTH_REFRESH_COOKIE = "boms_refresh";

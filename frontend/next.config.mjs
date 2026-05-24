@@ -70,6 +70,16 @@ const nextConfig = {
   experimental: {
     viewTransition: true,
   },
+  async rewrites() {
+    const backendUrl =
+      process.env.BOMS_BACKEND_URL ?? "http://127.0.0.1:8080";
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${backendUrl.replace(/\/$/, "")}/api/v1/:path*`,
+      },
+    ];
+  },
   async headers() {
     return [
       {

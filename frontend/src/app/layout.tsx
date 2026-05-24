@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
+import { Toaster } from "sonner";
 
 import "./globals.css";
+import { AuthBootstrap } from "@/features/auth";
 import { QueryProvider, ThemeProvider } from "@/providers";
 
 const geistSans = Geist({
@@ -51,9 +53,16 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider>
           <QueryProvider>
-            <Suspense fallback={<div className="flex flex-1 items-center justify-center text-sm text-zinc-500">Loading…</div>}>
-              {children}
+            <Suspense
+              fallback={
+                <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
+                  Loading…
+                </div>
+              }
+            >
+              <AuthBootstrap>{children}</AuthBootstrap>
             </Suspense>
+            <Toaster closeButton richColors position="top-center" />
           </QueryProvider>
         </ThemeProvider>
       </body>

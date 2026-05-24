@@ -1,12 +1,6 @@
 /**
- * Contract-first API surface. Align field names with Go JSON tags.
+ * Server-side DAL errors (RSC / server-only api-client boundary).
  */
-export type ApiErrorBody = {
-  code: string;
-  message: string;
-  requestId?: string;
-};
-
 export class BomsApiError extends Error {
   readonly status: number;
   readonly body?: unknown;
