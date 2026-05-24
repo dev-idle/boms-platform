@@ -274,7 +274,13 @@ table "audit_logs" {
     on_delete   = RESTRICT
   }
   index "audit_logs_actor_created_idx" {
-    columns = [column.actor_id, column.created_at]
+    on {
+      column = column.actor_id
+    }
+    on {
+      column = column.created_at
+      desc   = true
+    }
   }
   index "audit_logs_target_idx" {
     columns = [column.target_type, column.target_id]
