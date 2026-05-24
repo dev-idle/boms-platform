@@ -1,0 +1,2 @@
+# Atlas migration checksums are sensitive to line endings; keep LF for CI (Linux) parity.
+backend/migrations/** text eol=lf
