@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -347,11 +348,14 @@ func (u *AdminUserUsecase) List(ctx context.Context, page, pageSize int, search 
 	if pageSize > 100 {
 		pageSize = 100
 	}
-	offset := int32((page - 1) * pageSize)
+	off := int64(page-1) * int64(pageSize)
+	if off > math.MaxInt32 {
+		off = math.MaxInt32
+	}
 	items, total, err := u.users.AdminList(ctx, port.AdminListUsersParams{
 		Search: strings.TrimSpace(search),
 		Limit:  int32(pageSize),
-		Offset: offset,
+		Offset: int32(off),
 	})
 	if err != nil {
 		return nil, 0, err

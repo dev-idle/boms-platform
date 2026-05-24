@@ -29,9 +29,7 @@ func GenerateTempPassword(length int) (string, error) {
 		}
 		required = append(required, ch)
 	}
-	for i := range required {
-		buf[i] = required[i]
-	}
+	copy(buf, required)
 	for i := len(required); i < length; i++ {
 		ch, err := randomChar(all)
 		if err != nil {

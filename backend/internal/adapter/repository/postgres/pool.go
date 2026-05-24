@@ -114,7 +114,7 @@ func (p *Pool) WithTx(ctx context.Context, fn func(txCtx context.Context) error)
 	if p == nil || p.sqlxDB == nil || p.sqlxDB.DB == nil {
 		return fmt.Errorf("postgres pool is nil")
 	}
-	tx, err := p.sqlxDB.DB.BeginTx(ctx, &sql.TxOptions{})
+	tx, err := p.sqlxDB.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
