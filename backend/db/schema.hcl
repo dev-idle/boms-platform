@@ -13,7 +13,7 @@ extension "pgcrypto" {
 
 enum "user_role" {
   schema = schema.public
-  values = ["customer", "staff", "baker", "manager", "admin"]
+  values = ["customer", "admin", "staff", "baker", "manager"]
 }
 
 table "schema_version" {
