@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	domainsession "github.com/boms/backend/internal/domain/session"
@@ -13,6 +14,27 @@ import (
 )
 
 const sessionKeyPrefix = "session:"
+
+// rotateSessionScript atomically verifies the old session JTI, removes it, and creates the new session.
+// Returns: 1=ok, 0=old missing (reuse), -1=JTI mismatch (reuse/theft).
+var rotateSessionScript = goredis.NewScript(`
+local old_key = KEYS[1]
+local new_key = KEYS[2]
+local ttl_ms = tonumber(ARGV[1])
+local expected_jti = ARGV[2]
+local payload = ARGV[3]
+local old_raw = redis.call('GET', old_key)
+if not old_raw then
+  return 0
+end
+local needle = '"refresh_jti":"' .. expected_jti .. '"'
+if not string.find(old_raw, needle, 1, true) then
+  return -1
+end
+redis.call('UNLINK', old_key)
+redis.call('SET', new_key, payload, 'PX', ttl_ms)
+return 1
+`)
 
 // SessionStore implements port.SessionStore using Redis keys session:{userID}:{sessionID}.
 type SessionStore struct {
@@ -75,7 +97,7 @@ func (s *SessionStore) Get(ctx context.Context, userID, sessionID string) (domai
 	return meta, nil
 }
 
-// Delete implements port.SessionStore.
+// Delete implements port.SessionStore (idempotent — missing key is OK).
 func (s *SessionStore) Delete(ctx context.Context, userID, sessionID string) error {
 	if userID == "" || sessionID == "" {
 		return apperrors.ErrValidation.WithDetail("reason", "user_id and session_id are required")
@@ -85,6 +107,47 @@ func (s *SessionStore) Delete(ctx context.Context, userID, sessionID string) err
 		return fmt.Errorf("delete session: %w", err)
 	}
 	return nil
+}
+
+// Rotate implements port.SessionStore using a Lua compare-and-swap (GET+verify JTI+UNLINK+SET in one eval).
+func (s *SessionStore) Rotate(ctx context.Context, userID, oldSessionID, newSessionID, expectedRefreshJTI string, meta domainsession.SessionMeta) error {
+	if userID == "" || oldSessionID == "" || newSessionID == "" {
+		return apperrors.ErrValidation.WithDetail("reason", "user_id and session ids are required")
+	}
+	expectedRefreshJTI = strings.TrimSpace(expectedRefreshJTI)
+	if expectedRefreshJTI == "" {
+		return apperrors.ErrValidation.WithDetail("field", "refresh_jti")
+	}
+	if meta.RefreshJTI == "" {
+		return apperrors.ErrValidation.WithDetail("field", "refresh_jti")
+	}
+	if meta.CreatedAt.IsZero() {
+		meta.CreatedAt = time.Now().UTC()
+	}
+	payload, err := json.Marshal(meta)
+	if err != nil {
+		return fmt.Errorf("marshal session: %w", err)
+	}
+	oldKey := sessionKey(userID, oldSessionID)
+	newKey := sessionKey(userID, newSessionID)
+	ttlMs := s.ttl.Milliseconds()
+	if ttlMs < 1 {
+		ttlMs = 1
+	}
+	code, err := rotateSessionScript.Run(ctx, s.rdb, []string{oldKey, newKey}, ttlMs, expectedRefreshJTI, string(payload)).Int()
+	if err != nil {
+		return fmt.Errorf("rotate session: %w", err)
+	}
+	switch code {
+	case 1:
+		return nil
+	case 0:
+		return apperrors.ErrNotFound
+	case -1:
+		return apperrors.ErrConflict
+	default:
+		return fmt.Errorf("rotate session: unexpected script result %d", code)
+	}
 }
 
 // DeleteAllForUser implements port.SessionStore using SCAN (never KEYS) and UNLINK.

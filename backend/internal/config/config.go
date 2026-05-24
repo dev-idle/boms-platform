@@ -292,7 +292,7 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("session.ttl", 168*time.Hour)
 
-	v.SetDefault("cookie.name", "boms_session")
+	v.SetDefault("cookie.name", "boms_refresh")
 	v.SetDefault("cookie.secure", false)
 	v.SetDefault("cookie.domain", "")
 
@@ -347,6 +347,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Session.TTL <= 0 {
 		return errors.New("session.ttl must be positive")
+	}
+	if c.Session.TTL < c.JWT.RefreshTTL {
+		return errors.New("session.ttl must be >= jwt.refresh_ttl so server sessions cover refresh token lifetime")
 	}
 	if strings.TrimSpace(c.Cookie.Name) == "" {
 		return errors.New("cookie.name must be set")

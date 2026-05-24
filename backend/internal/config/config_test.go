@@ -49,7 +49,7 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 			RefreshTTL:        time.Hour,
 		},
 		Session: config.SessionConfig{TTL: time.Hour},
-		Cookie:  config.CookieConfig{Name: "boms_session"},
+		Cookie:  config.CookieConfig{Name: "boms_refresh"},
 		Argon2: config.Argon2Config{
 			Memory: 65536, Iterations: 3, Parallelism: 1, SaltLength: 16, KeyLength: 32,
 		},
@@ -104,7 +104,7 @@ func minimalDevConfig() *config.Config {
 			RefreshTTL: time.Hour,
 		},
 		Session: config.SessionConfig{TTL: time.Hour},
-		Cookie:  config.CookieConfig{Name: "boms_session"},
+		Cookie:  config.CookieConfig{Name: "boms_refresh"},
 		Argon2: config.Argon2Config{
 			Memory: 65536, Iterations: 3, Parallelism: 1, SaltLength: 16, KeyLength: 32,
 		},

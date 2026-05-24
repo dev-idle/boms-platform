@@ -26,14 +26,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// authInfrastructure groups auth adapters wired for upcoming HTTP routes.
-type authInfrastructure struct {
-	hasher       port.PasswordHasher
-	tokens       port.TokenSigner
-	users        port.UserRepository
-	sessionStore port.SessionStore
-}
-
 func main() {
 	_ = godotenv.Load()
 
@@ -77,13 +69,11 @@ func main() {
 	userRepo := postgresrepo.NewUserRepository(pgPool)
 	sessionStore := redisrepo.NewSessionStore(redisClient, cfg.Session.TTL)
 
-	auth := authInfrastructure{
-		hasher:       hasher,
-		tokens:       tokenSigner,
-		users:        userRepo,
-		sessionStore: sessionStore,
+	authUC, err := usecase.NewAuthUsecase(userRepo, sessionStore, hasher, tokenSigner, zlog)
+	if err != nil {
+		zlog.Fatal("auth_usecase", zap.Error(err))
 	}
-	_ = auth // auth routes will consume this bundle
+	authHandler := v1.NewAuthHandler(authUC, cfg)
 
 	var asynqClose func() error
 	if cfg.Asynq.Enabled {
@@ -105,6 +95,14 @@ func main() {
 	app := newFiberApp(cfg, zlog)
 	app.Get("/health", health.Live)
 	app.Get("/ready", health.Ready)
+
+	rdb := redisClient.RDB()
+	authGroup := app.Group("/api/v1/auth")
+	authGroup.Post("/register", middleware.AuthAttemptRateLimit(rdb), authHandler.Register)
+	authGroup.Post("/login", middleware.AuthAttemptRateLimit(rdb), authHandler.Login)
+	authGroup.Post("/refresh", middleware.AuthRefreshRateLimit(rdb), authHandler.Refresh)
+	authGroup.Post("/logout", middleware.AuthLogoutRateLimit(rdb), middleware.OptionalAuth(tokenSigner), authHandler.Logout)
+	authGroup.Get("/me", middleware.RequireAuth(tokenSigner), authHandler.Me)
 
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 	go func() {

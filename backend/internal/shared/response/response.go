@@ -49,6 +49,16 @@ func Error(c *fiber.Ctx, status int, err *ErrorBody) error {
 	return JSON(c, status, false, nil, err, metaWithRequestID(c, nil))
 }
 
+// Created sends a 201 response with data.
+func Created(c *fiber.Ctx, data any) error {
+	return JSON(c, fiber.StatusCreated, true, data, nil, MetaFromCtx(c, nil))
+}
+
+// NoContent sends 204 without a body.
+func NoContent(c *fiber.Ctx) error {
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 func metaWithRequestID(c *fiber.Ctx, base map[string]any) map[string]any {
 	rid := RequestIDFromCtx(c)
 	if rid == "" {

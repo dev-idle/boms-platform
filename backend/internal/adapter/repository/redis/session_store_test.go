@@ -84,6 +84,51 @@ func TestSessionStore(t *testing.T) {
 		assert.True(t, mr.Exists("session:user-other:s1"))
 	})
 
+	t.Run("Rotate", func(t *testing.T) {
+		t.Parallel()
+		store, mr := newTestSessionStore(t)
+		ctx := context.Background()
+		meta := sampleMeta()
+		require.NoError(t, store.Create(ctx, "user-1", "old-sess", meta))
+
+		newMeta := sampleMeta()
+		newMeta.RefreshJTI = "jti-rotated"
+		require.NoError(t, store.Rotate(ctx, "user-1", "old-sess", "new-sess", meta.RefreshJTI, newMeta))
+
+		assert.False(t, mr.Exists("session:user-1:old-sess"))
+		assert.True(t, mr.Exists("session:user-1:new-sess"))
+		got, err := store.Get(ctx, "user-1", "new-sess")
+		require.NoError(t, err)
+		assert.Equal(t, "jti-rotated", got.RefreshJTI)
+	})
+
+	t.Run("Rotate JTI mismatch", func(t *testing.T) {
+		t.Parallel()
+		store, _ := newTestSessionStore(t)
+		ctx := context.Background()
+		meta := sampleMeta()
+		require.NoError(t, store.Create(ctx, "user-1", "old-sess", meta))
+
+		newMeta := sampleMeta()
+		newMeta.RefreshJTI = "jti-new"
+		err := store.Rotate(ctx, "user-1", "old-sess", "new-sess", "wrong-jti", newMeta)
+		require.Error(t, err)
+		ae, ok := apperrors.AsAppError(err)
+		require.True(t, ok)
+		assert.Equal(t, apperrors.ErrConflict.Code, ae.Code)
+	})
+
+	t.Run("Rotate missing old session", func(t *testing.T) {
+		t.Parallel()
+		store, _ := newTestSessionStore(t)
+		ctx := context.Background()
+		err := store.Rotate(ctx, "user-1", "gone", "new-sess", "jti-1", sampleMeta())
+		require.Error(t, err)
+		ae, ok := apperrors.AsAppError(err)
+		require.True(t, ok)
+		assert.Equal(t, apperrors.ErrNotFound.Code, ae.Code)
+	})
+
 	t.Run("TTL", func(t *testing.T) {
 		t.Parallel()
 		store, mr := newTestSessionStore(t)
