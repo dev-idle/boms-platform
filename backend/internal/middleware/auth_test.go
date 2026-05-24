@@ -61,6 +61,20 @@ func (m *mockSessionStore) Rotate(ctx context.Context, userID, oldSessionID, new
 	return m.Called(ctx, userID, oldSessionID, newSessionID, expectedRefreshJTI, meta).Error(0)
 }
 
+func testGet(t *testing.T, path string) *http.Request {
+	t.Helper()
+	return httptest.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
+}
+
+func withTestResponse(t *testing.T, app *fiber.App, req *http.Request, fn func(t *testing.T, resp *http.Response)) {
+	t.Helper()
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	defer func() { _ = resp.Body.Close() }()
+	fn(t, resp)
+}
+
 func TestRequireAuth(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
@@ -87,11 +101,11 @@ func TestRequireAuth(t *testing.T) {
 			return c.SendStatus(fiber.StatusOK)
 		})
 
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := testGet(t, "/")
 		req.Header.Set(fiber.HeaderAuthorization, "Bearer good-token")
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		withTestResponse(t, app, req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+		})
 		assert.Equal(t, uid, gotUser)
 		assert.Equal(t, sid, gotSession)
 		assert.Equal(t, domainuser.RoleCustomer, gotRole)
@@ -103,10 +117,10 @@ func TestRequireAuth(t *testing.T) {
 		app.Get("/", middleware.RequireAuth(new(mockTokenSigner)), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
-		resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/", nil))
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-		assertErrorCode(t, resp, "UNAUTHORIZED")
+		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+			assertErrorCode(t, resp, "UNAUTHORIZED")
+		})
 	})
 
 	t.Run("expired token rejects", func(t *testing.T) {
@@ -118,11 +132,11 @@ func TestRequireAuth(t *testing.T) {
 		app.Get("/", middleware.RequireAuth(signer), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := testGet(t, "/")
 		req.Header.Set(fiber.HeaderAuthorization, "Bearer expired")
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		withTestResponse(t, app, req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		})
 	})
 
 	t.Run("tampered token rejects", func(t *testing.T) {
@@ -134,11 +148,11 @@ func TestRequireAuth(t *testing.T) {
 		app.Get("/", middleware.RequireAuth(signer), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := testGet(t, "/")
 		req.Header.Set(fiber.HeaderAuthorization, "Bearer bad")
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		withTestResponse(t, app, req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		})
 	})
 }
 
@@ -160,11 +174,11 @@ func TestRequireAuthWithSession(t *testing.T) {
 		app.Get("/", middleware.RequireAuthWithSession(signer, sessions), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := testGet(t, "/")
 		req.Header.Set(fiber.HeaderAuthorization, "Bearer tok")
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		withTestResponse(t, app, req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+		})
 	})
 
 	t.Run("deleted session rejects SESSION_REVOKED", func(t *testing.T) {
@@ -180,12 +194,12 @@ func TestRequireAuthWithSession(t *testing.T) {
 		app.Get("/", middleware.RequireAuthWithSession(signer, sessions), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := testGet(t, "/")
 		req.Header.Set(fiber.HeaderAuthorization, "Bearer tok")
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-		assertErrorCode(t, resp, "SESSION_REVOKED")
+		withTestResponse(t, app, req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+			assertErrorCode(t, resp, "SESSION_REVOKED")
+		})
 	})
 
 	t.Run("redis error returns 500", func(t *testing.T) {
@@ -201,11 +215,11 @@ func TestRequireAuthWithSession(t *testing.T) {
 		app.Get("/", middleware.RequireAuthWithSession(signer, sessions), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := testGet(t, "/")
 		req.Header.Set(fiber.HeaderAuthorization, "Bearer tok")
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+		withTestResponse(t, app, req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+		})
 	})
 }
 
@@ -227,12 +241,12 @@ func TestOptionalAuth(t *testing.T) {
 			_, got = middleware.GetUserID(c)
 			return c.SendStatus(fiber.StatusOK)
 		})
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := testGet(t, "/")
 		req.Header.Set(fiber.HeaderAuthorization, "Bearer tok")
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.True(t, got)
+		withTestResponse(t, app, req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.True(t, got)
+		})
 	})
 
 	t.Run("missing token continues without locals", func(t *testing.T) {
@@ -243,10 +257,10 @@ func TestOptionalAuth(t *testing.T) {
 			_, got = middleware.GetUserID(c)
 			return c.SendStatus(fiber.StatusOK)
 		})
-		resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/", nil))
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.False(t, got)
+		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.False(t, got)
+		})
 	})
 
 	t.Run("invalid token continues without locals", func(t *testing.T) {
@@ -260,12 +274,12 @@ func TestOptionalAuth(t *testing.T) {
 			_, got = middleware.GetUserID(c)
 			return c.SendStatus(fiber.StatusOK)
 		})
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := testGet(t, "/")
 		req.Header.Set(fiber.HeaderAuthorization, "Bearer bad")
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.False(t, got)
+		withTestResponse(t, app, req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.False(t, got)
+		})
 	})
 }
 
@@ -281,9 +295,9 @@ func TestRequireRole(t *testing.T) {
 		}, middleware.RequireRole(domainuser.RoleAdmin), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
-		resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/", nil))
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+		})
 	})
 
 	t.Run("wrong role returns 403", func(t *testing.T) {
@@ -295,10 +309,10 @@ func TestRequireRole(t *testing.T) {
 		}, middleware.RequireRole(domainuser.RoleAdmin), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
-		resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/", nil))
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
-		assertErrorCode(t, resp, "FORBIDDEN")
+		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+			assertErrorCode(t, resp, "FORBIDDEN")
+		})
 	})
 }
 
