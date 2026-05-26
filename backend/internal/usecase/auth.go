@@ -131,10 +131,11 @@ func (a *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest, userAgent
 	jti := uuid.NewString()
 	now := time.Now().UTC()
 	if err := a.sessionStore.Create(ctx, user.ID.String(), sid, domainsession.SessionMeta{
-		RefreshJTI: jti,
-		CreatedAt:  now,
-		UserAgent:  userAgent,
-		IP:         ip,
+		RefreshJTI:         jti,
+		CreatedAt:          now,
+		UserAgent:          userAgent,
+		IP:                 ip,
+		MustChangePassword: user.MustChangePassword,
 	}); err != nil {
 		return "", "", nil, fmt.Errorf("create session: %w", err)
 	}
@@ -170,28 +171,12 @@ func (a *AuthUsecase) Refresh(ctx context.Context, refreshToken, userAgent, ip s
 		return "", "", apperrors.ErrInvalidRefreshToken
 	}
 
-	newSid := uuid.NewString()
-	newJti := uuid.NewString()
-	now := time.Now().UTC()
-	rotateErr := a.sessionStore.Rotate(ctx, claims.Subject, claims.SessionID, newSid, claims.JTI, domainsession.SessionMeta{
-		RefreshJTI: newJti,
-		CreatedAt:  now,
-		UserAgent:  userAgent,
-		IP:         ip,
-	})
-	if rotateErr != nil {
-		if errors.Is(rotateErr, apperrors.ErrNotFound) || errors.Is(rotateErr, apperrors.ErrConflict) {
-			_ = a.sessionStore.DeleteAllForUser(ctx, claims.Subject)
-			return "", "", apperrors.ErrSessionRevoked
-		}
-		return "", "", fmt.Errorf("rotate session: %w", rotateErr)
-	}
-
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
 		_ = a.sessionStore.DeleteAllForUser(ctx, claims.Subject)
 		return "", "", apperrors.ErrSessionRevoked
 	}
+	// Fetch user before rotation so the new session reflects the latest must_change_password flag.
 	user, err := a.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
@@ -199,6 +184,24 @@ func (a *AuthUsecase) Refresh(ctx context.Context, refreshToken, userAgent, ip s
 			return "", "", apperrors.ErrSessionRevoked
 		}
 		return "", "", fmt.Errorf("get user: %w", err)
+	}
+
+	newSid := uuid.NewString()
+	newJti := uuid.NewString()
+	now := time.Now().UTC()
+	rotateErr := a.sessionStore.Rotate(ctx, claims.Subject, claims.SessionID, newSid, claims.JTI, domainsession.SessionMeta{
+		RefreshJTI:         newJti,
+		CreatedAt:          now,
+		UserAgent:          userAgent,
+		IP:                 ip,
+		MustChangePassword: user.MustChangePassword,
+	})
+	if rotateErr != nil {
+		if errors.Is(rotateErr, apperrors.ErrNotFound) || errors.Is(rotateErr, apperrors.ErrConflict) {
+			_ = a.sessionStore.DeleteAllForUser(ctx, claims.Subject)
+			return "", "", apperrors.ErrSessionRevoked
+		}
+		return "", "", fmt.Errorf("rotate session: %w", rotateErr)
 	}
 
 	accessToken, err = a.signer.SignAccess(port.AccessTokenClaims{

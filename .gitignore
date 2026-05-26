@@ -21,6 +21,7 @@ tmp/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+.cursor/
 
 # OS
 .DS_Store

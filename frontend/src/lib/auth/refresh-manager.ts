@@ -2,7 +2,7 @@
 
 import { refreshResponseSchema } from "@/features/auth/schemas";
 import { ROUTE } from "@/constants/routes";
-import { ApiError } from "@/lib/errors";
+import { ApiError, ApiErrorCode } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
 
 import {
@@ -61,7 +61,7 @@ async function performRefresh(): Promise<void> {
   const parsed = refreshResponseSchema.safeParse(envelope.data);
   if (!parsed.success) {
     throw new ApiError(502, {
-      code: "INVALID_RESPONSE",
+      code: ApiErrorCode.InvalidResponse,
       message: "Refresh response failed schema validation",
     });
   }
@@ -87,6 +87,10 @@ export function refreshNow(options: RefreshOptions = {}): Promise<void> {
         await clearStaleSession();
       }
       useAuthStore.getState().clearAuth();
+      if (refreshTimer !== null) {
+        clearTimeout(refreshTimer);
+        refreshTimer = null;
+      }
       if (
         redirectOnFailure &&
         isAuthSessionError(error) &&

@@ -43,7 +43,8 @@ type HTTPConfig struct {
 	WriteTimeout   time.Duration
 	IdleTimeout    time.Duration
 	TrustedProxies []string
-	HSTSMaxAge     int // seconds; 0 disables Strict-Transport-Security
+	HSTSMaxAge     int    // seconds; 0 disables Strict-Transport-Security
+	InternalSecret string // shared secret between Next.js proxy and this API; empty disables enforcement
 }
 
 type CORSConfig struct {
@@ -179,6 +180,7 @@ func Load() (*Config, error) {
 			IdleTimeout:    v.GetDuration("http.idle_timeout"),
 			TrustedProxies: splitAndTrim(v.GetString("http.trusted_proxies")),
 			HSTSMaxAge:     v.GetInt("http.hsts_max_age"),
+			InternalSecret: strings.TrimSpace(v.GetString("http.internal_secret")),
 		},
 		CORS: CORSConfig{
 			AllowOrigins:     splitAndTrim(v.GetString("cors.allow_origins")),
@@ -266,6 +268,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("http.write_timeout", 30*time.Second)
 	v.SetDefault("http.idle_timeout", 120*time.Second)
 	v.SetDefault("http.hsts_max_age", 0)
+	v.SetDefault("http.internal_secret", "")
 
 	v.SetDefault("cors.allow_origins", "http://localhost:3000")
 	v.SetDefault("cors.allow_credentials", false)
@@ -407,6 +410,12 @@ func (c *Config) Validate() error {
 		}
 		if strings.TrimSpace(c.JWT.Ed25519PrivateKey) == "" {
 			return errors.New("jwt.ed25519_private_key is required in non-development environments")
+		}
+		if c.HTTP.InternalSecret == "" {
+			return errors.New("http.internal_secret is required in non-development environments (shared with the Next.js proxy)")
+		}
+		if len(c.HTTP.InternalSecret) < 32 {
+			return errors.New("http.internal_secret must be at least 32 characters")
 		}
 		if strings.TrimSpace(c.JWT.Issuer) == "" {
 			return errors.New("jwt.issuer is required in non-development environments")

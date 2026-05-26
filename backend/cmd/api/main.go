@@ -110,34 +110,38 @@ func main() {
 	health := v1.NewHealthHandler(readiness)
 
 	app := newFiberApp(cfg, zlog)
+	// Health probes are intentionally unauthenticated and bypass the proxy secret.
 	app.Get("/health", health.Live)
 	app.Get("/ready", health.Ready)
 
+	// All /api/v1/* traffic must originate from the Next.js proxy (verified by shared secret).
+	apiV1 := app.Group("/api/v1", middleware.RequireInternalSecret(cfg.HTTP.InternalSecret))
+
 	rdb := redisClient.RDB()
-	authGroup := app.Group("/api/v1/auth")
+	authGroup := apiV1.Group("/auth")
 	authGroup.Post("/register", middleware.AuthAttemptRateLimit(rdb), authHandler.Register)
 	authGroup.Post("/login", middleware.AuthAttemptRateLimit(rdb), authHandler.Login)
 	authGroup.Post("/refresh", middleware.AuthRefreshRateLimit(rdb), authHandler.Refresh)
 	authGroup.Post("/logout", middleware.AuthLogoutRateLimit(rdb), middleware.OptionalAuth(tokenSigner), authHandler.Logout)
 
-	passwordChanged := middleware.RequirePasswordChanged(userRepo)
+	passwordChanged := middleware.RequirePasswordChanged(sessionStore)
 
-	app.Get("/api/v1/me", middleware.RequireAuth(tokenSigner), meHandler.Get)
-	app.Patch("/api/v1/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, meHandler.Patch)
-	app.Patch("/api/v1/me/password", middleware.RequireAuthWithSession(tokenSigner, sessionStore), meHandler.PatchPassword)
-	app.Delete("/api/v1/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, meHandler.Delete)
+	apiV1.Get("/me", middleware.RequireAuth(tokenSigner), meHandler.Get)
+	apiV1.Patch("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, meHandler.Patch)
+	apiV1.Patch("/me/password", middleware.RequireAuthWithSession(tokenSigner, sessionStore), meHandler.PatchPassword)
+	apiV1.Delete("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, meHandler.Delete)
 
-	adminRead := app.Group(
-		"/api/v1/admin/users",
-		middleware.RequireAuth(tokenSigner),
+	adminRead := apiV1.Group(
+		"/admin/users",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
 		middleware.RequireRole(domainuser.RoleAdmin),
 		passwordChanged,
 	)
 	adminRead.Get("", adminUserHandler.List)
 	adminRead.Get("/:id", adminUserHandler.Get)
 
-	adminWrite := app.Group(
-		"/api/v1/admin/users",
+	adminWrite := apiV1.Group(
+		"/admin/users",
 		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
 		middleware.RequireRole(domainuser.RoleAdmin),
 		passwordChanged,
@@ -196,10 +200,12 @@ func newFiberApp(cfg *config.Config, log *zap.Logger) *fiber.App {
 
 	app := fiber.New(fcfg)
 
+	// Order matters: requestid → recover (catches panics from everything below) →
+	// request meta + headers → logger → cors → rate limit.
 	app.Use(requestid.New())
+	app.Use(middleware.Recover(log))
 	app.Use(middleware.AttachRequestMeta())
 	app.Use(middleware.SecurityHeaders(cfg.HTTP))
-	app.Use(middleware.Recover(log))
 	app.Use(middleware.RequestLogger(log))
 	app.Use(middleware.CORS(cfg.CORS))
 	app.Use(middleware.RateLimit(cfg.Rate))

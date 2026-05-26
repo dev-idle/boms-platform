@@ -22,9 +22,12 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 	cfg := &config.Config{
 		App: config.AppConfig{Env: "production", Debug: false},
 		HTTP: config.HTTPConfig{
-			Port:        8080,
-			BodyLimit:   1024,
-			ReadTimeout: time.Second, WriteTimeout: time.Second, IdleTimeout: time.Second,
+			Port:           8080,
+			BodyLimit:      1024,
+			ReadTimeout:    time.Second,
+			WriteTimeout:   time.Second,
+			IdleTimeout:    time.Second,
+			InternalSecret: strings.Repeat("a", 32),
 		},
 		Rate: config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		Postgres: config.PostgresConfig{

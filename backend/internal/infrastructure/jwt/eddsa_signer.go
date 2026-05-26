@@ -165,8 +165,10 @@ func (s *EdDSASigner) parseToken(raw, expectedUse string) (jwt.MapClaims, error)
 		return s.publicKey, nil
 	}, jwt.WithValidMethods(allowedAlgorithms))
 	if err != nil {
+		// Distinguish expiry from other validation failures so callers (FE retry / refresh)
+		// can react accordingly. All other failures collapse to a generic unauthorized.
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, fmt.Errorf("parse jwt: %w", err)
+			return nil, apperrors.ErrTokenExpired
 		}
 		return nil, apperrors.ErrUnauthorized
 	}

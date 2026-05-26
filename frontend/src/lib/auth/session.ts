@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ApiError } from "@/lib/errors";
+import { ApiError, ApiErrorCode, isApiError } from "@/lib/errors";
 import { apiEnvelopeSchema } from "@/lib/api-envelope";
 
 export async function readApiEnvelope(response: Response): Promise<{
@@ -13,7 +13,7 @@ export async function readApiEnvelope(response: Response): Promise<{
 
   if (!parsed.success) {
     throw new ApiError(response.status, {
-      code: "INVALID_RESPONSE",
+      code: ApiErrorCode.InvalidResponse,
       message: "Response failed envelope validation",
     });
   }
@@ -29,23 +29,13 @@ export function throwApiErrorFromEnvelope(
     throw new ApiError(status, envelope.error);
   }
   throw new ApiError(status, {
-    code: "UNKNOWN_ERROR",
+    code: ApiErrorCode.Unknown,
     message: `Request failed with HTTP ${status}`,
   });
 }
 
 export function isAuthSessionError(error: unknown): boolean {
-  if (!(error instanceof ApiError)) {
-    return false;
-  }
-  if (error.status === 401) {
-    return true;
-  }
-  return (
-    error.code === "INVALID_REFRESH_TOKEN" ||
-    error.code === "SESSION_REVOKED" ||
-    error.code === "MISSING_REFRESH_TOKEN"
-  );
+  return isApiError(error) && error.isAuthError();
 }
 
 /** Clears HttpOnly refresh cookie via hybrid logout (idempotent). */

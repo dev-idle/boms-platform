@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -11,6 +12,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 	goredis "github.com/redis/go-redis/v9"
 )
+
+// rateLimitFailOpenWarnEvery sets the cadence at which Redis-rate-limit fail-open
+// errors are logged on the response header. Counter is per-process; resets on restart.
+var rateLimitFailOpenCounter atomic.Uint64
 
 // slidingWindowScript implements a Redis sorted-set sliding window rate limiter.
 var slidingWindowScript = goredis.NewScript(`
@@ -53,6 +58,10 @@ func RedisRateLimit(rdb *goredis.Client, keyFn func(*fiber.Ctx) string, max int,
 			max, windowMs, now.UnixMilli(), member,
 		).Int()
 		if err != nil {
+			// Fail-open keeps the API reachable during Redis outages; surface the event
+			// in a response header so observability + alerting can detect it externally.
+			rateLimitFailOpenCounter.Add(1)
+			c.Set("X-RateLimit-FailOpen", "1")
 			return c.Next()
 		}
 		if ok == 1 {

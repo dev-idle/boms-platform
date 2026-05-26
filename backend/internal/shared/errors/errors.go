@@ -62,19 +62,32 @@ func Wrap(status int, code, message string, err error) *AppError {
 }
 
 // Common constructors for handlers and adapters.
+// Codes are snake_case stable identifiers; clients switch on Code, not Message.
 var (
-	ErrNotFound            = New(http.StatusNotFound, "not_found", "Resource not found")
-	ErrConflict            = New(http.StatusConflict, "conflict", "Resource conflict")
-	ErrValidation          = New(http.StatusBadRequest, "validation_error", "Validation failed")
-	ErrUnauthorized        = New(http.StatusUnauthorized, "unauthorized", "Unauthorized")
-	ErrInvalidCredentials  = New(http.StatusUnauthorized, "invalid_credentials", "Invalid credentials")
-	ErrInvalidRefreshToken = New(http.StatusUnauthorized, "invalid_refresh_token", "Invalid refresh token")
-	ErrSessionRevoked      = New(http.StatusUnauthorized, "session_revoked", "Session revoked")
-	ErrForbidden           = New(http.StatusForbidden, "forbidden", "Forbidden")
-	ErrInternal            = New(http.StatusInternalServerError, "internal_error", "Internal server error")
-	ErrServiceUnavailable  = New(http.StatusServiceUnavailable, "service_unavailable", "Service unavailable")
-	ErrTooManyRequests     = New(http.StatusTooManyRequests, "rate_limited", "Too many requests")
+	ErrNotFound               = New(http.StatusNotFound, "not_found", "Resource not found")
+	ErrConflict               = New(http.StatusConflict, "conflict", "Resource conflict")
+	ErrValidation             = New(http.StatusBadRequest, "validation_error", "Validation failed")
+	ErrUnauthorized           = New(http.StatusUnauthorized, "unauthorized", "Authentication required")
+	ErrTokenExpired           = New(http.StatusUnauthorized, "token_expired", "Access token expired")
+	ErrInvalidCredentials     = New(http.StatusUnauthorized, "invalid_credentials", "Invalid credentials")
+	ErrInvalidRefreshToken    = New(http.StatusUnauthorized, "invalid_refresh_token", "Invalid refresh token")
+	ErrMissingRefreshToken    = New(http.StatusUnauthorized, "missing_refresh_token", "Refresh token required")
+	ErrSessionRevoked         = New(http.StatusUnauthorized, "session_revoked", "Session revoked")
+	ErrForbidden              = New(http.StatusForbidden, "forbidden", "Insufficient permissions")
+	ErrPasswordChangeRequired = New(http.StatusForbidden, "password_change_required", "Password change required before accessing this resource")
+	ErrInternal               = New(http.StatusInternalServerError, "internal_error", "Internal server error")
+	ErrServiceUnavailable     = New(http.StatusServiceUnavailable, "service_unavailable", "Service unavailable")
+	ErrTooManyRequests        = New(http.StatusTooManyRequests, "rate_limited", "Too many requests")
 )
+
+// ToErrorBody projects an AppError into the HTTP response error body shape.
+// Returns nil-safe Code/Message; use this from handlers to keep the wire contract identical to sentinel definitions.
+func (e *AppError) ToErrorBody() (code, message string, details map[string]string) {
+	if e == nil {
+		return ErrInternal.Code, ErrInternal.Message, nil
+	}
+	return e.Code, e.Message, e.Details
+}
 
 // FromFiberError maps *fiber.Error to AppError.
 func FromFiberError(err *fiber.Error) *AppError {

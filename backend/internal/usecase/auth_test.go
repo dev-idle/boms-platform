@@ -246,27 +246,30 @@ func TestAuthUsecase_RefreshReuseJTImismatch(t *testing.T) {
 	signer := new(mockSigner)
 	uc := newAuthUC(t, users, new(mockCustomerProfileRepo), sessions, new(mockHasher), signer)
 
-	uid := uuid.NewString()
-	signer.On("ParseRefresh", "rt").Return(port.RefreshTokenClaims{Subject: uid, SessionID: "s1", JTI: "jti-a"}, nil)
-	sessions.On("Rotate", mock.Anything, uid, "s1", mock.AnythingOfType("string"), "jti-a", mock.Anything).Return(apperrors.ErrConflict)
-	sessions.On("DeleteAllForUser", mock.Anything, uid).Return(nil)
+	uid := uuid.New()
+	signer.On("ParseRefresh", "rt").Return(port.RefreshTokenClaims{Subject: uid.String(), SessionID: "s1", JTI: "jti-a"}, nil)
+	users.On("GetByID", mock.Anything, uid).Return(&domainuser.User{ID: uid, Role: domainuser.RoleCustomer}, nil)
+	sessions.On("Rotate", mock.Anything, uid.String(), "s1", mock.AnythingOfType("string"), "jti-a", mock.Anything).Return(apperrors.ErrConflict)
+	sessions.On("DeleteAllForUser", mock.Anything, uid.String()).Return(nil)
 
 	_, _, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrors.ErrSessionRevoked))
-	sessions.AssertCalled(t, "DeleteAllForUser", mock.Anything, uid)
+	sessions.AssertCalled(t, "DeleteAllForUser", mock.Anything, uid.String())
 }
 
 func TestAuthUsecase_RefreshMissingSession(t *testing.T) {
 	t.Parallel()
+	users := new(mockUserRepo)
 	sessions := new(mockSessionStore)
 	signer := new(mockSigner)
-	uc := newAuthUC(t, new(mockUserRepo), new(mockCustomerProfileRepo), sessions, new(mockHasher), signer)
+	uc := newAuthUC(t, users, new(mockCustomerProfileRepo), sessions, new(mockHasher), signer)
 
-	uid := uuid.NewString()
-	signer.On("ParseRefresh", "rt").Return(port.RefreshTokenClaims{Subject: uid, SessionID: "s1", JTI: "j1"}, nil)
-	sessions.On("Rotate", mock.Anything, uid, "s1", mock.AnythingOfType("string"), "j1", mock.Anything).Return(apperrors.ErrNotFound)
-	sessions.On("DeleteAllForUser", mock.Anything, uid).Return(nil)
+	uid := uuid.New()
+	signer.On("ParseRefresh", "rt").Return(port.RefreshTokenClaims{Subject: uid.String(), SessionID: "s1", JTI: "j1"}, nil)
+	users.On("GetByID", mock.Anything, uid).Return(&domainuser.User{ID: uid, Role: domainuser.RoleCustomer}, nil)
+	sessions.On("Rotate", mock.Anything, uid.String(), "s1", mock.AnythingOfType("string"), "j1", mock.Anything).Return(apperrors.ErrNotFound)
+	sessions.On("DeleteAllForUser", mock.Anything, uid.String()).Return(nil)
 
 	_, _, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
 	require.Error(t, err)
@@ -295,13 +298,13 @@ func TestAuthUsecase_RefreshUserSoftDeleted(t *testing.T) {
 
 	uid := uuid.New()
 	signer.On("ParseRefresh", "rt").Return(port.RefreshTokenClaims{Subject: uid.String(), SessionID: "s", JTI: "j"}, nil)
-	sessions.On("Rotate", mock.Anything, uid.String(), "s", mock.AnythingOfType("string"), "j", mock.Anything).Return(nil)
 	users.On("GetByID", mock.Anything, uid).Return(nil, apperrors.ErrNotFound)
 	sessions.On("DeleteAllForUser", mock.Anything, uid.String()).Return(nil)
 
 	_, _, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrors.ErrSessionRevoked))
+	sessions.AssertNotCalled(t, "Rotate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestAuthUsecase_LogoutIdempotent(t *testing.T) {

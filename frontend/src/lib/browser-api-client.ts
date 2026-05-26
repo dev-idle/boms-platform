@@ -2,7 +2,7 @@
 
 import type { ZodType } from "zod";
 
-import { ApiError } from "@/lib/errors";
+import { ApiError, ApiErrorCode } from "@/lib/errors";
 import { apiEnvelopeSchema } from "@/lib/api-envelope";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -55,7 +55,7 @@ function throwFromResponse(status: number, payload: unknown): never {
     throw new ApiError(status, envelope.data.error);
   }
   throw new ApiError(status, {
-    code: "UNKNOWN_ERROR",
+    code: ApiErrorCode.Unknown,
     message: `Request failed with HTTP ${status}`,
   });
 }
@@ -99,7 +99,7 @@ async function executeRequest<T>(
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new ApiError(504, {
-        code: "TIMEOUT",
+        code: ApiErrorCode.Timeout,
         message: "Request timed out",
       });
     }
@@ -130,14 +130,14 @@ async function executeRequest<T>(
   const envelope = apiEnvelopeSchema.safeParse(payload);
   if (!envelope.success) {
     throw new ApiError(502, {
-      code: "INVALID_RESPONSE",
+      code: ApiErrorCode.InvalidResponse,
       message: "Response failed envelope validation",
     });
   }
 
   if (!envelope.data.success) {
     throw new ApiError(response.status, envelope.data.error ?? {
-      code: "UNKNOWN_ERROR",
+      code: ApiErrorCode.Unknown,
       message: "Request failed",
     });
   }
@@ -148,7 +148,7 @@ async function executeRequest<T>(
     const parsed = schema.safeParse(data);
     if (!parsed.success) {
       throw new ApiError(502, {
-        code: "INVALID_RESPONSE",
+        code: ApiErrorCode.InvalidResponse,
         message: "Response failed schema validation",
       });
     }

@@ -119,7 +119,7 @@ func TestRequireAuth(t *testing.T) {
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
 			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-			assertErrorCode(t, resp, "UNAUTHORIZED")
+			assertErrorCode(t, resp, "unauthorized")
 		})
 	})
 
@@ -181,7 +181,7 @@ func TestRequireAuthWithSession(t *testing.T) {
 		})
 	})
 
-	t.Run("deleted session rejects SESSION_REVOKED", func(t *testing.T) {
+	t.Run("deleted session rejects session_revoked", func(t *testing.T) {
 		t.Parallel()
 		signer := new(mockTokenSigner)
 		sessions := new(mockSessionStore)
@@ -198,7 +198,7 @@ func TestRequireAuthWithSession(t *testing.T) {
 		req.Header.Set(fiber.HeaderAuthorization, "Bearer tok")
 		withTestResponse(t, app, req, func(t *testing.T, resp *http.Response) {
 			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-			assertErrorCode(t, resp, "SESSION_REVOKED")
+			assertErrorCode(t, resp, "session_revoked")
 		})
 	})
 
@@ -311,95 +311,92 @@ func TestRequireRole(t *testing.T) {
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
 			assert.Equal(t, http.StatusForbidden, resp.StatusCode)
-			assertErrorCode(t, resp, "FORBIDDEN")
+			assertErrorCode(t, resp, "forbidden")
 		})
 	})
-}
-
-type mockPasswordUserRepo struct {
-	mock.Mock
-}
-
-func (m *mockPasswordUserRepo) Create(ctx context.Context, params port.CreateUserParams) (*domainuser.User, error) {
-	panic("not implemented")
-}
-func (m *mockPasswordUserRepo) AdminCreate(ctx context.Context, params port.CreateUserParams) (*domainuser.User, error) {
-	panic("not implemented")
-}
-func (m *mockPasswordUserRepo) GetByEmail(ctx context.Context, email string) (*domainuser.User, error) {
-	panic("not implemented")
-}
-func (m *mockPasswordUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domainuser.User), args.Error(1)
-}
-func (m *mockPasswordUserRepo) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
-	panic("not implemented")
-}
-func (m *mockPasswordUserRepo) UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error {
-	panic("not implemented")
-}
-func (m *mockPasswordUserRepo) UpdateRole(ctx context.Context, id uuid.UUID, role domainuser.Role) error {
-	panic("not implemented")
-}
-func (m *mockPasswordUserRepo) SetMustChangePassword(ctx context.Context, id uuid.UUID) error {
-	panic("not implemented")
-}
-func (m *mockPasswordUserRepo) ClearMustChangePassword(ctx context.Context, id uuid.UUID) error {
-	panic("not implemented")
-}
-func (m *mockPasswordUserRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
-	panic("not implemented")
-}
-func (m *mockPasswordUserRepo) AdminList(ctx context.Context, params port.AdminListUsersParams) ([]port.AdminListUser, int64, error) {
-	panic("not implemented")
 }
 
 func TestRequirePasswordChanged(t *testing.T) {
 	t.Parallel()
 	userID := uuid.New()
+	sessionID := uuid.New()
 
-	t.Run("allows when password change not required", func(t *testing.T) {
+	t.Run("uses cached session meta (locals) without store lookup", func(t *testing.T) {
 		t.Parallel()
-		repo := new(mockPasswordUserRepo)
-		repo.On("GetByID", mock.Anything, userID).Return(&domainuser.User{
-			ID:                 userID,
-			MustChangePassword: false,
-		}, nil)
+		store := new(mockSessionStore)
 
 		app := fiber.New()
 		app.Get("/", func(c *fiber.Ctx) error {
 			c.Locals("auth_user_id", userID)
+			c.Locals("auth_session_id", sessionID)
+			c.Locals("auth_session_meta", domainsession.SessionMeta{MustChangePassword: false})
 			return c.Next()
-		}, middleware.RequirePasswordChanged(repo), func(c *fiber.Ctx) error {
+		}, middleware.RequirePasswordChanged(store), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 		})
+		store.AssertNotCalled(t, "Get", mock.Anything, mock.Anything, mock.Anything)
 	})
 
-	t.Run("blocks when password change required", func(t *testing.T) {
+	t.Run("blocks when cached meta says must_change_password=true", func(t *testing.T) {
 		t.Parallel()
-		repo := new(mockPasswordUserRepo)
-		repo.On("GetByID", mock.Anything, userID).Return(&domainuser.User{
-			ID:                 userID,
-			MustChangePassword: true,
-		}, nil)
+		store := new(mockSessionStore)
 
 		app := fiber.New()
 		app.Get("/", func(c *fiber.Ctx) error {
 			c.Locals("auth_user_id", userID)
+			c.Locals("auth_session_id", sessionID)
+			c.Locals("auth_session_meta", domainsession.SessionMeta{MustChangePassword: true})
 			return c.Next()
-		}, middleware.RequirePasswordChanged(repo), func(c *fiber.Ctx) error {
+		}, middleware.RequirePasswordChanged(store), func(c *fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
 			assert.Equal(t, http.StatusForbidden, resp.StatusCode)
-			assertErrorCode(t, resp, "PASSWORD_CHANGE_REQUIRED")
+			assertErrorCode(t, resp, "password_change_required")
+		})
+	})
+
+	t.Run("falls back to session store when meta not cached", func(t *testing.T) {
+		t.Parallel()
+		store := new(mockSessionStore)
+		store.On("Get", mock.Anything, userID.String(), sessionID.String()).
+			Return(domainsession.SessionMeta{MustChangePassword: true}, nil)
+
+		app := fiber.New()
+		app.Get("/", func(c *fiber.Ctx) error {
+			c.Locals("auth_user_id", userID)
+			c.Locals("auth_session_id", sessionID)
+			return c.Next()
+		}, middleware.RequirePasswordChanged(store), func(c *fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusOK)
+		})
+		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+			assertErrorCode(t, resp, "password_change_required")
+		})
+		store.AssertCalled(t, "Get", mock.Anything, userID.String(), sessionID.String())
+	})
+
+	t.Run("returns session_revoked when fallback lookup misses", func(t *testing.T) {
+		t.Parallel()
+		store := new(mockSessionStore)
+		store.On("Get", mock.Anything, userID.String(), sessionID.String()).
+			Return(domainsession.SessionMeta{}, apperrors.ErrNotFound)
+
+		app := fiber.New()
+		app.Get("/", func(c *fiber.Ctx) error {
+			c.Locals("auth_user_id", userID)
+			c.Locals("auth_session_id", sessionID)
+			return c.Next()
+		}, middleware.RequirePasswordChanged(store), func(c *fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusOK)
+		})
+		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+			assertErrorCode(t, resp, "session_revoked")
 		})
 	})
 }

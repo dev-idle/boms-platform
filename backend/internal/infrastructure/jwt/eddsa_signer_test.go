@@ -85,7 +85,7 @@ func TestEdDSASigner(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("expired returns jwt.ErrTokenExpired", func(t *testing.T) {
+	t.Run("expired returns apperrors.ErrTokenExpired", func(t *testing.T) {
 		t.Parallel()
 		seed, err := base64.StdEncoding.DecodeString(mustSeed())
 		require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestEdDSASigner(t *testing.T) {
 		require.NoError(t, err)
 		_, parseErr := s.ParseAccess(raw)
 		require.Error(t, parseErr)
-		assert.ErrorIs(t, parseErr, jwt.ErrTokenExpired)
+		assert.ErrorIs(t, parseErr, apperrors.ErrTokenExpired)
 	})
 
 	t.Run("tampered signature reject", func(t *testing.T) {

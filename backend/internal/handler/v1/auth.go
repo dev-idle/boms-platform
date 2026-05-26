@@ -31,25 +31,19 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	var req dto.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code:    "VALIDATION_ERROR",
-			Message: "Invalid request body",
-		})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "invalid_body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code:    "VALIDATION_ERROR",
-			Message: "Validation failed",
+		return response.Error(c, apperrors.ErrValidation.StatusCode, &response.ErrorBody{
+			Code:    apperrors.ErrValidation.Code,
+			Message: apperrors.ErrValidation.Message,
 			Details: sharevalidator.FieldErrors(err),
 		})
 	}
 	user, err := h.usecase.Register(c.UserContext(), req)
 	if err != nil {
 		if errors.Is(err, usecase.ErrEmailExists) {
-			return response.Error(c, fiber.StatusConflict, &response.ErrorBody{
-				Code:    "EMAIL_EXISTS",
-				Message: "Email already registered",
-			})
+			return writeAppError(c, usecase.ErrEmailExists)
 		}
 		return err
 	}
@@ -61,29 +55,24 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	var req dto.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code:    "VALIDATION_ERROR",
-			Message: "Invalid request body",
-		})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "invalid_body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code:    "VALIDATION_ERROR",
-			Message: "Validation failed",
+		return response.Error(c, apperrors.ErrValidation.StatusCode, &response.ErrorBody{
+			Code:    apperrors.ErrValidation.Code,
+			Message: apperrors.ErrValidation.Message,
 			Details: sharevalidator.FieldErrors(err),
 		})
 	}
 	access, refresh, user, err := h.usecase.Login(c.UserContext(), req, c.Get(fiber.HeaderUserAgent), c.IP())
 	if err != nil {
 		if errors.Is(err, apperrors.ErrInvalidCredentials) {
-			return response.Error(c, fiber.StatusUnauthorized, &response.ErrorBody{
-				Code:    "INVALID_CREDENTIALS",
-				Message: apperrors.ErrInvalidCredentials.Message,
-			})
+			return writeAppError(c, apperrors.ErrInvalidCredentials)
 		}
 		return err
 	}
 	writeRefreshCookie(c, h.cfg, refresh)
+	noStore(c)
 	var mustChange *bool
 	if user.MustChangePassword {
 		v := true
@@ -103,34 +92,44 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	refresh := c.Cookies(h.cfg.Cookie.Name)
 	if refresh == "" {
-		return response.Error(c, fiber.StatusUnauthorized, &response.ErrorBody{
-			Code:    "MISSING_REFRESH_TOKEN",
-			Message: "Refresh token required",
-		})
+		return writeAppError(c, apperrors.ErrMissingRefreshToken)
 	}
 	access, newRefresh, err := h.usecase.Refresh(c.UserContext(), refresh, c.Get(fiber.HeaderUserAgent), c.IP())
 	if err != nil {
 		if errors.Is(err, apperrors.ErrInvalidRefreshToken) {
 			clearRefreshCookie(c, h.cfg)
-			return response.Error(c, fiber.StatusUnauthorized, &response.ErrorBody{
-				Code:    "INVALID_REFRESH_TOKEN",
-				Message: apperrors.ErrInvalidRefreshToken.Message,
-			})
+			return writeAppError(c, apperrors.ErrInvalidRefreshToken)
 		}
 		if errors.Is(err, apperrors.ErrSessionRevoked) {
 			clearRefreshCookie(c, h.cfg)
-			return response.Error(c, fiber.StatusUnauthorized, &response.ErrorBody{
-				Code:    "SESSION_REVOKED",
-				Message: "Session revoked",
-			})
+			return writeAppError(c, apperrors.ErrSessionRevoked)
 		}
 		return err
 	}
 	writeRefreshCookie(c, h.cfg, newRefresh)
+	noStore(c)
 	return response.OK(c, dto.RefreshResponse{
 		AccessToken: access,
 		TokenType:   "Bearer",
 		ExpiresIn:   int(h.cfg.JWT.AccessTTL.Seconds()),
+	})
+}
+
+// noStore marks responses that carry credentials (access token) as non-cacheable.
+// Prevents browsers / reverse proxies from caching bearer tokens.
+func noStore(c *fiber.Ctx) {
+	c.Set(fiber.HeaderCacheControl, "no-store")
+	c.Set(fiber.HeaderPragma, "no-cache")
+}
+
+// writeAppError converts an AppError to the canonical response.Error envelope.
+// Keeps wire codes (snake_case) consistent with the sentinel definitions.
+func writeAppError(c *fiber.Ctx, e *apperrors.AppError) error {
+	code, message, details := e.ToErrorBody()
+	return response.Error(c, e.StatusCode, &response.ErrorBody{
+		Code:    code,
+		Message: message,
+		Details: details,
 	})
 }
 

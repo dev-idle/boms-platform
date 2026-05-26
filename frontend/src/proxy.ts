@@ -14,6 +14,10 @@ function isProtectedPath(pathname: string): boolean {
   );
 }
 
+function isApiPath(pathname: string): boolean {
+  return pathname.startsWith("/api/");
+}
+
 function hasRefreshCookie(request: NextRequest): boolean {
   return request.cookies.has(AUTH_REFRESH_COOKIE);
 }
@@ -63,7 +67,14 @@ export const proxy: NextProxy = (request) => {
   const requestId = randomUUID();
   const authHint = hasRefreshCookie(request) ? "present" : "absent";
 
-  if (isProtectedPath(pathname) && !hasRefreshCookie(request)) {
+  // Page navigation: gate protected paths on cookie presence; redirect to login when absent.
+  // API calls (/api/*) must always reach the backend so it can answer 401 with the proper envelope —
+  // never redirect them.
+  if (
+    !isApiPath(pathname) &&
+    isProtectedPath(pathname) &&
+    !hasRefreshCookie(request)
+  ) {
     const login = new URL(ROUTE.login, request.url);
     const nextPath = validateNext(`${pathname}${search}`);
     if (nextPath) {
@@ -75,6 +86,8 @@ export const proxy: NextProxy = (request) => {
   const requestHeaders = stripUntrustedInboundHeaders(request);
   requestHeaders.set("X-Request-ID", requestId);
   requestHeaders.set("X-Auth-Hint", authHint);
+  // Signed shared secret — verified by Fiber middleware on every /api/v1/* request.
+  // For non-API navigation it's harmless; keep set everywhere for consistency.
   requestHeaders.set("X-Internal-Secret", env.INTERNAL_PROXY_SECRET);
 
   const response = NextResponse.next({
@@ -87,8 +100,10 @@ export const proxy: NextProxy = (request) => {
   return response;
 };
 
+// Include /api/* so the proxy can stamp X-Internal-Secret + X-Request-ID before Next.js
+// rewrites the request to the Fiber backend. Static assets and Next internals stay excluded.
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
