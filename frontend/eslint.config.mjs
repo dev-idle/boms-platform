@@ -7,6 +7,12 @@ const eslintConfig = defineConfig([
   ...nextTs,
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
   {
+    name: "boms/react-settings",
+    settings: {
+      react: { version: "19" },
+    },
+  },
+  {
     name: "boms/dal-boundary",
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/lib/api-client.ts", "src/lib/dal/**/*"],

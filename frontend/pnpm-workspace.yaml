@@ -1,6 +1,10 @@
 packages:
   - .
 
+# eslint-plugin-react (via eslint-config-next) is not compatible with ESLint 10 yet.
+overrides:
+  eslint: ~9.39.4
+
 # pnpm 11+: lifecycle scripts only for listed deps (supply-chain default).
 allowBuilds:
   sharp: true

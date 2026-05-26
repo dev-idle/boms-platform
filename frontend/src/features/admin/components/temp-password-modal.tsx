@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -18,19 +18,24 @@ export function TempPasswordModal({
   data,
   onClose,
 }: TempPasswordModalProps) {
-  const [copied, setCopied] = useState(false);
-  const [acknowledged, setAcknowledged] = useState(false);
-
-  useEffect(() => {
-    if (!open) {
-      setCopied(false);
-      setAcknowledged(false);
-    }
-  }, [open]);
-
   if (!open || !data) {
     return null;
   }
+
+  return <TempPasswordModalContent data={data} onClose={onClose} />;
+}
+
+type TempPasswordModalContentProps = {
+  data: CreateOperationalResponse;
+  onClose: () => void;
+};
+
+function TempPasswordModalContent({
+  data,
+  onClose,
+}: TempPasswordModalContentProps) {
+  const [copied, setCopied] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
 
   const tempPassword = data.temp_password;
   const userEmail = data.user.email;
