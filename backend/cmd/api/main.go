@@ -81,8 +81,8 @@ func main() {
 	if err != nil {
 		zlog.Fatal("auth_usecase", zap.Error(err))
 	}
-	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, hasher, auditLogger)
-	adminUserUC := usecase.NewAdminUserUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger)
+	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, hasher, auditLogger, zlog)
+	adminUserUC := usecase.NewAdminUserUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger, zlog)
 
 	if err := bootstrap.EnsureDevAdmin(rootCtx, cfg, userRepo, adminProfileRepo, hasher, pgPool); err != nil {
 		zlog.Fatal("seed_admin", zap.Error(err))
@@ -119,10 +119,10 @@ func main() {
 
 	rdb := redisClient.RDB()
 	authGroup := apiV1.Group("/auth")
-	authGroup.Post("/register", middleware.AuthAttemptRateLimit(rdb), authHandler.Register)
-	authGroup.Post("/login", middleware.AuthAttemptRateLimit(rdb), authHandler.Login)
-	authGroup.Post("/refresh", middleware.AuthRefreshRateLimit(rdb), authHandler.Refresh)
-	authGroup.Post("/logout", middleware.AuthLogoutRateLimit(rdb), middleware.OptionalAuth(tokenSigner), authHandler.Logout)
+	authGroup.Post("/register", middleware.AuthAttemptRateLimit(rdb, cfg.RateRedis), authHandler.Register)
+	authGroup.Post("/login", middleware.AuthAttemptRateLimit(rdb, cfg.RateRedis), authHandler.Login)
+	authGroup.Post("/refresh", middleware.AuthRefreshRateLimit(rdb, cfg.RateRedis), authHandler.Refresh)
+	authGroup.Post("/logout", middleware.AuthLogoutRateLimit(rdb, cfg.RateRedis), middleware.OptionalAuth(tokenSigner), authHandler.Logout)
 
 	passwordChanged := middleware.RequirePasswordChanged(sessionStore)
 
@@ -145,7 +145,7 @@ func main() {
 		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
 		middleware.RequireRole(domainuser.RoleAdmin),
 		passwordChanged,
-		middleware.AdminWriteRateLimit(rdb),
+		middleware.AdminWriteRateLimit(rdb, cfg.RateRedis),
 	)
 	adminWrite.Post("", adminUserHandler.Create)
 	adminWrite.Patch("/:id", adminUserHandler.PatchProfile)

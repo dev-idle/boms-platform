@@ -10,6 +10,7 @@ export {
   ChangePasswordForm,
   CustomerAccountProfileForm,
   DeleteAccountCard,
+  OperationalAccountProfileForm,
   StaffAccountProfileForm,
 } from "./components";
 export {
@@ -19,7 +20,12 @@ export {
   useUpdateProfile,
   userQueryKeys,
 } from "./hooks";
-export { passwordRouteForRole, profileRouteForRole } from "./lib/role-routes";
+export {
+  homeRouteForRole,
+  isPathAllowedForRole,
+  passwordRouteForRole,
+  profileRouteForRole,
+} from "./lib/role-routes";
 export {
   adminProfileSchema,
   changePasswordSchema,

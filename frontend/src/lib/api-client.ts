@@ -1,15 +1,18 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { cookies } from "next/headers";
 import type { ZodType } from "zod";
 
+import { apiEnvelopeSchema } from "@/lib/api-envelope";
 import { getServerEnv } from "@/lib/env";
 import { BomsApiError, BomsValidationError } from "@/lib/errors";
 
 type Json = Record<string, unknown> | unknown[] | string | number | boolean | null;
 
 export type FiberRequestInit = Omit<RequestInit, "body"> & {
-  /** Zod schema for JSON response body (enforced at trust boundary). */
+  /** Zod schema for JSON response data (enforced at trust boundary). */
   schema?: ZodType<unknown>;
   /** JSON body for non-GET requests. */
   json?: Json;
@@ -18,6 +21,7 @@ export type FiberRequestInit = Omit<RequestInit, "body"> & {
 };
 
 const REQUEST_TIMEOUT_MS = 25_000;
+const INTERNAL_SECRET_HEADER = "X-Internal-Secret";
 
 function buildUrl(path: string): string {
   const base = getServerEnv().BOMS_BACKEND_URL.replace(/\/$/, "");
@@ -33,8 +37,16 @@ async function parseJsonSafe(response: Response): Promise<unknown> {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    return { raw: text };
+    return null;
   }
+}
+
+function throwFromEnvelope(status: number, payload: unknown): never {
+  const envelope = apiEnvelopeSchema.safeParse(payload);
+  if (envelope.success && envelope.data.error) {
+    throw new BomsApiError(envelope.data.error.message, status, payload);
+  }
+  throw new BomsApiError(`Request failed with HTTP ${status}`, status, payload);
 }
 
 export class BomsApiClient {
@@ -43,10 +55,17 @@ export class BomsApiClient {
     init: FiberRequestInit = {},
   ): Promise<T> {
     const { schema, json, skipCookieForwarding, ...rest } = init;
+    const env = getServerEnv();
     const headers = new Headers(rest.headers);
 
     if (!headers.has("Accept")) {
       headers.set("Accept", "application/json");
+    }
+
+    headers.set(INTERNAL_SECRET_HEADER, env.INTERNAL_PROXY_SECRET);
+
+    if (!headers.has("X-Request-ID")) {
+      headers.set("X-Request-ID", randomUUID());
     }
 
     if (!skipCookieForwarding) {
@@ -85,23 +104,29 @@ export class BomsApiClient {
       clearTimeout(timeout);
     }
 
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     const payload = await parseJsonSafe(response);
 
     if (!response.ok) {
-      throw new BomsApiError(
-        typeof payload === "object" &&
-          payload !== null &&
-          "message" in payload &&
-          typeof (payload as { message?: unknown }).message === "string"
-          ? (payload as { message: string }).message
-          : `Fiber responded with HTTP ${response.status}`,
-        response.status,
-        payload,
-      );
+      throwFromEnvelope(response.status, payload);
     }
 
+    const envelope = apiEnvelopeSchema.safeParse(payload);
+    if (!envelope.success) {
+      throw new BomsApiError("Response failed envelope validation", 502, payload);
+    }
+
+    if (!envelope.data.success) {
+      throwFromEnvelope(response.status, payload);
+    }
+
+    const data = envelope.data.data;
+
     if (schema) {
-      const parsed = schema.safeParse(payload);
+      const parsed = schema.safeParse(data);
       if (!parsed.success) {
         throw new BomsValidationError(
           "Response failed Zod validation at DAL boundary",
@@ -111,7 +136,7 @@ export class BomsApiClient {
       return parsed.data as T;
     }
 
-    return payload as T;
+    return data as T;
   }
 }
 

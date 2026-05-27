@@ -41,12 +41,13 @@ const createOperationalBaseSchema = z.object({
   phone: optionalNullableTrimmedString(50, "Phone"),
 });
 
-const createAdminSchema = createOperationalBaseSchema.extend({
-  role: z.literal(USER_ROLE.admin),
-});
-
-const createStaffLikeSchema = createOperationalBaseSchema.extend({
-  role: z.enum([USER_ROLE.staff, USER_ROLE.baker, USER_ROLE.manager]),
+/** Admin API only accepts staff, baker, manager — never admin (use dev seed). */
+export const createOperationalSchema = createOperationalBaseSchema.extend({
+  role: z.enum([
+    USER_ROLE.staff,
+    USER_ROLE.baker,
+    USER_ROLE.manager,
+  ]),
   employee_code: z
     .string()
     .trim()
@@ -55,11 +56,6 @@ const createStaffLikeSchema = createOperationalBaseSchema.extend({
   hire_date: dateOnlySchema,
   shift: z.string().trim().min(1, "Shift is required").max(64),
 });
-
-export const createOperationalSchema = z.discriminatedUnion("role", [
-  createAdminSchema,
-  createStaffLikeSchema,
-]);
 
 export const createOperationalResponseSchema = z.object({
   user: adminUserSchema,
@@ -76,11 +72,9 @@ export const updateOperationalProfileSchema = z.object({
 
 const updateRoleBaseSchema = z.object({
   role: z.enum([
-    USER_ROLE.customer,
     USER_ROLE.staff,
     USER_ROLE.baker,
     USER_ROLE.manager,
-    USER_ROLE.admin,
   ]),
   full_name: z.string().trim().max(255).optional(),
   phone: z.string().trim().max(50).optional().nullable(),

@@ -29,7 +29,8 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 			IdleTimeout:    time.Second,
 			InternalSecret: strings.Repeat("a", 32),
 		},
-		Rate: config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
+		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
+		RateRedis: defaultRateRedis(),
 		Postgres: config.PostgresConfig{
 			URL:                "postgres://host/db?sslmode=disable",
 			MaxConns:           5,
@@ -52,11 +53,12 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 			RefreshTTL:        time.Hour,
 		},
 		Session: config.SessionConfig{TTL: time.Hour},
-		Cookie:  config.CookieConfig{Name: "boms_refresh"},
+		Cookie:  config.CookieConfig{Name: "boms_refresh", Secure: true},
 		Argon2: config.Argon2Config{
 			Memory: 65536, Iterations: 3, Parallelism: 1, SaltLength: 16, KeyLength: 32,
 		},
 	}
+	cfg.HTTP.HSTSMaxAge = 31536000
 	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "TLS") {
 		t.Fatalf("expected TLS validation error, got: %v", err)
 	}
@@ -84,6 +86,16 @@ func TestValidate_HSTSBounds(t *testing.T) {
 	}
 }
 
+func defaultRateRedis() config.RateLimitRedisConfig {
+	return config.RateLimitRedisConfig{
+		AuthAttemptMax: 5, AuthAttemptWindow: time.Minute,
+		AuthRefreshMax: 10, AuthRefreshWindow: time.Minute,
+		AuthLogoutMax: 10, AuthLogoutWindow: time.Minute,
+		AdminWriteMax: 30, AdminWriteWindow: time.Minute,
+		AuthUserMax: 60, AuthUserWindow: time.Minute,
+	}
+}
+
 func minimalDevConfig() *config.Config {
 	return &config.Config{
 		App: config.AppConfig{Env: "development", Debug: false},
@@ -91,7 +103,8 @@ func minimalDevConfig() *config.Config {
 			Port: 8080, BodyLimit: 1024,
 			ReadTimeout: time.Second, WriteTimeout: time.Second, IdleTimeout: time.Second,
 		},
-		Rate: config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
+		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
+		RateRedis: defaultRateRedis(),
 		Postgres: config.PostgresConfig{
 			URL:      "postgres://host/db?sslmode=require",
 			MaxConns: 5, MinConns: 0,

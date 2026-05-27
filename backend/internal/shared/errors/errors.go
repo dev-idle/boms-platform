@@ -65,6 +65,7 @@ func Wrap(status int, code, message string, err error) *AppError {
 // Codes are snake_case stable identifiers; clients switch on Code, not Message.
 var (
 	ErrNotFound               = New(http.StatusNotFound, "not_found", "Resource not found")
+	ErrProfileNotFound        = New(http.StatusNotFound, "profile_not_found", "Profile not found")
 	ErrConflict               = New(http.StatusConflict, "conflict", "Resource conflict")
 	ErrValidation             = New(http.StatusBadRequest, "validation_error", "Validation failed")
 	ErrUnauthorized           = New(http.StatusUnauthorized, "unauthorized", "Authentication required")
@@ -78,6 +79,9 @@ var (
 	ErrInternal               = New(http.StatusInternalServerError, "internal_error", "Internal server error")
 	ErrServiceUnavailable     = New(http.StatusServiceUnavailable, "service_unavailable", "Service unavailable")
 	ErrTooManyRequests        = New(http.StatusTooManyRequests, "rate_limited", "Too many requests")
+	ErrCannotModifySelf       = New(http.StatusForbidden, "cannot_modify_self", "Cannot modify your own account")
+	ErrInvalidRoleTransition  = New(http.StatusUnprocessableEntity, "invalid_role_transition", "Invalid role transition")
+	ErrEmployeeCodeExists     = New(http.StatusConflict, "employee_code_exists", "Employee code already exists")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

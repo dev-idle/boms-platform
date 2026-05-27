@@ -18,6 +18,7 @@ type Config struct {
 	HTTP     HTTPConfig
 	CORS     CORSConfig
 	Rate     RateLimitConfig
+	RateRedis RateLimitRedisConfig
 	Postgres PostgresConfig
 	Redis    RedisConfig
 	Asynq    AsynqConfig
@@ -56,6 +57,20 @@ type CORSConfig struct {
 type RateLimitConfig struct {
 	Max            int
 	WindowDuration time.Duration
+}
+
+// RateLimitRedisConfig tunes Redis sliding-window limiters on auth and admin routes.
+type RateLimitRedisConfig struct {
+	AuthAttemptMax        int
+	AuthAttemptWindow     time.Duration
+	AuthRefreshMax        int
+	AuthRefreshWindow     time.Duration
+	AuthLogoutMax         int
+	AuthLogoutWindow      time.Duration
+	AdminWriteMax         int
+	AdminWriteWindow      time.Duration
+	AuthUserMax           int
+	AuthUserWindow        time.Duration
 }
 
 type PostgresConfig struct {
@@ -191,6 +206,18 @@ func Load() (*Config, error) {
 			Max:            v.GetInt("rate_limit.max"),
 			WindowDuration: v.GetDuration("rate_limit.window"),
 		},
+		RateRedis: RateLimitRedisConfig{
+			AuthAttemptMax:    v.GetInt("rate_limit.redis.auth_attempt_max"),
+			AuthAttemptWindow: v.GetDuration("rate_limit.redis.auth_attempt_window"),
+			AuthRefreshMax:    v.GetInt("rate_limit.redis.auth_refresh_max"),
+			AuthRefreshWindow: v.GetDuration("rate_limit.redis.auth_refresh_window"),
+			AuthLogoutMax:     v.GetInt("rate_limit.redis.auth_logout_max"),
+			AuthLogoutWindow:  v.GetDuration("rate_limit.redis.auth_logout_window"),
+			AdminWriteMax:     v.GetInt("rate_limit.redis.admin_write_max"),
+			AdminWriteWindow:  v.GetDuration("rate_limit.redis.admin_write_window"),
+			AuthUserMax:       v.GetInt("rate_limit.redis.auth_user_max"),
+			AuthUserWindow:    v.GetDuration("rate_limit.redis.auth_user_window"),
+		},
 		Postgres: PostgresConfig{
 			URL:                v.GetString("postgres.url"),
 			MaxConns:           maxConns,
@@ -277,6 +304,17 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.max", 120)
 	v.SetDefault("rate_limit.window", 60*time.Second)
 
+	v.SetDefault("rate_limit.redis.auth_attempt_max", 5)
+	v.SetDefault("rate_limit.redis.auth_attempt_window", time.Minute)
+	v.SetDefault("rate_limit.redis.auth_refresh_max", 10)
+	v.SetDefault("rate_limit.redis.auth_refresh_window", time.Minute)
+	v.SetDefault("rate_limit.redis.auth_logout_max", 10)
+	v.SetDefault("rate_limit.redis.auth_logout_window", time.Minute)
+	v.SetDefault("rate_limit.redis.admin_write_max", 30)
+	v.SetDefault("rate_limit.redis.admin_write_window", time.Minute)
+	v.SetDefault("rate_limit.redis.auth_user_max", 60)
+	v.SetDefault("rate_limit.redis.auth_user_window", time.Minute)
+
 	// No default DB URL: use Neon (or any Postgres) via POSTGRES_URL in .env / environment.
 	v.SetDefault("postgres.url", "")
 	v.SetDefault("postgres.max_conns", 25)
@@ -345,6 +383,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Rate.WindowDuration <= 0 {
 		return errors.New("rate_limit.window must be positive")
+	}
+	if err := c.RateRedis.validate(); err != nil {
+		return err
 	}
 	if strings.TrimSpace(c.Postgres.URL) == "" {
 		return errors.New("postgres.url is required")
@@ -426,8 +467,37 @@ func (c *Config) Validate() error {
 		if postgresTLSExplicitlyDisabled(c.Postgres.URL) {
 			return errors.New("postgres.url must not disable TLS (sslmode=disable/allow) in staging/production")
 		}
+		if !c.Cookie.Secure {
+			return errors.New("cookie.secure must be true in non-development environments")
+		}
+		if c.HTTP.HSTSMaxAge <= 0 {
+			return errors.New("http.hsts_max_age must be positive in non-development environments")
+		}
 	}
 
+	return nil
+}
+
+func (c RateLimitRedisConfig) validate() error {
+	checks := []struct {
+		name   string
+		max    int
+		window time.Duration
+	}{
+		{"rate_limit.redis.auth_attempt", c.AuthAttemptMax, c.AuthAttemptWindow},
+		{"rate_limit.redis.auth_refresh", c.AuthRefreshMax, c.AuthRefreshWindow},
+		{"rate_limit.redis.auth_logout", c.AuthLogoutMax, c.AuthLogoutWindow},
+		{"rate_limit.redis.admin_write", c.AdminWriteMax, c.AdminWriteWindow},
+		{"rate_limit.redis.auth_user", c.AuthUserMax, c.AuthUserWindow},
+	}
+	for _, chk := range checks {
+		if chk.max < 1 {
+			return fmt.Errorf("%s_max must be positive", chk.name)
+		}
+		if chk.window <= 0 {
+			return fmt.Errorf("%s_window must be positive", chk.name)
+		}
+	}
 	return nil
 }
 

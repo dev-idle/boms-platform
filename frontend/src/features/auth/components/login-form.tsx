@@ -63,14 +63,14 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
             toast.error("Something went wrong. Please try again.");
             return;
           }
-          if (error.code === "INVALID_CREDENTIALS") {
+          if (error.code === "invalid_credentials") {
             form.setError("root", {
               message: "Invalid credentials",
             });
             return;
           }
-          if (error.status === 422 && error.details) {
-            for (const item of mapValidationDetailsToFormErrors(error.details)) {
+          if (error.hasValidationDetails()) {
+            for (const item of mapValidationDetailsToFormErrors(error.details!)) {
               if (item.field === "email" || item.field === "password") {
                 form.setError(item.field, { message: item.message });
               }
@@ -85,9 +85,7 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
 
   return (
     <>
-      <AuthenticatedRedirect
-        to={validateNext(next ?? null) ?? ROUTE.home}
-      />
+      <AuthenticatedRedirect to={validateNext(next ?? null) ?? undefined} />
       <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-16">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Sign in

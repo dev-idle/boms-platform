@@ -17,6 +17,7 @@ import (
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/utils"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type AdminUserUsecase struct {
@@ -29,6 +30,7 @@ type AdminUserUsecase struct {
 	hasher    port.PasswordHasher
 	audit     *auditlogger.Service
 	profiles  *profilesvc.Service
+	log       *zap.Logger
 }
 
 func NewAdminUserUsecase(
@@ -40,6 +42,7 @@ func NewAdminUserUsecase(
 	tx port.TxManager,
 	hasher port.PasswordHasher,
 	audit *auditlogger.Service,
+	log *zap.Logger,
 ) *AdminUserUsecase {
 	return &AdminUserUsecase{
 		users:     users,
@@ -51,6 +54,7 @@ func NewAdminUserUsecase(
 		hasher:    hasher,
 		audit:     audit,
 		profiles:  profilesvc.NewService(customers, staff, admins),
+		log:       log,
 	}
 }
 
@@ -233,6 +237,7 @@ func (u *AdminUserUsecase) UpdateRole(
 	}
 
 	var beforeRole, afterRole string
+	roleChanged := false
 	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		target, getErr := u.users.GetByIDForUpdate(txCtx, targetID)
 		if getErr != nil {
@@ -243,6 +248,7 @@ func (u *AdminUserUsecase) UpdateRole(
 		if target.Role == newRole {
 			return nil
 		}
+		roleChanged = true
 
 		switch target.Role.ProfileType() {
 		case "customer":
@@ -303,6 +309,12 @@ func (u *AdminUserUsecase) UpdateRole(
 			return nil, domainuser.ErrEmployeeCodeExists
 		}
 		return nil, err
+	}
+
+	if roleChanged {
+		if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
+			return nil, err
+		}
 	}
 
 	u.logAudit(ctx, domainuser.AuditActionAdminUpdatedRole, actorID, actorRole, &targetID, "user", map[string]any{"role": beforeRole}, map[string]any{"role": afterRole})
@@ -425,10 +437,12 @@ func mapAdminListItem(in port.AdminListUser) dto.AdminUserResponse {
 
 func parseRole(raw string) (domainuser.Role, error) {
 	role := domainuser.Role(strings.TrimSpace(strings.ToLower(raw)))
-	if !role.CanBeAssigned() {
+	switch role {
+	case domainuser.RoleStaff, domainuser.RoleBaker, domainuser.RoleManager:
+		return role, nil
+	default:
 		return "", apperrors.ErrValidation.WithDetail("role", "unsupported role")
 	}
-	return role, nil
 }
 
 func parseStaffSeed(employeeCode, hireDate, shift *string) (string, time.Time, string, error) {
@@ -449,8 +463,5 @@ func parseStaffSeed(employeeCode, hireDate, shift *string) (string, time.Time, s
 }
 
 func (u *AdminUserUsecase) logAudit(ctx context.Context, action domainuser.AuditAction, actorID uuid.UUID, actorRole domainuser.Role, targetID *uuid.UUID, targetType string, before, after any) {
-	if u.audit == nil {
-		return
-	}
-	_ = u.audit.Log(ctx, action, actorID, actorRole, targetID, targetType, before, after)
+	recordAudit(u.log, u.audit, ctx, action, actorID, actorRole, targetID, targetType, before, after)
 }

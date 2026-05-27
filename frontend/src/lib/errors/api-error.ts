@@ -11,7 +11,12 @@ export const ApiErrorCode = {
   Forbidden: "forbidden",
   PasswordChangeRequired: "password_change_required",
   NotFound: "not_found",
+  ProfileNotFound: "profile_not_found",
+  MeNotFound: "me_not_found",
   Conflict: "conflict",
+  CannotModifySelf: "cannot_modify_self",
+  InvalidRoleTransition: "invalid_role_transition",
+  EmployeeCodeExists: "employee_code_exists",
   Validation: "validation_error",
   RateLimited: "rate_limited",
   Internal: "internal_error",
@@ -63,6 +68,27 @@ export class ApiError extends Error {
   /** True for backend validation failures (400 validation_error). */
   isValidation(): boolean {
     return this.status === 400 && this.code === ApiErrorCode.Validation;
+  }
+
+  /** True when the API returned per-field validation details. */
+  hasValidationDetails(): boolean {
+    return (
+      this.details !== undefined &&
+      Object.keys(this.details).length > 0 &&
+      (this.isValidation() || this.status === 422)
+    );
+  }
+
+  isCannotModifySelf(): boolean {
+    return this.code === ApiErrorCode.CannotModifySelf;
+  }
+
+  isInvalidRoleTransition(): boolean {
+    return this.code === ApiErrorCode.InvalidRoleTransition;
+  }
+
+  isEmployeeCodeExists(): boolean {
+    return this.code === ApiErrorCode.EmployeeCodeExists;
   }
 }
 

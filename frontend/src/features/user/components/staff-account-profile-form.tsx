@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
 
+import { USER_ROLE, type UserRole } from "@/constants/roles";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -26,18 +27,32 @@ import {
   nullableString,
 } from "./helpers";
 
-const staffSelfProfileFormSchema = z.object({
+const operationalSelfProfileFormSchema = z.object({
   full_name: z.string().trim().min(1, "Full name is required").max(255),
   phone: z.string().trim().max(50).optional(),
 });
 
-type StaffSelfProfileFormValues = z.infer<typeof staffSelfProfileFormSchema>;
+type OperationalSelfProfileFormValues = z.infer<
+  typeof operationalSelfProfileFormSchema
+>;
 
 type ReadonlyStaffProfile = {
   employee_code: string;
   hire_date: string;
   shift: string;
 };
+
+const OPERATIONAL_ROLES = [
+  USER_ROLE.staff,
+  USER_ROLE.baker,
+  USER_ROLE.manager,
+] as const;
+
+type OperationalRole = (typeof OPERATIONAL_ROLES)[number];
+
+function isOperationalRole(role: UserRole): role is OperationalRole {
+  return (OPERATIONAL_ROLES as readonly UserRole[]).includes(role);
+}
 
 function ReadonlyStaffFields({ profile }: { profile: ReadonlyStaffProfile }) {
   return (
@@ -69,51 +84,44 @@ function ReadonlyStaffFields({ profile }: { profile: ReadonlyStaffProfile }) {
   );
 }
 
-export function StaffAccountProfileForm() {
+type OperationalAccountProfileFormProps = {
+  expectedRole: OperationalRole;
+  roleLabel: string;
+};
+
+export function OperationalAccountProfileForm({
+  expectedRole,
+  roleLabel,
+}: OperationalAccountProfileFormProps) {
   const me = useMe();
   const updateProfile = useUpdateProfile();
 
-  const form = useForm<StaffSelfProfileFormValues>({
-    resolver: zodResolver(staffSelfProfileFormSchema),
+  const form = useForm<OperationalSelfProfileFormValues>({
+    resolver: zodResolver(operationalSelfProfileFormSchema),
     defaultValues: { full_name: "", phone: "" },
   });
 
   useEffect(() => {
-    if (!me.data) {
+    if (!me.data || me.data.role !== expectedRole) {
       return;
     }
-    switch (me.data.role) {
-      case "staff":
-      case "baker":
-      case "manager":
-        form.reset({
-          full_name: me.data.profile.full_name,
-          phone: fieldValueOrEmpty(me.data.profile.phone),
-        });
-        break;
-      default:
-        break;
-    }
-  }, [form, me.data]);
+    form.reset({
+      full_name: me.data.profile.full_name,
+      phone: fieldValueOrEmpty(me.data.profile.phone),
+    });
+  }, [form, me.data, expectedRole]);
 
   if (me.isPending) {
     return <p className="text-sm text-zinc-500">Loading profile…</p>;
   }
 
-  if (!me.data) {
-    return <p className="text-sm text-zinc-500">Profile not available.</p>;
+  if (!me.data || me.data.role !== expectedRole) {
+    return (
+      <p className="text-sm text-zinc-500">{roleLabel} profile not available.</p>
+    );
   }
 
-  switch (me.data.role) {
-    case "staff":
-    case "baker":
-    case "manager":
-      break;
-    default:
-      return <p className="text-sm text-zinc-500">Staff profile not available.</p>;
-  }
-
-  function onSubmit(values: StaffSelfProfileFormValues): void {
+  function onSubmit(values: OperationalSelfProfileFormValues): void {
     updateProfile.mutate(
       {
         full_name: values.full_name.trim(),
@@ -139,12 +147,7 @@ export function StaffAccountProfileForm() {
     );
   }
 
-  const readonlyProfile =
-    me.data.role === "staff" ||
-    me.data.role === "baker" ||
-    me.data.role === "manager"
-      ? me.data.profile
-      : null;
+  const readonlyProfile = isOperationalRole(me.data.role) ? me.data.profile : null;
 
   return (
     <Form {...form}>
@@ -188,5 +191,15 @@ export function StaffAccountProfileForm() {
         </Button>
       </form>
     </Form>
+  );
+}
+
+/** @deprecated Use OperationalAccountProfileForm with expectedRole={USER_ROLE.staff}. */
+export function StaffAccountProfileForm() {
+  return (
+    <OperationalAccountProfileForm
+      expectedRole={USER_ROLE.staff}
+      roleLabel="Staff"
+    />
   );
 }

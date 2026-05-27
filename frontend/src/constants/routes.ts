@@ -1,10 +1,12 @@
 /**
  * Canonical paths — single source for `src/proxy.ts`, layouts, and links.
  *
- * URL conventions:
+ * URL conventions (one role = one namespace):
  *   - Public:   /, /login, /register
  *   - Customer: /products, /cart, /orders, /customer/account/*
  *   - Staff:    /staff/account/*
+ *   - Baker:    /baker/account/*
+ *   - Manager:  /manager/account/*
  *   - Admin:    /admin, /admin/products, /admin/orders, /admin/users, /admin/account/*
  */
 export const ROUTE = {
@@ -27,6 +29,18 @@ export const ROUTE = {
       password: "/staff/account/password",
     },
   },
+  baker: {
+    account: {
+      profile: "/baker/account/profile",
+      password: "/baker/account/password",
+    },
+  },
+  manager: {
+    account: {
+      profile: "/manager/account/profile",
+      password: "/manager/account/password",
+    },
+  },
   admin: {
     dashboard: "/admin",
     products: "/admin/products",
@@ -41,8 +55,6 @@ export const ROUTE = {
   },
 } as const;
 
-export const ADMIN_ROUTE_PREFIXES = ["/admin"] as const;
-
 export const CUSTOMER_ROUTE_PREFIXES = [
   ROUTE.products,
   ROUTE.cart,
@@ -52,9 +64,17 @@ export const CUSTOMER_ROUTE_PREFIXES = [
 
 export const STAFF_ROUTE_PREFIXES = ["/staff"] as const;
 
+export const BAKER_ROUTE_PREFIXES = ["/baker"] as const;
+
+export const MANAGER_ROUTE_PREFIXES = ["/manager"] as const;
+
+export const ADMIN_ROUTE_PREFIXES = ["/admin"] as const;
+
 export const PROTECTED_ROUTE_PREFIXES = [
   ...CUSTOMER_ROUTE_PREFIXES,
   ...STAFF_ROUTE_PREFIXES,
+  ...BAKER_ROUTE_PREFIXES,
+  ...MANAGER_ROUTE_PREFIXES,
   ...ADMIN_ROUTE_PREFIXES,
 ] as const;
 

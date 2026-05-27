@@ -8,12 +8,14 @@ export { login, logout, register } from "./api";
 export { getMe } from "@/features/user/api";
 export {
   AdminGate,
+  BakerGate,
+  CustomerGate,
+  ManagerGate,
   AuthenticatedRedirect,
   LoginForm,
   LogoutButton,
   MustChangePasswordGate,
   RegisterForm,
-  RoleGate,
   StaffGate,
 } from "./components";
 export {

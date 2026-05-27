@@ -14,6 +14,7 @@ import (
 	"github.com/boms/backend/internal/service/profilesvc"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 var (
@@ -29,6 +30,7 @@ type MeUsecase struct {
 	hasher    port.PasswordHasher
 	audit     *auditlogger.Service
 	profiles  *profilesvc.Service
+	log       *zap.Logger
 }
 
 func NewMeUsecase(
@@ -39,6 +41,7 @@ func NewMeUsecase(
 	sessions port.SessionStore,
 	hasher port.PasswordHasher,
 	audit *auditlogger.Service,
+	log *zap.Logger,
 ) *MeUsecase {
 	return &MeUsecase{
 		users:     users,
@@ -49,6 +52,7 @@ func NewMeUsecase(
 		hasher:    hasher,
 		audit:     audit,
 		profiles:  profilesvc.NewService(customers, staff, admins),
+		log:       log,
 	}
 }
 
@@ -181,8 +185,5 @@ func coalesceStringPtr(incoming, fallback *string) *string {
 }
 
 func (u *MeUsecase) logAudit(ctx context.Context, action domainuser.AuditAction, actorID uuid.UUID, actorRole domainuser.Role, targetID *uuid.UUID, targetType string, before, after any) {
-	if u.audit == nil {
-		return
-	}
-	_ = u.audit.Log(ctx, action, actorID, actorRole, targetID, targetType, before, after)
+	recordAudit(u.log, u.audit, ctx, action, actorID, actorRole, targetID, targetType, before, after)
 }

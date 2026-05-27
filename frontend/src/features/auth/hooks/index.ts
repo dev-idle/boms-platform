@@ -6,10 +6,13 @@ import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
-import { validateNext } from "@/lib/validate-next";
+import { validateNextForRole } from "@/lib/validate-next";
 import { useAuthStore } from "@/stores/auth-store";
 import { getMe as getMeFromUserApi } from "@/features/user/api";
-import { passwordRouteForRole } from "@/features/user/lib/role-routes";
+import {
+  homeRouteForRole,
+  passwordRouteForRole,
+} from "@/features/user/lib/role-routes";
 
 import { login, logout, register } from "../api";
 import { resetRefreshManager, scheduleRefresh } from "@/lib/auth";
@@ -80,7 +83,9 @@ export function useLogin() {
         return;
       }
 
-      router.push(validateNext(variables.next) ?? ROUTE.home);
+      router.push(
+        validateNextForRole(variables.next, me.role) ?? homeRouteForRole(me.role),
+      );
     },
   });
 }

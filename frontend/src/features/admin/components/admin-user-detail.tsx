@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { ASSIGNABLE_OPERATIONAL_ROLES, USER_ROLE } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
@@ -29,6 +30,7 @@ import {
   useUpdateUserProfile,
   useUserDetail,
 } from "../hooks";
+import { updateRoleSchema, type UpdateRoleInput } from "../schemas";
 
 type Tab = "profile" | "role" | "sessions";
 
@@ -42,45 +44,7 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-const roleFormSchema = z
-  .object({
-    role: z.enum(["customer", "staff", "baker", "manager", "admin"]),
-    full_name: z.string().trim().max(255).optional(),
-    phone: z.string().trim().max(50).optional(),
-    employee_code: z.string().trim().max(64).optional(),
-    hire_date: z.string().trim().optional(),
-    shift: z.string().trim().max(64).optional(),
-  })
-  .superRefine((input, ctx) => {
-    const isStaffRole =
-      input.role === "staff" || input.role === "baker" || input.role === "manager";
-    if (!isStaffRole) {
-      return;
-    }
-    if (!input.employee_code) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Employee code is required",
-        path: ["employee_code"],
-      });
-    }
-    if (!input.hire_date) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Hire date is required",
-        path: ["hire_date"],
-      });
-    }
-    if (!input.shift) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Shift is required",
-        path: ["shift"],
-      });
-    }
-  });
-
-type RoleFormValues = z.infer<typeof roleFormSchema>;
+type RoleFormValues = UpdateRoleInput;
 
 export function AdminUserDetail({ userId }: { userId: string }) {
   const [tab, setTab] = useState<Tab>("profile");
@@ -109,9 +73,9 @@ export function AdminUserDetail({ userId }: { userId: string }) {
   });
 
   const roleForm = useForm<RoleFormValues>({
-    resolver: zodResolver(roleFormSchema),
+    resolver: zodResolver(updateRoleSchema),
     defaultValues: {
-      role: "customer",
+      role: USER_ROLE.staff,
       full_name: "",
       phone: "",
       employee_code: "",
@@ -119,10 +83,6 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       shift: "",
     },
   });
-
-  const roleValue = useWatch({ control: roleForm.control, name: "role" });
-  const roleIsStaffLike =
-    roleValue === "staff" || roleValue === "baker" || roleValue === "manager";
 
   useEffect(() => {
     const user = userQuery.data;
@@ -136,8 +96,14 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       hire_date: user.hire_date ? user.hire_date.slice(0, 10) : "",
       shift: user.shift ?? "",
     });
+    const roleForForm =
+      user.role === USER_ROLE.staff ||
+      user.role === USER_ROLE.baker ||
+      user.role === USER_ROLE.manager
+        ? user.role
+        : USER_ROLE.staff;
     roleForm.reset({
-      role: user.role,
+      role: roleForForm,
       full_name: user.full_name ?? "",
       phone: user.phone ?? "",
       employee_code: user.employee_code ?? "",
@@ -178,8 +144,8 @@ export function AdminUserDetail({ userId }: { userId: string }) {
             toast.error("Failed to update profile");
             return;
           }
-          if (error.status === 422 && error.details) {
-            mapApiDetailsToForm(error.details, (field, message) => {
+          if (error.hasValidationDetails()) {
+            mapApiDetailsToForm(error.details!, (field, message) => {
               if (
                 field === "full_name" ||
                 field === "phone" ||
@@ -190,6 +156,10 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                 profileForm.setError(field, { message });
               }
             });
+            return;
+          }
+          if (error.isCannotModifySelf()) {
+            toast.error("You cannot modify your own account from this screen.");
             return;
           }
           toast.error(error.message);
@@ -239,12 +209,27 @@ export function AdminUserDetail({ userId }: { userId: string }) {
             toast.error("Failed to update role");
             return;
           }
-          if (error.status === 422 && error.details) {
-            mapApiDetailsToForm(error.details, (field, message) => {
+          if (error.hasValidationDetails()) {
+            mapApiDetailsToForm(error.details!, (field, message) => {
               if (field in pendingRoleValues) {
                 roleForm.setError(field as keyof RoleFormValues, { message });
               }
             });
+            setConfirmRole(false);
+            return;
+          }
+          if (error.isCannotModifySelf()) {
+            toast.error("You cannot change your own role.");
+            setConfirmRole(false);
+            return;
+          }
+          if (error.isInvalidRoleTransition()) {
+            toast.error("This role change is not allowed.");
+            setConfirmRole(false);
+            return;
+          }
+          if (error.isEmployeeCodeExists()) {
+            toast.error("That employee code is already in use.");
             setConfirmRole(false);
             return;
           }
@@ -403,7 +388,13 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       ) : null}
 
       {tab === "role" && user ? (
-        <div className="max-w-2xl">
+        <div className="max-w-2xl space-y-4">
+          {user.role === USER_ROLE.admin || user.role === USER_ROLE.customer ? (
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Current role: <strong>{user.role}</strong>. Select an operational role below
+              (staff, baker, or manager). Platform admin accounts are created via dev seed only.
+            </p>
+          ) : null}
           <Form {...roleForm}>
             <form
               className="space-y-4"
@@ -421,11 +412,11 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                         className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
                         {...field}
                       >
-                        <option value="customer">customer</option>
-                        <option value="staff">staff</option>
-                        <option value="baker">baker</option>
-                        <option value="manager">manager</option>
-                        <option value="admin">admin</option>
+                        {ASSIGNABLE_OPERATIONAL_ROLES.map((role) => (
+                          <option key={role} value={role}>
+                            {role}
+                          </option>
+                        ))}
                       </select>
                     </FormControl>
                     <FormMessage />
@@ -454,58 +445,71 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {roleIsStaffLike ? (
-                <>
-                  <FormField
-                    control={roleForm.control}
-                    name="employee_code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Employee code</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField
+                control={roleForm.control}
+                name="employee_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Employee code</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={roleForm.control}
-                    name="hire_date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hire date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField
+                control={roleForm.control}
+                name="hire_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hire date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={roleForm.control}
-                    name="shift"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Shift</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              ) : null}
+              <FormField
+                control={roleForm.control}
+                name="shift"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Shift</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <Button disabled={updateRole.isPending} type="submit">
                 {updateRole.isPending ? "Updating…" : "Update role"}
@@ -577,11 +581,15 @@ export function AdminUserDetail({ userId }: { userId: string }) {
               setConfirmDisable(false);
             },
             onError: (error) => {
-              if (isApiError(error)) {
-                toast.error(error.message);
+              if (!isApiError(error)) {
+                toast.error("Failed to disable user");
                 return;
               }
-              toast.error("Failed to disable user");
+              if (error.isCannotModifySelf()) {
+                toast.error("You cannot disable your own account.");
+                return;
+              }
+              toast.error(error.message);
             },
           })
         }
@@ -600,11 +608,15 @@ export function AdminUserDetail({ userId }: { userId: string }) {
               setConfirmRevoke(false);
             },
             onError: (error) => {
-              if (isApiError(error)) {
-                toast.error(error.message);
+              if (!isApiError(error)) {
+                toast.error("Failed to revoke sessions");
                 return;
               }
-              toast.error("Failed to revoke sessions");
+              if (error.isCannotModifySelf()) {
+                toast.error("Use logout to end your own sessions.");
+                return;
+              }
+              toast.error(error.message);
             },
           })
         }

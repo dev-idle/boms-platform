@@ -1,3 +1,6 @@
+import type { UserRole } from "@/constants/roles";
+import { isPathAllowedForRole } from "@/features/user/lib/role-routes";
+
 /**
  * Accepts relative in-app paths only. Rejects open-redirect vectors.
  */
@@ -38,4 +41,19 @@ export function validateNext(next: string | null | undefined): string | null {
   }
 
   return decoded;
+}
+
+/** Same as validateNext, but the path must belong to the signed-in user's role namespace. */
+export function validateNextForRole(
+  next: string | null | undefined,
+  role: UserRole,
+): string | null {
+  const path = validateNext(next);
+  if (!path) {
+    return null;
+  }
+  if (!isPathAllowedForRole(path, role)) {
+    return null;
+  }
+  return path;
 }

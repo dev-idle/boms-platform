@@ -12,7 +12,8 @@ import (
 	"github.com/boms/backend/internal/shared/utils"
 )
 
-// EnsureDevAdmin creates the development admin account when configured.
+// EnsureDevAdmin creates the sole boot-time default account (admin only) when configured.
+// Other roles are never auto-seeded — create them via register (customer) or admin UI (operational roles).
 func EnsureDevAdmin(
 	ctx context.Context,
 	cfg *config.Config,

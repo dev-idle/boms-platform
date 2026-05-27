@@ -27,7 +27,7 @@ func (h *AdminUserHandler) Get(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	targetID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return response.Error(c, fiber.StatusBadRequest, &response.ErrorBody{Code: "VALIDATION_ERROR", Message: "Invalid user id"})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid user id"))
 	}
 	out, err := h.usecase.Get(c.UserContext(), targetID)
 	if err != nil {
@@ -63,14 +63,10 @@ func (h *AdminUserHandler) Create(c *fiber.Ctx) error {
 	}
 	var req dto.CreateOperationalUserRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Invalid request body",
-		})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Validation failed", Details: sharevalidator.FieldErrors(err),
-		})
+		return writeValidationError(c, err)
 	}
 	out, err := h.usecase.CreateOperationalUser(c.UserContext(), actorID, actorRole, req)
 	if err != nil {
@@ -87,18 +83,14 @@ func (h *AdminUserHandler) PatchProfile(c *fiber.Ctx) error {
 	}
 	targetID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return response.Error(c, fiber.StatusBadRequest, &response.ErrorBody{Code: "VALIDATION_ERROR", Message: "Invalid user id"})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid user id"))
 	}
 	var req dto.UpdateOperationalProfileRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Invalid request body",
-		})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Validation failed", Details: sharevalidator.FieldErrors(err),
-		})
+		return writeValidationError(c, err)
 	}
 	out, err := h.usecase.UpdateOperationalProfile(c.UserContext(), actorID, actorRole, targetID, req)
 	if err != nil {
@@ -115,18 +107,14 @@ func (h *AdminUserHandler) PatchRole(c *fiber.Ctx) error {
 	}
 	targetID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return response.Error(c, fiber.StatusBadRequest, &response.ErrorBody{Code: "VALIDATION_ERROR", Message: "Invalid user id"})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid user id"))
 	}
 	var req dto.UpdateUserRoleRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Invalid request body",
-		})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Validation failed", Details: sharevalidator.FieldErrors(err),
-		})
+		return writeValidationError(c, err)
 	}
 	out, err := h.usecase.UpdateRole(c.UserContext(), actorID, actorRole, targetID, req)
 	if err != nil {
@@ -143,7 +131,7 @@ func (h *AdminUserHandler) PatchDisable(c *fiber.Ctx) error {
 	}
 	targetID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return response.Error(c, fiber.StatusBadRequest, &response.ErrorBody{Code: "VALIDATION_ERROR", Message: "Invalid user id"})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid user id"))
 	}
 	if err := h.usecase.Disable(c.UserContext(), actorID, actorRole, targetID); err != nil {
 		return h.mapError(c, err)
@@ -159,7 +147,7 @@ func (h *AdminUserHandler) RevokeSessions(c *fiber.Ctx) error {
 	}
 	targetID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return response.Error(c, fiber.StatusBadRequest, &response.ErrorBody{Code: "VALIDATION_ERROR", Message: "Invalid user id"})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid user id"))
 	}
 	if err := h.usecase.RevokeSessions(c.UserContext(), actorID, actorRole, targetID); err != nil {
 		return h.mapError(c, err)
@@ -170,16 +158,20 @@ func (h *AdminUserHandler) RevokeSessions(c *fiber.Ctx) error {
 func (h *AdminUserHandler) mapError(c *fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, domainuser.ErrCannotModifySelf):
-		return response.Error(c, fiber.StatusForbidden, &response.ErrorBody{Code: "CANNOT_MODIFY_SELF", Message: "Cannot modify your own account"})
+		return writeAppError(c, apperrors.ErrCannotModifySelf)
 	case errors.Is(err, domainuser.ErrInvalidRoleTransition):
-		return response.Error(c, fiber.StatusBadRequest, &response.ErrorBody{Code: "INVALID_ROLE_TRANSITION", Message: "Invalid role transition"})
+		return writeAppError(c, apperrors.ErrInvalidRoleTransition)
 	case errors.Is(err, domainuser.ErrEmployeeCodeExists):
-		return response.Error(c, fiber.StatusConflict, &response.ErrorBody{Code: "EMPLOYEE_CODE_EXISTS", Message: "Employee code already exists"})
+		return writeAppError(c, apperrors.ErrEmployeeCodeExists)
 	case errors.Is(err, apperrors.ErrNotFound):
-		return response.Error(c, fiber.StatusNotFound, &response.ErrorBody{Code: "NOT_FOUND", Message: "User not found"})
+		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, apperrors.ErrConflict):
-		return response.Error(c, fiber.StatusConflict, &response.ErrorBody{Code: "CONFLICT", Message: "Resource conflict"})
+		return writeAppError(c, apperrors.ErrConflict)
 	default:
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return writeAppError(c, appErr)
+		}
 		return err
 	}
 }
@@ -187,11 +179,11 @@ func (h *AdminUserHandler) mapError(c *fiber.Ctx, err error) error {
 func actorFromCtx(c *fiber.Ctx) (uuid.UUID, domainuser.Role, error) {
 	uid, ok := middleware.GetUserID(c)
 	if !ok {
-		return uuid.Nil, "", fiber.ErrUnauthorized
+		return uuid.Nil, "", writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	role, ok := middleware.GetRole(c)
 	if !ok {
-		return uuid.Nil, "", fiber.ErrUnauthorized
+		return uuid.Nil, "", writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	return uid, role, nil
 }

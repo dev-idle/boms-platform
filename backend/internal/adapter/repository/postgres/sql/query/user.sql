@@ -14,6 +14,7 @@ WHERE id = $1
 SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
 FROM users
 WHERE id = $1
+  AND deleted_at IS NULL
 FOR UPDATE;
 
 -- name: CreateUser :one

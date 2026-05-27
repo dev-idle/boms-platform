@@ -26,15 +26,15 @@ func (h *MeHandler) Get(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		return fiber.ErrUnauthorized
+		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	user, profile, err := h.usecase.Get(c.UserContext(), userID)
 	if err != nil {
 		if errors.Is(err, usecase.ErrMeNotFound) {
-			return response.Error(c, fiber.StatusNotFound, &response.ErrorBody{Code: "NOT_FOUND", Message: "User not found"})
+			return writeAppError(c, usecase.ErrMeNotFound)
 		}
 		if errors.Is(err, domainuser.ErrProfileNotFound) {
-			return response.Error(c, fiber.StatusNotFound, &response.ErrorBody{Code: "PROFILE_NOT_FOUND", Message: "Profile not found"})
+			return writeAppError(c, apperrors.ErrProfileNotFound)
 		}
 		return err
 	}
@@ -45,23 +45,26 @@ func (h *MeHandler) Patch(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		return fiber.ErrUnauthorized
+		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	var req dto.UpdateMeRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Invalid request body",
-		})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Validation failed", Details: sharevalidator.FieldErrors(err),
+		return response.Error(c, apperrors.ErrValidation.StatusCode, &response.ErrorBody{
+			Code:    apperrors.ErrValidation.Code,
+			Message: apperrors.ErrValidation.Message,
+			Details: sharevalidator.FieldErrors(err),
 		})
+	}
+	if role, ok := middleware.GetRole(c); ok {
+		sanitizeSelfProfileUpdate(role, &req)
 	}
 	user, profile, err := h.usecase.UpdateProfile(c.UserContext(), userID, req)
 	if err != nil {
 		if errors.Is(err, domainuser.ErrProfileNotFound) {
-			return response.Error(c, fiber.StatusNotFound, &response.ErrorBody{Code: "PROFILE_NOT_FOUND", Message: "Profile not found"})
+			return writeAppError(c, apperrors.ErrProfileNotFound)
 		}
 		return err
 	}
@@ -72,17 +75,17 @@ func (h *MeHandler) PatchPassword(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		return fiber.ErrUnauthorized
+		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	var req dto.ChangeMyPasswordRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Invalid request body",
-		})
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, fiber.StatusUnprocessableEntity, &response.ErrorBody{
-			Code: "VALIDATION_ERROR", Message: "Validation failed", Details: sharevalidator.FieldErrors(err),
+		return response.Error(c, apperrors.ErrValidation.StatusCode, &response.ErrorBody{
+			Code:    apperrors.ErrValidation.Code,
+			Message: apperrors.ErrValidation.Message,
+			Details: sharevalidator.FieldErrors(err),
 		})
 	}
 	if err := h.usecase.ChangePassword(c.UserContext(), userID, req.OldPassword, req.NewPassword); err != nil {
@@ -95,11 +98,15 @@ func (h *MeHandler) Delete(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		return fiber.ErrUnauthorized
+		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	if err := h.usecase.SoftDeleteSelf(c.UserContext(), userID); err != nil {
 		if errors.Is(err, apperrors.ErrForbidden) {
-			return response.Error(c, fiber.StatusForbidden, &response.ErrorBody{Code: "FORBIDDEN", Message: "Only customers can self-delete"})
+			return writeAppError(c, apperrors.New(
+				apperrors.ErrForbidden.StatusCode,
+				apperrors.ErrForbidden.Code,
+				"Only customers can self-delete",
+			))
 		}
 		return err
 	}
@@ -142,4 +149,31 @@ func toMeResponse(user *domainuser.User, profile any) dto.MeResponse {
 		res.Profile = nil
 	}
 	return res
+}
+
+// sanitizeSelfProfileUpdate strips fields a role may not change via PATCH /me.
+func sanitizeSelfProfileUpdate(role domainuser.Role, req *dto.UpdateMeRequest) {
+	switch role {
+	case domainuser.RoleCustomer:
+		req.FullName = nil
+		req.EmployeeCode = nil
+		req.HireDate = nil
+		req.Shift = nil
+	case domainuser.RoleStaff, domainuser.RoleBaker, domainuser.RoleManager:
+		req.DisplayName = nil
+		req.EmployeeCode = nil
+		req.HireDate = nil
+		req.Shift = nil
+	case domainuser.RoleAdmin:
+		req.DisplayName = nil
+		req.EmployeeCode = nil
+		req.HireDate = nil
+		req.Shift = nil
+	default:
+		req.DisplayName = nil
+		req.FullName = nil
+		req.EmployeeCode = nil
+		req.HireDate = nil
+		req.Shift = nil
+	}
 }

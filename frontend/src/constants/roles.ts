@@ -1,4 +1,4 @@
-/** Application roles — mirror `backend/internal/domain/user/user.go`. */
+/** Application roles — mirror `backend/internal/domain/user/role.go`. */
 export const USER_ROLE = {
   customer: "customer",
   staff: "staff",
@@ -9,14 +9,17 @@ export const USER_ROLE = {
 
 export type UserRole = (typeof USER_ROLE)[keyof typeof USER_ROLE];
 
-/** Roles allowed to access admin dashboard routes. */
-export const ADMIN_ROLES: readonly UserRole[] = [
-  USER_ROLE.admin,
+/** All roles in display order. */
+export const ALL_USER_ROLES: readonly UserRole[] = [
+  USER_ROLE.customer,
+  USER_ROLE.staff,
+  USER_ROLE.baker,
   USER_ROLE.manager,
+  USER_ROLE.admin,
 ] as const;
 
-/** Roles using the operational staff profile. */
-export const STAFF_ROLES: readonly UserRole[] = [
+/** Operational roles an admin may assign (excludes customer and admin). */
+export const ASSIGNABLE_OPERATIONAL_ROLES: readonly UserRole[] = [
   USER_ROLE.staff,
   USER_ROLE.baker,
   USER_ROLE.manager,

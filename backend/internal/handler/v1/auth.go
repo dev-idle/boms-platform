@@ -122,17 +122,6 @@ func noStore(c *fiber.Ctx) {
 	c.Set(fiber.HeaderPragma, "no-cache")
 }
 
-// writeAppError converts an AppError to the canonical response.Error envelope.
-// Keeps wire codes (snake_case) consistent with the sentinel definitions.
-func writeAppError(c *fiber.Ctx, e *apperrors.AppError) error {
-	code, message, details := e.ToErrorBody()
-	return response.Error(c, e.StatusCode, &response.ErrorBody{
-		Code:    code,
-		Message: message,
-		Details: details,
-	})
-}
-
 // Logout handles POST /api/v1/auth/logout (hybrid idempotent: Bearer preferred, cookie fallback).
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
