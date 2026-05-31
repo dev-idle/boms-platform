@@ -77,9 +77,6 @@ func (u *MeUsecase) Get(ctx context.Context, userID uuid.UUID) (*domainuser.User
 func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto.UpdateMeRequest) (*domainuser.User, any, error) {
 	user, profile, err := u.Get(ctx, userID)
 	if err != nil {
-		if errors.Is(err, apperrors.ErrConflict) {
-			return nil, nil, domainuser.ErrEmployeeCodeExists
-		}
 		return nil, nil, err
 	}
 	before := profile
@@ -121,6 +118,9 @@ func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto
 		return nil, nil, domainuser.ErrProfileNotFound
 	}
 	if err != nil {
+		if errors.Is(err, apperrors.ErrConflict) {
+			return nil, nil, domainuser.ErrEmployeeCodeExists
+		}
 		return nil, nil, err
 	}
 

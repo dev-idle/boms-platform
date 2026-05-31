@@ -30,13 +30,7 @@ func (h *MeHandler) Get(c *fiber.Ctx) error {
 	}
 	user, profile, err := h.usecase.Get(c.UserContext(), userID)
 	if err != nil {
-		if errors.Is(err, usecase.ErrMeNotFound) {
-			return writeAppError(c, usecase.ErrMeNotFound)
-		}
-		if errors.Is(err, domainuser.ErrProfileNotFound) {
-			return writeAppError(c, apperrors.ErrProfileNotFound)
-		}
-		return err
+		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, toMeResponse(user, profile))
 }
@@ -63,10 +57,7 @@ func (h *MeHandler) Patch(c *fiber.Ctx) error {
 	}
 	user, profile, err := h.usecase.UpdateProfile(c.UserContext(), userID, req)
 	if err != nil {
-		if errors.Is(err, domainuser.ErrProfileNotFound) {
-			return writeAppError(c, apperrors.ErrProfileNotFound)
-		}
-		return err
+		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, toMeResponse(user, profile))
 }
@@ -89,7 +80,7 @@ func (h *MeHandler) PatchPassword(c *fiber.Ctx) error {
 		})
 	}
 	if err := h.usecase.ChangePassword(c.UserContext(), userID, req.OldPassword, req.NewPassword); err != nil {
-		return err
+		return writeMapUsecaseError(c, err)
 	}
 	return response.NoContent(c)
 }
@@ -108,7 +99,7 @@ func (h *MeHandler) Delete(c *fiber.Ctx) error {
 				"Only customers can self-delete",
 			))
 		}
-		return err
+		return writeMapUsecaseError(c, err)
 	}
 	return response.NoContent(c)
 }

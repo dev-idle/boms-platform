@@ -211,6 +211,8 @@ func RequirePasswordChanged(sessions port.SessionStore) fiber.Handler {
 			}
 			return c.Next()
 		}
+		// Invariant: mutating routes use RequireAuthWithSession so session meta is in Locals.
+		// This branch only runs for mis-wired routes; allow through rather than block reads without Redis.
 		sessionID, hasSession := GetSessionID(c)
 		if !hasSession || sessions == nil {
 			return c.Next()

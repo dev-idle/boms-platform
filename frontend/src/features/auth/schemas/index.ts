@@ -30,6 +30,7 @@ export const refreshResponseSchema = z.object({
   access_token: z.string().min(1),
   token_type: z.string(),
   expires_in: z.number().int().positive(),
+  must_change_password: z.boolean().optional(),
 });
 
 export const registerSchema = z.object({

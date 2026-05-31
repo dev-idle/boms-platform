@@ -38,12 +38,13 @@ type Querier interface {
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 	//  LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 	//  LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-	//  WHERE (
+	//  WHERE u.deleted_at IS NULL
+	//    AND (
 	//      $1::text = ''
 	//      OR u.email ILIKE '%' || $1 || '%'
 	//      OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
 	//      OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
-	//  )
+	//    )
 	//  ORDER BY u.created_at DESC
 	//  LIMIT $2 OFFSET $3
 	AdminList(ctx context.Context, arg AdminListParams) ([]AdminListRow, error)
@@ -54,12 +55,13 @@ type Querier interface {
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 	//  LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 	//  LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-	//  WHERE (
+	//  WHERE u.deleted_at IS NULL
+	//    AND (
 	//      $1::text = ''
 	//      OR u.email ILIKE '%' || $1 || '%'
 	//      OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
 	//      OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
-	//  )
+	//    )
 	AdminListCount(ctx context.Context, dollar_1 string) (int64, error)
 	//ClearMustChangePassword
 	//

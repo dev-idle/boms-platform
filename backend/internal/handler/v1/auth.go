@@ -42,10 +42,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	}
 	user, err := h.usecase.Register(c.UserContext(), req)
 	if err != nil {
-		if errors.Is(err, usecase.ErrEmailExists) {
-			return writeAppError(c, usecase.ErrEmailExists)
-		}
-		return err
+		return writeMapUsecaseError(c, err)
 	}
 	return response.Created(c, toUserResponse(user))
 }
@@ -66,24 +63,16 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 	access, refresh, user, err := h.usecase.Login(c.UserContext(), req, c.Get(fiber.HeaderUserAgent), c.IP())
 	if err != nil {
-		if errors.Is(err, apperrors.ErrInvalidCredentials) {
-			return writeAppError(c, apperrors.ErrInvalidCredentials)
-		}
-		return err
+		return writeMapUsecaseError(c, err)
 	}
 	writeRefreshCookie(c, h.cfg, refresh)
 	noStore(c)
-	var mustChange *bool
-	if user.MustChangePassword {
-		v := true
-		mustChange = &v
-	}
 	return response.OK(c, dto.TokenResponse{
 		AccessToken:        access,
 		TokenType:          "Bearer",
 		ExpiresIn:          int(h.cfg.JWT.AccessTTL.Seconds()),
 		User:               toUserResponse(user),
-		MustChangePassword: mustChange,
+		MustChangePassword: mustChangePasswordPtr(user.MustChangePassword),
 	})
 }
 
@@ -94,24 +83,20 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	if refresh == "" {
 		return writeAppError(c, apperrors.ErrMissingRefreshToken)
 	}
-	access, newRefresh, err := h.usecase.Refresh(c.UserContext(), refresh, c.Get(fiber.HeaderUserAgent), c.IP())
+	access, newRefresh, mustChange, err := h.usecase.Refresh(c.UserContext(), refresh, c.Get(fiber.HeaderUserAgent), c.IP())
 	if err != nil {
-		if errors.Is(err, apperrors.ErrInvalidRefreshToken) {
+		if errors.Is(err, apperrors.ErrInvalidRefreshToken) || errors.Is(err, apperrors.ErrSessionRevoked) {
 			clearRefreshCookie(c, h.cfg)
-			return writeAppError(c, apperrors.ErrInvalidRefreshToken)
 		}
-		if errors.Is(err, apperrors.ErrSessionRevoked) {
-			clearRefreshCookie(c, h.cfg)
-			return writeAppError(c, apperrors.ErrSessionRevoked)
-		}
-		return err
+		return writeMapUsecaseError(c, err)
 	}
 	writeRefreshCookie(c, h.cfg, newRefresh)
 	noStore(c)
 	return response.OK(c, dto.RefreshResponse{
-		AccessToken: access,
-		TokenType:   "Bearer",
-		ExpiresIn:   int(h.cfg.JWT.AccessTTL.Seconds()),
+		AccessToken:        access,
+		TokenType:          "Bearer",
+		ExpiresIn:          int(h.cfg.JWT.AccessTTL.Seconds()),
+		MustChangePassword: mustChangePasswordPtr(mustChange),
 	})
 }
 

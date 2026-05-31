@@ -1,8 +1,6 @@
 package v1
 
 import (
-	"errors"
-
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/middleware"
@@ -47,7 +45,7 @@ func (h *AdminUserHandler) List(c *fiber.Ctx) error {
 
 	items, total, page, pageSize, err := h.usecase.List(c.UserContext(), page, pageSize, search)
 	if err != nil {
-		return err
+		return h.mapError(c, err)
 	}
 	return response.OKPaginated(c, items, int(page), int(pageSize), total)
 }
@@ -153,24 +151,7 @@ func (h *AdminUserHandler) RevokeSessions(c *fiber.Ctx) error {
 }
 
 func (h *AdminUserHandler) mapError(c *fiber.Ctx, err error) error {
-	switch {
-	case errors.Is(err, domainuser.ErrCannotModifySelf):
-		return writeAppError(c, apperrors.ErrCannotModifySelf)
-	case errors.Is(err, domainuser.ErrInvalidRoleTransition):
-		return writeAppError(c, apperrors.ErrInvalidRoleTransition)
-	case errors.Is(err, domainuser.ErrEmployeeCodeExists):
-		return writeAppError(c, apperrors.ErrEmployeeCodeExists)
-	case errors.Is(err, apperrors.ErrNotFound):
-		return writeAppError(c, apperrors.ErrNotFound)
-	case errors.Is(err, apperrors.ErrConflict):
-		return writeAppError(c, apperrors.ErrConflict)
-	default:
-		var appErr *apperrors.AppError
-		if errors.As(err, &appErr) {
-			return writeAppError(c, appErr)
-		}
-		return err
-	}
+	return writeMapUsecaseError(c, err)
 }
 
 func actorFromCtx(c *fiber.Ctx) (uuid.UUID, domainuser.Role, error) {

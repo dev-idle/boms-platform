@@ -229,7 +229,7 @@ func mapUserQueryError(err error, op string) error {
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		return apperrors.ErrConflict
 	}
-	return fmt.Errorf("%s: %w", op, err)
+	return apperrors.Errorf("%s: %w", op, err)
 }
 
 func mapUserFields(

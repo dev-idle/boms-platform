@@ -98,7 +98,9 @@ Canonical implementation: `GET /admin/users` (`handler/v1/admin_user.go`, `useca
 | Feature defaults & max `page_size` | `usecase/*_list_page.go` (int32 const + derived query default string; e.g. admin: 20 / 100) |
 | SQL `LIMIT`/`OFFSET` | `port.*Params` as `int32`; usecase returns effective page values for `OKPaginated` meta |
 
-**Rules:** normalize once in usecase (zero-trust); handler does not duplicate clamp; never `strconv.Atoi` → `int` → `int32` for SQL limits. Agent detail: `.cursor/rules/backend-pagination-query.mdc` (local).
+**Rules:** normalize once in usecase (zero-trust); handler does not duplicate clamp; never `strconv.Atoi` → `int` → `int32` for SQL limits. Admin list excludes soft-deleted users (`deleted_at IS NULL`). Agent detail: `.cursor/rules/backend-pagination-query.mdc` (local).
+
+**Handler errors:** map usecase failures with `handler/v1/writeMapUsecaseError` — see `.cursor/rules/backend-handler-errors.mdc` (local).
 
 ---
 

@@ -104,16 +104,6 @@ func AuthLogoutRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) f
 	}, cfg.AuthLogoutMax, cfg.AuthLogoutWindow, true)
 }
 
-// AuthUserRateLimit limits authenticated routes per user id (optional; wire on sensitive authed endpoints).
-func AuthUserRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
-	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
-		if uid, ok := GetUserID(c); ok {
-			return "rl:user:" + uid.String() + ":auth"
-		}
-		return "rl:ip:" + c.IP() + ":auth"
-	}, cfg.AuthUserMax, cfg.AuthUserWindow, true)
-}
-
 // AdminWriteRateLimit limits admin write operations per user.
 func AdminWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {

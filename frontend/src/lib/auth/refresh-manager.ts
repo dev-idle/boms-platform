@@ -66,11 +66,14 @@ async function performRefresh(): Promise<void> {
     });
   }
 
-  const { setTokens } = useAuthStore.getState();
+  const { setTokens, user, updateUser } = useAuthStore.getState();
   setTokens({
     accessToken: parsed.data.access_token,
     expiresIn: parsed.data.expires_in,
   });
+  if (user && parsed.data.must_change_password !== undefined) {
+    updateUser({ ...user, must_change_password: parsed.data.must_change_password });
+  }
   scheduleRefresh(useAuthStore.getState().expiresAt);
 }
 
