@@ -32,7 +32,7 @@ func (r *AdminProfileRepository) Create(ctx context.Context, params port.UpsertA
 		Phone:    toNullString(params.Phone),
 	})
 	if err != nil {
-		return nil, mapUserQueryError(err, "create admin profile")
+		return nil, mapRepoError(err, "create admin profile")
 	}
 	return mapAdminProfile(row), nil
 }
@@ -40,7 +40,7 @@ func (r *AdminProfileRepository) Create(ctx context.Context, params port.UpsertA
 func (r *AdminProfileRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*domainprofile.Admin, error) {
 	row, err := r.q(ctx).GetAdminProfileByUserID(ctx, userID)
 	if err != nil {
-		return nil, mapUserQueryError(err, "get admin profile")
+		return nil, mapRepoError(err, "get admin profile")
 	}
 	return mapAdminProfile(row), nil
 }
@@ -52,7 +52,7 @@ func (r *AdminProfileRepository) UpdateByUserID(ctx context.Context, params port
 		Phone:    toNullString(params.Phone),
 	})
 	if err != nil {
-		return nil, mapUserQueryError(err, "update admin profile")
+		return nil, mapRepoError(err, "update admin profile")
 	}
 	return mapAdminProfile(row), nil
 }
@@ -60,10 +60,10 @@ func (r *AdminProfileRepository) UpdateByUserID(ctx context.Context, params port
 func (r *AdminProfileRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
 	rows, err := r.q(ctx).DeleteAdminProfileByUserID(ctx, userID)
 	if err != nil {
-		return mapUserQueryError(err, "delete admin profile")
+		return mapRepoError(err, "delete admin profile")
 	}
 	if rows == 0 {
-		return mapUserQueryError(sql.ErrNoRows, "delete admin profile")
+		return mapRepoError(sql.ErrNoRows, "delete admin profile")
 	}
 	return nil
 }

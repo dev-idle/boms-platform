@@ -88,7 +88,7 @@ func mapStaffProfile(row sqlcgen.StaffProfile) *domainprofile.Staff {
 }
 
 func mapStaffError(err error, op string) error {
-	return mapUserQueryError(err, op)
+	return mapRepoError(err, op)
 }
 
 var _ port.StaffProfileRepository = (*StaffProfileRepository)(nil)

@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -77,7 +76,7 @@ func (u *AdminUserUsecase) CreateOperationalUser(
 	}
 	hash, err := u.hasher.Hash(tempPassword)
 	if err != nil {
-		return nil, fmt.Errorf("hash temp password: %w", err)
+		return nil, apperrors.Errorf("hash temp password: %w", err)
 	}
 
 	var user *domainuser.User

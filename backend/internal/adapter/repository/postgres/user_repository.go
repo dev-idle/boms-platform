@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -12,8 +11,6 @@ import (
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // UserRepository implements port.UserRepository using sqlc-generated queries.
@@ -46,7 +43,7 @@ func (r *UserRepository) Create(ctx context.Context, params port.CreateUserParam
 		MustChangePassword: params.MustChangePassword,
 	})
 	if err != nil {
-		return nil, mapUserQueryError(err, "create user")
+		return nil, mapRepoError(err, "create user")
 	}
 	return mapUserFields(
 		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
@@ -66,7 +63,7 @@ func (r *UserRepository) AdminCreate(ctx context.Context, params port.CreateUser
 		MustChangePassword: params.MustChangePassword,
 	})
 	if err != nil {
-		return nil, mapUserQueryError(err, "admin create user")
+		return nil, mapRepoError(err, "admin create user")
 	}
 	return mapUserFields(
 		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
@@ -77,7 +74,7 @@ func (r *UserRepository) AdminCreate(ctx context.Context, params port.CreateUser
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domainuser.User, error) {
 	row, err := r.q(ctx).GetUserByEmail(ctx, email)
 	if err != nil {
-		return nil, mapUserQueryError(err, "get user by email")
+		return nil, mapRepoError(err, "get user by email")
 	}
 	return mapUserFields(
 		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
@@ -88,7 +85,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domainu
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
 	row, err := r.q(ctx).GetUserByID(ctx, id)
 	if err != nil {
-		return nil, mapUserQueryError(err, "get user by id")
+		return nil, mapRepoError(err, "get user by id")
 	}
 	return mapUserFields(
 		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
@@ -99,7 +96,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainuser
 func (r *UserRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
 	row, err := r.q(ctx).GetUserByIDForUpdate(ctx, id)
 	if err != nil {
-		return nil, mapUserQueryError(err, "get user by id for update")
+		return nil, mapRepoError(err, "get user by id for update")
 	}
 	return mapUserFields(
 		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
@@ -113,7 +110,7 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, passw
 		PasswordHash: passwordHash,
 	})
 	if err != nil {
-		return mapUserQueryError(err, "update password")
+		return mapRepoError(err, "update password")
 	}
 	if rows == 0 {
 		return apperrors.ErrNotFound
@@ -132,7 +129,7 @@ func (r *UserRepository) UpdateRole(ctx context.Context, id uuid.UUID, role doma
 		Role: sqlRole,
 	})
 	if err != nil {
-		return mapUserQueryError(err, "update user role")
+		return mapRepoError(err, "update user role")
 	}
 	if rows == 0 {
 		return apperrors.ErrNotFound
@@ -144,7 +141,7 @@ func (r *UserRepository) UpdateRole(ctx context.Context, id uuid.UUID, role doma
 func (r *UserRepository) SetMustChangePassword(ctx context.Context, id uuid.UUID) error {
 	rows, err := r.q(ctx).SetMustChangePassword(ctx, id)
 	if err != nil {
-		return mapUserQueryError(err, "set must change password")
+		return mapRepoError(err, "set must change password")
 	}
 	if rows == 0 {
 		return apperrors.ErrNotFound
@@ -156,7 +153,7 @@ func (r *UserRepository) SetMustChangePassword(ctx context.Context, id uuid.UUID
 func (r *UserRepository) ClearMustChangePassword(ctx context.Context, id uuid.UUID) error {
 	rows, err := r.q(ctx).ClearMustChangePassword(ctx, id)
 	if err != nil {
-		return mapUserQueryError(err, "clear must change password")
+		return mapRepoError(err, "clear must change password")
 	}
 	if rows == 0 {
 		return apperrors.ErrNotFound
@@ -168,7 +165,7 @@ func (r *UserRepository) ClearMustChangePassword(ctx context.Context, id uuid.UU
 func (r *UserRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	rows, err := r.q(ctx).SoftDelete(ctx, id)
 	if err != nil {
-		return mapUserQueryError(err, "soft delete user")
+		return mapRepoError(err, "soft delete user")
 	}
 	if rows == 0 {
 		return apperrors.ErrNotFound
@@ -184,11 +181,11 @@ func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUse
 		Offset:  params.Offset,
 	})
 	if err != nil {
-		return nil, 0, mapUserQueryError(err, "admin list users")
+		return nil, 0, mapRepoError(err, "admin list users")
 	}
 	total, err := r.q(ctx).AdminListCount(ctx, params.Search)
 	if err != nil {
-		return nil, 0, mapUserQueryError(err, "admin list count")
+		return nil, 0, mapRepoError(err, "admin list count")
 	}
 
 	out := make([]port.AdminListUser, 0, len(rows))
@@ -219,17 +216,6 @@ func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUse
 	}
 
 	return out, total, nil
-}
-
-func mapUserQueryError(err error, op string) error {
-	if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
-		return apperrors.ErrNotFound
-	}
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return apperrors.ErrConflict
-	}
-	return apperrors.Errorf("%s: %w", op, err)
 }
 
 func mapUserFields(

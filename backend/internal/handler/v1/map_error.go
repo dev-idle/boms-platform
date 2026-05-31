@@ -28,6 +28,14 @@ func writeMapUsecaseError(c *fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrConflict)
 	case errors.Is(err, apperrors.ErrInvalidCredentials):
 		return writeAppError(c, apperrors.ErrInvalidCredentials)
+	case errors.Is(err, apperrors.ErrInvalidRefreshToken):
+		return writeAppError(c, apperrors.ErrInvalidRefreshToken)
+	case errors.Is(err, apperrors.ErrMissingRefreshToken):
+		return writeAppError(c, apperrors.ErrMissingRefreshToken)
+	case errors.Is(err, apperrors.ErrSessionRevoked):
+		return writeAppError(c, apperrors.ErrSessionRevoked)
+	case errors.Is(err, apperrors.ErrTokenExpired):
+		return writeAppError(c, apperrors.ErrTokenExpired)
 	case errors.Is(err, apperrors.ErrForbidden):
 		return writeAppError(c, apperrors.ErrForbidden)
 	case errors.Is(err, domainuser.ErrProfileNotFound):

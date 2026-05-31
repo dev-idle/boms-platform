@@ -34,11 +34,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "invalid_body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, apperrors.ErrValidation.StatusCode, &response.ErrorBody{
-			Code:    apperrors.ErrValidation.Code,
-			Message: apperrors.ErrValidation.Message,
-			Details: sharevalidator.FieldErrors(err),
-		})
+		return writeValidationError(c, err)
 	}
 	user, err := h.usecase.Register(c.UserContext(), req)
 	if err != nil {
@@ -55,11 +51,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "invalid_body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, apperrors.ErrValidation.StatusCode, &response.ErrorBody{
-			Code:    apperrors.ErrValidation.Code,
-			Message: apperrors.ErrValidation.Message,
-			Details: sharevalidator.FieldErrors(err),
-		})
+		return writeValidationError(c, err)
 	}
 	access, refresh, user, err := h.usecase.Login(c.UserContext(), req, c.Get(fiber.HeaderUserAgent), c.IP())
 	if err != nil {

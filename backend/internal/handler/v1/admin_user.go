@@ -29,7 +29,7 @@ func (h *AdminUserHandler) Get(c *fiber.Ctx) error {
 	}
 	out, err := h.usecase.Get(c.UserContext(), targetID)
 	if err != nil {
-		return h.mapError(c, err)
+		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, out)
 }
@@ -45,7 +45,7 @@ func (h *AdminUserHandler) List(c *fiber.Ctx) error {
 
 	items, total, page, pageSize, err := h.usecase.List(c.UserContext(), page, pageSize, search)
 	if err != nil {
-		return h.mapError(c, err)
+		return writeMapUsecaseError(c, err)
 	}
 	return response.OKPaginated(c, items, int(page), int(pageSize), total)
 }
@@ -65,7 +65,7 @@ func (h *AdminUserHandler) Create(c *fiber.Ctx) error {
 	}
 	out, err := h.usecase.CreateOperationalUser(c.UserContext(), actorID, actorRole, req)
 	if err != nil {
-		return h.mapError(c, err)
+		return writeMapUsecaseError(c, err)
 	}
 	return response.Created(c, out)
 }
@@ -89,7 +89,7 @@ func (h *AdminUserHandler) PatchProfile(c *fiber.Ctx) error {
 	}
 	out, err := h.usecase.UpdateOperationalProfile(c.UserContext(), actorID, actorRole, targetID, req)
 	if err != nil {
-		return h.mapError(c, err)
+		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, out)
 }
@@ -113,7 +113,7 @@ func (h *AdminUserHandler) PatchRole(c *fiber.Ctx) error {
 	}
 	out, err := h.usecase.UpdateRole(c.UserContext(), actorID, actorRole, targetID, req)
 	if err != nil {
-		return h.mapError(c, err)
+		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, out)
 }
@@ -129,7 +129,7 @@ func (h *AdminUserHandler) PatchDisable(c *fiber.Ctx) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid user id"))
 	}
 	if err := h.usecase.Disable(c.UserContext(), actorID, actorRole, targetID); err != nil {
-		return h.mapError(c, err)
+		return writeMapUsecaseError(c, err)
 	}
 	return response.NoContent(c)
 }
@@ -145,13 +145,9 @@ func (h *AdminUserHandler) RevokeSessions(c *fiber.Ctx) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid user id"))
 	}
 	if err := h.usecase.RevokeSessions(c.UserContext(), actorID, actorRole, targetID); err != nil {
-		return h.mapError(c, err)
+		return writeMapUsecaseError(c, err)
 	}
 	return response.NoContent(c)
-}
-
-func (h *AdminUserHandler) mapError(c *fiber.Ctx, err error) error {
-	return writeMapUsecaseError(c, err)
 }
 
 func actorFromCtx(c *fiber.Ctx) (uuid.UUID, domainuser.Role, error) {

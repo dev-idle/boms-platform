@@ -49,7 +49,7 @@ func (r *AuditLogRepository) Create(ctx context.Context, params port.CreateAudit
 		Column8:     ip,
 		UserAgent:   ua,
 	})
-	return mapUserQueryError(err, "create audit log")
+	return mapRepoError(err, "create audit log")
 }
 
 var _ port.AuditLogRepository = (*AuditLogRepository)(nil)

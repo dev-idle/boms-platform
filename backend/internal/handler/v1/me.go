@@ -46,11 +46,7 @@ func (h *MeHandler) Patch(c *fiber.Ctx) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, apperrors.ErrValidation.StatusCode, &response.ErrorBody{
-			Code:    apperrors.ErrValidation.Code,
-			Message: apperrors.ErrValidation.Message,
-			Details: sharevalidator.FieldErrors(err),
-		})
+		return writeValidationError(c, err)
 	}
 	if role, ok := middleware.GetRole(c); ok {
 		sanitizeSelfProfileUpdate(role, &req)
@@ -73,11 +69,7 @@ func (h *MeHandler) PatchPassword(c *fiber.Ctx) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
-		return response.Error(c, apperrors.ErrValidation.StatusCode, &response.ErrorBody{
-			Code:    apperrors.ErrValidation.Code,
-			Message: apperrors.ErrValidation.Message,
-			Details: sharevalidator.FieldErrors(err),
-		})
+		return writeValidationError(c, err)
 	}
 	if err := h.usecase.ChangePassword(c.UserContext(), userID, req.OldPassword, req.NewPassword); err != nil {
 		return writeMapUsecaseError(c, err)

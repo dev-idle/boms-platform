@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
 	domainprofile "github.com/boms/backend/internal/domain/profile"
@@ -141,7 +140,7 @@ func (u *MeUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldPwd
 	}
 	hash, err := u.hasher.Hash(newPwd)
 	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
+		return apperrors.Errorf("hash password: %w", err)
 	}
 	if err := u.users.UpdatePassword(ctx, userID, hash); err != nil {
 		return err

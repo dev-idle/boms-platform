@@ -32,7 +32,7 @@ func (r *CustomerProfileRepository) Create(ctx context.Context, params port.Upse
 		Phone:       toNullString(params.Phone),
 	})
 	if err != nil {
-		return nil, mapUserQueryError(err, "create customer profile")
+		return nil, mapRepoError(err, "create customer profile")
 	}
 	return mapCustomerProfile(row), nil
 }
@@ -40,7 +40,7 @@ func (r *CustomerProfileRepository) Create(ctx context.Context, params port.Upse
 func (r *CustomerProfileRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*domainprofile.Customer, error) {
 	row, err := r.q(ctx).GetCustomerProfileByUserID(ctx, userID)
 	if err != nil {
-		return nil, mapUserQueryError(err, "get customer profile")
+		return nil, mapRepoError(err, "get customer profile")
 	}
 	return mapCustomerProfile(row), nil
 }
@@ -52,7 +52,7 @@ func (r *CustomerProfileRepository) UpdateByUserID(ctx context.Context, params p
 		Phone:       toNullString(params.Phone),
 	})
 	if err != nil {
-		return nil, mapUserQueryError(err, "update customer profile")
+		return nil, mapRepoError(err, "update customer profile")
 	}
 	return mapCustomerProfile(row), nil
 }
@@ -60,10 +60,10 @@ func (r *CustomerProfileRepository) UpdateByUserID(ctx context.Context, params p
 func (r *CustomerProfileRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
 	rows, err := r.q(ctx).DeleteCustomerProfileByUserID(ctx, userID)
 	if err != nil {
-		return mapUserQueryError(err, "delete customer profile")
+		return mapRepoError(err, "delete customer profile")
 	}
 	if rows == 0 {
-		return mapUserQueryError(sql.ErrNoRows, "delete customer profile")
+		return mapRepoError(sql.ErrNoRows, "delete customer profile")
 	}
 	return nil
 }

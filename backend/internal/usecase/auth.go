@@ -72,7 +72,7 @@ func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	req.Email = utils.NormalizeEmail(req.Email)
 	hash, err := a.hasher.Hash(req.Password)
 	if err != nil {
-		return nil, fmt.Errorf("hash password: %w", err)
+		return nil, apperrors.Errorf("hash password: %w", err)
 	}
 	var user *domainuser.User
 	runWithTx := func(txCtx context.Context) error {
@@ -87,7 +87,7 @@ func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*d
 			return createErr
 		}
 		if a.customerProfileRepo == nil {
-			return fmt.Errorf("customer profile repository is required")
+			return apperrors.Errorf("customer profile repository is required")
 		}
 		_, createErr = a.customerProfileRepo.Create(txCtx, port.UpsertCustomerProfileParams{
 			UserID: user.ID,
@@ -103,7 +103,7 @@ func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		if errors.Is(err, apperrors.ErrConflict) {
 			return nil, ErrEmailExists
 		}
-		return nil, fmt.Errorf("create user: %w", err)
+		return nil, apperrors.Errorf("create user: %w", err)
 	}
 	return user, nil
 }
@@ -113,7 +113,7 @@ func (a *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest, userAgent
 	req.Email = utils.NormalizeEmail(req.Email)
 	user, err = a.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil && !errors.Is(err, apperrors.ErrNotFound) {
-		return "", "", nil, fmt.Errorf("get user by email: %w", err)
+		return "", "", nil, apperrors.Errorf("get user by email: %w", err)
 	}
 
 	hashToCheck := a.dummyHash
@@ -137,7 +137,7 @@ func (a *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest, userAgent
 		IP:                 ip,
 		MustChangePassword: user.MustChangePassword,
 	}); err != nil {
-		return "", "", nil, fmt.Errorf("create session: %w", err)
+		return "", "", nil, apperrors.Errorf("create session: %w", err)
 	}
 
 	accessToken, err = a.signer.SignAccess(port.AccessTokenClaims{
@@ -147,7 +147,7 @@ func (a *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest, userAgent
 		JTI:       uuid.NewString(),
 	})
 	if err != nil {
-		return "", "", nil, fmt.Errorf("sign access: %w", err)
+		return "", "", nil, apperrors.Errorf("sign access: %w", err)
 	}
 	refreshToken, err = a.signer.SignRefresh(port.RefreshTokenClaims{
 		Subject:   user.ID.String(),
@@ -155,7 +155,7 @@ func (a *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest, userAgent
 		JTI:       jti,
 	})
 	if err != nil {
-		return "", "", nil, fmt.Errorf("sign refresh: %w", err)
+		return "", "", nil, apperrors.Errorf("sign refresh: %w", err)
 	}
 
 	if a.log != nil {
@@ -243,7 +243,7 @@ const (
 // Logout removes a single session (idempotent — missing key is OK).
 func (a *AuthUsecase) Logout(ctx context.Context, userID, sessionID string) error {
 	if err := a.sessionStore.Delete(ctx, userID, sessionID); err != nil {
-		return fmt.Errorf("delete session: %w", err)
+		return apperrors.Errorf("delete session: %w", err)
 	}
 	return nil
 }
@@ -295,23 +295,23 @@ func (a *AuthUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldP
 		if errors.Is(err, apperrors.ErrNotFound) {
 			return ErrUserNotFound
 		}
-		return fmt.Errorf("get user: %w", err)
+		return apperrors.Errorf("get user: %w", err)
 	}
 	if err := a.hasher.Verify(user.PasswordHash, oldPwd); err != nil {
 		return apperrors.ErrInvalidCredentials
 	}
 	hash, err := a.hasher.Hash(newPwd)
 	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
+		return apperrors.Errorf("hash password: %w", err)
 	}
 	if err := a.userRepo.UpdatePassword(ctx, userID, hash); err != nil {
-		return fmt.Errorf("update password: %w", err)
+		return apperrors.Errorf("update password: %w", err)
 	}
 	if err := a.userRepo.ClearMustChangePassword(ctx, userID); err != nil && !errors.Is(err, apperrors.ErrNotFound) {
-		return fmt.Errorf("clear must-change-password: %w", err)
+		return apperrors.Errorf("clear must-change-password: %w", err)
 	}
 	if err := a.sessionStore.DeleteAllForUser(ctx, userID.String()); err != nil {
-		return fmt.Errorf("revoke sessions: %w", err)
+		return apperrors.Errorf("revoke sessions: %w", err)
 	}
 	return nil
 }
