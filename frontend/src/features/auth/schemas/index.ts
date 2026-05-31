@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import { USER_ROLE } from "@/constants/roles";
+import {
+  refreshResponseSchema,
+  type RefreshResponse,
+} from "@/lib/schemas/auth";
+import { newPasswordZodString } from "@/lib/validation/password";
 
 const userRoleSchema = z.enum([
   USER_ROLE.customer,
@@ -26,22 +31,11 @@ export const tokenResponseSchema = z.object({
   must_change_password: z.boolean().optional(),
 });
 
-export const refreshResponseSchema = z.object({
-  access_token: z.string().min(1),
-  token_type: z.string(),
-  expires_in: z.number().int().positive(),
-  must_change_password: z.boolean().optional(),
-});
+export { refreshResponseSchema, type RefreshResponse };
 
 export const registerSchema = z.object({
   email: z.string().trim().email("Enter a valid email address").max(255),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(128, "Password must be at most 128 characters")
-    .refine((value) => /[A-Z]/.test(value) && /\d/.test(value), {
-      message: "Password must include an uppercase letter and a digit",
-    }),
+  password: newPasswordZodString(),
 });
 
 export const loginSchema = z.object({
@@ -51,6 +45,5 @@ export const loginSchema = z.object({
 
 export type User = z.infer<typeof userSchema>;
 export type TokenResponse = z.infer<typeof tokenResponseSchema>;
-export type RefreshResponse = z.infer<typeof refreshResponseSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

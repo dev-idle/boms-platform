@@ -3,7 +3,7 @@
 import type { ZodType } from "zod";
 
 import { ApiError, ApiErrorCode } from "@/lib/errors";
-import { apiEnvelopeSchema } from "@/lib/api-envelope";
+import { parseApiEnvelope, parseResponseBody } from "@/lib/api-envelope";
 import { useAuthStore } from "@/stores/auth-store";
 
 const REQUEST_TIMEOUT_MS = 25_000;
@@ -37,20 +37,8 @@ function buildUrl(path: string): string {
   return normalized;
 }
 
-async function parseJsonSafe(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) {
-    return null;
-  }
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return null;
-  }
-}
-
 function throwFromResponse(status: number, payload: unknown): never {
-  const envelope = apiEnvelopeSchema.safeParse(payload);
+  const envelope = parseApiEnvelope(payload);
   if (envelope.success && envelope.data.error) {
     throw new ApiError(status, envelope.data.error);
   }
@@ -114,20 +102,20 @@ async function executeRequest<T>(
       await refreshNow();
       return executeRequest<T>(path, init, true);
     }
-    throwFromResponse(response.status, await parseJsonSafe(response));
+    throwFromResponse(response.status, await parseResponseBody(response));
   }
 
   if (response.status === 204) {
     return undefined as T;
   }
 
-  const payload = await parseJsonSafe(response);
+  const payload = await parseResponseBody(response);
 
   if (!response.ok) {
     throwFromResponse(response.status, payload);
   }
 
-  const envelope = apiEnvelopeSchema.safeParse(payload);
+  const envelope = parseApiEnvelope(payload);
   if (!envelope.success) {
     throw new ApiError(502, {
       code: ApiErrorCode.InvalidResponse,

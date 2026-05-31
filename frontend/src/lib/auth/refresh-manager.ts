@@ -1,6 +1,6 @@
 "use client";
 
-import { refreshResponseSchema } from "@/features/auth/schemas";
+import { refreshResponseSchema } from "@/lib/schemas/auth";
 import { ROUTE } from "@/constants/routes";
 import { ApiError, ApiErrorCode } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";

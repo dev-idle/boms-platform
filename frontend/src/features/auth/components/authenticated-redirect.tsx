@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { homeRouteForRole } from "@/features/user/lib/role-routes";
+import { homeRouteForRole } from "@/lib/routing/role-routes";
 import { validateNextForRole } from "@/lib/validate-next";
 import { useAuthStore } from "@/stores/auth-store";
 

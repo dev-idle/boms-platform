@@ -12,14 +12,14 @@ import { getMe as getMeFromUserApi } from "@/features/user/api";
 import {
   homeRouteForRole,
   passwordRouteForRole,
-} from "@/features/user/lib/role-routes";
+} from "@/lib/routing/role-routes";
 
 import { login, logout, register } from "../api";
 import { resetRefreshManager, scheduleRefresh } from "@/lib/auth";
 import type { LoginInput, RegisterInput } from "../schemas";
 import { userQueryKeys } from "@/features/user/hooks/query-options";
 
-export { meQueryOptions, userQueryKeys } from "./query-options";
+export { meQueryOptions, userQueryKeys } from "@/features/user/hooks/query-options";
 export { useMe } from "@/features/user/hooks";
 
 export function useRegister() {

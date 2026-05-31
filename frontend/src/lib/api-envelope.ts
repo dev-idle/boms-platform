@@ -21,3 +21,22 @@ export const apiEnvelopeSchema = z.object({
 
 export type ApiErrorBody = z.infer<typeof apiErrorBodySchema>;
 export type ApiEnvelope = z.infer<typeof apiEnvelopeSchema>;
+
+/** Safe JSON body parse — empty or invalid body returns `null` (no throw). */
+export async function parseResponseBody(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+export function parseApiEnvelope(
+  payload: unknown,
+): z.SafeParseReturnType<unknown, ApiEnvelope> {
+  return apiEnvelopeSchema.safeParse(payload);
+}

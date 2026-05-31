@@ -7,6 +7,7 @@ overrides:
 
 # pnpm 11+: lifecycle scripts only for listed deps (supply-chain default).
 allowBuilds:
+  esbuild: true
   sharp: true
   unrs-resolver: true
 

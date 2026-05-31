@@ -7,13 +7,18 @@
     "node": ">=24.0.0",
     "pnpm": ">=11.0.0"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "ci": "pnpm run typecheck && pnpm run lint && pnpm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ci": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build",
     "audit:ci": "pnpm audit --audit-level=high"
   },
   "dependencies": {
@@ -43,6 +48,7 @@
     "eslint": "~9.39.4",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4.3.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

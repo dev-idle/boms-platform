@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { isApiError } from "@/lib/errors";
+import { newPasswordZodString } from "@/lib/validation/password";
 
 import { useChangePassword } from "../hooks";
 
@@ -24,13 +25,7 @@ import { applyValidationDetails } from "./helpers";
 const changePasswordFormSchema = z
   .object({
     old_password: z.string().min(1, "Current password is required"),
-    new_password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .max(128, "Password must be at most 128 characters")
-      .refine((value) => /[A-Z]/.test(value) && /\d/.test(value), {
-        message: "Password must include an uppercase letter and a digit",
-      }),
+    new_password: newPasswordZodString(),
     confirm_password: z.string().min(1, "Confirm your new password"),
   })
   .superRefine((input, ctx) => {

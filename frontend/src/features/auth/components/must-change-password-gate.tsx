@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { useAuthStore } from "@/stores/auth-store";
-import { passwordRouteForRole } from "@/features/user/lib/role-routes";
+import { passwordRouteForRole } from "@/lib/routing/role-routes";
 
 export function MustChangePasswordGate() {
   const status = useAuthStore((state) => state.status);

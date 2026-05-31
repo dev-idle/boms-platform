@@ -1,27 +1,20 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { OperationalRoleShell } from "@/components/layouts/operational-role-shell";
 import { ROUTE } from "@/constants/routes";
-import { LogoutButton, StaffGate } from "@/features/auth";
+import { StaffGate } from "@/features/auth";
 
 export default function StaffLayout({ children }: { children: ReactNode }) {
   return (
     <StaffGate>
-      <div className="min-h-full bg-zinc-50 dark:bg-black">
-        <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-          <nav className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-4 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Staff
-            </span>
-            <Link href={ROUTE.staff.account.profile}>Profile</Link>
-            <Link href={ROUTE.staff.account.password}>Password</Link>
-            <div className="ml-auto flex items-center gap-3">
-              <LogoutButton />
-            </div>
-          </nav>
-        </header>
-        <div className="mx-auto max-w-5xl px-6 py-10">{children}</div>
-      </div>
+      <OperationalRoleShell
+        roleLabel="Staff"
+        labelClassName="text-zinc-500"
+        profileHref={ROUTE.staff.account.profile}
+        passwordHref={ROUTE.staff.account.password}
+      >
+        {children}
+      </OperationalRoleShell>
     </StaffGate>
   );
 }

@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import type { ZodType } from "zod";
 
-import { apiEnvelopeSchema } from "@/lib/api-envelope";
+import { parseApiEnvelope, parseResponseBody } from "@/lib/api-envelope";
 import { getServerEnv } from "@/lib/env";
 import { BomsApiError, BomsValidationError } from "@/lib/errors";
 
@@ -29,20 +29,8 @@ function buildUrl(path: string): string {
   return `${base}${p}`;
 }
 
-async function parseJsonSafe(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) {
-    return null;
-  }
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return null;
-  }
-}
-
 function throwFromEnvelope(status: number, payload: unknown): never {
-  const envelope = apiEnvelopeSchema.safeParse(payload);
+  const envelope = parseApiEnvelope(payload);
   if (envelope.success && envelope.data.error) {
     throw new BomsApiError(envelope.data.error.message, status, payload);
   }
@@ -108,13 +96,13 @@ export class BomsApiClient {
       return undefined as T;
     }
 
-    const payload = await parseJsonSafe(response);
+    const payload = await parseResponseBody(response);
 
     if (!response.ok) {
       throwFromEnvelope(response.status, payload);
     }
 
-    const envelope = apiEnvelopeSchema.safeParse(payload);
+    const envelope = parseApiEnvelope(payload);
     if (!envelope.success) {
       throw new BomsApiError("Response failed envelope validation", 502, payload);
     }

@@ -5,7 +5,7 @@ import { useEffect, type ReactNode } from "react";
 
 import { USER_ROLE, type UserRole } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
-import { homeRouteForRole } from "@/features/user/lib/role-routes";
+import { homeRouteForRole } from "@/lib/routing/role-routes";
 import { useAuthStore } from "@/stores/auth-store";
 
 type RoleGateProps = {

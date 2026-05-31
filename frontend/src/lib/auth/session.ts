@@ -1,14 +1,14 @@
 import { z } from "zod";
 
 import { ApiError, ApiErrorCode, isApiError } from "@/lib/errors";
-import { apiEnvelopeSchema } from "@/lib/api-envelope";
+import { apiEnvelopeSchema, parseResponseBody } from "@/lib/api-envelope";
 
 export async function readApiEnvelope(response: Response): Promise<{
   status: number;
   envelope: z.infer<typeof apiEnvelopeSchema>;
   raw: unknown;
 }> {
-  const raw = await response.json().catch(() => null);
+  const raw = await parseResponseBody(response);
   const parsed = apiEnvelopeSchema.safeParse(raw);
 
   if (!parsed.success) {

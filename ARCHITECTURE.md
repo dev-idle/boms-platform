@@ -102,6 +102,8 @@ Canonical implementation: `GET /admin/users` (`handler/v1/admin_user.go`, `useca
 
 **Handler errors:** map usecase failures with `handler/v1/writeMapUsecaseError` — see `.cursor/rules/backend-handler-errors.mdc` (local).
 
+**Agent / local dev:** `.cursor/rules/backend-overview.mdc` is the BE entry point (links security, pagination, hexagonal, testing). `.cursor/` is per-developer (often gitignored).
+
 ---
 
 ## 3. Frontend — Feature-Sliced layout
@@ -126,12 +128,16 @@ frontend/src/
 │   ├── api-client.ts, browser-api-client.ts, api-envelope.ts
 │   ├── env.ts, utils.ts, validate-next.ts
 │   ├── auth/                    # refresh-manager, session helpers
+│   ├── routing/role-routes.ts   # homeRouteForRole, isPathAllowedForRole, …
+│   ├── schemas/auth.ts          # refreshResponseSchema (lib/auth consumer)
 │   ├── dal/                     # Server data access (RSC)
 │   ├── errors/                  # api-error, server-api-error
-│   └── validation/              # form validation messages
+│   └── validation/              # messages, password.ts (newPasswordZodString)
+├── components/layouts/          # operational-role-shell.tsx (staff/baker/manager chrome)
 ├── stores/                      # Zustand: auth-store only
 ├── constants/                   # routes.ts, roles.ts, cookies.ts
-└── providers/                   # query, theme
+├── providers/                   # query, theme
+└── proxy.ts                     # cookie gate, header strip, X-Internal-Secret
 ```
 
 ### Feature-slice anatomy (auth/user/admin all follow this)
@@ -151,6 +157,23 @@ features/<slice>/
 ├── provider/                    # Context (auth only)
 └── index.ts                     # Public surface (barrel)
 ```
+
+### Shared code placement (no duplicate surfaces)
+
+| Concern | Canonical location |
+|---------|------------------|
+| Routes / role homes | `constants/routes.ts`, `lib/validate-next.ts` |
+| Role route helpers | `lib/routing/role-routes.ts` |
+| API envelope | `lib/api-envelope.ts` — `parseResponseBody`, `parseApiEnvelope` (browser + server clients) |
+| Password complexity (forms) | `lib/validation/password.ts` (`newPasswordZodString`) |
+| Operational account chrome | `components/layouts/operational-role-shell.tsx` |
+| Auth refresh / session | `lib/auth/` + `lib/schemas/auth.ts` (`refreshResponseSchema`) |
+| Validation messages | `lib/validation/messages.ts` |
+| Identity API | `features/user` owns `GET /me` only |
+
+**Rules:** no `features/index.ts` meta-barrel; `app/` pages stay thin; RBAC gates are UX — backend enforces roles.
+
+**Agent / local dev:** `.cursor/rules/frontend-overview.mdc` is the FE entry point (links security, performance, FSD, data, testing). `.cursor/` is per-developer (often gitignored).
 
 ### URL conventions (canonical from `constants/routes.ts`)
 
@@ -180,9 +203,12 @@ features/<slice>/
 
 ### Import discipline
 
-- Cross-feature imports → through `@/features/<slice>` barrel only.
+- Cross-feature imports → through `@/features/<slice>` barrel only (avoid new deep imports; see overview rule).
+- **`lib/` must not import `features/*`** — shared contracts live under `lib/schemas/`, `lib/routing/`, etc.
+- Role route helpers: `@/lib/routing/role-routes` (canonical).
 - Pages import from `@/features/<slice>` or `@/components/ui/*` only.
 - No deep imports like `@/features/admin/components/x` from `app/`.
+- ESLint blocks `@/lib/api-client` outside `lib/dal/*` (server-only boundary).
 
 ---
 
@@ -206,7 +232,7 @@ features/<slice>/
 
 ## 5. Performance principles
 
-- **Backend:** prepared statements via sqlc, paginated queries (max 100), single JOIN for admin user listing, `staleTime` of 5 min on `/me` client-side, `keepPreviousData` for paginated tables.
+- **Backend:** prepared statements via sqlc, paginated queries (max 100), single JOIN for admin user listing, `GET /me` JWT-only (no Redis), session meta cached in Fiber Locals.
 - **JWT:** stateless access JWT for read routes (`GET /me`); Redis session only on writes — limits Redis QPS.
 - **Frontend:** Turbopack build, RSC + Partial Prerendering, route-group code-split per role, Zod parse only at boundary.
 - **Polling avoidance:** TanStack Query cache + invalidation on mutation success.
@@ -234,17 +260,30 @@ features/<slice>/
 ```bash
 # Backend
 cd backend
+go vet ./...
 go test ./...           # all green
 go build ./...          # all packages compile
+golangci-lint run --timeout=4m
 make sqlc-check         # generated code in sync (CI)
 
 # Frontend
 cd frontend
 pnpm typecheck          # tsc --noEmit
+pnpm lint
+pnpm test               # Vitest — validate-next, role-routes, …
 pnpm build              # production build
 ```
 
-CI must run all four. Production deploys block on failure.
+CI must run backend tests + frontend typecheck, lint, test, and build. Production deploys block on failure.
+
+### Production guardrails (enforced in code + CI)
+
+| Area | Backend | Frontend |
+|------|---------|----------|
+| **Security** | `RequireRole` per route; `X-Internal-Secret`; soft-delete filters; session revoke on role/disable | `proxy.ts` strips spoofed headers; `validateNext` / `validateNextForRole`; HttpOnly refresh; access token in memory only |
+| **Performance** | Pagination caps in usecase; `ParseQueryInt32`; `GET /me` no Redis; Locals session meta | 25s fetch timeout; single in-flight refresh; `cache: no-store` on API |
+| **Clean boundaries** | Handler → usecase → port; `mapRepoError` / `writeMapUsecaseError` | `lib/` never imports `features/`; Zod at API boundary; one gate = one role |
+| **Contracts** | `apperrors` codes | `ApiErrorCode` + shared `newPasswordZodString` |
 
 ---
 

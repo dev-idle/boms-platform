@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { newPasswordZodString } from "@/lib/validation/password";
+
 import { USER_ROLE } from "@/constants/roles";
 
 const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
@@ -93,13 +95,7 @@ export const updateSelfProfileSchema = z
 
 export const changePasswordSchema = z.object({
   old_password: z.string().min(1, "Current password is required"),
-  new_password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(128, "Password must be at most 128 characters")
-    .refine((value) => /[A-Z]/.test(value) && /\d/.test(value), {
-      message: "Password must include an uppercase letter and a digit",
-    }),
+  new_password: newPasswordZodString(),
 });
 
 export type UpdateSelfProfileInput = z.infer<typeof updateSelfProfileSchema>;

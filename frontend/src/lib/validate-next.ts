@@ -1,5 +1,5 @@
 import type { UserRole } from "@/constants/roles";
-import { isPathAllowedForRole } from "@/features/user/lib/role-routes";
+import { isPathAllowedForRole } from "@/lib/routing/role-routes";
 
 /**
  * Accepts relative in-app paths only. Rejects open-redirect vectors.
