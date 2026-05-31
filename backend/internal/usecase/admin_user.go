@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -350,37 +349,25 @@ func (u *AdminUserUsecase) Get(ctx context.Context, userID uuid.UUID) (*dto.Admi
 	return u.getAdminUserResponse(ctx, userID)
 }
 
-func (u *AdminUserUsecase) List(ctx context.Context, page, pageSize int, search string) ([]dto.AdminUserResponse, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 20
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	off := int64(page-1) * int64(pageSize)
-	if off > math.MaxInt32 {
-		off = math.MaxInt32
-	}
-	limit := int64(pageSize)
-	if limit > math.MaxInt32 {
-		limit = math.MaxInt32
-	}
-	items, total, err := u.users.AdminList(ctx, port.AdminListUsersParams{
+func (u *AdminUserUsecase) List(
+	ctx context.Context,
+	page, pageSize int32,
+	search string,
+) (items []dto.AdminUserResponse, total int64, effectivePage, effectivePageSize int32, err error) {
+	page, pageSize = NormalizeAdminUserListPage(page, pageSize)
+	rows, total, err := u.users.AdminList(ctx, port.AdminListUsersParams{
 		Search: strings.TrimSpace(search),
-		Limit:  int32(limit),
-		Offset: int32(off),
+		Limit:  pageSize,
+		Offset: utils.PageOffset(page, pageSize),
 	})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, 0, err
 	}
-	out := make([]dto.AdminUserResponse, 0, len(items))
-	for _, item := range items {
+	out := make([]dto.AdminUserResponse, 0, len(rows))
+	for _, item := range rows {
 		out = append(out, mapAdminListItem(item))
 	}
-	return out, total, nil
+	return out, total, page, pageSize, nil
 }
 
 func (u *AdminUserUsecase) getAdminUserResponse(ctx context.Context, userID uuid.UUID) (*dto.AdminUserResponse, error) {

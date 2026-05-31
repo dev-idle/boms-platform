@@ -2,13 +2,13 @@ package v1
 
 import (
 	"errors"
-	"strconv"
 
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/middleware"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
+	"github.com/boms/backend/internal/shared/utils"
 	sharevalidator "github.com/boms/backend/internal/shared/validator"
 	"github.com/boms/backend/internal/usecase"
 	"github.com/gofiber/fiber/v2"
@@ -38,21 +38,18 @@ func (h *AdminUserHandler) Get(c *fiber.Ctx) error {
 
 func (h *AdminUserHandler) List(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
-	page, _ := strconv.Atoi(c.Query("page", "1"))
-	pageSize, _ := strconv.Atoi(c.Query("page_size", "20"))
+	page := utils.ParseQueryInt32(c.Query("page", "1"), 1)
+	pageSize := utils.ParseQueryInt32(
+		c.Query("page_size", usecase.AdminUserListDefaultPageSizeQuery),
+		usecase.AdminUserListDefaultPageSize,
+	)
 	search := c.Query("search", "")
 
-	items, total, err := h.usecase.List(c.UserContext(), page, pageSize, search)
+	items, total, page, pageSize, err := h.usecase.List(c.UserContext(), page, pageSize, search)
 	if err != nil {
 		return err
 	}
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 20
-	}
-	return response.OKPaginated(c, items, page, pageSize, total)
+	return response.OKPaginated(c, items, int(page), int(pageSize), total)
 }
 
 func (h *AdminUserHandler) Create(c *fiber.Ctx) error {
