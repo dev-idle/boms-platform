@@ -351,10 +351,10 @@ func (u *AdminUserUsecase) Get(ctx context.Context, userID uuid.UUID) (*dto.Admi
 
 func (u *AdminUserUsecase) List(
 	ctx context.Context,
-	page, pageSize int32,
+	rawPage, rawPageSize int32,
 	search string,
-) (items []dto.AdminUserResponse, total int64, effectivePage, effectivePageSize int32, err error) {
-	page, pageSize = NormalizeAdminUserListPage(page, pageSize)
+) (items []dto.AdminUserResponse, total int64, page, pageSize int32, err error) {
+	page, pageSize = normalizeAdminUserListPage(rawPage, rawPageSize)
 	rows, total, err := u.users.AdminList(ctx, port.AdminListUsersParams{
 		Search: strings.TrimSpace(search),
 		Limit:  pageSize,

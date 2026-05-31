@@ -87,6 +87,19 @@ domain    ← port    ← usecase / service    ← handler / adapter / cmd
 | SQL query | `<entity>.sql` | `sql/query/user.sql` |
 | Migration | `YYYYMMDDhhmmss_<name>.sql` | `20260524140000_user_profiles.sql` |
 
+### List pagination (offset, CodeQL-safe)
+
+Canonical implementation: `GET /admin/users` (`handler/v1/admin_user.go`, `usecase/admin_user.go`, `usecase/admin_user_list_page.go`).
+
+| Piece | Location |
+|-------|----------|
+| Parse query `page` / `page_size` | `shared/utils.ParseQueryInt32` (`strconv.ParseInt`, bit size 32) |
+| Generic clamp + offset | `shared/utils.NormalizePageParams`, `PageOffset`, `Int32FromInt64` |
+| Feature defaults & max `page_size` | `usecase/*_list_page.go` (int32 const + derived query default string; e.g. admin: 20 / 100) |
+| SQL `LIMIT`/`OFFSET` | `port.*Params` as `int32`; usecase returns effective page values for `OKPaginated` meta |
+
+**Rules:** normalize once in usecase (zero-trust); handler does not duplicate clamp; never `strconv.Atoi` → `int` → `int32` for SQL limits. Agent detail: `.cursor/rules/backend-pagination-query.mdc` (local).
+
 ---
 
 ## 3. Frontend — Feature-Sliced layout
