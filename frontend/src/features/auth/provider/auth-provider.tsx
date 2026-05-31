@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 
 import { useAuthStore } from "@/stores/auth-store";
-import { getMe } from "@/features/user/api";
+import { getMe } from "@/features/user";
 
 import { MustChangePasswordGate } from "../components";
 import {

@@ -5,7 +5,7 @@
  * Client session infra: @/lib/auth (refresh manager — shared with browser-api-client)
  */
 export { login, logout, register } from "./api";
-export { getMe } from "@/features/user/api";
+export { getMe } from "@/features/user";
 export {
   AdminGate,
   BakerGate,

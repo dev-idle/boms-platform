@@ -14,6 +14,7 @@ export {
   StaffAccountProfileForm,
 } from "./components";
 export {
+  meQueryOptions,
   useChangePassword,
   useDeleteAccount,
   useMe,
@@ -25,14 +26,17 @@ export {
   isPathAllowedForRole,
   passwordRouteForRole,
   profileRouteForRole,
-} from "./lib/role-routes";
+  routePrefixesForRole,
+} from "@/lib/routing/role-routes";
 export {
   adminProfileSchema,
+  changePasswordFormSchema,
   changePasswordSchema,
   customerProfileSchema,
   meSchema,
   staffProfileSchema,
   updateSelfProfileSchema,
+  type ChangePasswordFormInput,
   type ChangePasswordInput,
   type UpdateSelfProfileInput,
 } from "./schemas/index";

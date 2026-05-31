@@ -70,7 +70,7 @@ export function RegisterForm() {
           toast.error("Something went wrong. Please try again.");
           return;
         }
-        if (error.code === "EMAIL_EXISTS") {
+        if (error.isEmailExists()) {
           form.setError("email", { message: "Email already registered" });
           return;
         }

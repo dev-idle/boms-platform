@@ -8,7 +8,12 @@ import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { validateNextForRole } from "@/lib/validate-next";
 import { useAuthStore } from "@/stores/auth-store";
-import { getMe as getMeFromUserApi } from "@/features/user/api";
+import {
+  getMe as getMeFromUserApi,
+  meQueryOptions,
+  useMe,
+  userQueryKeys,
+} from "@/features/user";
 import {
   homeRouteForRole,
   passwordRouteForRole,
@@ -17,10 +22,8 @@ import {
 import { login, logout, register } from "../api";
 import { resetRefreshManager, scheduleRefresh } from "@/lib/auth";
 import type { LoginInput, RegisterInput } from "../schemas";
-import { userQueryKeys } from "@/features/user/hooks/query-options";
 
-export { meQueryOptions, userQueryKeys } from "@/features/user/hooks/query-options";
-export { useMe } from "@/features/user/hooks";
+export { meQueryOptions, useMe, userQueryKeys };
 
 export function useRegister() {
   const router = useRouter();

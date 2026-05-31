@@ -14,6 +14,7 @@ export const ApiErrorCode = {
   ProfileNotFound: "profile_not_found",
   MeNotFound: "me_not_found",
   Conflict: "conflict",
+  EmailExists: "email_exists",
   CannotModifySelf: "cannot_modify_self",
   InvalidRoleTransition: "invalid_role_transition",
   EmployeeCodeExists: "employee_code_exists",
@@ -89,6 +90,14 @@ export class ApiError extends Error {
 
   isEmployeeCodeExists(): boolean {
     return this.code === ApiErrorCode.EmployeeCodeExists;
+  }
+
+  isInvalidCredentials(): boolean {
+    return this.code === ApiErrorCode.InvalidCredentials;
+  }
+
+  isEmailExists(): boolean {
+    return this.code === ApiErrorCode.EmailExists;
   }
 }
 

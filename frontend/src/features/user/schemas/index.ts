@@ -98,5 +98,21 @@ export const changePasswordSchema = z.object({
   new_password: newPasswordZodString(),
 });
 
+/** API payload + confirm field for the change-password form. */
+export const changePasswordFormSchema = changePasswordSchema
+  .extend({
+    confirm_password: z.string().min(1, "Confirm your new password"),
+  })
+  .superRefine((input, ctx) => {
+    if (input.new_password !== input.confirm_password) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Passwords do not match",
+        path: ["confirm_password"],
+      });
+    }
+  });
+
 export type UpdateSelfProfileInput = z.infer<typeof updateSelfProfileSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ChangePasswordFormInput = z.infer<typeof changePasswordFormSchema>;

@@ -63,7 +63,7 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
             toast.error("Something went wrong. Please try again.");
             return;
           }
-          if (error.code === "invalid_credentials") {
+          if (error.isInvalidCredentials()) {
             form.setError("root", {
               message: "Invalid credentials",
             });
