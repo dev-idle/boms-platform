@@ -16,8 +16,8 @@ import (
 type UserRole string
 
 const (
-	UserRoleCustomer UserRole = "customer"
 	UserRoleAdmin    UserRole = "admin"
+	UserRoleCustomer UserRole = "customer"
 	UserRoleStaff    UserRole = "staff"
 	UserRoleBaker    UserRole = "baker"
 	UserRoleManager  UserRole = "manager"
@@ -83,4 +83,16 @@ type StaffProfile struct {
 	Shift        string         `db:"shift" json:"shift"`
 	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
+}
+
+type User struct {
+	ID                 uuid.UUID    `db:"id" json:"id"`
+	Email              string       `db:"email" json:"email"`
+	PasswordHash       string       `db:"password_hash" json:"passwordHash"`
+	Role               UserRole     `db:"role" json:"role"`
+	EmailVerifiedAt    sql.NullTime `db:"email_verified_at" json:"emailVerifiedAt"`
+	MustChangePassword bool         `db:"must_change_password" json:"mustChangePassword"`
+	CreatedAt          time.Time    `db:"created_at" json:"createdAt"`
+	UpdatedAt          time.Time    `db:"updated_at" json:"updatedAt"`
+	DeletedAt          sql.NullTime `db:"deleted_at" json:"deletedAt"`
 }

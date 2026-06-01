@@ -13,28 +13,7 @@ extension "pgcrypto" {
 
 enum "user_role" {
   schema = schema.public
-  values = ["customer", "admin", "staff", "baker", "manager"]
-}
-
-table "schema_version" {
-  schema = schema.public
-  column "id" {
-    type = bigint
-    null = false
-    identity {
-      generated = BY_DEFAULT
-      start     = 1
-      increment = 1
-    }
-  }
-  column "applied_at" {
-    type    = timestamptz
-    null    = false
-    default = sql("now()")
-  }
-  primary_key {
-    columns = [column.id]
-  }
+  values = ["admin", "customer", "staff", "baker", "manager"]
 }
 
 table "users" {

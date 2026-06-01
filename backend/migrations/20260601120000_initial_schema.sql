@@ -1,9 +1,24 @@
--- User module: operational roles, profile tables, audit logs.
-ALTER TYPE "user_role" ADD VALUE IF NOT EXISTS 'staff';
-ALTER TYPE "user_role" ADD VALUE IF NOT EXISTS 'baker';
-ALTER TYPE "user_role" ADD VALUE IF NOT EXISTS 'manager';
+-- Initial schema: extensions, user_role enum, users, role profiles, audit_logs.
+-- Enum label order is fixed at creation (PostgreSQL cannot reorder); matches db/schema.hcl.
+CREATE EXTENSION IF NOT EXISTS "citext" WITH SCHEMA "public" VERSION "1.6";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "public" VERSION "1.3";
 
-ALTER TABLE "users" ADD COLUMN "must_change_password" boolean NOT NULL DEFAULT false;
+CREATE TYPE "user_role" AS ENUM ('admin', 'customer', 'staff', 'baker', 'manager');
+
+CREATE TABLE "users" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "email" public.citext NOT NULL,
+  "password_hash" text NOT NULL,
+  "role" "user_role" NOT NULL DEFAULT 'customer',
+  "email_verified_at" timestamptz NULL,
+  "must_change_password" boolean NOT NULL DEFAULT false,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "deleted_at" timestamptz NULL,
+  PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX "users_email_active_idx" ON "users" ("email") WHERE (deleted_at IS NULL);
+CREATE INDEX "users_role_idx" ON "users" ("role") WHERE (deleted_at IS NULL);
 
 CREATE TABLE "customer_profiles" (
   "user_id" uuid NOT NULL,
@@ -27,7 +42,6 @@ CREATE TABLE "staff_profiles" (
   PRIMARY KEY ("user_id"),
   CONSTRAINT "staff_profiles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
 );
-
 CREATE UNIQUE INDEX "staff_profiles_employee_code_idx" ON "staff_profiles" ("employee_code");
 
 CREATE TABLE "admin_profiles" (
@@ -55,6 +69,5 @@ CREATE TABLE "audit_logs" (
   PRIMARY KEY ("id"),
   CONSTRAINT "audit_logs_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users" ("id") ON DELETE RESTRICT
 );
-
 CREATE INDEX "audit_logs_actor_created_idx" ON "audit_logs" ("actor_id", "created_at" DESC);
 CREATE INDEX "audit_logs_target_idx" ON "audit_logs" ("target_type", "target_id");

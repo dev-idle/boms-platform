@@ -85,7 +85,7 @@ domain    ← port    ← usecase / service    ← handler / adapter / cmd
 | Handler | `<entity>.go` (singular) | `handler/v1/admin_user.go` |
 | DTO | `<entity>.go` | `dto/admin_user.go` |
 | SQL query | `<entity>.sql` | `sql/query/user.sql` |
-| Migration | `YYYYMMDDhhmmss_<name>.sql` | `20260524140000_user_profiles.sql` |
+| Migration | `YYYYMMDDhhmmss_<name>.sql` | `20260601120000_initial_schema.sql` |
 
 ### List pagination (offset, CodeQL-safe)
 

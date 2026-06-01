@@ -26,31 +26,19 @@ type AdminCreateParams struct {
 	MustChangePassword bool     `db:"must_change_password" json:"mustChangePassword"`
 }
 
-type AdminCreateRow struct {
-	ID                 uuid.UUID    `db:"id" json:"id"`
-	Email              string       `db:"email" json:"email"`
-	PasswordHash       string       `db:"password_hash" json:"passwordHash"`
-	Role               UserRole     `db:"role" json:"role"`
-	EmailVerifiedAt    sql.NullTime `db:"email_verified_at" json:"emailVerifiedAt"`
-	MustChangePassword bool         `db:"must_change_password" json:"mustChangePassword"`
-	CreatedAt          time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt          time.Time    `db:"updated_at" json:"updatedAt"`
-	DeletedAt          sql.NullTime `db:"deleted_at" json:"deletedAt"`
-}
-
 // AdminCreate
 //
 //	INSERT INTO users (email, password_hash, role, must_change_password)
 //	VALUES ($1, $2, $3, $4)
 //	RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
-func (q *Queries) AdminCreate(ctx context.Context, arg AdminCreateParams) (AdminCreateRow, error) {
+func (q *Queries) AdminCreate(ctx context.Context, arg AdminCreateParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, adminCreate,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Role,
 		arg.MustChangePassword,
 	)
-	var i AdminCreateRow
+	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -259,31 +247,19 @@ type CreateUserParams struct {
 	MustChangePassword bool     `db:"must_change_password" json:"mustChangePassword"`
 }
 
-type CreateUserRow struct {
-	ID                 uuid.UUID    `db:"id" json:"id"`
-	Email              string       `db:"email" json:"email"`
-	PasswordHash       string       `db:"password_hash" json:"passwordHash"`
-	Role               UserRole     `db:"role" json:"role"`
-	EmailVerifiedAt    sql.NullTime `db:"email_verified_at" json:"emailVerifiedAt"`
-	MustChangePassword bool         `db:"must_change_password" json:"mustChangePassword"`
-	CreatedAt          time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt          time.Time    `db:"updated_at" json:"updatedAt"`
-	DeletedAt          sql.NullTime `db:"deleted_at" json:"deletedAt"`
-}
-
 // CreateUser
 //
 //	INSERT INTO users (email, password_hash, role, must_change_password)
 //	VALUES ($1, $2, $3, $4)
 //	RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, createUser,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Role,
 		arg.MustChangePassword,
 	)
-	var i CreateUserRow
+	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -305,27 +281,15 @@ WHERE email = $1
   AND deleted_at IS NULL
 `
 
-type GetUserByEmailRow struct {
-	ID                 uuid.UUID    `db:"id" json:"id"`
-	Email              string       `db:"email" json:"email"`
-	PasswordHash       string       `db:"password_hash" json:"passwordHash"`
-	Role               UserRole     `db:"role" json:"role"`
-	EmailVerifiedAt    sql.NullTime `db:"email_verified_at" json:"emailVerifiedAt"`
-	MustChangePassword bool         `db:"must_change_password" json:"mustChangePassword"`
-	CreatedAt          time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt          time.Time    `db:"updated_at" json:"updatedAt"`
-	DeletedAt          sql.NullTime `db:"deleted_at" json:"deletedAt"`
-}
-
 // GetUserByEmail
 //
 //	SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
 //	FROM users
 //	WHERE email = $1
 //	  AND deleted_at IS NULL
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
-	var i GetUserByEmailRow
+	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -347,27 +311,15 @@ WHERE id = $1
   AND deleted_at IS NULL
 `
 
-type GetUserByIDRow struct {
-	ID                 uuid.UUID    `db:"id" json:"id"`
-	Email              string       `db:"email" json:"email"`
-	PasswordHash       string       `db:"password_hash" json:"passwordHash"`
-	Role               UserRole     `db:"role" json:"role"`
-	EmailVerifiedAt    sql.NullTime `db:"email_verified_at" json:"emailVerifiedAt"`
-	MustChangePassword bool         `db:"must_change_password" json:"mustChangePassword"`
-	CreatedAt          time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt          time.Time    `db:"updated_at" json:"updatedAt"`
-	DeletedAt          sql.NullTime `db:"deleted_at" json:"deletedAt"`
-}
-
 // GetUserByID
 //
 //	SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
 //	FROM users
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error) {
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByID, id)
-	var i GetUserByIDRow
+	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -390,18 +342,6 @@ WHERE id = $1
 FOR UPDATE
 `
 
-type GetUserByIDForUpdateRow struct {
-	ID                 uuid.UUID    `db:"id" json:"id"`
-	Email              string       `db:"email" json:"email"`
-	PasswordHash       string       `db:"password_hash" json:"passwordHash"`
-	Role               UserRole     `db:"role" json:"role"`
-	EmailVerifiedAt    sql.NullTime `db:"email_verified_at" json:"emailVerifiedAt"`
-	MustChangePassword bool         `db:"must_change_password" json:"mustChangePassword"`
-	CreatedAt          time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt          time.Time    `db:"updated_at" json:"updatedAt"`
-	DeletedAt          sql.NullTime `db:"deleted_at" json:"deletedAt"`
-}
-
 // GetUserByIDForUpdate
 //
 //	SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
@@ -409,9 +349,9 @@ type GetUserByIDForUpdateRow struct {
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 //	FOR UPDATE
-func (q *Queries) GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (GetUserByIDForUpdateRow, error) {
+func (q *Queries) GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByIDForUpdate, id)
-	var i GetUserByIDForUpdateRow
+	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,

@@ -16,7 +16,7 @@ type Querier interface {
 	//  INSERT INTO users (email, password_hash, role, must_change_password)
 	//  VALUES ($1, $2, $3, $4)
 	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
-	AdminCreate(ctx context.Context, arg AdminCreateParams) (AdminCreateRow, error)
+	AdminCreate(ctx context.Context, arg AdminCreateParams) (User, error)
 	//AdminList
 	//
 	//  SELECT
@@ -109,7 +109,7 @@ type Querier interface {
 	//  INSERT INTO users (email, password_hash, role, must_change_password)
 	//  VALUES ($1, $2, $3, $4)
 	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
-	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	//DeleteAdminProfileByUserID
 	//
 	//  DELETE FROM admin_profiles
@@ -149,14 +149,14 @@ type Querier interface {
 	//  FROM users
 	//  WHERE email = $1
 	//    AND deleted_at IS NULL
-	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
 	//GetUserByID
 	//
 	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
 	//  FROM users
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	//GetUserByIDForUpdate
 	//
 	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
@@ -164,7 +164,7 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	//  FOR UPDATE
-	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (GetUserByIDForUpdateRow, error)
+	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error)
 	//Ping
 	//
 	//  SELECT 1 AS ok
