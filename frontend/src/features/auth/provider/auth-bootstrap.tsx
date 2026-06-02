@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import type { ReactNode } from "react";
 
 import { AUTH_REFRESH_COOKIE } from "@/constants/cookies";
@@ -10,10 +11,11 @@ type AuthBootstrapProps = {
 };
 
 export async function AuthBootstrap({ children }: AuthBootstrapProps) {
+  await connection();
   const cookieStore = await cookies();
-  const initialAuthHint = cookieStore.has(AUTH_REFRESH_COOKIE);
+  const hasRefreshCookie = cookieStore.has(AUTH_REFRESH_COOKIE);
 
   return (
-    <AuthProvider initialAuthHint={initialAuthHint}>{children}</AuthProvider>
+    <AuthProvider hasRefreshCookie={hasRefreshCookie}>{children}</AuthProvider>
   );
 }

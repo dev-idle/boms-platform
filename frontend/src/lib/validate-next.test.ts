@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { USER_ROLE } from "@/constants/roles";
-import { validateNext, validateNextForRole } from "@/lib/validate-next";
+import {
+  loginHrefPreservingNext,
+  validateNext,
+  validateNextForRole,
+} from "@/lib/validate-next";
 
 describe("validateNext", () => {
   it("accepts safe relative paths", () => {
@@ -17,6 +21,18 @@ describe("validateNext", () => {
     expect(validateNext("/%2f%2fevil.com")).toBeNull();
     expect(validateNext("/login@evil.com")).toBeNull();
     expect(validateNext("/path%00")).toBeNull();
+  });
+});
+
+describe("loginHrefPreservingNext", () => {
+  it("embeds a safe next path", () => {
+    expect(loginHrefPreservingNext("/admin/users")).toBe(
+      "/login?next=%2Fadmin%2Fusers",
+    );
+  });
+
+  it("omits next for unsafe paths", () => {
+    expect(loginHrefPreservingNext("//evil")).toBe("/login");
   });
 });
 

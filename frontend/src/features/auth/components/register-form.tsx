@@ -21,8 +21,6 @@ import { isApiError } from "@/lib/errors";
 import { useRegister } from "../hooks";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 import { registerSchema, type RegisterInput } from "../schemas";
-import { AuthenticatedRedirect } from "./authenticated-redirect";
-
 function PasswordChecklist({ password }: { password: string }) {
   const checks = [
     { label: "At least 8 characters", ok: password.length >= 8 },
@@ -88,9 +86,7 @@ export function RegisterForm() {
   }
 
   return (
-    <>
-      <AuthenticatedRedirect />
-      <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-16">
+    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-16">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Create account
         </h1>
@@ -163,6 +159,5 @@ export function RegisterForm() {
           Already registered?
         </Link>
       </div>
-    </>
   );
 }

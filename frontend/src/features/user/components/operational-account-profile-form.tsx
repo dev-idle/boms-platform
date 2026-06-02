@@ -193,13 +193,3 @@ export function OperationalAccountProfileForm({
     </Form>
   );
 }
-
-/** @deprecated Use OperationalAccountProfileForm with expectedRole={USER_ROLE.staff}. */
-export function StaffAccountProfileForm() {
-  return (
-    <OperationalAccountProfileForm
-      expectedRole={USER_ROLE.staff}
-      roleLabel="Staff"
-    />
-  );
-}

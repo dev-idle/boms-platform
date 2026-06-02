@@ -22,7 +22,12 @@ const (
 )
 
 // AuthCookiePath is the Path attribute for refresh token cookies.
-const AuthCookiePath = "/api/v1/auth"
+// Must be "/" so the Next.js proxy can see the cookie on protected page navigations
+// (/admin, /products, …). The token is still only consumed by /api/v1/auth/* handlers.
+const AuthCookiePath = "/"
+
+// AuthCookieLegacyPath was used before Path="/"; browsers keep both until explicitly cleared.
+const AuthCookieLegacyPath = "/api/v1/auth"
 
 type authLocals struct {
 	UserID    uuid.UUID

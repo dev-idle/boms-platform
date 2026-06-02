@@ -6,24 +6,15 @@ import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
-import { validateNextForRole } from "@/lib/validate-next";
 import { useAuthStore } from "@/stores/auth-store";
-import {
-  getMe as getMeFromUserApi,
-  meQueryOptions,
-  useMe,
-  userQueryKeys,
-} from "@/features/user";
-import {
-  homeRouteForRole,
-  passwordRouteForRole,
-} from "@/lib/routing/role-routes";
+import { getMe as getMeFromUserApi, userQueryKeys } from "@/features/user";
+import { resolvePostAuthDestination } from "@/lib/routing/post-auth-destination";
 
 import { login, logout, register } from "../api";
-import { resetRefreshManager, scheduleRefresh } from "@/lib/auth";
+import { endLocalSession, scheduleRefresh } from "@/lib/auth";
 import type { LoginInput, RegisterInput } from "../schemas";
 
-export { meQueryOptions, useMe, userQueryKeys };
+export { useAuthHydrated } from "./use-auth-hydrated";
 
 export function useRegister() {
   const router = useRouter();
@@ -50,7 +41,6 @@ export function useLogin() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const setAuth = useAuthStore((state) => state.setAuth);
-  const clearAuth = useAuthStore((state) => state.clearAuth);
 
   return useMutation({
     mutationFn: async ({ input }: LoginMutationVariables) => {
@@ -65,13 +55,11 @@ export function useLogin() {
         const me = await getMeFromUserApi();
         return { data, me };
       } catch (error) {
-        resetRefreshManager();
-        clearAuth();
+        endLocalSession();
         throw error;
       }
     },
     onSuccess: ({ data, me }, variables) => {
-
       setAuth({
         accessToken: data.access_token,
         expiresIn: data.expires_in,
@@ -80,14 +68,14 @@ export function useLogin() {
 
       void queryClient.invalidateQueries({ queryKey: userQueryKeys.me });
 
-      const mustChangePassword = data.must_change_password ?? me.must_change_password;
-      if (mustChangePassword) {
-        router.push(passwordRouteForRole(me.role));
-        return;
-      }
+      const mustChangePassword =
+        data.must_change_password ?? me.must_change_password;
 
-      router.push(
-        validateNextForRole(variables.next, me.role) ?? homeRouteForRole(me.role),
+      router.replace(
+        resolvePostAuthDestination(me.role, {
+          next: variables.next,
+          mustChangePassword,
+        }),
       );
     },
   });
@@ -95,16 +83,16 @@ export function useLogin() {
 
 export function useLogout() {
   const router = useRouter();
-  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const beginLogout = useAuthStore((state) => state.beginLogout);
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: () => logout(),
     onSettled: () => {
-      resetRefreshManager();
-      clearAuth();
+      beginLogout();
+      endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });
-      router.push(ROUTE.login);
+      router.replace(ROUTE.login);
     },
   });
 }

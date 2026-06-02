@@ -4,15 +4,10 @@ import { NextResponse } from "next/server";
 import type { NextProxy, NextRequest } from "next/server";
 
 import { AUTH_REFRESH_COOKIE } from "@/constants/cookies";
-import { PROTECTED_ROUTE_PREFIXES, ROUTE } from "@/constants/routes";
+import { ROUTE } from "@/constants/routes";
 import { getBackendOrigin, getServerEnv } from "@/lib/env";
+import { isProtectedPath } from "@/lib/routing/role-routes";
 import { validateNext } from "@/lib/validate-next";
-
-function isProtectedPath(pathname: string): boolean {
-  return PROTECTED_ROUTE_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
 
 function isApiPath(pathname: string): boolean {
   return pathname.startsWith("/api/");
@@ -45,6 +40,7 @@ function applyResourceHints(response: NextResponse, backendOrigin: string): void
  * Network boundary for BOMS. Runs before route rendering (Node runtime by default).
  *
  * Cookie presence is a coarse gate only — client bootstrap validates the session.
+ * Refresh cookie must use Path=/ (see backend AuthCookiePath) so it is sent on page navigations.
  * Role checks happen in client RoleGate / server API RequireRole.
  */
 export const proxy: NextProxy = (request) => {
@@ -100,8 +96,8 @@ export const proxy: NextProxy = (request) => {
   return response;
 };
 
-// Include /api/* so the proxy can stamp X-Internal-Secret + X-Request-ID before Next.js
-// rewrites the request to the Fiber backend. Static assets and Next internals stay excluded.
+// Include /api/* for request-id / auth-hint consistency. Browser API traffic is handled by
+// app/api/v1/[...path]/route.ts (BFF), which stamps X-Internal-Secret server-side.
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",

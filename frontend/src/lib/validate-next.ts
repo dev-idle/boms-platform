@@ -1,4 +1,5 @@
 import type { UserRole } from "@/constants/roles";
+import { ROUTE } from "@/constants/routes";
 import { isPathAllowedForRole } from "@/lib/routing/role-routes";
 
 /**
@@ -56,4 +57,16 @@ export function validateNextForRole(
     return null;
   }
   return path;
+}
+
+/** Safe login URL that preserves the current protected path for post-auth redirect. */
+export function loginHrefPreservingNext(
+  pathname: string,
+  search = "",
+): string {
+  const next = validateNext(`${pathname}${search}`);
+  if (!next) {
+    return ROUTE.login;
+  }
+  return `${ROUTE.login}?next=${encodeURIComponent(next)}`;
 }

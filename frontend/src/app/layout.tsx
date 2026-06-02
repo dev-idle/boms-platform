@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { Toaster } from "sonner";
 
 import "./globals.css";
-import { AuthBootstrap } from "@/features/auth";
+import { AuthBootstrap } from "@/features/auth/server";
 import { QueryProvider, ThemeProvider } from "@/providers";
 
 const geistSans = Geist({

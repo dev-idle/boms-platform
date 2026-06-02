@@ -1,3 +1,4 @@
+export { endLocalSession } from "./end-local-session";
 export {
   clearStaleSession,
   isAuthSessionError,
@@ -7,7 +8,6 @@ export {
 export {
   ensureRefreshScheduled,
   refreshNow,
-  resetRefreshManager,
   scheduleRefresh,
 } from "./refresh-manager";
 export type { RefreshOptions } from "./refresh-manager";

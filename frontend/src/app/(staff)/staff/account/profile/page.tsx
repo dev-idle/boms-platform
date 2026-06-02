@@ -1,4 +1,5 @@
-import { StaffAccountProfileForm } from "@/features/user";
+import { USER_ROLE } from "@/constants/roles";
+import { OperationalAccountProfileForm } from "@/features/user";
 
 export default function StaffAccountProfilePage() {
   return (
@@ -11,7 +12,10 @@ export default function StaffAccountProfilePage() {
           Update your contact details. Operational fields are managed by an admin.
         </p>
       </div>
-      <StaffAccountProfileForm />
+      <OperationalAccountProfileForm
+        expectedRole={USER_ROLE.staff}
+        roleLabel="Staff"
+      />
     </div>
   );
 }

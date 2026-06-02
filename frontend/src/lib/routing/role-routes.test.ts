@@ -6,6 +6,7 @@ import { ROUTE } from "@/constants/routes";
 import {
   homeRouteForRole,
   isPathAllowedForRole,
+  isProtectedPath,
   passwordRouteForRole,
 } from "./role-routes";
 
@@ -19,6 +20,15 @@ describe("homeRouteForRole", () => {
   });
 });
 
+describe("isProtectedPath", () => {
+  it("includes all role namespaces and excludes public auth pages", () => {
+    expect(isProtectedPath("/products")).toBe(true);
+    expect(isProtectedPath("/admin/users")).toBe(true);
+    expect(isProtectedPath("/login")).toBe(false);
+    expect(isProtectedPath("/")).toBe(false);
+  });
+});
+
 describe("isPathAllowedForRole", () => {
   it("matches prefix boundaries", () => {
     expect(isPathAllowedForRole("/baker/account/profile", USER_ROLE.baker)).toBe(
@@ -27,6 +37,29 @@ describe("isPathAllowedForRole", () => {
     expect(isPathAllowedForRole("/baker-evil", USER_ROLE.baker)).toBe(false);
     expect(isPathAllowedForRole("/admin/users", USER_ROLE.customer)).toBe(
       false,
+    );
+  });
+
+  it("denies every other role namespace (including admin)", () => {
+    const cases = [
+      { path: "/admin", role: USER_ROLE.customer },
+      { path: "/products", role: USER_ROLE.admin },
+      { path: "/staff/account/profile", role: USER_ROLE.baker },
+      { path: "/baker/account/profile", role: USER_ROLE.manager },
+      { path: "/manager/account/profile", role: USER_ROLE.staff },
+      { path: "/orders", role: USER_ROLE.staff },
+    ] as const;
+
+    for (const { path, role } of cases) {
+      expect(isPathAllowedForRole(path, role)).toBe(false);
+    }
+  });
+
+  it("allows only own namespace per role", () => {
+    expect(isPathAllowedForRole("/admin/orders", USER_ROLE.admin)).toBe(true);
+    expect(isPathAllowedForRole("/cart", USER_ROLE.customer)).toBe(true);
+    expect(isPathAllowedForRole("/staff/account/password", USER_ROLE.staff)).toBe(
+      true,
     );
   });
 });

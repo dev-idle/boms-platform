@@ -1,10 +1,6 @@
 import { z } from "zod";
 
 import { USER_ROLE } from "@/constants/roles";
-import {
-  refreshResponseSchema,
-  type RefreshResponse,
-} from "@/lib/schemas/auth";
 import { newPasswordZodString } from "@/lib/validation/password";
 
 const userRoleSchema = z.enum([
@@ -30,8 +26,6 @@ export const tokenResponseSchema = z.object({
   user: userSchema,
   must_change_password: z.boolean().optional(),
 });
-
-export { refreshResponseSchema, type RefreshResponse };
 
 export const registerSchema = z.object({
   email: z.string().trim().email("Enter a valid email address").max(255),

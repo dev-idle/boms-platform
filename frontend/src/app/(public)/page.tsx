@@ -20,7 +20,7 @@ export default function HomePage() {
             <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">
               {AUTH_REFRESH_COOKIE}
             </code>{" "}
-            cookie on <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">/api/v1/auth</code>.
+            HttpOnly refresh cookie (site path <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">/</code>, used only on <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">/api/v1/auth/*</code>).
           </p>
         </div>
         <div className="flex flex-wrap gap-3 text-sm font-medium">

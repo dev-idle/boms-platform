@@ -18,12 +18,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
-import { validateNext } from "@/lib/validate-next";
-
 import { useLogin } from "../hooks";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 import { loginSchema, type LoginInput } from "../schemas";
-import { AuthenticatedRedirect } from "./authenticated-redirect";
 
 type LoginFormProps = {
   next?: string;
@@ -84,9 +81,7 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
   }
 
   return (
-    <>
-      <AuthenticatedRedirect to={validateNext(next ?? null) ?? undefined} />
-      <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-16">
+    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-16">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Sign in
         </h1>
@@ -162,6 +157,5 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
           Create an account
         </Link>
       </div>
-    </>
   );
 }

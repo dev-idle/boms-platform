@@ -1,4 +1,4 @@
-export { AuthenticatedRedirect } from "./authenticated-redirect";
+export { PublicSessionGate } from "./public-session-gate";
 export { LoginForm } from "./login-form";
 export { LogoutButton } from "./logout-button";
 export { MustChangePasswordGate } from "./must-change-password-gate";

@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
-import { resetRefreshManager } from "@/lib/auth";
+import { endLocalSession } from "@/lib/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
 import { changePassword, deleteAccount, updateProfile } from "../api";
@@ -124,13 +124,11 @@ export function useUpdateProfile() {
 export function useChangePassword() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const clearAuth = useAuthStore((state) => state.clearAuth);
 
   return useMutation({
     mutationFn: (input: ChangePasswordInput) => changePassword(input),
     onSuccess: () => {
-      resetRefreshManager();
-      clearAuth();
+      endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });
       toast.success("Password changed. Please sign in again.");
       router.push(`${ROUTE.login}?changed=1`);
@@ -141,13 +139,11 @@ export function useChangePassword() {
 export function useDeleteAccount() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const clearAuth = useAuthStore((state) => state.clearAuth);
 
   return useMutation({
     mutationFn: () => deleteAccount(),
     onSuccess: () => {
-      resetRefreshManager();
-      clearAuth();
+      endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });
       toast.success("Account deleted");
       router.push(ROUTE.login);

@@ -5,39 +5,28 @@
  * Client session infra: @/lib/auth (refresh manager — shared with browser-api-client)
  */
 export { login, logout, register } from "./api";
-export { getMe } from "@/features/user";
 export {
   AdminGate,
   BakerGate,
   CustomerGate,
   ManagerGate,
-  AuthenticatedRedirect,
+  PublicSessionGate,
   LoginForm,
   LogoutButton,
   MustChangePasswordGate,
   RegisterForm,
   StaffGate,
 } from "./components";
-export {
-  meQueryOptions,
-  useLogin,
-  useLogout,
-  useMe,
-  useRegister,
-  userQueryKeys,
-} from "./hooks";
+export { useLogin, useLogout, useRegister } from "./hooks";
 export type { LoginMutationVariables } from "./hooks";
-export { AuthBootstrap, AuthProvider, useAuthStatus } from "./provider";
 export {
   loginSchema,
-  refreshResponseSchema,
   registerSchema,
   tokenResponseSchema,
   userSchema,
 } from "./schemas";
 export type {
   LoginInput,
-  RefreshResponse,
   RegisterInput,
   TokenResponse,
   User,

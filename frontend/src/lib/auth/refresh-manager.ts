@@ -2,7 +2,7 @@
 
 import { refreshResponseSchema } from "@/lib/schemas/auth";
 import { ROUTE } from "@/constants/routes";
-import { ApiError, ApiErrorCode } from "@/lib/errors";
+import { ApiError, ApiErrorCode, isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
 
 import {
@@ -34,6 +34,12 @@ export function scheduleRefresh(expiresAt: number | null): void {
   refreshTimer = setTimeout(() => {
     void refreshNow();
   }, Math.max(delay, 0));
+}
+
+/** Clears Zustand auth state and persisted sessionStorage hint (no timers, no API). */
+export function clearLocalAuthState(): void {
+  useAuthStore.getState().clearAuth();
+  void useAuthStore.persist.clearStorage();
 }
 
 /** Re-arm proactive refresh after remount (e.g. React Strict Mode). */
@@ -86,14 +92,17 @@ export function refreshNow(options: RefreshOptions = {}): Promise<void> {
 
   refreshPromise = performRefresh()
     .catch(async (error) => {
-      if (isAuthSessionError(error)) {
+      if (
+        isAuthSessionError(error) &&
+        !(
+          isApiError(error) &&
+          error.code === ApiErrorCode.MissingRefreshToken
+        )
+      ) {
         await clearStaleSession();
       }
-      useAuthStore.getState().clearAuth();
-      if (refreshTimer !== null) {
-        clearTimeout(refreshTimer);
-        refreshTimer = null;
-      }
+      resetRefreshManager();
+      clearLocalAuthState();
       if (
         redirectOnFailure &&
         isAuthSessionError(error) &&

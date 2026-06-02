@@ -1,2 +1,3 @@
-export { AuthBootstrap } from "./auth-bootstrap";
-export { AuthProvider, useAuthStatus } from "./auth-provider";
+/** Client provider surface — use `@/features/auth/server` for AuthBootstrap in RSC. */
+export { AuthProvider } from "./auth-provider";
+export { SessionHintProvider, useSessionAuthHint } from "./session-hint";

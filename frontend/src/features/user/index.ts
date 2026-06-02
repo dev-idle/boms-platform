@@ -1,7 +1,7 @@
 /**
  * User feature — self-service profile, password, and account lifecycle.
  *
- * Internal: api/, components/, hooks/, lib/, schemas/, types/
+ * Internal: api/, components/, hooks/, schemas/, types/
  * Session identity: re-exported via auth; `/api/v1/me` is the source of truth.
  */
 export { changePassword, deleteAccount, getMe, updateProfile } from "./api";
@@ -11,7 +11,6 @@ export {
   CustomerAccountProfileForm,
   DeleteAccountCard,
   OperationalAccountProfileForm,
-  StaffAccountProfileForm,
 } from "./components";
 export {
   meQueryOptions,

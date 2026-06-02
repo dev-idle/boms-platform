@@ -122,18 +122,28 @@ func toUserResponse(u *domainuser.User) dto.UserResponse {
 }
 
 func writeRefreshCookie(c *fiber.Ctx, cfg *config.Config, token string) {
+	clearLegacyRefreshCookie(c, cfg)
 	c.Cookie(refreshCookie(cfg, token, int(cfg.JWT.RefreshTTL.Seconds())))
 }
 
 func clearRefreshCookie(c *fiber.Ctx, cfg *config.Config) {
 	c.Cookie(refreshCookie(cfg, "", -1))
+	clearLegacyRefreshCookie(c, cfg)
+}
+
+func clearLegacyRefreshCookie(c *fiber.Ctx, cfg *config.Config) {
+	c.Cookie(refreshCookieAtPath(cfg, "", -1, middleware.AuthCookieLegacyPath))
 }
 
 func refreshCookie(cfg *config.Config, token string, maxAge int) *fiber.Cookie {
+	return refreshCookieAtPath(cfg, token, maxAge, middleware.AuthCookiePath)
+}
+
+func refreshCookieAtPath(cfg *config.Config, token string, maxAge int, path string) *fiber.Cookie {
 	cookie := &fiber.Cookie{
 		Name:     cfg.Cookie.Name,
 		Value:    token,
-		Path:     middleware.AuthCookiePath,
+		Path:     path,
 		HTTPOnly: true,
 		Secure:   cfg.Cookie.Secure,
 		SameSite: fiber.CookieSameSiteLaxMode,

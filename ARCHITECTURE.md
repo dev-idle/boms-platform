@@ -110,34 +110,35 @@ Canonical implementation: `GET /admin/users` (`handler/v1/admin_user.go`, `useca
 
 ```
 frontend/src/
-├── proxy.ts                     # Next.js edge proxy (cookie gate + request id)
+├── proxy.ts                     # Next.js proxy (page cookie gate, header strip)
+├── app/api/v1/[...path]/route.ts # BFF: browser /api/v1 → Fiber + X-Internal-Secret + Set-Cookie
 ├── app/                         # Route layer ONLY (thin pages)
-│   ├── (public)/                # /, /login, /register
+│   ├── (public)/                # /, /login, /register (+ PublicSessionGate layout)
 │   ├── (customer)/              # /products, /cart, /orders, /customer/account/*
 │   ├── (staff)/                 # /staff/account/*
+│   ├── (baker)/                 # /baker/account/*
+│   ├── (manager)/               # /manager/account/*
 │   └── (admin)/admin/           # /admin, /admin/users, /admin/account/*
-├── features/                    # Feature slices
-│   ├── auth/                    # Session, login/register/logout, gates
-│   │   ├── api/, schemas/, hooks/, components/, provider/
-│   ├── user/                    # /me self-service (canonical user state)
-│   │   ├── api/, schemas/, types/, hooks/, components/, lib/
-│   └── admin/                   # Operational user management
-│       ├── api/, schemas/, types/, hooks/, components/
-├── components/ui/               # Primitives (button, input, form, confirm-dialog)
+├── features/                    # Feature slices (auth | user | admin)
+│   ├── auth/                    # api/, schemas/, hooks/, components/, lib/, provider/
+│   ├── user/                    # api/, schemas/, types/, hooks/, components/
+│   └── admin/                   # api/, schemas/, types/, hooks/, components/
+├── components/
+│   ├── ui/                      # Primitives (button, input, form, confirm-dialog)
+│   └── layouts/                 # operational-role-shell.tsx (staff/baker/manager)
 ├── lib/
-│   ├── api-client.ts, browser-api-client.ts, api-envelope.ts
-│   ├── env.ts, utils.ts, validate-next.ts
-│   ├── auth/                    # refresh-manager, session helpers
-│   ├── routing/role-routes.ts   # homeRouteForRole, isPathAllowedForRole, …
-│   ├── schemas/auth.ts          # refreshResponseSchema (lib/auth consumer)
-│   ├── dal/                     # Server data access (RSC)
-│   ├── errors/                  # api-error, server-api-error
-│   └── validation/              # messages, password.ts (newPasswordZodString)
-├── components/layouts/          # operational-role-shell.tsx (staff/baker/manager chrome)
+│   ├── api-client.ts, browser-api-client.ts, api-envelope.ts, env.ts, utils.ts
+│   ├── validate-next.ts
+│   ├── auth/                      # refresh-manager, session, end-local-session
+│   ├── server/backend-proxy.ts    # BFF forwarder (browser /api/v1)
+│   ├── routing/                   # role-routes.ts, post-auth-destination.ts
+│   ├── schemas/auth.ts            # refreshResponseSchema (lib/auth consumer)
+│   ├── dal/                       # server-only RSC data access
+│   ├── errors/
+│   └── validation/
 ├── stores/                      # Zustand: auth-store only
 ├── constants/                   # routes.ts, roles.ts, cookies.ts
-├── providers/                   # query, theme
-└── proxy.ts                     # cookie gate, header strip, X-Internal-Secret
+└── providers/                   # query, theme
 ```
 
 ### Feature-slice anatomy (auth/user/admin all follow this)
@@ -164,10 +165,13 @@ features/<slice>/
 |---------|------------------|
 | Routes / role homes | `constants/routes.ts`, `lib/validate-next.ts` |
 | Role route helpers | `lib/routing/role-routes.ts` |
+| Post-login / return redirect | `lib/routing/post-auth-destination.ts` |
+| Browser API BFF | `app/api/v1/[...path]/route.ts`, `lib/server/backend-proxy.ts` |
 | API envelope | `lib/api-envelope.ts` — `parseResponseBody`, `parseApiEnvelope` (browser + server clients) |
 | Password complexity (forms) | `lib/validation/password.ts` (`newPasswordZodString`) |
 | Operational account chrome | `components/layouts/operational-role-shell.tsx` |
 | Auth refresh / session | `lib/auth/` + `lib/schemas/auth.ts` (`refreshResponseSchema`) |
+| RSC auth bootstrap | `features/auth/server.ts` → `provider/auth-bootstrap.tsx` (not `@/features/auth` barrel) |
 | Validation messages | `lib/validation/messages.ts` |
 | Identity API | `features/user` owns `GET /me` only |
 
@@ -216,7 +220,8 @@ features/<slice>/
 
 | Threat | Control |
 |--------|---------|
-| Token theft | EdDSA-signed short-lived access JWT + HTTP-only refresh cookie (`/api/v1/auth`-scoped) |
+| Token theft | EdDSA-signed short-lived access JWT + HttpOnly refresh cookie (`Path=/`; consumed only on `/api/v1/auth/*`) |
+| Unauthenticated page access | Next.js `proxy.ts` coarse gate: protected HTML routes require refresh cookie **presence**; cookie `Path` must be `/` (`middleware.AuthCookiePath`) so the browser sends it on `/admin`, `/products`, etc. |
 | Session hijack | Redis session store; bearer + cookie hybrid logout; `RequireAuthWithSession` for mutating routes |
 | Password attack | Argon2id (params from config); timing-safe dummy hash on login |
 | Replay | request-id propagation; refresh rotation |

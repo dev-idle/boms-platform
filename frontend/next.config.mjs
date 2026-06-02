@@ -70,16 +70,8 @@ const nextConfig = {
   experimental: {
     viewTransition: true,
   },
-  async rewrites() {
-    const backendUrl =
-      process.env.BOMS_BACKEND_URL ?? "http://127.0.0.1:8080";
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: `${backendUrl.replace(/\/$/, "")}/api/v1/:path*`,
-      },
-    ];
-  },
+  // Browser /api/v1/* is proxied by app/api/v1/[...path]/route.ts (BFF) so
+  // X-Internal-Secret and Set-Cookie forwarding are reliable. RSC uses lib/api-client.
   async headers() {
     return [
       {

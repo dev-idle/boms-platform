@@ -4,6 +4,7 @@ import {
   BAKER_ROUTE_PREFIXES,
   CUSTOMER_ROUTE_PREFIXES,
   MANAGER_ROUTE_PREFIXES,
+  PROTECTED_ROUTE_PREFIXES,
   ROUTE,
   STAFF_ROUTE_PREFIXES,
 } from "@/constants/routes";
@@ -81,8 +82,19 @@ export function profileRouteForRole(role: UserRole): string {
   }
 }
 
+function matchesRoutePrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+/** True when the path requires an authenticated session (page navigation). */
+export function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_ROUTE_PREFIXES.some((prefix) =>
+    matchesRoutePrefix(pathname, prefix),
+  );
+}
+
 export function isPathAllowedForRole(pathname: string, role: UserRole): boolean {
-  return routePrefixesForRole(role).some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  return routePrefixesForRole(role).some((prefix) =>
+    matchesRoutePrefix(pathname, prefix),
   );
 }

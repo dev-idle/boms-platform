@@ -1,12 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 import { USER_ROLE, type UserRole } from "@/constants/roles";
-import { ROUTE } from "@/constants/routes";
-import { homeRouteForRole } from "@/lib/routing/role-routes";
+import {
+  homeRouteForRole,
+  isPathAllowedForRole,
+} from "@/lib/routing/role-routes";
+import { loginHrefPreservingNext } from "@/lib/validate-next";
+import { useAuthHydrated } from "../hooks";
 import { useAuthStore } from "@/stores/auth-store";
+
+import { SessionRestoreShell } from "./session-restore-shell";
 
 type RoleGateProps = {
   allowedRole: UserRole;
@@ -14,32 +20,49 @@ type RoleGateProps = {
 };
 
 /**
- * Allows exactly one role. Wrong-role users are sent to their own home namespace.
+ * Single gate per role layout: blocks UI until session matches role + namespace.
+ * Wrong role or cross-namespace path → own home (never another role's area).
  */
 export function RoleGate({ allowedRole, children }: RoleGateProps) {
+  const hydrated = useAuthHydrated();
   const status = useAuthStore((state) => state.status);
+  const logoutIntent = useAuthStore((state) => state.logoutIntent);
   const role = useAuthStore((state) => state.user?.role);
+  const pathname = usePathname();
   const router = useRouter();
+
+  const hasAccess =
+    status === "authenticated" &&
+    role === allowedRole &&
+    isPathAllowedForRole(pathname, role);
 
   useEffect(() => {
     if (status === "idle") {
       return;
     }
     if (status === "unauthenticated") {
-      router.replace(ROUTE.login);
+      if (logoutIntent) {
+        return;
+      }
+      const search =
+        typeof window !== "undefined" ? window.location.search : "";
+      router.replace(loginHrefPreservingNext(pathname, search));
       return;
     }
-    if (role && role !== allowedRole) {
+    if (!role) {
+      return;
+    }
+    if (role !== allowedRole || !isPathAllowedForRole(pathname, role)) {
       router.replace(homeRouteForRole(role));
     }
-  }, [status, role, router, allowedRole]);
+  }, [status, role, pathname, router, allowedRole, logoutIntent]);
 
-  if (status !== "authenticated" || role !== allowedRole) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-zinc-500">
-        Checking access…
-      </div>
-    );
+  if (!hydrated || status === "idle") {
+    return <SessionRestoreShell />;
+  }
+
+  if (!hasAccess) {
+    return <SessionRestoreShell />;
   }
 
   return children;

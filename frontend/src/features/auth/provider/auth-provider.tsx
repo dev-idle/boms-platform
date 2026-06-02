@@ -1,103 +1,79 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
-import { useAuthStore } from "@/stores/auth-store";
-import { getMe } from "@/features/user";
+import { endLocalSession, ensureRefreshScheduled } from "@/lib/auth";
+import { useAuthStore, waitForAuthStoreHydration } from "@/stores/auth-store";
 
 import { MustChangePasswordGate } from "../components";
-import {
-  ensureRefreshScheduled,
-  refreshNow,
-  scheduleRefresh,
-} from "@/lib/auth";
+import { restoreSessionFromCookie } from "../lib/restore-session";
+
+import { SessionHintProvider } from "./session-hint";
 
 type AuthBootstrapEffectProps = {
-  initialAuthHint: boolean;
+  hasRefreshCookie: boolean;
 };
 
-function AuthBootstrapEffect({ initialAuthHint }: AuthBootstrapEffectProps) {
-  const setAuth = useAuthStore((state) => state.setAuth);
-  const clearAuth = useAuthStore((state) => state.clearAuth);
+function AuthBootstrapEffect({ hasRefreshCookie }: AuthBootstrapEffectProps) {
   const setStatus = useAuthStore((state) => state.setStatus);
+  const bootIdRef = useRef(0);
 
   useEffect(() => {
     ensureRefreshScheduled();
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    const bootId = ++bootIdRef.current;
 
     async function bootstrap(): Promise<void> {
-      const currentStatus = useAuthStore.getState().status;
+      await waitForAuthStoreHydration();
+      if (bootId !== bootIdRef.current) {
+        return;
+      }
 
-      if (!initialAuthHint) {
-        if (currentStatus === "idle") {
+      const state = useAuthStore.getState();
+
+      if (!hasRefreshCookie) {
+        if (state.userSummary !== null) {
+          endLocalSession();
+        } else if (state.status === "idle") {
           setStatus("unauthenticated");
         }
         return;
       }
 
-      if (currentStatus !== "idle") {
+      if (state.status !== "idle") {
         ensureRefreshScheduled();
         return;
       }
 
       try {
-        await refreshNow({ redirectOnFailure: false });
-        if (cancelled) {
-          return;
-        }
-
-        const user = await getMe();
-        if (cancelled) {
-          return;
-        }
-
-        const { accessToken, expiresAt } = useAuthStore.getState();
-        if (!accessToken || expiresAt === null) {
-          throw new Error("Missing session after refresh");
-        }
-
-        setAuth({
-          accessToken,
-          expiresIn: Math.max(Math.floor((expiresAt - Date.now()) / 1000), 1),
-          user,
-        });
-        scheduleRefresh(useAuthStore.getState().expiresAt);
+        await restoreSessionFromCookie();
       } catch {
-        if (!cancelled) {
-          clearAuth();
-          setStatus("unauthenticated");
+        if (bootId === bootIdRef.current) {
+          endLocalSession();
         }
       }
     }
 
     void bootstrap();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [initialAuthHint, setAuth, clearAuth, setStatus]);
+  }, [hasRefreshCookie, setStatus]);
 
   return null;
 }
 
 type AuthProviderProps = {
-  initialAuthHint: boolean;
+  /** From server `cookies()` in AuthBootstrap — single read per request. */
+  hasRefreshCookie: boolean;
   children: ReactNode;
 };
 
-export function AuthProvider({ initialAuthHint, children }: AuthProviderProps) {
+export function AuthProvider({ hasRefreshCookie, children }: AuthProviderProps) {
   return (
-    <>
-      <AuthBootstrapEffect initialAuthHint={initialAuthHint} />
+    <SessionHintProvider hasRefreshCookie={hasRefreshCookie}>
+      <AuthBootstrapEffect hasRefreshCookie={hasRefreshCookie} />
       <MustChangePasswordGate />
       {children}
-    </>
+    </SessionHintProvider>
   );
-}
-
-export function useAuthStatus() {
-  return useAuthStore((state) => state.status);
 }
