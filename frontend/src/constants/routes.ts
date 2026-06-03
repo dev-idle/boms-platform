@@ -7,7 +7,7 @@
  *   - Staff:    /staff/account/*
  *   - Baker:    /baker/account/*
  *   - Manager:  /manager/account/*
- *   - Admin:    /admin, /admin/products, /admin/orders, /admin/users, /admin/account/*
+ *   - Admin:    /admin, /admin/users, /admin/account/profile
  */
 export const ROUTE = {
   home: "/",
@@ -43,14 +43,11 @@ export const ROUTE = {
   },
   admin: {
     dashboard: "/admin",
-    products: "/admin/products",
-    orders: "/admin/orders",
     users: "/admin/users",
     usersNew: "/admin/users/new",
     userDetail: (id: string) => `/admin/users/${id}`,
     account: {
       profile: "/admin/account/profile",
-      password: "/admin/account/password",
     },
   },
 } as const;

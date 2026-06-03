@@ -56,7 +56,7 @@ describe("isPathAllowedForRole", () => {
   });
 
   it("allows only own namespace per role", () => {
-    expect(isPathAllowedForRole("/admin/orders", USER_ROLE.admin)).toBe(true);
+    expect(isPathAllowedForRole("/admin/users", USER_ROLE.admin)).toBe(true);
     expect(isPathAllowedForRole("/cart", USER_ROLE.customer)).toBe(true);
     expect(isPathAllowedForRole("/staff/account/password", USER_ROLE.staff)).toBe(
       true,
@@ -68,6 +68,9 @@ describe("passwordRouteForRole", () => {
   it("returns role-scoped password routes", () => {
     expect(passwordRouteForRole(USER_ROLE.manager)).toBe(
       ROUTE.manager.account.password,
+    );
+    expect(passwordRouteForRole(USER_ROLE.admin)).toBe(
+      ROUTE.admin.account.profile,
     );
   });
 });

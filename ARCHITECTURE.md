@@ -125,7 +125,7 @@ frontend/src/
 │   └── admin/                   # api/, schemas/, types/, hooks/, components/
 ├── components/
 │   ├── ui/                      # Primitives (button, input, form, confirm-dialog)
-│   └── layouts/                 # operational-role-shell.tsx (staff/baker/manager)
+│   └── layouts/                 # operational-role-shell.tsx, admin-shell.tsx
 ├── lib/
 │   ├── api-client.ts, browser-api-client.ts, api-envelope.ts, env.ts, utils.ts
 │   ├── validate-next.ts

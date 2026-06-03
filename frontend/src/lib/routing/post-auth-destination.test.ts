@@ -32,5 +32,11 @@ describe("resolvePostAuthDestination", () => {
         mustChangePassword: true,
       }),
     ).toBe(ROUTE.staff.account.password);
+    expect(
+      resolvePostAuthDestination(USER_ROLE.admin, {
+        next: "/admin/users",
+        mustChangePassword: true,
+      }),
+    ).toBe(ROUTE.admin.account.profile);
   });
 });

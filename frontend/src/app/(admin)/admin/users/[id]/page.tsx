@@ -1,9 +1,12 @@
 import { AdminUserDetail } from "@/features/admin";
 
-export default function AdminUserDetailPage({
+type AdminUserDetailPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function AdminUserDetailPage({
   params,
-}: {
-  params: { id: string };
-}) {
-  return <AdminUserDetail userId={params.id} />;
+}: AdminUserDetailPageProps) {
+  const { id } = await params;
+  return <AdminUserDetail userId={id} />;
 }

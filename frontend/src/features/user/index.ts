@@ -7,6 +7,7 @@
 export { changePassword, deleteAccount, getMe, updateProfile } from "./api";
 export {
   AdminAccountProfileForm,
+  AdminAccountProfileView,
   ChangePasswordForm,
   CustomerAccountProfileForm,
   DeleteAccountCard,
