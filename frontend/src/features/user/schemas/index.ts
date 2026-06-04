@@ -26,7 +26,6 @@ export const staffProfileSchema = z.object({
   phone: optionalNullableStringSchema,
   employee_code: z.string(),
   hire_date: dateOnlySchema,
-  shift: z.string(),
 });
 
 export const adminProfileSchema = z.object({

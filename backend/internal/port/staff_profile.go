@@ -14,7 +14,6 @@ type UpsertStaffProfileParams struct {
 	Phone        *string
 	EmployeeCode string
 	HireDate     time.Time
-	Shift        string
 }
 
 type StaffProfileRepository interface {

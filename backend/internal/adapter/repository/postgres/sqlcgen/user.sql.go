@@ -67,8 +67,7 @@ SELECT
     COALESCE(sp.full_name, ap.full_name) AS full_name,
     COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
     sp.employee_code,
-    sp.hire_date,
-    sp.shift
+    sp.hire_date
 FROM users u
 LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 LEFT JOIN staff_profiles sp ON sp.user_id = u.id
@@ -104,7 +103,6 @@ type AdminListRow struct {
 	Phone              sql.NullString `db:"phone" json:"phone"`
 	EmployeeCode       sql.NullString `db:"employee_code" json:"employeeCode"`
 	HireDate           sql.NullTime   `db:"hire_date" json:"hireDate"`
-	Shift              sql.NullString `db:"shift" json:"shift"`
 }
 
 // AdminList
@@ -122,8 +120,7 @@ type AdminListRow struct {
 //	    COALESCE(sp.full_name, ap.full_name) AS full_name,
 //	    COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
 //	    sp.employee_code,
-//	    sp.hire_date,
-//	    sp.shift
+//	    sp.hire_date
 //	FROM users u
 //	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 //	LEFT JOIN staff_profiles sp ON sp.user_id = u.id
@@ -160,7 +157,6 @@ func (q *Queries) AdminList(ctx context.Context, arg AdminListParams) ([]AdminLi
 			&i.Phone,
 			&i.EmployeeCode,
 			&i.HireDate,
-			&i.Shift,
 		); err != nil {
 			return nil, err
 		}

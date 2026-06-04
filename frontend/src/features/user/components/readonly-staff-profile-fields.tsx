@@ -12,7 +12,7 @@ export function ReadonlyStaffProfileFields({
       <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
         Set by admin
       </p>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <p className="text-xs text-zinc-500">Employee code</p>
           <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
@@ -23,12 +23,6 @@ export function ReadonlyStaffProfileFields({
           <p className="text-xs text-zinc-500">Hire date</p>
           <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
             {profile.hire_date}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-zinc-500">Shift</p>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            {profile.shift || "—"}
           </p>
         </div>
       </div>

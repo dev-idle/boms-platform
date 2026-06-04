@@ -53,7 +53,6 @@ function AdminUserDetailProfileForm({
             ? values.employee_code.trim()
             : null,
           hire_date: values.hire_date?.trim() ? values.hire_date.trim() : null,
-          shift: values.shift?.trim() ? values.shift.trim() : null,
         },
       },
       {
@@ -68,7 +67,6 @@ function AdminUserDetailProfileForm({
               "phone",
               "employee_code",
               "hire_date",
-              "shift",
             ]);
             return;
           }
@@ -147,20 +145,6 @@ function AdminUserDetailProfileForm({
                     <FormLabel>Hire date</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="shift"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Shift</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

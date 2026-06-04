@@ -32,7 +32,6 @@ func (r *StaffProfileRepository) Create(ctx context.Context, params port.UpsertS
 		Phone:        toNullString(params.Phone),
 		EmployeeCode: params.EmployeeCode,
 		HireDate:     params.HireDate,
-		Shift:        params.Shift,
 	})
 	if err != nil {
 		return nil, mapStaffError(err, "create staff profile")
@@ -55,7 +54,6 @@ func (r *StaffProfileRepository) UpdateByUserID(ctx context.Context, params port
 		Phone:        toNullString(params.Phone),
 		EmployeeCode: params.EmployeeCode,
 		HireDate:     params.HireDate,
-		Shift:        params.Shift,
 	})
 	if err != nil {
 		return nil, mapStaffError(err, "update staff profile")
@@ -81,7 +79,6 @@ func mapStaffProfile(row sqlcgen.StaffProfile) *domainprofile.Staff {
 		Phone:        nullStringPtr(row.Phone),
 		EmployeeCode: row.EmployeeCode,
 		HireDate:     row.HireDate,
-		Shift:        row.Shift,
 		CreatedAt:    row.CreatedAt,
 		UpdatedAt:    row.UpdatedAt,
 	}

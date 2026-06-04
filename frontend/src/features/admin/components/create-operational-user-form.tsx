@@ -35,7 +35,6 @@ export function CreateOperationalUserForm() {
       phone: null,
       employee_code: "",
       hire_date: "",
-      shift: "",
     },
   });
 
@@ -173,20 +172,6 @@ export function CreateOperationalUserForm() {
                   <FormLabel>Hire date</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="shift"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Shift</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -8,7 +8,6 @@ type UpdateMeRequest struct {
 	FullName     *string `json:"full_name,omitempty" validate:"omitempty,max=255"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
 	HireDate     *string `json:"hire_date,omitempty" validate:"omitempty,datetime=2006-01-02"`
-	Shift        *string `json:"shift,omitempty" validate:"omitempty,max=64"`
 }
 
 type ChangeMyPasswordRequest struct {
@@ -26,9 +25,8 @@ type MeStaffProfileResponse struct {
 	Type         string  `json:"type"`
 	FullName     string  `json:"full_name"`
 	Phone        *string `json:"phone,omitempty"`
-	EmployeeCode string  `json:"employee_code"`
-	HireDate     string  `json:"hire_date"`
-	Shift        string  `json:"shift"`
+	EmployeeCode string `json:"employee_code"`
+	HireDate     string `json:"hire_date"`
 }
 
 type MeAdminProfileResponse struct {

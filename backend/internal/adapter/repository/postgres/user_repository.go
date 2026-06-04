@@ -201,7 +201,6 @@ func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUse
 			FullName:           stringPtrOrNil(row.FullName),
 			Phone:              nullStringPtr(row.Phone),
 			EmployeeCode:       nullStringPtr(row.EmployeeCode),
-			Shift:              nullStringPtr(row.Shift),
 			DisplayName:        nullStringPtr(row.DisplayName),
 		}
 		if row.DeletedAt.Valid {

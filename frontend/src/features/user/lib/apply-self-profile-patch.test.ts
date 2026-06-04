@@ -49,7 +49,6 @@ describe("applySelfProfilePatch", () => {
         phone: "555",
         employee_code: "E1",
         hire_date: "2024-01-01",
-        shift: "AM",
       },
     };
 

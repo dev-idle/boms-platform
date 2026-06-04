@@ -130,11 +130,6 @@ table "staff_profiles" {
     type = date
     null = false
   }
-  column "shift" {
-    type    = text
-    null    = false
-    default = ""
-  }
   column "created_at" {
     type    = timestamptz
     null    = false

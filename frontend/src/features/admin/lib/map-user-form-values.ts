@@ -14,7 +14,6 @@ export function adminUserToProfileFormValues(
     phone: user.phone ?? "",
     employee_code: user.employee_code ?? "",
     hire_date: user.hire_date ? user.hire_date.slice(0, 10) : "",
-    shift: user.shift ?? "",
   };
 }
 
@@ -32,6 +31,5 @@ export function adminUserToRoleFormValues(user: AdminUser): UpdateRoleInput {
     phone: user.phone ?? "",
     employee_code: user.employee_code ?? "",
     hire_date: user.hire_date ? user.hire_date.slice(0, 10) : "",
-    shift: user.shift ?? "",
   };
 }

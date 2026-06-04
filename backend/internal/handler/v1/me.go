@@ -120,7 +120,6 @@ func toMeResponse(user *domainuser.User, profile any) dto.MeResponse {
 			Phone:        p.Phone,
 			EmployeeCode: p.EmployeeCode,
 			HireDate:     p.HireDate.Format("2006-01-02"),
-			Shift:        p.Shift,
 		}
 	case *domainprofile.Admin:
 		res.Profile = dto.MeAdminProfileResponse{
@@ -141,22 +140,18 @@ func sanitizeSelfProfileUpdate(role domainuser.Role, req *dto.UpdateMeRequest) {
 		req.FullName = nil
 		req.EmployeeCode = nil
 		req.HireDate = nil
-		req.Shift = nil
 	case domainuser.RoleStaff, domainuser.RoleBaker, domainuser.RoleManager:
 		req.DisplayName = nil
 		req.EmployeeCode = nil
 		req.HireDate = nil
-		req.Shift = nil
 	case domainuser.RoleAdmin:
 		req.DisplayName = nil
 		req.EmployeeCode = nil
 		req.HireDate = nil
-		req.Shift = nil
 	default:
 		req.DisplayName = nil
 		req.FullName = nil
 		req.EmployeeCode = nil
 		req.HireDate = nil
-		req.Shift = nil
 	}
 }

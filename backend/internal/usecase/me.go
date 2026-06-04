@@ -99,7 +99,6 @@ func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto
 			Phone:        coalesceStringPtr(req.Phone, p.Phone),
 			EmployeeCode: p.EmployeeCode,
 			HireDate:     p.HireDate,
-			Shift:        p.Shift,
 		}
 		profile, err = u.staff.UpdateByUserID(ctx, params)
 	case *domainprofile.Admin:

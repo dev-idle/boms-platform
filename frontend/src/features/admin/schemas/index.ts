@@ -32,7 +32,6 @@ export const adminUserSchema = z.object({
   phone: optionalNullableTrimmedString(50, "Phone"),
   employee_code: optionalNullableTrimmedString(64, "Employee code"),
   hire_date: z.string().optional().nullable(),
-  shift: optionalNullableTrimmedString(64, "Shift"),
 });
 
 const createOperationalBaseSchema = z.object({
@@ -54,7 +53,6 @@ export const createOperationalSchema = createOperationalBaseSchema.extend({
     .min(1, "Employee code is required")
     .max(64),
   hire_date: dateOnlySchema,
-  shift: z.string().trim().min(1, "Shift is required").max(64),
 });
 
 export const createOperationalResponseSchema = z.object({
@@ -67,7 +65,6 @@ export const updateOperationalProfileSchema = z.object({
   phone: optionalNullableTrimmedString(50, "Phone"),
   employee_code: z.string().trim().max(64).optional().nullable(),
   hire_date: dateOnlySchema.optional().nullable(),
-  shift: z.string().trim().max(64).optional().nullable(),
 });
 
 /** Admin user detail profile tab — string fields for controlled inputs. */
@@ -76,7 +73,6 @@ export const adminUserProfileFormSchema = z.object({
   phone: z.string().trim().max(50).optional(),
   employee_code: z.string().trim().max(64).optional(),
   hire_date: z.string().trim().optional(),
-  shift: z.string().trim().max(64).optional(),
 });
 
 const updateRoleBaseSchema = z.object({
@@ -89,7 +85,6 @@ const updateRoleBaseSchema = z.object({
   phone: z.string().trim().max(50).optional().nullable(),
   employee_code: z.string().trim().max(64).optional().nullable(),
   hire_date: dateOnlySchema.optional().nullable(),
-  shift: z.string().trim().max(64).optional().nullable(),
 });
 
 export const updateRoleSchema = updateRoleBaseSchema.superRefine((input, ctx) => {
@@ -111,13 +106,6 @@ export const updateRoleSchema = updateRoleBaseSchema.superRefine((input, ctx) =>
         code: z.ZodIssueCode.custom,
         message: "Hire date is required for staff roles",
         path: ["hire_date"],
-      });
-    }
-    if (!input.shift?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Shift is required for staff roles",
-        path: ["shift"],
       });
     }
   }
