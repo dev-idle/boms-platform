@@ -2,7 +2,7 @@ module github.com/boms/backend
 
 go 1.26
 
-toolchain go1.26.3
+toolchain go1.26.4
 
 require (
 	github.com/alicebob/miniredis/v2 v2.38.0
