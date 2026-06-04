@@ -93,6 +93,27 @@ export const updateSelfProfileSchema = z
   })
   .strict();
 
+const selfProfilePhoneFormField = z
+  .string()
+  .trim()
+  .max(50, "Phone must be at most 50 characters")
+  .optional();
+
+/** Admin + operational self-service profile forms (PATCH /me: full_name, phone). */
+export const fullNamePhoneSelfProfileFormSchema = z.object({
+  full_name: z.string().trim().min(1, "Full name is required").max(255),
+  phone: selfProfilePhoneFormField,
+});
+
+export const customerSelfProfileFormSchema = z.object({
+  display_name: z
+    .string()
+    .trim()
+    .max(255, "Display name must be at most 255 characters")
+    .optional(),
+  phone: selfProfilePhoneFormField,
+});
+
 export const changePasswordSchema = z.object({
   old_password: z.string().min(1, "Current password is required"),
   new_password: newPasswordZodString(),
@@ -114,5 +135,11 @@ export const changePasswordFormSchema = changePasswordSchema
   });
 
 export type UpdateSelfProfileInput = z.infer<typeof updateSelfProfileSchema>;
+export type FullNamePhoneSelfProfileFormValues = z.infer<
+  typeof fullNamePhoneSelfProfileFormSchema
+>;
+export type CustomerSelfProfileFormValues = z.infer<
+  typeof customerSelfProfileFormSchema
+>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type ChangePasswordFormInput = z.infer<typeof changePasswordFormSchema>;

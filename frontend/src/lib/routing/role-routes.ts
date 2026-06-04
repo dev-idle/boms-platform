@@ -59,6 +59,7 @@ export function passwordRouteForRole(role: UserRole): string {
     case USER_ROLE.manager:
       return ROUTE.manager.account.password;
     case USER_ROLE.admin:
+      // Admin change-password UI lives on the profile page (no `/admin/account/password`).
       return ROUTE.admin.account.profile;
     default:
       return assertNeverRole(role);

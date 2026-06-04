@@ -33,11 +33,15 @@ export {
   changePasswordFormSchema,
   changePasswordSchema,
   customerProfileSchema,
+  customerSelfProfileFormSchema,
+  fullNamePhoneSelfProfileFormSchema,
   meSchema,
   staffProfileSchema,
   updateSelfProfileSchema,
   type ChangePasswordFormInput,
   type ChangePasswordInput,
+  type CustomerSelfProfileFormValues,
+  type FullNamePhoneSelfProfileFormValues,
   type UpdateSelfProfileInput,
 } from "./schemas/index";
 export type { AdminProfile, CustomerProfile, Me, StaffProfile } from "./types";

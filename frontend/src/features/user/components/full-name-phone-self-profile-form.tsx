@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
 
-import { USER_ROLE } from "@/constants/roles";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -16,44 +16,45 @@ import {
 import { Input } from "@/components/ui/input";
 
 import {
-  customerSelfProfileFormSchema,
-  type CustomerSelfProfileFormValues,
+  fullNamePhoneSelfProfileFormSchema,
+  type FullNamePhoneSelfProfileFormValues,
 } from "../schemas/index";
-import { useMe, useUpdateProfile } from "../hooks";
-import type { CustomerProfile } from "../types";
+import { useUpdateProfile } from "../hooks";
 
 import {
-  applyCustomerSelfProfileFormErrors,
-  customerProfileFormDefaults,
+  applySelfProfileFormErrors,
+  fullNamePhoneFormDefaults,
   nullableString,
 } from "./helpers";
 
-type CustomerAccountProfileFormBodyProps = {
-  profile: CustomerProfile;
+type FullNamePhoneSelfProfileFormProps = {
+  fullName: string;
+  phone: string | null | undefined;
+  children?: ReactNode;
 };
 
-function CustomerAccountProfileFormBody({
-  profile,
-}: CustomerAccountProfileFormBodyProps) {
+/** PATCH /me self-service form for roles that edit `full_name` and `phone`. */
+export function FullNamePhoneSelfProfileForm({
+  fullName,
+  phone,
+  children,
+}: FullNamePhoneSelfProfileFormProps) {
   const updateProfile = useUpdateProfile();
 
-  const form = useForm<CustomerSelfProfileFormValues>({
-    resolver: zodResolver(customerSelfProfileFormSchema),
-    defaultValues: customerProfileFormDefaults(profile),
+  const form = useForm<FullNamePhoneSelfProfileFormValues>({
+    resolver: zodResolver(fullNamePhoneSelfProfileFormSchema),
+    defaultValues: fullNamePhoneFormDefaults(fullName, phone),
   });
 
-  function onSubmit(values: CustomerSelfProfileFormValues): void {
+  function onSubmit(values: FullNamePhoneSelfProfileFormValues): void {
     updateProfile.mutate(
       {
-        display_name: values.display_name?.trim() || undefined,
+        full_name: values.full_name.trim(),
         phone: nullableString(values.phone ?? ""),
       },
       {
         onError: (error) => {
-          applyCustomerSelfProfileFormErrors(form, error, [
-            "display_name",
-            "phone",
-          ]);
+          applySelfProfileFormErrors(form, error, ["full_name", "phone"]);
         },
       },
     );
@@ -68,12 +69,12 @@ function CustomerAccountProfileFormBody({
       >
         <FormField
           control={form.control}
-          name="display_name"
+          name="full_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Display name</FormLabel>
+              <FormLabel>Full name</FormLabel>
               <FormControl>
-                <Input placeholder="Your display name" {...field} />
+                <Input placeholder="Full name" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -94,29 +95,12 @@ function CustomerAccountProfileFormBody({
           )}
         />
 
+        {children}
+
         <Button disabled={updateProfile.isPending} type="submit">
           {updateProfile.isPending ? "Saving…" : "Save changes"}
         </Button>
       </form>
     </Form>
-  );
-}
-
-export function CustomerAccountProfileForm() {
-  const me = useMe();
-
-  if (me.isPending) {
-    return <p className="text-sm text-zinc-500">Loading profile…</p>;
-  }
-
-  if (!me.data || me.data.role !== USER_ROLE.customer) {
-    return <p className="text-sm text-zinc-500">Customer profile not available.</p>;
-  }
-
-  return (
-    <CustomerAccountProfileFormBody
-      key={me.data.id}
-      profile={me.data.profile}
-    />
   );
 }

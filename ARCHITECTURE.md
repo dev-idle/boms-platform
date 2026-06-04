@@ -188,7 +188,7 @@ features/<slice>/
 | Staff | `/staff/account/{profile,password}` |
 | Baker | `/baker/account/{profile,password}` |
 | Manager | `/manager/account/{profile,password}` |
-| Admin | `/admin`, `/admin/{products,orders,users}`, `/admin/users/{new,[id]}`, `/admin/account/{profile,password}` |
+| Admin | `/admin`, `/admin/{products,orders,users}`, `/admin/users/{new,[id]}`, `/admin/account/profile` (profile + password) |
 
 **Rule:** one role = one namespace. Each role may only access its own URL prefix (enforced by FE `RoleGate` + post-login redirect). Only `admin` is seeded in development (`bootstrap.EnsureDevAdmin`). No mixing of `/dashboard/*` with `/admin/*`. Agent/dev canonical detail: `.cursor/rules/roles.mdc` (local, not committed).
 

@@ -10,63 +10,11 @@ import { endLocalSession } from "@/lib/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
 import { changePassword, deleteAccount, updateProfile } from "../api";
+import { applySelfProfilePatch } from "../lib/apply-self-profile-patch";
 import { type ChangePasswordInput, type UpdateSelfProfileInput } from "../schemas/index";
-import type { Me } from "../types";
 import { meQueryOptions, userQueryKeys } from "./query-options";
 
 export { meQueryOptions, userQueryKeys } from "./query-options";
-
-function applySelfProfilePatch(
-  current: Me,
-  input: UpdateSelfProfileInput,
-): Me {
-  switch (current.role) {
-    case "customer":
-      return {
-        ...current,
-        profile: {
-          ...current.profile,
-          display_name:
-            input.display_name === undefined
-              ? current.profile.display_name
-              : input.display_name,
-          phone:
-            input.phone === undefined ? current.profile.phone : input.phone,
-        },
-      };
-    case "staff":
-    case "baker":
-    case "manager":
-      return {
-        ...current,
-        profile: {
-          ...current.profile,
-          full_name:
-            input.full_name === undefined
-              ? current.profile.full_name
-              : input.full_name,
-          phone:
-            input.phone === undefined ? current.profile.phone : input.phone,
-        },
-      };
-    case "admin":
-      return {
-        ...current,
-        profile: {
-          ...current.profile,
-          full_name:
-            input.full_name === undefined
-              ? current.profile.full_name
-              : input.full_name,
-          phone:
-            input.phone === undefined ? current.profile.phone : input.phone,
-        },
-      };
-    default: {
-      throw new Error(`Unhandled user role payload: ${String(current)}`);
-    }
-  }
-}
 
 export function useMe() {
   const status = useAuthStore((state) => state.status);

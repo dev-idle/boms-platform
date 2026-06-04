@@ -70,6 +70,15 @@ export const updateOperationalProfileSchema = z.object({
   shift: z.string().trim().max(64).optional().nullable(),
 });
 
+/** Admin user detail profile tab — string fields for controlled inputs. */
+export const adminUserProfileFormSchema = z.object({
+  full_name: z.string().trim().min(1, "Full name is required").max(255),
+  phone: z.string().trim().max(50).optional(),
+  employee_code: z.string().trim().max(64).optional(),
+  hire_date: z.string().trim().optional(),
+  shift: z.string().trim().max(64).optional(),
+});
+
 const updateRoleBaseSchema = z.object({
   role: z.enum([
     USER_ROLE.staff,
@@ -141,6 +150,7 @@ export type CreateOperationalResponse = z.infer<
 export type UpdateOperationalProfileInput = z.infer<
   typeof updateOperationalProfileSchema
 >;
+export type AdminUserProfileFormValues = z.infer<typeof adminUserProfileFormSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type ListFilterInput = z.infer<typeof listFilterSchema>;
 export type UsersListResult = z.infer<typeof usersListResultSchema>;
