@@ -8,6 +8,7 @@ import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
+import { AddToCartButton } from "./add-to-cart-button";
 import { useCatalogProduct } from "../hooks";
 
 type ProductDetailProps = {
@@ -70,6 +71,9 @@ export function ProductDetail({ productId }: ProductDetailProps) {
         <p className="mt-6 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           {formatPriceCents(product.price_cents)}
         </p>
+        <div className="mt-6">
+          <AddToCartButton productId={product.id} />
+        </div>
       </article>
     </div>
   );

@@ -18,6 +18,7 @@ export const ROUTE = {
   productDetail: (id: string) => `/products/${id}`,
   cart: "/cart",
   orders: "/orders",
+  orderDetail: (id: string) => `/orders/${id}`,
   customer: {
     account: {
       profile: "/customer/account/profile",

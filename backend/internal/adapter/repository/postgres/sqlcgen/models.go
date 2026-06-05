@@ -13,6 +13,48 @@ import (
 	"github.com/google/uuid"
 )
 
+type CartLineType string
+
+const (
+	CartLineTypeProduct CartLineType = "product"
+	CartLineTypeCombo   CartLineType = "combo"
+)
+
+func (e *CartLineType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CartLineType(s)
+	case string:
+		*e = CartLineType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CartLineType: %T", src)
+	}
+	return nil
+}
+
+type NullCartLineType struct {
+	CartLineType CartLineType `json:"cartLineType"`
+	Valid        bool         `json:"valid"` // Valid is true if CartLineType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCartLineType) Scan(value interface{}) error {
+	if value == nil {
+		ns.CartLineType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CartLineType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCartLineType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CartLineType), nil
+}
+
 type DiscountType string
 
 const (
@@ -53,6 +95,50 @@ func (ns NullDiscountType) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.DiscountType), nil
+}
+
+type OrderStatus string
+
+const (
+	OrderStatusPending   OrderStatus = "pending"
+	OrderStatusConfirmed OrderStatus = "confirmed"
+	OrderStatusCancelled OrderStatus = "cancelled"
+	OrderStatusFulfilled OrderStatus = "fulfilled"
+)
+
+func (e *OrderStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrderStatus(s)
+	case string:
+		*e = OrderStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrderStatus: %T", src)
+	}
+	return nil
+}
+
+type NullOrderStatus struct {
+	OrderStatus OrderStatus `json:"orderStatus"`
+	Valid       bool        `json:"valid"` // Valid is true if OrderStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrderStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrderStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrderStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrderStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrderStatus), nil
 }
 
 type UserRole string
@@ -108,6 +194,25 @@ type AdminProfile struct {
 	UpdatedAt time.Time      `db:"updated_at" json:"updatedAt"`
 }
 
+type Cart struct {
+	ID             uuid.UUID     `db:"id" json:"id"`
+	UserID         uuid.UUID     `db:"user_id" json:"userId"`
+	DiscountCodeID uuid.NullUUID `db:"discount_code_id" json:"discountCodeId"`
+	CreatedAt      time.Time     `db:"created_at" json:"createdAt"`
+	UpdatedAt      time.Time     `db:"updated_at" json:"updatedAt"`
+}
+
+type CartItem struct {
+	ID        uuid.UUID     `db:"id" json:"id"`
+	CartID    uuid.UUID     `db:"cart_id" json:"cartId"`
+	LineType  CartLineType  `db:"line_type" json:"lineType"`
+	ProductID uuid.NullUUID `db:"product_id" json:"productId"`
+	ComboID   uuid.NullUUID `db:"combo_id" json:"comboId"`
+	Quantity  int32         `db:"quantity" json:"quantity"`
+	CreatedAt time.Time     `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time     `db:"updated_at" json:"updatedAt"`
+}
+
 type Category struct {
 	ID        uuid.UUID    `db:"id" json:"id"`
 	Name      string       `db:"name" json:"name"`
@@ -154,6 +259,33 @@ type DiscountCode struct {
 	CreatedAt     time.Time     `db:"created_at" json:"createdAt"`
 	UpdatedAt     time.Time     `db:"updated_at" json:"updatedAt"`
 	DeletedAt     sql.NullTime  `db:"deleted_at" json:"deletedAt"`
+}
+
+type Order struct {
+	ID                   uuid.UUID      `db:"id" json:"id"`
+	UserID               uuid.UUID      `db:"user_id" json:"userId"`
+	Status               OrderStatus    `db:"status" json:"status"`
+	SubtotalCents        int64          `db:"subtotal_cents" json:"subtotalCents"`
+	DiscountCents        int64          `db:"discount_cents" json:"discountCents"`
+	TotalCents           int64          `db:"total_cents" json:"totalCents"`
+	DiscountCodeID       uuid.NullUUID  `db:"discount_code_id" json:"discountCodeId"`
+	DiscountCodeSnapshot sql.NullString `db:"discount_code_snapshot" json:"discountCodeSnapshot"`
+	CreatedAt            time.Time      `db:"created_at" json:"createdAt"`
+	UpdatedAt            time.Time      `db:"updated_at" json:"updatedAt"`
+}
+
+type OrderItem struct {
+	ID             uuid.UUID     `db:"id" json:"id"`
+	OrderID        uuid.UUID     `db:"order_id" json:"orderId"`
+	LineType       CartLineType  `db:"line_type" json:"lineType"`
+	ProductID      uuid.NullUUID `db:"product_id" json:"productId"`
+	ComboID        uuid.NullUUID `db:"combo_id" json:"comboId"`
+	Name           string        `db:"name" json:"name"`
+	Slug           string        `db:"slug" json:"slug"`
+	Quantity       int32         `db:"quantity" json:"quantity"`
+	UnitPriceCents int64         `db:"unit_price_cents" json:"unitPriceCents"`
+	LineTotalCents int64         `db:"line_total_cents" json:"lineTotalCents"`
+	CreatedAt      time.Time     `db:"created_at" json:"createdAt"`
 }
 
 type Product struct {

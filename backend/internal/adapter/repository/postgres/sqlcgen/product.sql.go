@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const catalogGetProductByID = `-- name: CatalogGetProductByID :one
@@ -75,6 +76,86 @@ func (q *Queries) CatalogGetProductByID(ctx context.Context, id uuid.UUID) (Cata
 		&i.CategorySlug,
 	)
 	return i, err
+}
+
+const catalogGetProductsByIDs = `-- name: CatalogGetProductsByIDs :many
+SELECT
+    p.id,
+    p.category_id,
+    p.name,
+    p.slug,
+    p.description,
+    p.price_cents,
+    p.image_url,
+    c.name AS category_name,
+    c.slug AS category_slug
+FROM products p
+INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+WHERE p.id = ANY($1::uuid[])
+  AND p.deleted_at IS NULL
+  AND p.is_available = true
+`
+
+type CatalogGetProductsByIDsRow struct {
+	ID           uuid.UUID      `db:"id" json:"id"`
+	CategoryID   uuid.UUID      `db:"category_id" json:"categoryId"`
+	Name         string         `db:"name" json:"name"`
+	Slug         string         `db:"slug" json:"slug"`
+	Description  sql.NullString `db:"description" json:"description"`
+	PriceCents   int64          `db:"price_cents" json:"priceCents"`
+	ImageUrl     sql.NullString `db:"image_url" json:"imageUrl"`
+	CategoryName string         `db:"category_name" json:"categoryName"`
+	CategorySlug string         `db:"category_slug" json:"categorySlug"`
+}
+
+// CatalogGetProductsByIDs
+//
+//	SELECT
+//	    p.id,
+//	    p.category_id,
+//	    p.name,
+//	    p.slug,
+//	    p.description,
+//	    p.price_cents,
+//	    p.image_url,
+//	    c.name AS category_name,
+//	    c.slug AS category_slug
+//	FROM products p
+//	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+//	WHERE p.id = ANY($1::uuid[])
+//	  AND p.deleted_at IS NULL
+//	  AND p.is_available = true
+func (q *Queries) CatalogGetProductsByIDs(ctx context.Context, productIds []uuid.UUID) ([]CatalogGetProductsByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, catalogGetProductsByIDs, pq.Array(productIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CatalogGetProductsByIDsRow{}
+	for rows.Next() {
+		var i CatalogGetProductsByIDsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CategoryID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.PriceCents,
+			&i.ImageUrl,
+			&i.CategoryName,
+			&i.CategorySlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const catalogListProducts = `-- name: CatalogListProducts :many

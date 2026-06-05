@@ -67,5 +67,6 @@ type ComboRepository interface {
 	CatalogList(ctx context.Context, params CatalogListCombosParams) ([]CatalogCombo, error)
 	CatalogListCount(ctx context.Context) (int64, error)
 	CatalogGetByID(ctx context.Context, id uuid.UUID) (*CatalogCombo, error)
+	CatalogGetByIDs(ctx context.Context, ids []uuid.UUID) ([]CatalogCombo, error)
 	CountAvailableProducts(ctx context.Context, productIDs []uuid.UUID) (int64, error)
 }

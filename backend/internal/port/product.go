@@ -69,4 +69,5 @@ type ProductRepository interface {
 	CatalogList(ctx context.Context, params CatalogListProductsParams) ([]CatalogListProduct, error)
 	CatalogListCount(ctx context.Context, categoryID *uuid.UUID) (int64, error)
 	CatalogGetByID(ctx context.Context, id uuid.UUID) (*CatalogListProduct, error)
+	CatalogGetByIDs(ctx context.Context, ids []uuid.UUID) ([]CatalogListProduct, error)
 }

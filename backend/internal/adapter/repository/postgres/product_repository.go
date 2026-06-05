@@ -148,6 +148,21 @@ func (r *ProductRepository) CatalogGetByID(ctx context.Context, id uuid.UUID) (*
 	return &out, nil
 }
 
+func (r *ProductRepository) CatalogGetByIDs(ctx context.Context, ids []uuid.UUID) ([]port.CatalogListProduct, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := r.q(ctx).CatalogGetProductsByIDs(ctx, ids)
+	if err != nil {
+		return nil, mapRepoError(err, "catalog get products by ids")
+	}
+	out := make([]port.CatalogListProduct, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, mapCatalogGetProductsByIDsRow(row))
+	}
+	return out, nil
+}
+
 func mapManagerListProductsRow(row sqlcgen.ManagerListProductsRow) port.ManagerListProduct {
 	return mapManagerJoinedProduct(
 		row.ID,
@@ -265,6 +280,20 @@ func mapCatalogListProductsRow(row sqlcgen.CatalogListProductsRow) port.CatalogL
 }
 
 func mapCatalogGetProductRow(row sqlcgen.CatalogGetProductByIDRow) port.CatalogListProduct {
+	return mapCatalogProductFields(
+		row.ID,
+		row.CategoryID,
+		row.Name,
+		row.Slug,
+		row.Description,
+		row.PriceCents,
+		row.ImageUrl,
+		row.CategoryName,
+		row.CategorySlug,
+	)
+}
+
+func mapCatalogGetProductsByIDsRow(row sqlcgen.CatalogGetProductsByIDsRow) port.CatalogListProduct {
 	return mapCatalogProductFields(
 		row.ID,
 		row.CategoryID,

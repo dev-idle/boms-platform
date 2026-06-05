@@ -40,8 +40,10 @@ type ManagerListDiscountCodesParams struct {
 type DiscountCodeRepository interface {
 	Create(ctx context.Context, params CreateDiscountCodeParams) (*domaindiscount.Code, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domaindiscount.Code, error)
+	GetByCode(ctx context.Context, code string) (*domaindiscount.Code, error)
 	Update(ctx context.Context, params UpdateDiscountCodeParams) (*domaindiscount.Code, error)
 	SoftDelete(ctx context.Context, id uuid.UUID) error
 	ManagerList(ctx context.Context, params ManagerListDiscountCodesParams) ([]domaindiscount.Code, error)
 	ManagerListCount(ctx context.Context, search *string) (int64, error)
+	IncrementUsedCount(ctx context.Context, id uuid.UUID) (*domaindiscount.Code, error)
 }

@@ -72,6 +72,23 @@ type Querier interface {
 	//    AND starts_at <= now()
 	//    AND ends_at > now()
 	CatalogGetComboByID(ctx context.Context, id uuid.UUID) (CatalogGetComboByIDRow, error)
+	//CatalogGetCombosByIDs
+	//
+	//  SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+	//  FROM combos c
+	//  WHERE c.id = ANY($1::uuid[])
+	//    AND c.deleted_at IS NULL
+	//    AND c.is_active = true
+	//    AND c.starts_at <= now()
+	//    AND c.ends_at > now()
+	//    AND EXISTS (
+	//      SELECT 1
+	//      FROM combo_items ci
+	//      INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_available = true
+	//      INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+	//      WHERE ci.combo_id = c.id
+	//    )
+	CatalogGetCombosByIDs(ctx context.Context, comboIds []uuid.UUID) ([]CatalogGetCombosByIDsRow, error)
 	//CatalogGetProductByID
 	//
 	//  SELECT
@@ -90,6 +107,24 @@ type Querier interface {
 	//    AND p.deleted_at IS NULL
 	//    AND p.is_available = true
 	CatalogGetProductByID(ctx context.Context, id uuid.UUID) (CatalogGetProductByIDRow, error)
+	//CatalogGetProductsByIDs
+	//
+	//  SELECT
+	//      p.id,
+	//      p.category_id,
+	//      p.name,
+	//      p.slug,
+	//      p.description,
+	//      p.price_cents,
+	//      p.image_url,
+	//      c.name AS category_name,
+	//      c.slug AS category_slug
+	//  FROM products p
+	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+	//  WHERE p.id = ANY($1::uuid[])
+	//    AND p.deleted_at IS NULL
+	//    AND p.is_available = true
+	CatalogGetProductsByIDs(ctx context.Context, productIds []uuid.UUID) ([]CatalogGetProductsByIDsRow, error)
 	//CatalogListCategories
 	//
 	//  SELECT id, name, slug, sort_order
@@ -175,6 +210,12 @@ type Querier interface {
 	//      OR p.category_id = $1::uuid
 	//    )
 	CatalogListProductsCount(ctx context.Context, categoryID uuid.NullUUID) (int64, error)
+	//ClearCartDiscountCode
+	//
+	//  UPDATE carts
+	//  SET discount_code_id = NULL, updated_at = now()
+	//  WHERE id = $1
+	ClearCartDiscountCode(ctx context.Context, id uuid.UUID) error
 	//ClearMustChangePassword
 	//
 	//  UPDATE users
@@ -192,6 +233,12 @@ type Querier interface {
 	//    AND p.deleted_at IS NULL
 	//    AND p.is_available = true
 	CountAvailableProductsForCombo(ctx context.Context, productIds []uuid.UUID) (int64, error)
+	//CountCartItems
+	//
+	//  SELECT COUNT(*)::bigint AS count
+	//  FROM cart_items
+	//  WHERE cart_id = $1
+	CountCartItems(ctx context.Context, cartID uuid.UUID) (int64, error)
 	//CreateAdminProfile
 	//
 	//  INSERT INTO admin_profiles (user_id, full_name, phone)
@@ -213,6 +260,18 @@ type Querier interface {
 	//  )
 	//  VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')::inet, $9)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) error
+	//CreateCart
+	//
+	//  INSERT INTO carts (user_id)
+	//  VALUES ($1)
+	//  RETURNING id, user_id, discount_code_id, created_at, updated_at
+	CreateCart(ctx context.Context, userID uuid.UUID) (Cart, error)
+	//CreateCartItem
+	//
+	//  INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity)
+	//  VALUES ($1, $2, $3, $4, $5)
+	//  RETURNING id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+	CreateCartItem(ctx context.Context, arg CreateCartItemParams) (CartItem, error)
 	//CreateCategory
 	//
 	//  INSERT INTO categories (name, slug, sort_order, is_active)
@@ -259,6 +318,57 @@ type Querier interface {
 	//      updated_at,
 	//      deleted_at
 	CreateDiscountCode(ctx context.Context, arg CreateDiscountCodeParams) (DiscountCode, error)
+	//CreateOrder
+	//
+	//  INSERT INTO orders (
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot
+	//  )
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7)
+	//  RETURNING
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    created_at,
+	//    updated_at
+	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
+	//CreateOrderItem
+	//
+	//  INSERT INTO order_items (
+	//    order_id,
+	//    line_type,
+	//    product_id,
+	//    combo_id,
+	//    name,
+	//    slug,
+	//    quantity,
+	//    unit_price_cents,
+	//    line_total_cents
+	//  )
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	//  RETURNING
+	//    id,
+	//    order_id,
+	//    line_type,
+	//    product_id,
+	//    combo_id,
+	//    name,
+	//    slug,
+	//    quantity,
+	//    unit_price_cents,
+	//    line_total_cents,
+	//    created_at
+	CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderItem, error)
 	//CreateProduct
 	//
 	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_available, image_url)
@@ -282,6 +392,16 @@ type Querier interface {
 	//  DELETE FROM admin_profiles
 	//  WHERE user_id = $1
 	DeleteAdminProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	//DeleteAllCartItems
+	//
+	//  DELETE FROM cart_items
+	//  WHERE cart_id = $1
+	DeleteAllCartItems(ctx context.Context, cartID uuid.UUID) error
+	//DeleteCartItem
+	//
+	//  DELETE FROM cart_items
+	//  WHERE cart_id = $1 AND id = $2
+	DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error)
 	//DeleteComboItemsByComboID
 	//
 	//  DELETE FROM combo_items
@@ -303,6 +423,30 @@ type Querier interface {
 	//  FROM admin_profiles
 	//  WHERE user_id = $1
 	GetAdminProfileByUserID(ctx context.Context, userID uuid.UUID) (AdminProfile, error)
+	//GetCartByUserID
+	//
+	//  SELECT id, user_id, discount_code_id, created_at, updated_at
+	//  FROM carts
+	//  WHERE user_id = $1
+	GetCartByUserID(ctx context.Context, userID uuid.UUID) (Cart, error)
+	//GetCartItemByCombo
+	//
+	//  SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+	//  FROM cart_items
+	//  WHERE cart_id = $1 AND line_type = 'combo' AND combo_id = $2
+	GetCartItemByCombo(ctx context.Context, arg GetCartItemByComboParams) (CartItem, error)
+	//GetCartItemByID
+	//
+	//  SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+	//  FROM cart_items
+	//  WHERE cart_id = $1 AND id = $2
+	GetCartItemByID(ctx context.Context, arg GetCartItemByIDParams) (CartItem, error)
+	//GetCartItemByProduct
+	//
+	//  SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+	//  FROM cart_items
+	//  WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2
+	GetCartItemByProduct(ctx context.Context, arg GetCartItemByProductParams) (CartItem, error)
 	//GetCategoryByID
 	//
 	//  SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
@@ -323,6 +467,26 @@ type Querier interface {
 	//  FROM customer_profiles
 	//  WHERE user_id = $1
 	GetCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (CustomerProfile, error)
+	//GetDiscountCodeByCode
+	//
+	//  SELECT
+	//      id,
+	//      code,
+	//      discount_type,
+	//      value,
+	//      min_order_cents,
+	//      max_uses,
+	//      used_count,
+	//      starts_at,
+	//      ends_at,
+	//      is_active,
+	//      created_at,
+	//      updated_at,
+	//      deleted_at
+	//  FROM discount_codes
+	//  WHERE code = $1
+	//    AND deleted_at IS NULL
+	GetDiscountCodeByCode(ctx context.Context, code string) (DiscountCode, error)
 	//GetDiscountCodeByID
 	//
 	//  SELECT
@@ -343,6 +507,22 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	GetDiscountCodeByID(ctx context.Context, id uuid.UUID) (DiscountCode, error)
+	//GetOrderByIDForUser
+	//
+	//  SELECT
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    created_at,
+	//    updated_at
+	//  FROM orders
+	//  WHERE id = $1 AND user_id = $2
+	GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error)
 	//GetProductByID
 	//
 	//  SELECT id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
@@ -378,11 +558,41 @@ type Querier interface {
 	//    AND deleted_at IS NULL
 	//  FOR UPDATE
 	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error)
+	//IncrementDiscountCodeUsedCount
+	//
+	//  UPDATE discount_codes
+	//  SET used_count = used_count + 1,
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	//    AND (max_uses IS NULL OR used_count < max_uses)
+	//  RETURNING
+	//      id,
+	//      code,
+	//      discount_type,
+	//      value,
+	//      min_order_cents,
+	//      max_uses,
+	//      used_count,
+	//      starts_at,
+	//      ends_at,
+	//      is_active,
+	//      created_at,
+	//      updated_at,
+	//      deleted_at
+	IncrementDiscountCodeUsedCount(ctx context.Context, id uuid.UUID) (DiscountCode, error)
 	//InsertComboItem
 	//
 	//  INSERT INTO combo_items (combo_id, product_id, quantity)
 	//  VALUES ($1, $2, $3)
 	InsertComboItem(ctx context.Context, arg InsertComboItemParams) error
+	//ListCartItemsByCartID
+	//
+	//  SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+	//  FROM cart_items
+	//  WHERE cart_id = $1
+	//  ORDER BY created_at ASC
+	ListCartItemsByCartID(ctx context.Context, cartID uuid.UUID) ([]CartItem, error)
 	//ListCatalogComboItemsByComboIDs
 	//
 	//  SELECT
@@ -429,6 +639,48 @@ type Querier interface {
 	//  WHERE ci.combo_id = ANY($1::uuid[])
 	//  ORDER BY ci.combo_id ASC, p.name ASC
 	ListComboItemsByComboIDs(ctx context.Context, comboIds []uuid.UUID) ([]ListComboItemsByComboIDsRow, error)
+	//ListOrderItemsByOrderID
+	//
+	//  SELECT
+	//    id,
+	//    order_id,
+	//    line_type,
+	//    product_id,
+	//    combo_id,
+	//    name,
+	//    slug,
+	//    quantity,
+	//    unit_price_cents,
+	//    line_total_cents,
+	//    created_at
+	//  FROM order_items
+	//  WHERE order_id = $1
+	//  ORDER BY created_at ASC
+	ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]OrderItem, error)
+	//ListOrdersByUser
+	//
+	//  SELECT
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    created_at,
+	//    updated_at
+	//  FROM orders
+	//  WHERE user_id = $1
+	//  ORDER BY created_at DESC
+	//  LIMIT $2 OFFSET $3
+	ListOrdersByUser(ctx context.Context, arg ListOrdersByUserParams) ([]Order, error)
+	//ListOrdersByUserCount
+	//
+	//  SELECT COUNT(*)::bigint AS count
+	//  FROM orders
+	//  WHERE user_id = $1
+	ListOrdersByUserCount(ctx context.Context, userID uuid.UUID) (int64, error)
 	//ManagerGetProductByID
 	//
 	//  SELECT
@@ -581,6 +833,12 @@ type Querier interface {
 	//
 	//  SELECT 1 AS ok
 	Ping(ctx context.Context) (int32, error)
+	//SetCartDiscountCodeID
+	//
+	//  UPDATE carts
+	//  SET discount_code_id = $2, updated_at = now()
+	//  WHERE id = $1
+	SetCartDiscountCodeID(ctx context.Context, arg SetCartDiscountCodeIDParams) error
 	//SetMustChangePassword
 	//
 	//  UPDATE users
@@ -635,6 +893,13 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	SoftDeleteProduct(ctx context.Context, id uuid.UUID) (int64, error)
+	//SumOrderItemQuantitiesByOrderIDs
+	//
+	//  SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count
+	//  FROM order_items
+	//  WHERE order_id = ANY($1::uuid[])
+	//  GROUP BY order_id
+	SumOrderItemQuantitiesByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]SumOrderItemQuantitiesByOrderIDsRow, error)
 	//UpdateAdminProfileByUserID
 	//
 	//  UPDATE admin_profiles
@@ -644,6 +909,13 @@ type Querier interface {
 	//  WHERE user_id = $1
 	//  RETURNING user_id, full_name, phone, created_at, updated_at
 	UpdateAdminProfileByUserID(ctx context.Context, arg UpdateAdminProfileByUserIDParams) (AdminProfile, error)
+	//UpdateCartItemQuantity
+	//
+	//  UPDATE cart_items
+	//  SET quantity = $3, updated_at = now()
+	//  WHERE cart_id = $1 AND id = $2
+	//  RETURNING id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)
 	//UpdateCategory
 	//
 	//  UPDATE categories

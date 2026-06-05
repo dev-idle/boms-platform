@@ -92,6 +92,10 @@ func main() {
 	managerComboUC := usecase.NewManagerComboUsecase(comboRepo, pgPool, auditLogger, zlog)
 	managerDiscountCodeUC := usecase.NewManagerDiscountCodeUsecase(discountCodeRepo, auditLogger, zlog)
 	catalogUC := usecase.NewCatalogUsecase(categoryRepo, productRepo, comboRepo)
+	cartRepo := postgresrepo.NewCartRepository(pgPool)
+	orderRepo := postgresrepo.NewOrderRepository(pgPool)
+	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo)
+	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool)
 
 	if err := bootstrap.EnsureDevAdmin(rootCtx, cfg, userRepo, adminProfileRepo, hasher, pgPool); err != nil {
 		zlog.Fatal("seed_admin", zap.Error(err))
@@ -105,6 +109,8 @@ func main() {
 	managerComboHandler := v1.NewManagerComboHandler(managerComboUC)
 	managerDiscountCodeHandler := v1.NewManagerDiscountCodeHandler(managerDiscountCodeUC)
 	catalogHandler := v1.NewCatalogHandler(catalogUC)
+	cartHandler := v1.NewCartHandler(cartUC)
+	orderHandler := v1.NewOrderHandler(orderUC)
 
 	var asynqClose func() error
 	if cfg.Asynq.Enabled {
@@ -177,6 +183,22 @@ func main() {
 	catalogRead.Get("/products/:id", catalogHandler.GetProduct)
 	catalogRead.Get("/combos", catalogHandler.ListCombos)
 	catalogRead.Get("/combos/:id", catalogHandler.GetCombo)
+
+	customerSession := apiV1.Group(
+		"",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleCustomer),
+		passwordChanged,
+	)
+	customerSession.Get("/cart", cartHandler.Get)
+	customerSession.Post("/cart/items", cartHandler.AddItem)
+	customerSession.Patch("/cart/items/:id", cartHandler.UpdateItem)
+	customerSession.Delete("/cart/items/:id", cartHandler.RemoveItem)
+	customerSession.Put("/cart/discount", cartHandler.ApplyDiscount)
+	customerSession.Delete("/cart/discount", cartHandler.RemoveDiscount)
+	customerSession.Post("/orders/checkout", orderHandler.Checkout)
+	customerSession.Get("/orders", orderHandler.List)
+	customerSession.Get("/orders/:id", orderHandler.Get)
 
 	managerRead := apiV1.Group(
 		"/manager",

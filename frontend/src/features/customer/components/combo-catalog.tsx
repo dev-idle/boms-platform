@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
+import { AddToCartButton } from "./add-to-cart-button";
 import { useCatalogCombos } from "../hooks";
 
 const COMBOS_PAGE_SIZE = 12;
@@ -72,6 +73,9 @@ export function ComboCatalog() {
             <p className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               {formatPriceCents(combo.price_cents)}
             </p>
+            <div className="mt-4">
+              <AddToCartButton comboId={combo.id} label="Add combo to cart" />
+            </div>
           </article>
         ))}
       </div>

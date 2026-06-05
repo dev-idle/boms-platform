@@ -109,6 +109,66 @@ func (q *Queries) CreateDiscountCode(ctx context.Context, arg CreateDiscountCode
 	return i, err
 }
 
+const getDiscountCodeByCode = `-- name: GetDiscountCodeByCode :one
+SELECT
+    id,
+    code,
+    discount_type,
+    value,
+    min_order_cents,
+    max_uses,
+    used_count,
+    starts_at,
+    ends_at,
+    is_active,
+    created_at,
+    updated_at,
+    deleted_at
+FROM discount_codes
+WHERE code = $1
+  AND deleted_at IS NULL
+`
+
+// GetDiscountCodeByCode
+//
+//	SELECT
+//	    id,
+//	    code,
+//	    discount_type,
+//	    value,
+//	    min_order_cents,
+//	    max_uses,
+//	    used_count,
+//	    starts_at,
+//	    ends_at,
+//	    is_active,
+//	    created_at,
+//	    updated_at,
+//	    deleted_at
+//	FROM discount_codes
+//	WHERE code = $1
+//	  AND deleted_at IS NULL
+func (q *Queries) GetDiscountCodeByCode(ctx context.Context, code string) (DiscountCode, error) {
+	row := q.db.QueryRowContext(ctx, getDiscountCodeByCode, code)
+	var i DiscountCode
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.DiscountType,
+		&i.Value,
+		&i.MinOrderCents,
+		&i.MaxUses,
+		&i.UsedCount,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getDiscountCodeByID = `-- name: GetDiscountCodeByID :one
 SELECT
     id,
@@ -150,6 +210,72 @@ WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) GetDiscountCodeByID(ctx context.Context, id uuid.UUID) (DiscountCode, error) {
 	row := q.db.QueryRowContext(ctx, getDiscountCodeByID, id)
+	var i DiscountCode
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.DiscountType,
+		&i.Value,
+		&i.MinOrderCents,
+		&i.MaxUses,
+		&i.UsedCount,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const incrementDiscountCodeUsedCount = `-- name: IncrementDiscountCodeUsedCount :one
+UPDATE discount_codes
+SET used_count = used_count + 1,
+    updated_at = now()
+WHERE id = $1
+  AND deleted_at IS NULL
+  AND (max_uses IS NULL OR used_count < max_uses)
+RETURNING
+    id,
+    code,
+    discount_type,
+    value,
+    min_order_cents,
+    max_uses,
+    used_count,
+    starts_at,
+    ends_at,
+    is_active,
+    created_at,
+    updated_at,
+    deleted_at
+`
+
+// IncrementDiscountCodeUsedCount
+//
+//	UPDATE discount_codes
+//	SET used_count = used_count + 1,
+//	    updated_at = now()
+//	WHERE id = $1
+//	  AND deleted_at IS NULL
+//	  AND (max_uses IS NULL OR used_count < max_uses)
+//	RETURNING
+//	    id,
+//	    code,
+//	    discount_type,
+//	    value,
+//	    min_order_cents,
+//	    max_uses,
+//	    used_count,
+//	    starts_at,
+//	    ends_at,
+//	    is_active,
+//	    created_at,
+//	    updated_at,
+//	    deleted_at
+func (q *Queries) IncrementDiscountCodeUsedCount(ctx context.Context, id uuid.UUID) (DiscountCode, error) {
+	row := q.db.QueryRowContext(ctx, incrementDiscountCodeUsedCount, id)
 	var i DiscountCode
 	err := row.Scan(
 		&i.ID,

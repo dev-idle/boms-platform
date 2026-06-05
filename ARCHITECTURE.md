@@ -258,7 +258,8 @@ features/<slice>/
 | Auth (login/register/logout) | `features/auth` (FE) + `usecase/auth` (BE) |
 | Admin user CRUD | `features/admin` (FE) + `usecase/admin_user` (BE) |
 | Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` + `manager_combo` + `manager_discount_code` (BE) |
-| Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` (products, combos; discount apply at cart later) |
+| Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
+| Customer cart & checkout | `features/customer` (FE) + `usecase/cart` + `usecase/order` (BE) — `/cart/*`, `/orders/*` (session + server pricing) |
 | Audit logs | `service/auditlogger` (BE only) |
 | Profile entity dispatch | `service/profilesvc` (BE) |
 | Routes table | `constants/routes.ts` (FE) |

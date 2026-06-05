@@ -134,6 +134,22 @@ WHERE c.deleted_at IS NULL
     WHERE ci.combo_id = c.id
   );
 
+-- name: CatalogGetCombosByIDs :many
+SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+FROM combos c
+WHERE c.id = ANY(sqlc.arg('combo_ids')::uuid[])
+  AND c.deleted_at IS NULL
+  AND c.is_active = true
+  AND c.starts_at <= now()
+  AND c.ends_at > now()
+  AND EXISTS (
+    SELECT 1
+    FROM combo_items ci
+    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_available = true
+    INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+    WHERE ci.combo_id = c.id
+  );
+
 -- name: CatalogGetComboByID :one
 SELECT id, name, slug, price_cents, starts_at, ends_at
 FROM combos

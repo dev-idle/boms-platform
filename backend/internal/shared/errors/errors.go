@@ -85,6 +85,14 @@ var (
 	ErrCategoryHasProducts    = New(http.StatusUnprocessableEntity, "category_has_products", "Category still has products")
 	ErrSlugExists             = New(http.StatusConflict, "slug_exists", "Slug already exists")
 	ErrCodeExists             = New(http.StatusConflict, "code_exists", "Code already exists")
+	ErrDiscountInactive       = New(http.StatusUnprocessableEntity, "discount_inactive", "Discount code is inactive")
+	ErrDiscountExpired        = New(http.StatusUnprocessableEntity, "discount_expired", "Discount code has expired")
+	ErrDiscountExhausted      = New(http.StatusUnprocessableEntity, "discount_exhausted", "Discount code has no uses remaining")
+	ErrDiscountMinOrderNotMet = New(http.StatusUnprocessableEntity, "discount_min_order_not_met", "Order subtotal does not meet the discount minimum")
+	ErrCartEmpty              = New(http.StatusUnprocessableEntity, "cart_empty", "Cart is empty")
+	ErrCartMaxItems           = New(http.StatusUnprocessableEntity, "cart_max_items", "Cart cannot hold more items")
+	ErrProductUnavailable     = New(http.StatusUnprocessableEntity, "product_unavailable", "Product is not available")
+	ErrComboUnavailable       = New(http.StatusUnprocessableEntity, "combo_unavailable", "Combo is not available")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

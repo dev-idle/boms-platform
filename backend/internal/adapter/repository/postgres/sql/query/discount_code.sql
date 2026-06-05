@@ -103,6 +103,47 @@ WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
+-- name: GetDiscountCodeByCode :one
+SELECT
+    id,
+    code,
+    discount_type,
+    value,
+    min_order_cents,
+    max_uses,
+    used_count,
+    starts_at,
+    ends_at,
+    is_active,
+    created_at,
+    updated_at,
+    deleted_at
+FROM discount_codes
+WHERE code = $1
+  AND deleted_at IS NULL;
+
+-- name: IncrementDiscountCodeUsedCount :one
+UPDATE discount_codes
+SET used_count = used_count + 1,
+    updated_at = now()
+WHERE id = $1
+  AND deleted_at IS NULL
+  AND (max_uses IS NULL OR used_count < max_uses)
+RETURNING
+    id,
+    code,
+    discount_type,
+    value,
+    min_order_cents,
+    max_uses,
+    used_count,
+    starts_at,
+    ends_at,
+    is_active,
+    created_at,
+    updated_at,
+    deleted_at;
+
 -- name: ManagerListDiscountCodesCount :one
 SELECT COUNT(*)::bigint AS count
 FROM discount_codes

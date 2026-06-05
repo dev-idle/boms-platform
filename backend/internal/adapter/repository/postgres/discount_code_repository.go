@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
@@ -46,6 +47,26 @@ func (r *DiscountCodeRepository) Create(
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create discount code")
+	}
+	return mapDiscountCode(row)
+}
+
+func (r *DiscountCodeRepository) GetByCode(ctx context.Context, code string) (*domaindiscount.Code, error) {
+	row, err := r.q(ctx).GetDiscountCodeByCode(ctx, code)
+	if err != nil {
+		return nil, mapRepoError(err, "get discount code by code")
+	}
+	return mapDiscountCode(row)
+}
+
+func (r *DiscountCodeRepository) IncrementUsedCount(ctx context.Context, id uuid.UUID) (*domaindiscount.Code, error) {
+	row, err := r.q(ctx).IncrementDiscountCodeUsedCount(ctx, id)
+	if err != nil {
+		mapped := mapRepoError(err, "increment discount used count")
+		if errors.Is(mapped, apperrors.ErrNotFound) {
+			return nil, domaindiscount.ErrExhausted
+		}
+		return nil, mapped
 	}
 	return mapDiscountCode(row)
 }

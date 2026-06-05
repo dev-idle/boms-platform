@@ -56,6 +56,78 @@ func (q *Queries) CatalogGetComboByID(ctx context.Context, id uuid.UUID) (Catalo
 	return i, err
 }
 
+const catalogGetCombosByIDs = `-- name: CatalogGetCombosByIDs :many
+SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+FROM combos c
+WHERE c.id = ANY($1::uuid[])
+  AND c.deleted_at IS NULL
+  AND c.is_active = true
+  AND c.starts_at <= now()
+  AND c.ends_at > now()
+  AND EXISTS (
+    SELECT 1
+    FROM combo_items ci
+    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_available = true
+    INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+    WHERE ci.combo_id = c.id
+  )
+`
+
+type CatalogGetCombosByIDsRow struct {
+	ID         uuid.UUID `db:"id" json:"id"`
+	Name       string    `db:"name" json:"name"`
+	Slug       string    `db:"slug" json:"slug"`
+	PriceCents int64     `db:"price_cents" json:"priceCents"`
+	StartsAt   time.Time `db:"starts_at" json:"startsAt"`
+	EndsAt     time.Time `db:"ends_at" json:"endsAt"`
+}
+
+// CatalogGetCombosByIDs
+//
+//	SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+//	FROM combos c
+//	WHERE c.id = ANY($1::uuid[])
+//	  AND c.deleted_at IS NULL
+//	  AND c.is_active = true
+//	  AND c.starts_at <= now()
+//	  AND c.ends_at > now()
+//	  AND EXISTS (
+//	    SELECT 1
+//	    FROM combo_items ci
+//	    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_available = true
+//	    INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+//	    WHERE ci.combo_id = c.id
+//	  )
+func (q *Queries) CatalogGetCombosByIDs(ctx context.Context, comboIds []uuid.UUID) ([]CatalogGetCombosByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, catalogGetCombosByIDs, pq.Array(comboIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CatalogGetCombosByIDsRow{}
+	for rows.Next() {
+		var i CatalogGetCombosByIDsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.PriceCents,
+			&i.StartsAt,
+			&i.EndsAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const catalogListCombos = `-- name: CatalogListCombos :many
 SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
 FROM combos c

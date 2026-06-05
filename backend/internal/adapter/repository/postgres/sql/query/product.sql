@@ -125,6 +125,23 @@ WHERE p.deleted_at IS NULL
     OR p.category_id = sqlc.narg('category_id')::uuid
   );
 
+-- name: CatalogGetProductsByIDs :many
+SELECT
+    p.id,
+    p.category_id,
+    p.name,
+    p.slug,
+    p.description,
+    p.price_cents,
+    p.image_url,
+    c.name AS category_name,
+    c.slug AS category_slug
+FROM products p
+INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+WHERE p.id = ANY(sqlc.arg('product_ids')::uuid[])
+  AND p.deleted_at IS NULL
+  AND p.is_available = true;
+
 -- name: CatalogGetProductByID :one
 SELECT
     p.id,

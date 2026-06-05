@@ -190,6 +190,41 @@ func (r *ComboRepository) CatalogListCount(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+func (r *ComboRepository) CatalogGetByIDs(ctx context.Context, ids []uuid.UUID) ([]port.CatalogCombo, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := r.q(ctx).CatalogGetCombosByIDs(ctx, ids)
+	if err != nil {
+		return nil, mapRepoError(err, "catalog get combos by ids")
+	}
+	comboIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		comboIDs = append(comboIDs, row.ID)
+	}
+	itemsByCombo, err := r.ListCatalogItemsByComboIDs(ctx, comboIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]port.CatalogCombo, 0, len(rows))
+	for _, row := range rows {
+		items := itemsByCombo[row.ID]
+		if len(items) == 0 {
+			continue
+		}
+		out = append(out, port.CatalogCombo{
+			ID:         row.ID,
+			Name:       row.Name,
+			Slug:       row.Slug,
+			PriceCents: row.PriceCents,
+			StartsAt:   row.StartsAt,
+			EndsAt:     row.EndsAt,
+			Items:      items,
+		})
+	}
+	return out, nil
+}
+
 func (r *ComboRepository) CatalogGetByID(ctx context.Context, id uuid.UUID) (*port.CatalogCombo, error) {
 	row, err := r.q(ctx).CatalogGetComboByID(ctx, id)
 	if err != nil {

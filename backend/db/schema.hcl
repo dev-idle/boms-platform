@@ -594,3 +594,283 @@ table "discount_codes" {
     expr = "max_uses IS NULL OR used_count <= max_uses"
   }
 }
+
+enum "cart_line_type" {
+  schema = schema.public
+  values = ["product", "combo"]
+}
+
+enum "order_status" {
+  schema = schema.public
+  values = ["pending", "confirmed", "cancelled", "fulfilled"]
+}
+
+table "carts" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "user_id" {
+    type = uuid
+    null = false
+  }
+  column "discount_code_id" {
+    type = uuid
+    null = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "carts_user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = CASCADE
+  }
+  foreign_key "carts_discount_code_id_fkey" {
+    columns     = [column.discount_code_id]
+    ref_columns = [table.discount_codes.column.id]
+    on_delete   = SET_NULL
+  }
+  index "carts_user_id_idx" {
+    unique  = true
+    columns = [column.user_id]
+  }
+}
+
+table "cart_items" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "cart_id" {
+    type = uuid
+    null = false
+  }
+  column "line_type" {
+    type = enum.cart_line_type
+    null = false
+  }
+  column "product_id" {
+    type = uuid
+    null = true
+  }
+  column "combo_id" {
+    type = uuid
+    null = true
+  }
+  column "quantity" {
+    type = int
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "cart_items_cart_id_fkey" {
+    columns     = [column.cart_id]
+    ref_columns = [table.carts.column.id]
+    on_delete   = CASCADE
+  }
+  foreign_key "cart_items_product_id_fkey" {
+    columns     = [column.product_id]
+    ref_columns = [table.products.column.id]
+    on_delete   = RESTRICT
+  }
+  foreign_key "cart_items_combo_id_fkey" {
+    columns     = [column.combo_id]
+    ref_columns = [table.combos.column.id]
+    on_delete   = RESTRICT
+  }
+  index "cart_items_cart_id_idx" {
+    columns = [column.cart_id]
+  }
+  index "cart_items_cart_product_idx" {
+    unique  = true
+    columns = [column.cart_id, column.product_id]
+    where   = "line_type = 'product'"
+  }
+  index "cart_items_cart_combo_idx" {
+    unique  = true
+    columns = [column.cart_id, column.combo_id]
+    where   = "line_type = 'combo'"
+  }
+  check "cart_items_quantity_check" {
+    expr = "quantity > 0"
+  }
+  check "cart_items_line_target_check" {
+    expr = "(line_type = 'product' AND product_id IS NOT NULL AND combo_id IS NULL) OR (line_type = 'combo' AND combo_id IS NOT NULL AND product_id IS NULL)"
+  }
+}
+
+table "orders" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "user_id" {
+    type = uuid
+    null = false
+  }
+  column "status" {
+    type    = enum.order_status
+    null    = false
+    default = sql("'pending'::order_status")
+  }
+  column "subtotal_cents" {
+    type = bigint
+    null = false
+  }
+  column "discount_cents" {
+    type    = bigint
+    null    = false
+    default = 0
+  }
+  column "total_cents" {
+    type = bigint
+    null = false
+  }
+  column "discount_code_id" {
+    type = uuid
+    null = true
+  }
+  column "discount_code_snapshot" {
+    type = text
+    null = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "orders_user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  foreign_key "orders_discount_code_id_fkey" {
+    columns     = [column.discount_code_id]
+    ref_columns = [table.discount_codes.column.id]
+    on_delete   = SET_NULL
+  }
+  index "orders_user_id_created_at_idx" {
+    columns = [column.user_id, column.created_at]
+  }
+  check "orders_subtotal_cents_check" {
+    expr = "subtotal_cents >= 0"
+  }
+  check "orders_discount_cents_check" {
+    expr = "discount_cents >= 0"
+  }
+  check "orders_total_cents_check" {
+    expr = "total_cents >= 0"
+  }
+  check "orders_total_balance_check" {
+    expr = "total_cents = subtotal_cents - discount_cents"
+  }
+}
+
+table "order_items" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "order_id" {
+    type = uuid
+    null = false
+  }
+  column "line_type" {
+    type = enum.cart_line_type
+    null = false
+  }
+  column "product_id" {
+    type = uuid
+    null = true
+  }
+  column "combo_id" {
+    type = uuid
+    null = true
+  }
+  column "name" {
+    type = text
+    null = false
+  }
+  column "slug" {
+    type = text
+    null = false
+  }
+  column "quantity" {
+    type = int
+    null = false
+  }
+  column "unit_price_cents" {
+    type = bigint
+    null = false
+  }
+  column "line_total_cents" {
+    type = bigint
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "order_items_order_id_fkey" {
+    columns     = [column.order_id]
+    ref_columns = [table.orders.column.id]
+    on_delete   = CASCADE
+  }
+  index "order_items_order_id_idx" {
+    columns = [column.order_id]
+  }
+  check "order_items_quantity_check" {
+    expr = "quantity > 0"
+  }
+  check "order_items_unit_price_cents_check" {
+    expr = "unit_price_cents >= 0"
+  }
+  check "order_items_line_total_cents_check" {
+    expr = "line_total_cents >= 0"
+  }
+  check "order_items_line_target_check" {
+    expr = "(line_type = 'product' AND product_id IS NOT NULL AND combo_id IS NULL) OR (line_type = 'combo' AND combo_id IS NOT NULL AND product_id IS NULL)"
+  }
+}

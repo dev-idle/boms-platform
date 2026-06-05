@@ -4,8 +4,10 @@ import (
 	"errors"
 
 	domaincategory "github.com/boms/backend/internal/domain/category"
+	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
+	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -70,6 +72,30 @@ func writeMapUsecaseError(c *fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, domaindiscount.ErrCodeExists):
 		return writeAppError(c, apperrors.ErrCodeExists)
+	case errors.Is(err, domaindiscount.ErrInactive):
+		return writeAppError(c, apperrors.ErrDiscountInactive)
+	case errors.Is(err, domaindiscount.ErrExpired):
+		return writeAppError(c, apperrors.ErrDiscountExpired)
+	case errors.Is(err, domaindiscount.ErrExhausted):
+		return writeAppError(c, apperrors.ErrDiscountExhausted)
+	case errors.Is(err, domaindiscount.ErrMinOrderNotMet):
+		return writeAppError(c, apperrors.ErrDiscountMinOrderNotMet)
+	case errors.Is(err, domaincart.ErrItemNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domaincart.ErrEmpty):
+		return writeAppError(c, apperrors.ErrCartEmpty)
+	case errors.Is(err, domaincart.ErrProductUnavailable):
+		return writeAppError(c, apperrors.ErrProductUnavailable)
+	case errors.Is(err, domaincart.ErrComboUnavailable):
+		return writeAppError(c, apperrors.ErrComboUnavailable)
+	case errors.Is(err, domaincart.ErrMaxItemsReached):
+		return writeAppError(c, apperrors.ErrCartMaxItems)
+	case errors.Is(err, domaincart.ErrQuantityOutOfRange):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("quantity", "must be between 1 and 99"))
+	case errors.Is(err, domaincart.ErrInvalidLine):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("line", "provide exactly one of product_id or combo_id"))
+	case errors.Is(err, domainorder.ErrNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
 	}
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {
