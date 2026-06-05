@@ -786,7 +786,13 @@ table "orders" {
     on_delete   = SET_NULL
   }
   index "orders_user_id_created_at_idx" {
-    columns = [column.user_id, column.created_at]
+    on {
+      column = column.user_id
+    }
+    on {
+      column = column.created_at
+      desc   = true
+    }
   }
   check "orders_subtotal_cents_check" {
     expr = "subtotal_cents >= 0"
