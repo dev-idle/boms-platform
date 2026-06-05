@@ -377,7 +377,7 @@ table "products" {
     columns = [column.category_id]
     where   = "deleted_at IS NULL"
   }
-  check "products_price_cents_nonneg" {
+  check "products_price_cents_check" {
     expr = "price_cents >= 0"
   }
 }
