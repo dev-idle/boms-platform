@@ -32,18 +32,21 @@ backend/
 ├── internal/
 │   ├── domain/                  # Entities, value objects, domain errors
 │   │   ├── user/                # user, role, audit, errors
+│   │   ├── catalog/             # slug, manager audit actions
+│   │   ├── category/            # category entity
+│   │   ├── product/             # product entity
 │   │   ├── profile/             # customer, staff, admin
 │   │   └── session/
 │   ├── port/                    # Interfaces (driven + driving)
 │   │   ├── user.go, *_profile.go, audit_log.go
 │   │   ├── session.go, token.go, password.go, tx.go, health.go
 │   ├── usecase/                 # Application services (orchestration)
-│   │   ├── auth.go, me.go, admin_user.go, readiness.go
+│   │   ├── auth.go, me.go, admin_user.go, manager_category.go, manager_product.go, catalog.go, readiness.go
 │   ├── service/                 # Domain/application services
 │   │   ├── profilesvc/          # Role → profile dispatcher
 │   │   └── auditlogger/         # Audit log writer
 │   ├── handler/v1/              # HTTP handlers (driving adapters)
-│   │   ├── auth.go, me.go, admin_user.go, health.go
+│   │   ├── auth.go, me.go, admin_user.go, manager_category.go, manager_product.go, catalog.go, health.go
 │   ├── adapter/
 │   │   ├── repository/
 │   │   │   ├── postgres/        # sqlc-backed repos + tx context
@@ -54,7 +57,7 @@ backend/
 │   ├── infrastructure/          # Pure tech: jwt (EdDSA), crypto (argon2id), logger (zap)
 │   ├── middleware/              # auth, ratelimit, cors, security_headers, request_meta
 │   ├── shared/                  # ctxmeta, errors, response, utils, validator
-│   ├── dto/                     # API request/response shapes
+│   ├── dto/                     # API request/response shapes (catalog.go, admin_user.go, …)
 │   └── bootstrap/               # Composition-root seeding (dev admin)
 ├── scripts/                     # docker-compose.dev.yml
 ├── atlas.hcl, sqlc.yaml, Makefile
@@ -117,15 +120,17 @@ frontend/src/
 │   ├── (customer)/              # /products, /cart, /orders, /customer/account/*
 │   ├── (staff)/                 # /staff/account/*
 │   ├── (baker)/                 # /baker/account/*
-│   ├── (manager)/               # /manager/account/*
+│   ├── (manager)/               # /manager/categories, /manager/products, /manager/account/*
 │   └── (admin)/admin/           # /admin, /admin/users, /admin/account/*
-├── features/                    # Feature slices (auth | user | admin)
+├── features/                    # Feature slices (auth | user | admin | manager | customer)
 │   ├── auth/                    # api/, schemas/, hooks/, components/, lib/, provider/
 │   ├── user/                    # api/, schemas/, types/, hooks/, components/
-│   └── admin/                   # api/, schemas/, types/, hooks/, components/
+│   ├── admin/                   # api/, schemas/, types/, hooks/, components/
+│   ├── manager/                 # catalog CRUD → /api/v1/manager/*
+│   └── customer/                # catalog browse → /api/v1/catalog/*
 ├── components/
 │   ├── ui/                      # Primitives (button, input, form, confirm-dialog)
-│   └── layouts/                 # operational-role-shell.tsx, admin-shell.tsx
+│   └── layouts/                 # operational-role-shell.tsx, manager-shell.tsx, admin-shell.tsx
 ├── lib/
 │   ├── api-client.ts, browser-api-client.ts, api-envelope.ts, env.ts, utils.ts
 │   ├── validate-next.ts
@@ -187,8 +192,8 @@ features/<slice>/
 | Customer | `/products`, `/cart`, `/orders`, `/customer/account/{profile,password,delete}` |
 | Staff | `/staff/account/{profile,password}` |
 | Baker | `/baker/account/{profile,password}` |
-| Manager | `/manager/account/{profile,password}` |
-| Admin | `/admin`, `/admin/{products,orders,users}`, `/admin/users/{new,[id]}`, `/admin/account/profile` (profile + password) |
+| Manager | `/manager/categories`, `/manager/products`, `/manager/account/{profile,password}` |
+| Admin | `/admin`, `/admin/users`, `/admin/users/{new,[id]}`, `/admin/account/profile` (profile + password) |
 
 **Rule:** one role = one namespace. Each role may only access its own URL prefix (enforced by FE `RoleGate` + post-login redirect). Only `admin` is seeded in development (`bootstrap.EnsureDevAdmin`). No mixing of `/dashboard/*` with `/admin/*`. Agent/dev canonical detail: `.cursor/rules/roles.mdc` (local, not committed).
 
@@ -252,6 +257,8 @@ features/<slice>/
 | Session identity (`/me`) | `features/user` (FE) + `usecase/me` (BE) |
 | Auth (login/register/logout) | `features/auth` (FE) + `usecase/auth` (BE) |
 | Admin user CRUD | `features/admin` (FE) + `usecase/admin_user` (BE) |
+| Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` (BE) |
+| Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
 | Audit logs | `service/auditlogger` (BE only) |
 | Profile entity dispatch | `service/profilesvc` (BE) |
 | Routes table | `constants/routes.ts` (FE) |

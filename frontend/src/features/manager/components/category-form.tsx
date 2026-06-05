@@ -1,0 +1,142 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { isApiError } from "@/lib/errors";
+import { mapValidationDetailsToFormErrors } from "@/lib/validation";
+
+import { useCreateCategory, useUpdateCategory } from "../hooks";
+import {
+  categoryFormSchema,
+  type CategoryFormInput,
+  type ManagerCategory,
+} from "../schemas";
+
+type CategoryFormProps = {
+  mode: "create" | "edit";
+  category?: ManagerCategory;
+  onSuccess?: () => void;
+};
+
+export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
+  const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory(category?.id ?? "");
+
+  const form = useForm<CategoryFormInput>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: {
+      name: category?.name ?? "",
+      slug: category?.slug ?? "",
+      sort_order: category?.sort_order ?? 0,
+      is_active: category?.is_active ?? true,
+    },
+  });
+
+  function onSubmit(values: CategoryFormInput): void {
+    const mutation = mode === "create" ? createCategory : updateCategory;
+    mutation.mutate(values, {
+      onSuccess: () => onSuccess?.(),
+      onError: (error) => {
+        if (!isApiError(error)) {
+          toast.error("Failed to save category");
+          return;
+        }
+        if (error.hasValidationDetails()) {
+          for (const item of mapValidationDetailsToFormErrors(error.details!)) {
+            const field = item.field as keyof CategoryFormInput;
+            if (field in values) {
+              form.setError(field, { message: item.message });
+            }
+          }
+          return;
+        }
+        if (error.code === "slug_exists") {
+          toast.error("That slug is already in use.");
+          return;
+        }
+        toast.error(error.message);
+      },
+    });
+  }
+
+  const isPending = createCategory.isPending || updateCategory.isPending;
+
+  return (
+    <Form {...form}>
+      <form className="space-y-4" noValidate onSubmit={form.handleSubmit(onSubmit)}>
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Breads" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="slug"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Slug</FormLabel>
+              <FormControl>
+                <Input placeholder="breads" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="sort_order"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Sort order</FormLabel>
+              <FormControl>
+                <Input type="number" min={0} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="is_active"
+          render={({ field }) => (
+            <FormItem className="flex items-center gap-2">
+              <FormControl>
+                <input
+                  checked={field.value}
+                  className="h-4 w-4 rounded border-zinc-300"
+                  onChange={(event) => field.onChange(event.target.checked)}
+                  type="checkbox"
+                />
+              </FormControl>
+              <FormLabel className="!mt-0">Active</FormLabel>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button disabled={isPending} type="submit">
+          {mode === "create" ? "Create category" : "Save changes"}
+        </Button>
+      </form>
+    </Form>
+  );
+}

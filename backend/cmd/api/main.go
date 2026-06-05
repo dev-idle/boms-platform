@@ -83,6 +83,11 @@ func main() {
 	}
 	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, hasher, auditLogger, zlog)
 	adminUserUC := usecase.NewAdminUserUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger, zlog)
+	categoryRepo := postgresrepo.NewCategoryRepository(pgPool)
+	productRepo := postgresrepo.NewProductRepository(pgPool)
+	managerCategoryUC := usecase.NewManagerCategoryUsecase(categoryRepo, auditLogger, zlog)
+	managerProductUC := usecase.NewManagerProductUsecase(productRepo, categoryRepo, auditLogger, zlog)
+	catalogUC := usecase.NewCatalogUsecase(categoryRepo, productRepo)
 
 	if err := bootstrap.EnsureDevAdmin(rootCtx, cfg, userRepo, adminProfileRepo, hasher, pgPool); err != nil {
 		zlog.Fatal("seed_admin", zap.Error(err))
@@ -91,6 +96,9 @@ func main() {
 	authHandler := v1.NewAuthHandler(authUC, cfg)
 	meHandler := v1.NewMeHandler(meUC)
 	adminUserHandler := v1.NewAdminUserHandler(adminUserUC)
+	managerCategoryHandler := v1.NewManagerCategoryHandler(managerCategoryUC)
+	managerProductHandler := v1.NewManagerProductHandler(managerProductUC)
+	catalogHandler := v1.NewCatalogHandler(catalogUC)
 
 	var asynqClose func() error
 	if cfg.Asynq.Enabled {
@@ -152,6 +160,40 @@ func main() {
 	adminWrite.Patch("/:id/role", adminUserHandler.PatchRole)
 	adminWrite.Patch("/:id/disable", adminUserHandler.PatchDisable)
 	adminWrite.Post("/:id/revoke-sessions", adminUserHandler.RevokeSessions)
+
+	catalogRead := apiV1.Group(
+		"/catalog",
+		middleware.RequireAuth(tokenSigner),
+		middleware.RequireRole(domainuser.RoleCustomer),
+	)
+	catalogRead.Get("/categories", catalogHandler.ListCategories)
+	catalogRead.Get("/products", catalogHandler.ListProducts)
+	catalogRead.Get("/products/:id", catalogHandler.GetProduct)
+
+	managerRead := apiV1.Group(
+		"/manager",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleManager),
+		passwordChanged,
+	)
+	managerRead.Get("/categories", managerCategoryHandler.List)
+	managerRead.Get("/categories/:id", managerCategoryHandler.Get)
+	managerRead.Get("/products", managerProductHandler.List)
+	managerRead.Get("/products/:id", managerProductHandler.Get)
+
+	managerWrite := apiV1.Group(
+		"/manager",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleManager),
+		passwordChanged,
+		middleware.ManagerWriteRateLimit(rdb, cfg.RateRedis),
+	)
+	managerWrite.Post("/categories", managerCategoryHandler.Create)
+	managerWrite.Patch("/categories/:id", managerCategoryHandler.Patch)
+	managerWrite.Delete("/categories/:id", managerCategoryHandler.Delete)
+	managerWrite.Post("/products", managerProductHandler.Create)
+	managerWrite.Patch("/products/:id", managerProductHandler.Patch)
+	managerWrite.Delete("/products/:id", managerProductHandler.Delete)
 
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 	go func() {

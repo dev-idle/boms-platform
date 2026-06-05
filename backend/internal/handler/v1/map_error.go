@@ -3,6 +3,8 @@ package v1
 import (
 	"errors"
 
+	domaincategory "github.com/boms/backend/internal/domain/category"
+	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/usecase"
@@ -46,6 +48,18 @@ func writeMapUsecaseError(c *fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrCannotModifySelf)
 	case errors.Is(err, domainuser.ErrInvalidRoleTransition):
 		return writeAppError(c, apperrors.ErrInvalidRoleTransition)
+	case errors.Is(err, domaincategory.ErrNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domaincategory.ErrHasProducts):
+		return writeAppError(c, apperrors.ErrCategoryHasProducts)
+	case errors.Is(err, domaincategory.ErrSlugExists):
+		return writeAppError(c, apperrors.ErrSlugExists)
+	case errors.Is(err, domaincategory.ErrInactive):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("category_id", "category is inactive"))
+	case errors.Is(err, domainproduct.ErrNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domainproduct.ErrSlugExists):
+		return writeAppError(c, apperrors.ErrSlugExists)
 	}
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {

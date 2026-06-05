@@ -6,7 +6,7 @@
  *   - Customer: /products, /cart, /orders, /customer/account/*
  *   - Staff:    /staff/account/*
  *   - Baker:    /baker/account/*
- *   - Manager:  /manager/account/*
+ *   - Manager:  /manager/categories, /manager/products, /manager/account/*
  *   - Admin:    /admin, /admin/users, /admin/account/profile (password on profile page)
  */
 export const ROUTE = {
@@ -36,6 +36,12 @@ export const ROUTE = {
     },
   },
   manager: {
+    categories: "/manager/categories",
+    categoriesNew: "/manager/categories/new",
+    categoryDetail: (id: string) => `/manager/categories/${id}`,
+    products: "/manager/products",
+    productsNew: "/manager/products/new",
+    productDetail: (id: string) => `/manager/products/${id}`,
     account: {
       profile: "/manager/account/profile",
       password: "/manager/account/password",

@@ -256,3 +256,128 @@ table "audit_logs" {
     columns = [column.target_type, column.target_id]
   }
 }
+
+table "categories" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "name" {
+    type = text
+    null = false
+  }
+  column "slug" {
+    type = sql("citext")
+    null = false
+  }
+  column "sort_order" {
+    type    = int
+    null    = false
+    default = 0
+  }
+  column "is_active" {
+    type    = boolean
+    null    = false
+    default = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "deleted_at" {
+    type = timestamptz
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "categories_slug_active_idx" {
+    unique  = true
+    columns = [column.slug]
+    where   = "deleted_at IS NULL"
+  }
+  index "categories_active_sort_idx" {
+    columns = [column.is_active, column.sort_order]
+    where   = "deleted_at IS NULL"
+  }
+}
+
+table "products" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "category_id" {
+    type = uuid
+    null = false
+  }
+  column "name" {
+    type = text
+    null = false
+  }
+  column "slug" {
+    type = sql("citext")
+    null = false
+  }
+  column "description" {
+    type = text
+    null = true
+  }
+  column "price_cents" {
+    type = bigint
+    null = false
+  }
+  column "is_available" {
+    type    = boolean
+    null    = false
+    default = true
+  }
+  column "image_url" {
+    type = text
+    null = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "deleted_at" {
+    type = timestamptz
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "products_category_id_fkey" {
+    columns     = [column.category_id]
+    ref_columns = [table.categories.column.id]
+    on_delete   = RESTRICT
+  }
+  index "products_slug_active_idx" {
+    unique  = true
+    columns = [column.slug]
+    where   = "deleted_at IS NULL"
+  }
+  index "products_category_active_idx" {
+    columns = [column.category_id]
+    where   = "deleted_at IS NULL"
+  }
+  check "products_price_cents_nonneg" {
+    expr = "price_cents >= 0"
+  }
+}

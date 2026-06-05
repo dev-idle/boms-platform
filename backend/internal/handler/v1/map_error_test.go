@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	domaincategory "github.com/boms/backend/internal/domain/category"
+	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/middleware"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -32,6 +34,9 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "session_revoked", err: apperrors.ErrSessionRevoked, wantStatus: 401, wantCode: "session_revoked"},
 		{name: "employee_code_exists", err: domainuser.ErrEmployeeCodeExists, wantStatus: 409, wantCode: "employee_code_exists"},
 		{name: "email_exists", err: usecase.ErrEmailExists, wantStatus: 409, wantCode: "email_exists"},
+		{name: "category_has_products", err: domaincategory.ErrHasProducts, wantStatus: 422, wantCode: "category_has_products"},
+		{name: "category_slug_exists", err: domaincategory.ErrSlugExists, wantStatus: 409, wantCode: "slug_exists"},
+		{name: "product_not_found", err: domainproduct.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

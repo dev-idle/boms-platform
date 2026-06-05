@@ -82,6 +82,8 @@ var (
 	ErrCannotModifySelf       = New(http.StatusForbidden, "cannot_modify_self", "Cannot modify your own account")
 	ErrInvalidRoleTransition  = New(http.StatusUnprocessableEntity, "invalid_role_transition", "Invalid role transition")
 	ErrEmployeeCodeExists     = New(http.StatusConflict, "employee_code_exists", "Employee code already exists")
+	ErrCategoryHasProducts    = New(http.StatusUnprocessableEntity, "category_has_products", "Category still has products")
+	ErrSlugExists             = New(http.StatusConflict, "slug_exists", "Slug already exists")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

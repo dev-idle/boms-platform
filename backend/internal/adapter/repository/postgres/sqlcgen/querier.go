@@ -6,6 +6,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -61,6 +62,75 @@ type Querier interface {
 	//      OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
 	//    )
 	AdminListCount(ctx context.Context, dollar_1 string) (int64, error)
+	//CatalogGetProductByID
+	//
+	//  SELECT
+	//      p.id,
+	//      p.category_id,
+	//      p.name,
+	//      p.slug,
+	//      p.description,
+	//      p.price_cents,
+	//      p.image_url,
+	//      c.name AS category_name,
+	//      c.slug AS category_slug
+	//  FROM products p
+	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+	//  WHERE p.id = $1
+	//    AND p.deleted_at IS NULL
+	//    AND p.is_available = true
+	CatalogGetProductByID(ctx context.Context, id uuid.UUID) (CatalogGetProductByIDRow, error)
+	//CatalogListCategories
+	//
+	//  SELECT id, name, slug, sort_order
+	//  FROM categories
+	//  WHERE deleted_at IS NULL
+	//    AND is_active = true
+	//  ORDER BY sort_order ASC, name ASC
+	//  LIMIT $1 OFFSET $2
+	CatalogListCategories(ctx context.Context, arg CatalogListCategoriesParams) ([]CatalogListCategoriesRow, error)
+	//CatalogListCategoriesCount
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM categories
+	//  WHERE deleted_at IS NULL
+	//    AND is_active = true
+	CatalogListCategoriesCount(ctx context.Context) (int64, error)
+	//CatalogListProducts
+	//
+	//  SELECT
+	//      p.id,
+	//      p.category_id,
+	//      p.name,
+	//      p.slug,
+	//      p.description,
+	//      p.price_cents,
+	//      p.image_url,
+	//      c.name AS category_name,
+	//      c.slug AS category_slug
+	//  FROM products p
+	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+	//  WHERE p.deleted_at IS NULL
+	//    AND p.is_available = true
+	//    AND (
+	//      $3::uuid IS NULL
+	//      OR p.category_id = $3::uuid
+	//    )
+	//  ORDER BY c.sort_order ASC, p.name ASC
+	//  LIMIT $1 OFFSET $2
+	CatalogListProducts(ctx context.Context, arg CatalogListProductsParams) ([]CatalogListProductsRow, error)
+	//CatalogListProductsCount
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM products p
+	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+	//  WHERE p.deleted_at IS NULL
+	//    AND p.is_available = true
+	//    AND (
+	//      $1::uuid IS NULL
+	//      OR p.category_id = $1::uuid
+	//    )
+	CatalogListProductsCount(ctx context.Context, categoryID uuid.NullUUID) (int64, error)
 	//ClearMustChangePassword
 	//
 	//  UPDATE users
@@ -90,12 +160,24 @@ type Querier interface {
 	//  )
 	//  VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')::inet, $9)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) error
+	//CreateCategory
+	//
+	//  INSERT INTO categories (name, slug, sort_order, is_active)
+	//  VALUES ($1, $2, $3, $4)
+	//  RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	//CreateCustomerProfile
 	//
 	//  INSERT INTO customer_profiles (user_id, display_name, phone)
 	//  VALUES ($1, $2, $3)
 	//  RETURNING user_id, display_name, phone, created_at, updated_at
 	CreateCustomerProfile(ctx context.Context, arg CreateCustomerProfileParams) (CustomerProfile, error)
+	//CreateProduct
+	//
+	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_available, image_url)
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7)
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	//CreateStaffProfile
 	//
 	//  INSERT INTO staff_profiles (user_id, full_name, phone, employee_code)
@@ -129,12 +211,26 @@ type Querier interface {
 	//  FROM admin_profiles
 	//  WHERE user_id = $1
 	GetAdminProfileByUserID(ctx context.Context, userID uuid.UUID) (AdminProfile, error)
+	//GetCategoryByID
+	//
+	//  SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+	//  FROM categories
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error)
 	//GetCustomerProfileByUserID
 	//
 	//  SELECT user_id, display_name, phone, created_at, updated_at
 	//  FROM customer_profiles
 	//  WHERE user_id = $1
 	GetCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (CustomerProfile, error)
+	//GetProductByID
+	//
+	//  SELECT id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+	//  FROM products
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
 	//GetStaffProfileByUserID
 	//
 	//  SELECT user_id, full_name, phone, employee_code, created_at, updated_at
@@ -163,6 +259,95 @@ type Querier interface {
 	//    AND deleted_at IS NULL
 	//  FOR UPDATE
 	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error)
+	//ManagerGetProductByID
+	//
+	//  SELECT
+	//      p.id,
+	//      p.category_id,
+	//      p.name,
+	//      p.slug,
+	//      p.description,
+	//      p.price_cents,
+	//      p.is_available,
+	//      p.image_url,
+	//      p.created_at,
+	//      p.updated_at,
+	//      p.deleted_at,
+	//      c.name AS category_name
+	//  FROM products p
+	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+	//  WHERE p.id = $1
+	//    AND p.deleted_at IS NULL
+	ManagerGetProductByID(ctx context.Context, id uuid.UUID) (ManagerGetProductByIDRow, error)
+	//ManagerListCategories
+	//
+	//  SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+	//  FROM categories
+	//  WHERE deleted_at IS NULL
+	//    AND (
+	//      $3::text IS NULL
+	//      OR name ILIKE '%' || $3::text || '%'
+	//      OR slug ILIKE '%' || $3::text || '%'
+	//    )
+	//  ORDER BY sort_order ASC, name ASC
+	//  LIMIT $1 OFFSET $2
+	ManagerListCategories(ctx context.Context, arg ManagerListCategoriesParams) ([]Category, error)
+	//ManagerListCategoriesCount
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM categories
+	//  WHERE deleted_at IS NULL
+	//    AND (
+	//      $1::text IS NULL
+	//      OR name ILIKE '%' || $1::text || '%'
+	//      OR slug ILIKE '%' || $1::text || '%'
+	//    )
+	ManagerListCategoriesCount(ctx context.Context, search sql.NullString) (int64, error)
+	//ManagerListProducts
+	//
+	//  SELECT
+	//      p.id,
+	//      p.category_id,
+	//      p.name,
+	//      p.slug,
+	//      p.description,
+	//      p.price_cents,
+	//      p.is_available,
+	//      p.image_url,
+	//      p.created_at,
+	//      p.updated_at,
+	//      p.deleted_at,
+	//      c.name AS category_name
+	//  FROM products p
+	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+	//  WHERE p.deleted_at IS NULL
+	//    AND (
+	//      $3::uuid IS NULL
+	//      OR p.category_id = $3::uuid
+	//    )
+	//    AND (
+	//      $4::text IS NULL
+	//      OR p.name ILIKE '%' || $4::text || '%'
+	//      OR p.slug ILIKE '%' || $4::text || '%'
+	//    )
+	//  ORDER BY p.name ASC
+	//  LIMIT $1 OFFSET $2
+	ManagerListProducts(ctx context.Context, arg ManagerListProductsParams) ([]ManagerListProductsRow, error)
+	//ManagerListProductsCount
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM products p
+	//  WHERE p.deleted_at IS NULL
+	//    AND (
+	//      $1::uuid IS NULL
+	//      OR p.category_id = $1::uuid
+	//    )
+	//    AND (
+	//      $2::text IS NULL
+	//      OR p.name ILIKE '%' || $2::text || '%'
+	//      OR p.slug ILIKE '%' || $2::text || '%'
+	//    )
+	ManagerListProductsCount(ctx context.Context, arg ManagerListProductsCountParams) (int64, error)
 	//Ping
 	//
 	//  SELECT 1 AS ok
@@ -183,6 +368,28 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	SoftDelete(ctx context.Context, id uuid.UUID) (int64, error)
+	//SoftDeleteCategoryIfNoProducts
+	//
+	//  UPDATE categories
+	//  SET deleted_at = now(),
+	//      updated_at = now()
+	//  WHERE categories.id = $1
+	//    AND categories.deleted_at IS NULL
+	//    AND NOT EXISTS (
+	//      SELECT 1
+	//      FROM products
+	//      WHERE products.category_id = categories.id
+	//        AND products.deleted_at IS NULL
+	//    )
+	SoftDeleteCategoryIfNoProducts(ctx context.Context, id uuid.UUID) (int64, error)
+	//SoftDeleteProduct
+	//
+	//  UPDATE products
+	//  SET deleted_at = now(),
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	SoftDeleteProduct(ctx context.Context, id uuid.UUID) (int64, error)
 	//UpdateAdminProfileByUserID
 	//
 	//  UPDATE admin_profiles
@@ -192,6 +399,18 @@ type Querier interface {
 	//  WHERE user_id = $1
 	//  RETURNING user_id, full_name, phone, created_at, updated_at
 	UpdateAdminProfileByUserID(ctx context.Context, arg UpdateAdminProfileByUserIDParams) (AdminProfile, error)
+	//UpdateCategory
+	//
+	//  UPDATE categories
+	//  SET name       = $2,
+	//      slug       = $3,
+	//      sort_order = $4,
+	//      is_active  = $5,
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	//  RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error)
 	//UpdateCustomerProfileByUserID
 	//
 	//  UPDATE customer_profiles
@@ -201,6 +420,21 @@ type Querier interface {
 	//  WHERE user_id = $1
 	//  RETURNING user_id, display_name, phone, created_at, updated_at
 	UpdateCustomerProfileByUserID(ctx context.Context, arg UpdateCustomerProfileByUserIDParams) (CustomerProfile, error)
+	//UpdateProduct
+	//
+	//  UPDATE products
+	//  SET category_id  = $2,
+	//      name         = $3,
+	//      slug         = $4,
+	//      description  = $5,
+	//      price_cents  = $6,
+	//      is_available = $7,
+	//      image_url    = $8,
+	//      updated_at   = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
 	//UpdateRole
 	//
 	//  UPDATE users

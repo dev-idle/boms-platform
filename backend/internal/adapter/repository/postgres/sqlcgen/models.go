@@ -66,12 +66,37 @@ type AdminProfile struct {
 	UpdatedAt time.Time      `db:"updated_at" json:"updatedAt"`
 }
 
+type Category struct {
+	ID        uuid.UUID    `db:"id" json:"id"`
+	Name      string       `db:"name" json:"name"`
+	Slug      string       `db:"slug" json:"slug"`
+	SortOrder int32        `db:"sort_order" json:"sortOrder"`
+	IsActive  bool         `db:"is_active" json:"isActive"`
+	CreatedAt time.Time    `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time    `db:"updated_at" json:"updatedAt"`
+	DeletedAt sql.NullTime `db:"deleted_at" json:"deletedAt"`
+}
+
 type CustomerProfile struct {
 	UserID      uuid.UUID      `db:"user_id" json:"userId"`
 	DisplayName sql.NullString `db:"display_name" json:"displayName"`
 	Phone       sql.NullString `db:"phone" json:"phone"`
 	CreatedAt   time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updatedAt"`
+}
+
+type Product struct {
+	ID          uuid.UUID      `db:"id" json:"id"`
+	CategoryID  uuid.UUID      `db:"category_id" json:"categoryId"`
+	Name        string         `db:"name" json:"name"`
+	Slug        string         `db:"slug" json:"slug"`
+	Description sql.NullString `db:"description" json:"description"`
+	PriceCents  int64          `db:"price_cents" json:"priceCents"`
+	IsAvailable bool           `db:"is_available" json:"isAvailable"`
+	ImageUrl    sql.NullString `db:"image_url" json:"imageUrl"`
+	CreatedAt   time.Time      `db:"created_at" json:"createdAt"`
+	UpdatedAt   time.Time      `db:"updated_at" json:"updatedAt"`
+	DeletedAt   sql.NullTime   `db:"deleted_at" json:"deletedAt"`
 }
 
 type StaffProfile struct {

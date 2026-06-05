@@ -17,6 +17,7 @@ describe("homeRouteForRole", () => {
     expect(homeRouteForRole(USER_ROLE.staff)).toBe(
       ROUTE.staff.account.profile,
     );
+    expect(homeRouteForRole(USER_ROLE.manager)).toBe(ROUTE.manager.categories);
   });
 });
 

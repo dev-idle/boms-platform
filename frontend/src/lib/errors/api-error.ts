@@ -18,6 +18,8 @@ export const ApiErrorCode = {
   CannotModifySelf: "cannot_modify_self",
   InvalidRoleTransition: "invalid_role_transition",
   EmployeeCodeExists: "employee_code_exists",
+  CategoryHasProducts: "category_has_products",
+  SlugExists: "slug_exists",
   Validation: "validation_error",
   RateLimited: "rate_limited",
   Internal: "internal_error",

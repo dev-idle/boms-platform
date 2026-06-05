@@ -113,3 +113,13 @@ func AdminWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) f
 		return "rl:ip:" + c.IP() + ":admin_write"
 	}, cfg.AdminWriteMax, cfg.AdminWriteWindow, true)
 }
+
+// ManagerWriteRateLimit limits manager catalog write operations per user.
+func ManagerWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":manager_write"
+		}
+		return "rl:ip:" + c.IP() + ":manager_write"
+	}, cfg.AdminWriteMax, cfg.AdminWriteWindow, true)
+}
