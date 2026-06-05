@@ -11,6 +11,12 @@ import { cn } from "@/lib/utils";
 const MANAGER_NAV_ITEMS = [
   { href: ROUTE.manager.categories, label: "Categories", match: "prefix" as const },
   { href: ROUTE.manager.products, label: "Products", match: "prefix" as const },
+  { href: ROUTE.manager.combos, label: "Combos", match: "prefix" as const },
+  {
+    href: ROUTE.manager.discountCodes,
+    label: "Discount codes",
+    match: "prefix" as const,
+  },
   {
     href: ROUTE.manager.account.profile,
     label: "Profile",

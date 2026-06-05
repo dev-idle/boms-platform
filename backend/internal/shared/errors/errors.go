@@ -84,6 +84,7 @@ var (
 	ErrEmployeeCodeExists     = New(http.StatusConflict, "employee_code_exists", "Employee code already exists")
 	ErrCategoryHasProducts    = New(http.StatusUnprocessableEntity, "category_has_products", "Category still has products")
 	ErrSlugExists             = New(http.StatusConflict, "slug_exists", "Slug already exists")
+	ErrCodeExists             = New(http.StatusConflict, "code_exists", "Code already exists")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

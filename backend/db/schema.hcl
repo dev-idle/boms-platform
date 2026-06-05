@@ -381,3 +381,216 @@ table "products" {
     expr = "price_cents >= 0"
   }
 }
+
+enum "discount_type" {
+  schema = schema.public
+  values = ["percent", "fixed_cents"]
+}
+
+table "combos" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "name" {
+    type = text
+    null = false
+  }
+  column "slug" {
+    type = sql("citext")
+    null = false
+  }
+  column "price_cents" {
+    type = bigint
+    null = false
+  }
+  column "starts_at" {
+    type = timestamptz
+    null = false
+  }
+  column "ends_at" {
+    type = timestamptz
+    null = false
+  }
+  column "is_active" {
+    type    = boolean
+    null    = false
+    default = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "deleted_at" {
+    type = timestamptz
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "combos_slug_active_idx" {
+    unique  = true
+    columns = [column.slug]
+    where   = "deleted_at IS NULL"
+  }
+  index "combos_active_window_idx" {
+    columns = [column.is_active, column.starts_at, column.ends_at]
+    where   = "deleted_at IS NULL"
+  }
+  check "combos_price_cents_check" {
+    expr = "price_cents >= 0"
+  }
+  check "combos_window_check" {
+    expr = "ends_at > starts_at"
+  }
+}
+
+table "combo_items" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "combo_id" {
+    type = uuid
+    null = false
+  }
+  column "product_id" {
+    type = uuid
+    null = false
+  }
+  column "quantity" {
+    type = int
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "combo_items_combo_id_fkey" {
+    columns     = [column.combo_id]
+    ref_columns = [table.combos.column.id]
+    on_delete   = CASCADE
+  }
+  foreign_key "combo_items_product_id_fkey" {
+    columns     = [column.product_id]
+    ref_columns = [table.products.column.id]
+    on_delete   = RESTRICT
+  }
+  index "combo_items_combo_id_idx" {
+    columns = [column.combo_id]
+  }
+  check "combo_items_quantity_check" {
+    expr = "quantity > 0"
+  }
+  unique "combo_items_combo_product_unique" {
+    columns = [column.combo_id, column.product_id]
+  }
+}
+
+table "discount_codes" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "code" {
+    type = sql("citext")
+    null = false
+  }
+  column "discount_type" {
+    type = enum.discount_type
+    null = false
+  }
+  column "value" {
+    type = bigint
+    null = false
+  }
+  column "min_order_cents" {
+    type = bigint
+    null = true
+  }
+  column "max_uses" {
+    type = int
+    null = true
+  }
+  column "used_count" {
+    type    = int
+    null    = false
+    default = 0
+  }
+  column "starts_at" {
+    type = timestamptz
+    null = false
+  }
+  column "ends_at" {
+    type = timestamptz
+    null = false
+  }
+  column "is_active" {
+    type    = boolean
+    null    = false
+    default = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "deleted_at" {
+    type = timestamptz
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "discount_codes_code_active_idx" {
+    unique  = true
+    columns = [column.code]
+    where   = "deleted_at IS NULL"
+  }
+  index "discount_codes_active_window_idx" {
+    columns = [column.is_active, column.starts_at, column.ends_at]
+    where   = "deleted_at IS NULL"
+  }
+  check "discount_codes_window_check" {
+    expr = "ends_at > starts_at"
+  }
+  check "discount_codes_used_count_check" {
+    expr = "used_count >= 0"
+  }
+  check "discount_codes_min_order_cents_check" {
+    expr = "min_order_cents IS NULL OR min_order_cents >= 0"
+  }
+  check "discount_codes_max_uses_check" {
+    expr = "max_uses IS NULL OR max_uses > 0"
+  }
+  check "discount_codes_value_percent_check" {
+    expr = "discount_type <> 'percent' OR (value >= 1 AND value <= 100)"
+  }
+  check "discount_codes_value_fixed_cents_check" {
+    expr = "discount_type <> 'fixed_cents' OR value >= 1"
+  }
+  check "discount_codes_used_within_max_check" {
+    expr = "max_uses IS NULL OR used_count <= max_uses"
+  }
+}

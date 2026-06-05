@@ -60,3 +60,31 @@ func (h *CatalogHandler) GetProduct(c *fiber.Ctx) error {
 	}
 	return response.OK(c, out)
 }
+
+func (h *CatalogHandler) ListCombos(c *fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	page := utils.ParseQueryInt32(c.Query("page", "1"), 1)
+	pageSize := utils.ParseQueryInt32(
+		c.Query("page_size", usecase.CatalogListDefaultPageSizeQuery),
+		usecase.CatalogListDefaultPageSize,
+	)
+
+	items, total, page, pageSize, err := h.usecase.ListCombos(c.UserContext(), page, pageSize)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OKPaginated(c, items, int(page), int(pageSize), total)
+}
+
+func (h *CatalogHandler) GetCombo(c *fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid combo id"))
+	}
+	out, err := h.usecase.GetCombo(c.UserContext(), id)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OK(c, out)
+}

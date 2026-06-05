@@ -13,6 +13,48 @@ import (
 	"github.com/google/uuid"
 )
 
+type DiscountType string
+
+const (
+	DiscountTypePercent    DiscountType = "percent"
+	DiscountTypeFixedCents DiscountType = "fixed_cents"
+)
+
+func (e *DiscountType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = DiscountType(s)
+	case string:
+		*e = DiscountType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for DiscountType: %T", src)
+	}
+	return nil
+}
+
+type NullDiscountType struct {
+	DiscountType DiscountType `json:"discountType"`
+	Valid        bool         `json:"valid"` // Valid is true if DiscountType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullDiscountType) Scan(value interface{}) error {
+	if value == nil {
+		ns.DiscountType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.DiscountType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullDiscountType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.DiscountType), nil
+}
+
 type UserRole string
 
 const (
@@ -77,12 +119,41 @@ type Category struct {
 	DeletedAt sql.NullTime `db:"deleted_at" json:"deletedAt"`
 }
 
+type Combo struct {
+	ID         uuid.UUID    `db:"id" json:"id"`
+	Name       string       `db:"name" json:"name"`
+	Slug       string       `db:"slug" json:"slug"`
+	PriceCents int64        `db:"price_cents" json:"priceCents"`
+	StartsAt   time.Time    `db:"starts_at" json:"startsAt"`
+	EndsAt     time.Time    `db:"ends_at" json:"endsAt"`
+	IsActive   bool         `db:"is_active" json:"isActive"`
+	CreatedAt  time.Time    `db:"created_at" json:"createdAt"`
+	UpdatedAt  time.Time    `db:"updated_at" json:"updatedAt"`
+	DeletedAt  sql.NullTime `db:"deleted_at" json:"deletedAt"`
+}
+
 type CustomerProfile struct {
 	UserID      uuid.UUID      `db:"user_id" json:"userId"`
 	DisplayName sql.NullString `db:"display_name" json:"displayName"`
 	Phone       sql.NullString `db:"phone" json:"phone"`
 	CreatedAt   time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updatedAt"`
+}
+
+type DiscountCode struct {
+	ID            uuid.UUID     `db:"id" json:"id"`
+	Code          string        `db:"code" json:"code"`
+	DiscountType  DiscountType  `db:"discount_type" json:"discountType"`
+	Value         int64         `db:"value" json:"value"`
+	MinOrderCents sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
+	MaxUses       sql.NullInt32 `db:"max_uses" json:"maxUses"`
+	UsedCount     int32         `db:"used_count" json:"usedCount"`
+	StartsAt      time.Time     `db:"starts_at" json:"startsAt"`
+	EndsAt        time.Time     `db:"ends_at" json:"endsAt"`
+	IsActive      bool          `db:"is_active" json:"isActive"`
+	CreatedAt     time.Time     `db:"created_at" json:"createdAt"`
+	UpdatedAt     time.Time     `db:"updated_at" json:"updatedAt"`
+	DeletedAt     sql.NullTime  `db:"deleted_at" json:"deletedAt"`
 }
 
 type Product struct {

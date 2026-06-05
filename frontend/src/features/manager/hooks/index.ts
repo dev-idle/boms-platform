@@ -10,21 +10,37 @@ import { toast } from "sonner";
 
 import {
   createCategory,
+  createCombo,
+  createDiscountCode,
   createProduct,
   deleteCategory,
+  deleteCombo,
+  deleteDiscountCode,
   deleteProduct,
   getCategoryById,
+  getComboById,
+  getDiscountCodeById,
   getProductById,
   listCategories,
+  listCombos,
+  listDiscountCodes,
   listProducts,
   updateCategory,
+  updateCombo,
+  updateDiscountCode,
   updateProduct,
 } from "../api";
 import {
   categoryListFilterSchema,
+  comboListFilterSchema,
+  discountCodeListFilterSchema,
   productListFilterSchema,
   type CategoryFormInput,
   type CategoryListFilterInput,
+  type ComboFormInput,
+  type ComboListFilterInput,
+  type DiscountCodeFormInput,
+  type DiscountCodeListFilterInput,
   type ProductFormInput,
   type ProductListFilterInput,
 } from "../schemas";
@@ -130,6 +146,114 @@ export function useDeleteProduct() {
     onSuccess: () => {
       toast.success("Product deleted");
       void queryClient.invalidateQueries({ queryKey: managerQueryKeys.productsRoot });
+    },
+  });
+}
+
+export function useCombos(input: ComboListFilterInput) {
+  const filter = comboListFilterSchema.parse(input);
+  return useQuery({
+    queryKey: managerQueryKeys.combos(filter),
+    queryFn: () => listCombos(filter),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCombo(id: string) {
+  return useQuery({
+    queryKey: managerQueryKeys.combo(id),
+    queryFn: () => getComboById(id),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateCombo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ComboFormInput) => createCombo(input),
+    onSuccess: () => {
+      toast.success("Combo created");
+      void queryClient.invalidateQueries({ queryKey: managerQueryKeys.combosRoot });
+    },
+  });
+}
+
+export function useUpdateCombo(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ComboFormInput) => updateCombo(id, input),
+    onSuccess: (combo) => {
+      toast.success("Combo updated");
+      queryClient.setQueryData(managerQueryKeys.combo(id), combo);
+      void queryClient.invalidateQueries({ queryKey: managerQueryKeys.combosRoot });
+    },
+  });
+}
+
+export function useDeleteCombo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteCombo(id),
+    onSuccess: () => {
+      toast.success("Combo deleted");
+      void queryClient.invalidateQueries({ queryKey: managerQueryKeys.combosRoot });
+    },
+  });
+}
+
+export function useDiscountCodes(input: DiscountCodeListFilterInput) {
+  const filter = discountCodeListFilterSchema.parse(input);
+  return useQuery({
+    queryKey: managerQueryKeys.discountCodes(filter),
+    queryFn: () => listDiscountCodes(filter),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useDiscountCode(id: string) {
+  return useQuery({
+    queryKey: managerQueryKeys.discountCode(id),
+    queryFn: () => getDiscountCodeById(id),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateDiscountCode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DiscountCodeFormInput) => createDiscountCode(input),
+    onSuccess: () => {
+      toast.success("Discount code created");
+      void queryClient.invalidateQueries({
+        queryKey: managerQueryKeys.discountCodesRoot,
+      });
+    },
+  });
+}
+
+export function useUpdateDiscountCode(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DiscountCodeFormInput) => updateDiscountCode(id, input),
+    onSuccess: (discountCode) => {
+      toast.success("Discount code updated");
+      queryClient.setQueryData(managerQueryKeys.discountCode(id), discountCode);
+      void queryClient.invalidateQueries({
+        queryKey: managerQueryKeys.discountCodesRoot,
+      });
+    },
+  });
+}
+
+export function useDeleteDiscountCode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteDiscountCode(id),
+    onSuccess: () => {
+      toast.success("Discount code deleted");
+      void queryClient.invalidateQueries({
+        queryKey: managerQueryKeys.discountCodesRoot,
+      });
     },
   });
 }

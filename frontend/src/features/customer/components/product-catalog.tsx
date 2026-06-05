@@ -1,9 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ROUTE } from "@/constants/routes";
 import { formatPriceCents } from "@/lib/validation/catalog";
+
+import { ComboCatalog } from "./combo-catalog";
 
 import { useCatalogCategories, useCatalogProducts } from "../hooks";
 
@@ -87,9 +91,10 @@ export function ProductCatalog() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
-            <article
+            <Link
               key={product.id}
-              className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+              className="rounded-lg border border-zinc-200 bg-white p-4 transition hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600"
+              href={ROUTE.productDetail(product.id)}
             >
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                 {product.category_name}
@@ -98,14 +103,14 @@ export function ProductCatalog() {
                 {product.name}
               </h2>
               {product.description ? (
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="mt-2 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
                   {product.description}
                 </p>
               ) : null}
               <p className="mt-3 text-base font-medium text-zinc-900 dark:text-zinc-50">
                 {formatPriceCents(product.price_cents)}
               </p>
-            </article>
+            </Link>
           ))}
         </div>
       )}
@@ -133,6 +138,8 @@ export function ProductCatalog() {
           </Button>
         </div>
       ) : null}
+
+      <ComboCatalog />
     </div>
   );
 }

@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	domaincategory "github.com/boms/backend/internal/domain/category"
+	domaincombo "github.com/boms/backend/internal/domain/combo"
+	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -60,6 +62,14 @@ func writeMapUsecaseError(c *fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, domainproduct.ErrSlugExists):
 		return writeAppError(c, apperrors.ErrSlugExists)
+	case errors.Is(err, domaincombo.ErrNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domaincombo.ErrSlugExists):
+		return writeAppError(c, apperrors.ErrSlugExists)
+	case errors.Is(err, domaindiscount.ErrNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domaindiscount.ErrCodeExists):
+		return writeAppError(c, apperrors.ErrCodeExists)
 	}
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {

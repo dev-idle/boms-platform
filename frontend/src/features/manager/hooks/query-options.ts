@@ -1,4 +1,9 @@
-import type { CategoryListFilterInput, ProductListFilterInput } from "../schemas";
+import type {
+  CategoryListFilterInput,
+  ComboListFilterInput,
+  DiscountCodeListFilterInput,
+  ProductListFilterInput,
+} from "../schemas";
 
 export const managerQueryKeys = {
   all: ["manager"] as const,
@@ -10,4 +15,13 @@ export const managerQueryKeys = {
   products: (filter: ProductListFilterInput) =>
     [...managerQueryKeys.productsRoot, filter] as const,
   product: (id: string) => [...managerQueryKeys.all, "product", id] as const,
+  combosRoot: ["manager", "combos"] as const,
+  combos: (filter: ComboListFilterInput) =>
+    [...managerQueryKeys.combosRoot, filter] as const,
+  combo: (id: string) => [...managerQueryKeys.all, "combo", id] as const,
+  discountCodesRoot: ["manager", "discount-codes"] as const,
+  discountCodes: (filter: DiscountCodeListFilterInput) =>
+    [...managerQueryKeys.discountCodesRoot, filter] as const,
+  discountCode: (id: string) =>
+    [...managerQueryKeys.all, "discount-code", id] as const,
 };

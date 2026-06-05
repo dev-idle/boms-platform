@@ -85,9 +85,13 @@ func main() {
 	adminUserUC := usecase.NewAdminUserUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger, zlog)
 	categoryRepo := postgresrepo.NewCategoryRepository(pgPool)
 	productRepo := postgresrepo.NewProductRepository(pgPool)
+	comboRepo := postgresrepo.NewComboRepository(pgPool)
+	discountCodeRepo := postgresrepo.NewDiscountCodeRepository(pgPool)
 	managerCategoryUC := usecase.NewManagerCategoryUsecase(categoryRepo, auditLogger, zlog)
 	managerProductUC := usecase.NewManagerProductUsecase(productRepo, categoryRepo, auditLogger, zlog)
-	catalogUC := usecase.NewCatalogUsecase(categoryRepo, productRepo)
+	managerComboUC := usecase.NewManagerComboUsecase(comboRepo, pgPool, auditLogger, zlog)
+	managerDiscountCodeUC := usecase.NewManagerDiscountCodeUsecase(discountCodeRepo, auditLogger, zlog)
+	catalogUC := usecase.NewCatalogUsecase(categoryRepo, productRepo, comboRepo)
 
 	if err := bootstrap.EnsureDevAdmin(rootCtx, cfg, userRepo, adminProfileRepo, hasher, pgPool); err != nil {
 		zlog.Fatal("seed_admin", zap.Error(err))
@@ -98,6 +102,8 @@ func main() {
 	adminUserHandler := v1.NewAdminUserHandler(adminUserUC)
 	managerCategoryHandler := v1.NewManagerCategoryHandler(managerCategoryUC)
 	managerProductHandler := v1.NewManagerProductHandler(managerProductUC)
+	managerComboHandler := v1.NewManagerComboHandler(managerComboUC)
+	managerDiscountCodeHandler := v1.NewManagerDiscountCodeHandler(managerDiscountCodeUC)
 	catalogHandler := v1.NewCatalogHandler(catalogUC)
 
 	var asynqClose func() error
@@ -169,6 +175,8 @@ func main() {
 	catalogRead.Get("/categories", catalogHandler.ListCategories)
 	catalogRead.Get("/products", catalogHandler.ListProducts)
 	catalogRead.Get("/products/:id", catalogHandler.GetProduct)
+	catalogRead.Get("/combos", catalogHandler.ListCombos)
+	catalogRead.Get("/combos/:id", catalogHandler.GetCombo)
 
 	managerRead := apiV1.Group(
 		"/manager",
@@ -180,6 +188,10 @@ func main() {
 	managerRead.Get("/categories/:id", managerCategoryHandler.Get)
 	managerRead.Get("/products", managerProductHandler.List)
 	managerRead.Get("/products/:id", managerProductHandler.Get)
+	managerRead.Get("/combos", managerComboHandler.List)
+	managerRead.Get("/combos/:id", managerComboHandler.Get)
+	managerRead.Get("/discount-codes", managerDiscountCodeHandler.List)
+	managerRead.Get("/discount-codes/:id", managerDiscountCodeHandler.Get)
 
 	managerWrite := apiV1.Group(
 		"/manager",
@@ -194,6 +206,12 @@ func main() {
 	managerWrite.Post("/products", managerProductHandler.Create)
 	managerWrite.Patch("/products/:id", managerProductHandler.Patch)
 	managerWrite.Delete("/products/:id", managerProductHandler.Delete)
+	managerWrite.Post("/combos", managerComboHandler.Create)
+	managerWrite.Patch("/combos/:id", managerComboHandler.Patch)
+	managerWrite.Delete("/combos/:id", managerComboHandler.Delete)
+	managerWrite.Post("/discount-codes", managerDiscountCodeHandler.Create)
+	managerWrite.Patch("/discount-codes/:id", managerDiscountCodeHandler.Patch)
+	managerWrite.Delete("/discount-codes/:id", managerDiscountCodeHandler.Delete)
 
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 	go func() {

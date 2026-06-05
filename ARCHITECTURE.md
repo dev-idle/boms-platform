@@ -120,7 +120,7 @@ frontend/src/
 │   ├── (customer)/              # /products, /cart, /orders, /customer/account/*
 │   ├── (staff)/                 # /staff/account/*
 │   ├── (baker)/                 # /baker/account/*
-│   ├── (manager)/               # /manager/categories, /manager/products, /manager/account/*
+│   ├── (manager)/               # /manager/categories, /manager/products, /combos, /discount-codes, /account/*
 │   └── (admin)/admin/           # /admin, /admin/users, /admin/account/*
 ├── features/                    # Feature slices (auth | user | admin | manager | customer)
 │   ├── auth/                    # api/, schemas/, hooks/, components/, lib/, provider/
@@ -257,8 +257,8 @@ features/<slice>/
 | Session identity (`/me`) | `features/user` (FE) + `usecase/me` (BE) |
 | Auth (login/register/logout) | `features/auth` (FE) + `usecase/auth` (BE) |
 | Admin user CRUD | `features/admin` (FE) + `usecase/admin_user` (BE) |
-| Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` (BE) |
-| Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
+| Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` + `manager_combo` + `manager_discount_code` (BE) |
+| Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` (products, combos; discount apply at cart later) |
 | Audit logs | `service/auditlogger` (BE only) |
 | Profile entity dispatch | `service/profilesvc` (BE) |
 | Routes table | `constants/routes.ts` (FE) |

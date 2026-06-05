@@ -20,6 +20,7 @@ export const ApiErrorCode = {
   EmployeeCodeExists: "employee_code_exists",
   CategoryHasProducts: "category_has_products",
   SlugExists: "slug_exists",
+  CodeExists: "code_exists",
   Validation: "validation_error",
   RateLimited: "rate_limited",
   Internal: "internal_error",
@@ -100,6 +101,14 @@ export class ApiError extends Error {
 
   isEmailExists(): boolean {
     return this.code === ApiErrorCode.EmailExists;
+  }
+
+  isSlugExists(): boolean {
+    return this.code === ApiErrorCode.SlugExists;
+  }
+
+  isCodeExists(): boolean {
+    return this.code === ApiErrorCode.CodeExists;
   }
 }
 

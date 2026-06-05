@@ -7,7 +7,12 @@ const VALIDATION_TAG_MESSAGES: Record<string, string> = {
 };
 
 export function fieldErrorFromTag(tag: string): string {
-  return VALIDATION_TAG_MESSAGES[tag] ?? `Invalid value (${tag})`;
+  const known = VALIDATION_TAG_MESSAGES[tag];
+  if (known) {
+    return known;
+  }
+  // Backend validation details are often full messages, not validator tags.
+  return tag;
 }
 
 export function mapValidationDetailsToFormErrors(

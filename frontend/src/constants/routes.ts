@@ -3,10 +3,11 @@
  *
  * URL conventions (one role = one namespace):
  *   - Public:   /, /login, /register
- *   - Customer: /products, /cart, /orders, /customer/account/*
+ *   - Customer: /products, /products/:id, /cart, /orders, /customer/account/*
  *   - Staff:    /staff/account/*
  *   - Baker:    /baker/account/*
- *   - Manager:  /manager/categories, /manager/products, /manager/account/*
+ *   - Manager:  /manager/categories, /manager/products, /manager/combos,
+ *               /manager/discount-codes, /manager/account/*
  *   - Admin:    /admin, /admin/users, /admin/account/profile (password on profile page)
  */
 export const ROUTE = {
@@ -14,6 +15,7 @@ export const ROUTE = {
   login: "/login",
   register: "/register",
   products: "/products",
+  productDetail: (id: string) => `/products/${id}`,
   cart: "/cart",
   orders: "/orders",
   customer: {
@@ -42,6 +44,12 @@ export const ROUTE = {
     products: "/manager/products",
     productsNew: "/manager/products/new",
     productDetail: (id: string) => `/manager/products/${id}`,
+    combos: "/manager/combos",
+    combosNew: "/manager/combos/new",
+    comboDetail: (id: string) => `/manager/combos/${id}`,
+    discountCodes: "/manager/discount-codes",
+    discountCodesNew: "/manager/discount-codes/new",
+    discountCodeDetail: (id: string) => `/manager/discount-codes/${id}`,
     account: {
       profile: "/manager/account/profile",
       password: "/manager/account/password",

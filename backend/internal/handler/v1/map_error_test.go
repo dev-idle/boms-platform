@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	domaincategory "github.com/boms/backend/internal/domain/category"
+	domaincombo "github.com/boms/backend/internal/domain/combo"
+	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/middleware"
@@ -37,6 +39,10 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "category_has_products", err: domaincategory.ErrHasProducts, wantStatus: 422, wantCode: "category_has_products"},
 		{name: "category_slug_exists", err: domaincategory.ErrSlugExists, wantStatus: 409, wantCode: "slug_exists"},
 		{name: "product_not_found", err: domainproduct.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
+		{name: "combo_not_found", err: domaincombo.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
+		{name: "combo_slug_exists", err: domaincombo.ErrSlugExists, wantStatus: 409, wantCode: "slug_exists"},
+		{name: "discount_code_not_found", err: domaindiscount.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
+		{name: "discount_code_exists", err: domaindiscount.ErrCodeExists, wantStatus: 409, wantCode: "code_exists"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
