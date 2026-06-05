@@ -68,9 +68,6 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
           employee_code: pendingRoleValues.employee_code?.trim()
             ? pendingRoleValues.employee_code.trim()
             : null,
-          hire_date: pendingRoleValues.hire_date?.trim()
-            ? pendingRoleValues.hire_date.trim()
-            : null,
         },
       },
       {
@@ -89,7 +86,6 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               "full_name",
               "phone",
               "employee_code",
-              "hire_date",
             ]);
             setConfirmRole(false);
             return;
@@ -194,25 +190,6 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
                   <FormLabel>Employee code</FormLabel>
                   <FormControl>
                     <Input
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value || null)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="hire_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Hire date</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value || null)}

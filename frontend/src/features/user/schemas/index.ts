@@ -4,8 +4,6 @@ import { newPasswordZodString } from "@/lib/validation/password";
 
 import { USER_ROLE } from "@/constants/roles";
 
-const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
-
 const optionalNullableStringSchema = z.string().optional().nullable();
 const optionalNullablePhoneSchema = z
   .string()
@@ -25,7 +23,6 @@ export const staffProfileSchema = z.object({
   full_name: z.string(),
   phone: optionalNullableStringSchema,
   employee_code: z.string(),
-  hire_date: dateOnlySchema,
 });
 
 export const adminProfileSchema = z.object({

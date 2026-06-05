@@ -1,4 +1,6 @@
 # Go
+# Accidental empty file from `atlas` CLI cwd (never commit)
+backend/atlas
 *.exe
 *.exe~
 *.dll

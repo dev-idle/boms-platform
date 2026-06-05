@@ -2,8 +2,6 @@ import { z } from "zod";
 
 import { USER_ROLE } from "@/constants/roles";
 
-const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
-
 const optionalNullableTrimmedString = (max: number, label: string) =>
   z
     .string()
@@ -31,7 +29,6 @@ export const adminUserSchema = z.object({
   full_name: optionalNullableTrimmedString(255, "Full name"),
   phone: optionalNullableTrimmedString(50, "Phone"),
   employee_code: optionalNullableTrimmedString(64, "Employee code"),
-  hire_date: z.string().optional().nullable(),
 });
 
 const createOperationalBaseSchema = z.object({
@@ -52,7 +49,6 @@ export const createOperationalSchema = createOperationalBaseSchema.extend({
     .trim()
     .min(1, "Employee code is required")
     .max(64),
-  hire_date: dateOnlySchema,
 });
 
 export const createOperationalResponseSchema = z.object({
@@ -64,7 +60,6 @@ export const updateOperationalProfileSchema = z.object({
   full_name: z.string().trim().min(1, "Full name is required").max(255),
   phone: optionalNullableTrimmedString(50, "Phone"),
   employee_code: z.string().trim().max(64).optional().nullable(),
-  hire_date: dateOnlySchema.optional().nullable(),
 });
 
 /** Admin user detail profile tab — string fields for controlled inputs. */
@@ -72,7 +67,6 @@ export const adminUserProfileFormSchema = z.object({
   full_name: z.string().trim().min(1, "Full name is required").max(255),
   phone: z.string().trim().max(50).optional(),
   employee_code: z.string().trim().max(64).optional(),
-  hire_date: z.string().trim().optional(),
 });
 
 const updateRoleBaseSchema = z.object({
@@ -84,7 +78,6 @@ const updateRoleBaseSchema = z.object({
   full_name: z.string().trim().max(255).optional(),
   phone: z.string().trim().max(50).optional().nullable(),
   employee_code: z.string().trim().max(64).optional().nullable(),
-  hire_date: dateOnlySchema.optional().nullable(),
 });
 
 export const updateRoleSchema = updateRoleBaseSchema.superRefine((input, ctx) => {
@@ -99,13 +92,6 @@ export const updateRoleSchema = updateRoleBaseSchema.superRefine((input, ctx) =>
         code: z.ZodIssueCode.custom,
         message: "Employee code is required for staff roles",
         path: ["employee_code"],
-      });
-    }
-    if (!input.hire_date?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Hire date is required for staff roles",
-        path: ["hire_date"],
       });
     }
   }

@@ -11,7 +11,6 @@ type Staff struct {
 	FullName     string
 	Phone        *string
 	EmployeeCode string
-	HireDate     time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

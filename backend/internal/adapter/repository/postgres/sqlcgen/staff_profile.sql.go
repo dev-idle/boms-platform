@@ -8,15 +8,14 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
 )
 
 const createStaffProfile = `-- name: CreateStaffProfile :one
-INSERT INTO staff_profiles (user_id, full_name, phone, employee_code, hire_date)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+INSERT INTO staff_profiles (user_id, full_name, phone, employee_code)
+VALUES ($1, $2, $3, $4)
+RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 `
 
 type CreateStaffProfileParams struct {
@@ -24,21 +23,19 @@ type CreateStaffProfileParams struct {
 	FullName     string         `db:"full_name" json:"fullName"`
 	Phone        sql.NullString `db:"phone" json:"phone"`
 	EmployeeCode string         `db:"employee_code" json:"employeeCode"`
-	HireDate     time.Time      `db:"hire_date" json:"hireDate"`
 }
 
 // CreateStaffProfile
 //
-//	INSERT INTO staff_profiles (user_id, full_name, phone, employee_code, hire_date)
-//	VALUES ($1, $2, $3, $4, $5)
-//	RETURNING user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+//	INSERT INTO staff_profiles (user_id, full_name, phone, employee_code)
+//	VALUES ($1, $2, $3, $4)
+//	RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 func (q *Queries) CreateStaffProfile(ctx context.Context, arg CreateStaffProfileParams) (StaffProfile, error) {
 	row := q.db.QueryRowContext(ctx, createStaffProfile,
 		arg.UserID,
 		arg.FullName,
 		arg.Phone,
 		arg.EmployeeCode,
-		arg.HireDate,
 	)
 	var i StaffProfile
 	err := row.Scan(
@@ -46,7 +43,6 @@ func (q *Queries) CreateStaffProfile(ctx context.Context, arg CreateStaffProfile
 		&i.FullName,
 		&i.Phone,
 		&i.EmployeeCode,
-		&i.HireDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -71,14 +67,14 @@ func (q *Queries) DeleteStaffProfileByUserID(ctx context.Context, userID uuid.UU
 }
 
 const getStaffProfileByUserID = `-- name: GetStaffProfileByUserID :one
-SELECT user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+SELECT user_id, full_name, phone, employee_code, created_at, updated_at
 FROM staff_profiles
 WHERE user_id = $1
 `
 
 // GetStaffProfileByUserID
 //
-//	SELECT user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+//	SELECT user_id, full_name, phone, employee_code, created_at, updated_at
 //	FROM staff_profiles
 //	WHERE user_id = $1
 func (q *Queries) GetStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (StaffProfile, error) {
@@ -89,7 +85,6 @@ func (q *Queries) GetStaffProfileByUserID(ctx context.Context, userID uuid.UUID)
 		&i.FullName,
 		&i.Phone,
 		&i.EmployeeCode,
-		&i.HireDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -101,10 +96,9 @@ UPDATE staff_profiles
 SET full_name = $2,
     phone = $3,
     employee_code = $4,
-    hire_date = $5,
     updated_at = now()
 WHERE user_id = $1
-RETURNING user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 `
 
 type UpdateStaffProfileByUserIDParams struct {
@@ -112,7 +106,6 @@ type UpdateStaffProfileByUserIDParams struct {
 	FullName     string         `db:"full_name" json:"fullName"`
 	Phone        sql.NullString `db:"phone" json:"phone"`
 	EmployeeCode string         `db:"employee_code" json:"employeeCode"`
-	HireDate     time.Time      `db:"hire_date" json:"hireDate"`
 }
 
 // UpdateStaffProfileByUserID
@@ -121,17 +114,15 @@ type UpdateStaffProfileByUserIDParams struct {
 //	SET full_name = $2,
 //	    phone = $3,
 //	    employee_code = $4,
-//	    hire_date = $5,
 //	    updated_at = now()
 //	WHERE user_id = $1
-//	RETURNING user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+//	RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 func (q *Queries) UpdateStaffProfileByUserID(ctx context.Context, arg UpdateStaffProfileByUserIDParams) (StaffProfile, error) {
 	row := q.db.QueryRowContext(ctx, updateStaffProfileByUserID,
 		arg.UserID,
 		arg.FullName,
 		arg.Phone,
 		arg.EmployeeCode,
-		arg.HireDate,
 	)
 	var i StaffProfile
 	err := row.Scan(
@@ -139,7 +130,6 @@ func (q *Queries) UpdateStaffProfileByUserID(ctx context.Context, arg UpdateStaf
 		&i.FullName,
 		&i.Phone,
 		&i.EmployeeCode,
-		&i.HireDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

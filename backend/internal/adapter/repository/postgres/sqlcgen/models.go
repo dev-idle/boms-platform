@@ -79,7 +79,6 @@ type StaffProfile struct {
 	FullName     string         `db:"full_name" json:"fullName"`
 	Phone        sql.NullString `db:"phone" json:"phone"`
 	EmployeeCode string         `db:"employee_code" json:"employeeCode"`
-	HireDate     time.Time      `db:"hire_date" json:"hireDate"`
 	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
 }

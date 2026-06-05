@@ -34,7 +34,6 @@ CREATE TABLE staff_profiles (
     full_name     text NOT NULL DEFAULT '',
     phone         text,
     employee_code citext NOT NULL,
-    hire_date     date NOT NULL,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT staff_profiles_user_id_fkey

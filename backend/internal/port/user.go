@@ -34,7 +34,6 @@ type AdminListUser struct {
 	FullName           *string
 	Phone              *string
 	EmployeeCode       *string
-	HireDate           *time.Time
 	DisplayName        *string
 }
 

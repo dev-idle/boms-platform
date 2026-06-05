@@ -52,7 +52,6 @@ function AdminUserDetailProfileForm({
           employee_code: values.employee_code?.trim()
             ? values.employee_code.trim()
             : null,
-          hire_date: values.hire_date?.trim() ? values.hire_date.trim() : null,
         },
       },
       {
@@ -66,7 +65,6 @@ function AdminUserDetailProfileForm({
               "full_name",
               "phone",
               "employee_code",
-              "hire_date",
             ]);
             return;
           }
@@ -137,19 +135,6 @@ function AdminUserDetailProfileForm({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="hire_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Hire date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </>
           ) : null}
 

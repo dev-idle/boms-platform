@@ -207,10 +207,6 @@ func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUse
 			t := row.DeletedAt.Time
 			item.DeletedAt = &t
 		}
-		if row.HireDate.Valid {
-			t := row.HireDate.Time
-			item.HireDate = &t
-		}
 		out = append(out, item)
 	}
 

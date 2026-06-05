@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -94,7 +93,7 @@ func (u *AdminUserUsecase) CreateOperationalUser(
 
 		switch role.ProfileType() {
 		case "staff":
-			employeeCode, hireDate, prepErr := parseStaffSeed(req.EmployeeCode, req.HireDate)
+			employeeCode, prepErr := parseStaffSeed(req.EmployeeCode)
 			if prepErr != nil {
 				return prepErr
 			}
@@ -103,7 +102,6 @@ func (u *AdminUserUsecase) CreateOperationalUser(
 				FullName:     req.FullName,
 				Phone:        req.Phone,
 				EmployeeCode: employeeCode,
-				HireDate:     hireDate,
 			})
 			return createErr
 		case "admin":
@@ -172,21 +170,12 @@ func (u *AdminUserUsecase) UpdateOperationalProfile(
 		if req.EmployeeCode != nil {
 			employeeCode = *req.EmployeeCode
 		}
-		hireDate := current.HireDate
-		if req.HireDate != nil {
-			parsed, parseErr := time.Parse("2006-01-02", *req.HireDate)
-			if parseErr != nil {
-				return nil, apperrors.ErrValidation.WithDetail("hire_date", "must match YYYY-MM-DD")
-			}
-			hireDate = parsed
-		}
 		before = current
 		after, err = u.staff.UpdateByUserID(ctx, port.UpsertStaffProfileParams{
 			UserID:       targetID,
 			FullName:     req.FullName,
 			Phone:        req.Phone,
 			EmployeeCode: employeeCode,
-			HireDate:     hireDate,
 		})
 	case "admin":
 		current, getErr := u.admins.GetByUserID(ctx, targetID)
@@ -263,7 +252,7 @@ func (u *AdminUserUsecase) UpdateRole(
 				UserID: targetID,
 			})
 		case "staff":
-			employeeCode, hireDate, prepErr := parseStaffSeed(req.EmployeeCode, req.HireDate)
+			employeeCode, prepErr := parseStaffSeed(req.EmployeeCode)
 			if prepErr != nil {
 				return prepErr
 			}
@@ -276,7 +265,6 @@ func (u *AdminUserUsecase) UpdateRole(
 				FullName:     fullName,
 				Phone:        req.Phone,
 				EmployeeCode: employeeCode,
-				HireDate:     hireDate,
 			})
 		case "admin":
 			fullName := req.FullName
@@ -389,8 +377,6 @@ func (u *AdminUserUsecase) getAdminUserResponse(ctx context.Context, userID uuid
 		resp.FullName = &p.FullName
 		resp.Phone = p.Phone
 		resp.EmployeeCode = &p.EmployeeCode
-		t := p.HireDate
-		resp.HireDate = &t
 	case *domainprofile.Admin:
 		resp.FullName = &p.FullName
 		resp.Phone = p.Phone
@@ -412,7 +398,6 @@ func mapAdminListItem(in port.AdminListUser) dto.AdminUserResponse {
 		FullName:           in.FullName,
 		Phone:              in.Phone,
 		EmployeeCode:       in.EmployeeCode,
-		HireDate:           in.HireDate,
 	}
 }
 
@@ -426,18 +411,11 @@ func parseRole(raw string) (domainuser.Role, error) {
 	}
 }
 
-func parseStaffSeed(employeeCode, hireDate *string) (string, time.Time, error) {
+func parseStaffSeed(employeeCode *string) (string, error) {
 	if employeeCode == nil || strings.TrimSpace(*employeeCode) == "" {
-		return "", time.Time{}, apperrors.ErrValidation.WithDetail("employee_code", "required for staff roles")
+		return "", apperrors.ErrValidation.WithDetail("employee_code", "required for staff roles")
 	}
-	if hireDate == nil || strings.TrimSpace(*hireDate) == "" {
-		return "", time.Time{}, apperrors.ErrValidation.WithDetail("hire_date", "required for staff roles")
-	}
-	parsed, err := time.Parse("2006-01-02", *hireDate)
-	if err != nil {
-		return "", time.Time{}, apperrors.ErrValidation.WithDetail("hire_date", "must match YYYY-MM-DD")
-	}
-	return strings.TrimSpace(*employeeCode), parsed, nil
+	return strings.TrimSpace(*employeeCode), nil
 }
 
 func (u *AdminUserUsecase) logAudit(ctx context.Context, action domainuser.AuditAction, actorID uuid.UUID, actorRole domainuser.Role, targetID *uuid.UUID, targetType string, before, after any) {

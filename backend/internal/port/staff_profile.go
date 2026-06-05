@@ -2,7 +2,6 @@ package port
 
 import (
 	"context"
-	"time"
 
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	"github.com/google/uuid"
@@ -13,7 +12,6 @@ type UpsertStaffProfileParams struct {
 	FullName     string
 	Phone        *string
 	EmployeeCode string
-	HireDate     time.Time
 }
 
 type StaffProfileRepository interface {

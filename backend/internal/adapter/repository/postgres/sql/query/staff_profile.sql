@@ -1,10 +1,10 @@
 -- name: CreateStaffProfile :one
-INSERT INTO staff_profiles (user_id, full_name, phone, employee_code, hire_date)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING user_id, full_name, phone, employee_code, hire_date, created_at, updated_at;
+INSERT INTO staff_profiles (user_id, full_name, phone, employee_code)
+VALUES ($1, $2, $3, $4)
+RETURNING user_id, full_name, phone, employee_code, created_at, updated_at;
 
 -- name: GetStaffProfileByUserID :one
-SELECT user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+SELECT user_id, full_name, phone, employee_code, created_at, updated_at
 FROM staff_profiles
 WHERE user_id = $1;
 
@@ -13,10 +13,9 @@ UPDATE staff_profiles
 SET full_name = $2,
     phone = $3,
     employee_code = $4,
-    hire_date = $5,
     updated_at = now()
 WHERE user_id = $1
-RETURNING user_id, full_name, phone, employee_code, hire_date, created_at, updated_at;
+RETURNING user_id, full_name, phone, employee_code, created_at, updated_at;
 
 -- name: DeleteStaffProfileByUserID :execrows
 DELETE FROM staff_profiles

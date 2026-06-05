@@ -75,8 +75,7 @@ SELECT
     cp.display_name,
     COALESCE(sp.full_name, ap.full_name) AS full_name,
     COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
-    sp.employee_code,
-    sp.hire_date
+    sp.employee_code
 FROM users u
 LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 LEFT JOIN staff_profiles sp ON sp.user_id = u.id

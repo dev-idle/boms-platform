@@ -126,10 +126,6 @@ table "staff_profiles" {
     type = sql("citext")
     null = false
   }
-  column "hire_date" {
-    type = date
-    null = false
-  }
   column "created_at" {
     type    = timestamptz
     null    = false

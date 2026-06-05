@@ -8,7 +8,6 @@ type CreateOperationalUserRequest struct {
 	FullName     string  `json:"full_name" validate:"required,max=255"`
 	Phone        *string `json:"phone,omitempty" validate:"omitempty,max=50"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
-	HireDate     *string `json:"hire_date,omitempty" validate:"omitempty,datetime=2006-01-02"`
 }
 
 type CreateOperationalUserResponse struct {
@@ -20,7 +19,6 @@ type UpdateOperationalProfileRequest struct {
 	FullName     string  `json:"full_name" validate:"required,max=255"`
 	Phone        *string `json:"phone,omitempty" validate:"omitempty,max=50"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
-	HireDate     *string `json:"hire_date,omitempty" validate:"omitempty,datetime=2006-01-02"`
 }
 
 type UpdateUserRoleRequest struct {
@@ -28,7 +26,6 @@ type UpdateUserRoleRequest struct {
 	FullName     string  `json:"full_name,omitempty" validate:"omitempty,max=255"`
 	Phone        *string `json:"phone,omitempty" validate:"omitempty,max=50"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
-	HireDate     *string `json:"hire_date,omitempty" validate:"omitempty,datetime=2006-01-02"`
 }
 
 type AdminUserResponse struct {
@@ -44,5 +41,4 @@ type AdminUserResponse struct {
 	FullName           *string    `json:"full_name,omitempty"`
 	Phone              *string    `json:"phone,omitempty"`
 	EmployeeCode       *string    `json:"employee_code,omitempty"`
-	HireDate           *time.Time `json:"hire_date,omitempty"`
 }

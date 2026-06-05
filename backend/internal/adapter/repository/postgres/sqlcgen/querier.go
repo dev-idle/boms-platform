@@ -31,8 +31,7 @@ type Querier interface {
 	//      cp.display_name,
 	//      COALESCE(sp.full_name, ap.full_name) AS full_name,
 	//      COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
-	//      sp.employee_code,
-	//      sp.hire_date
+	//      sp.employee_code
 	//  FROM users u
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 	//  LEFT JOIN staff_profiles sp ON sp.user_id = u.id
@@ -99,9 +98,9 @@ type Querier interface {
 	CreateCustomerProfile(ctx context.Context, arg CreateCustomerProfileParams) (CustomerProfile, error)
 	//CreateStaffProfile
 	//
-	//  INSERT INTO staff_profiles (user_id, full_name, phone, employee_code, hire_date)
-	//  VALUES ($1, $2, $3, $4, $5)
-	//  RETURNING user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+	//  INSERT INTO staff_profiles (user_id, full_name, phone, employee_code)
+	//  VALUES ($1, $2, $3, $4)
+	//  RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 	CreateStaffProfile(ctx context.Context, arg CreateStaffProfileParams) (StaffProfile, error)
 	//CreateUser
 	//
@@ -138,7 +137,7 @@ type Querier interface {
 	GetCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (CustomerProfile, error)
 	//GetStaffProfileByUserID
 	//
-	//  SELECT user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+	//  SELECT user_id, full_name, phone, employee_code, created_at, updated_at
 	//  FROM staff_profiles
 	//  WHERE user_id = $1
 	GetStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (StaffProfile, error)
@@ -216,10 +215,9 @@ type Querier interface {
 	//  SET full_name = $2,
 	//      phone = $3,
 	//      employee_code = $4,
-	//      hire_date = $5,
 	//      updated_at = now()
 	//  WHERE user_id = $1
-	//  RETURNING user_id, full_name, phone, employee_code, hire_date, created_at, updated_at
+	//  RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 	UpdateStaffProfileByUserID(ctx context.Context, arg UpdateStaffProfileByUserIDParams) (StaffProfile, error)
 	//UpdateUserPassword
 	//
