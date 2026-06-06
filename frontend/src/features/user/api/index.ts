@@ -1,13 +1,13 @@
 import { browserRequest, browserRequestVoid } from "@/lib/browser-api-client";
 
+import { meSchema, type Me } from "@/lib/schemas/me";
+
 import {
   changePasswordSchema,
-  meSchema,
   updateSelfProfileSchema,
   type ChangePasswordInput,
   type UpdateSelfProfileInput,
 } from "../schemas/index";
-import type { Me } from "../types";
 
 export async function getMe(): Promise<Me> {
   return browserRequest<Me>("/api/v1/me", {

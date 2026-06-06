@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { ROUTE } from "@/constants/routes";
 import { LogoutButton } from "@/features/auth";
+import { isNavItemActive } from "@/lib/routing/nav-active";
 import { cn } from "@/lib/utils";
 
 const STAFF_NAV_ITEMS = [
@@ -13,17 +14,6 @@ const STAFF_NAV_ITEMS = [
   { href: ROUTE.staff.account.profile, label: "Profile", match: "prefix" as const },
   { href: ROUTE.staff.account.password, label: "Password", match: "prefix" as const },
 ] as const;
-
-function isNavItemActive(
-  pathname: string,
-  href: string,
-  match: "exact" | "prefix",
-): boolean {
-  if (match === "exact") {
-    return pathname === href;
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
 
 type StaffShellProps = {
   children: ReactNode;

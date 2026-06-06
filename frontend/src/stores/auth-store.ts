@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import type { UserRole } from "@/constants/roles";
-import type { Me } from "@/features/user";
+import type { Me } from "@/lib/schemas/me";
 
 export type AuthStatus = "idle" | "authenticated" | "unauthenticated";
 

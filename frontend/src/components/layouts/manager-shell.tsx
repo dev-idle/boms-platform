@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { ROUTE } from "@/constants/routes";
 import { LogoutButton } from "@/features/auth";
+import { isNavItemActive } from "@/lib/routing/nav-active";
 import { cn } from "@/lib/utils";
 
 const MANAGER_NAV_ITEMS = [
@@ -28,17 +29,6 @@ const MANAGER_NAV_ITEMS = [
     match: "prefix" as const,
   },
 ] as const;
-
-function isNavItemActive(
-  pathname: string,
-  href: string,
-  match: "exact" | "prefix",
-): boolean {
-  if (match === "exact") {
-    return pathname === href;
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
 
 type ManagerShellProps = {
   children: ReactNode;

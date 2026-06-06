@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { AUTH_REFRESH_COOKIE } from "@/constants/cookies";
@@ -37,19 +36,9 @@ export default function HomePage() {
             Sign in
           </Link>
         </div>
-        <div className="flex items-center gap-3 border-t border-zinc-100 pt-8 dark:border-zinc-800">
-          <Image
-            className="dark:invert"
-            src="/next.svg"
-            alt="Next.js"
-            width={90}
-            height={18}
-            priority
-          />
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
-            Next.js 16 · React 19 · Tailwind v4
-          </span>
-        </div>
+        <p className="border-t border-zinc-100 pt-8 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          Next.js 16 · React 19 · Tailwind v4
+        </p>
       </main>
     </div>
   );

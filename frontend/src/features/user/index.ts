@@ -22,13 +22,6 @@ export {
   userQueryKeys,
 } from "./hooks";
 export {
-  homeRouteForRole,
-  isPathAllowedForRole,
-  passwordRouteForRole,
-  profileRouteForRole,
-  routePrefixesForRole,
-} from "@/lib/routing/role-routes";
-export {
   adminProfileSchema,
   changePasswordFormSchema,
   changePasswordSchema,

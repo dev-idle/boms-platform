@@ -9,15 +9,6 @@ export const USER_ROLE = {
 
 export type UserRole = (typeof USER_ROLE)[keyof typeof USER_ROLE];
 
-/** All roles in display order. */
-export const ALL_USER_ROLES: readonly UserRole[] = [
-  USER_ROLE.customer,
-  USER_ROLE.staff,
-  USER_ROLE.baker,
-  USER_ROLE.manager,
-  USER_ROLE.admin,
-] as const;
-
 /** Operational roles an admin may assign (excludes customer and admin). */
 export const ASSIGNABLE_OPERATIONAL_ROLES: readonly UserRole[] = [
   USER_ROLE.staff,

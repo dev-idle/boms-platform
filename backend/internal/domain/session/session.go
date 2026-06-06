@@ -3,13 +3,6 @@ package session
 
 import "time"
 
-// Session identifies a user's active login session.
-type Session struct {
-	UserID    string
-	SessionID string
-	Meta      SessionMeta
-}
-
 // SessionMeta is stored in Redis at session:{userID}:{sessionID}.
 //
 // MustChangePassword mirrors users.must_change_password at session creation time, allowing

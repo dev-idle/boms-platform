@@ -839,10 +839,6 @@ type Querier interface {
 	//      OR p.slug ILIKE '%' || $2::text || '%'
 	//    )
 	ManagerListProductsCount(ctx context.Context, arg ManagerListProductsCountParams) (int64, error)
-	//Ping
-	//
-	//  SELECT 1 AS ok
-	Ping(ctx context.Context) (int32, error)
 	//SetCartDiscountCodeID
 	//
 	//  UPDATE carts

@@ -15,7 +15,7 @@ const eslintConfig = defineConfig([
   {
     name: "boms/dal-boundary",
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/lib/api-client.ts", "src/lib/dal/**/*"],
+    ignores: ["src/lib/api-client.ts", "src/lib/dal/**"],
     rules: {
       "no-restricted-imports": [
         "error",

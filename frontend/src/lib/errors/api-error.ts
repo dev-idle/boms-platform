@@ -13,6 +13,8 @@ export const ApiErrorCode = {
   NotFound: "not_found",
   ProfileNotFound: "profile_not_found",
   MeNotFound: "me_not_found",
+  UserNotFound: "user_not_found",
+  ServiceUnavailable: "service_unavailable",
   Conflict: "conflict",
   EmailExists: "email_exists",
   CannotModifySelf: "cannot_modify_self",

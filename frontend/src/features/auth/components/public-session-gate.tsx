@@ -8,7 +8,7 @@ import { resolvePostAuthDestination } from "@/lib/routing/post-auth-destination"
 import { validateNext } from "@/lib/validate-next";
 import { useAuthStore } from "@/stores/auth-store";
 
-import { useSessionAuthHint } from "@/features/auth/provider";
+import { useSessionAuthHint } from "../provider";
 import { SessionRestoreShell } from "./session-restore-shell";
 
 function useRoleHomeRedirect(next?: string) {

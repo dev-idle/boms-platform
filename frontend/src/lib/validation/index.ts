@@ -1,2 +1,2 @@
-export { fieldErrorFromTag, mapValidationDetailsToFormErrors } from "./messages";
+export { mapValidationDetailsToFormErrors } from "./messages";
 export { newPasswordZodString } from "./password";
