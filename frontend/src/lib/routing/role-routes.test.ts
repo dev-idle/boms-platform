@@ -14,9 +14,7 @@ describe("homeRouteForRole", () => {
   it("returns the canonical home per role", () => {
     expect(homeRouteForRole(USER_ROLE.customer)).toBe(ROUTE.products);
     expect(homeRouteForRole(USER_ROLE.admin)).toBe(ROUTE.admin.dashboard);
-    expect(homeRouteForRole(USER_ROLE.staff)).toBe(
-      ROUTE.staff.account.profile,
-    );
+    expect(homeRouteForRole(USER_ROLE.staff)).toBe(ROUTE.staff.orders);
     expect(homeRouteForRole(USER_ROLE.manager)).toBe(ROUTE.manager.categories);
   });
 });
@@ -59,6 +57,7 @@ describe("isPathAllowedForRole", () => {
   it("allows only own namespace per role", () => {
     expect(isPathAllowedForRole("/admin/users", USER_ROLE.admin)).toBe(true);
     expect(isPathAllowedForRole("/cart", USER_ROLE.customer)).toBe(true);
+    expect(isPathAllowedForRole("/staff/orders", USER_ROLE.staff)).toBe(true);
     expect(isPathAllowedForRole("/staff/account/password", USER_ROLE.staff)).toBe(
       true,
     );

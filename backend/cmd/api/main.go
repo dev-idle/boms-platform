@@ -96,6 +96,7 @@ func main() {
 	orderRepo := postgresrepo.NewOrderRepository(pgPool)
 	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo)
 	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool)
+	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, auditLogger, zlog)
 
 	if err := bootstrap.EnsureDevAdmin(rootCtx, cfg, userRepo, adminProfileRepo, hasher, pgPool); err != nil {
 		zlog.Fatal("seed_admin", zap.Error(err))
@@ -111,6 +112,7 @@ func main() {
 	catalogHandler := v1.NewCatalogHandler(catalogUC)
 	cartHandler := v1.NewCartHandler(cartUC)
 	orderHandler := v1.NewOrderHandler(orderUC)
+	staffOrderHandler := v1.NewStaffOrderHandler(staffOrderUC)
 
 	var asynqClose func() error
 	if cfg.Asynq.Enabled {
@@ -234,6 +236,16 @@ func main() {
 	managerWrite.Post("/discount-codes", managerDiscountCodeHandler.Create)
 	managerWrite.Patch("/discount-codes/:id", managerDiscountCodeHandler.Patch)
 	managerWrite.Delete("/discount-codes/:id", managerDiscountCodeHandler.Delete)
+
+	staffOrders := apiV1.Group(
+		"/staff",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleStaff),
+		passwordChanged,
+	)
+	staffOrders.Get("/orders", staffOrderHandler.List)
+	staffOrders.Get("/orders/:id", staffOrderHandler.Get)
+	staffOrders.Patch("/orders/:id/status", staffOrderHandler.PatchStatus)
 
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 	go func() {

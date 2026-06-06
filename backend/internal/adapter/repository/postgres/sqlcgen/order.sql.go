@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -407,6 +408,212 @@ func (q *Queries) ListOrdersByUserCount(ctx context.Context, userID uuid.UUID) (
 	return count, err
 }
 
+const staffGetOrderByID = `-- name: StaffGetOrderByID :one
+SELECT
+  o.id,
+  o.user_id,
+  o.status,
+  o.subtotal_cents,
+  o.discount_cents,
+  o.total_cents,
+  o.discount_code_id,
+  o.discount_code_snapshot,
+  o.created_at,
+  o.updated_at,
+  u.email AS customer_email,
+  cp.display_name AS customer_display_name
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+WHERE o.id = $1
+`
+
+type StaffGetOrderByIDRow struct {
+	ID                   uuid.UUID      `db:"id" json:"id"`
+	UserID               uuid.UUID      `db:"user_id" json:"userId"`
+	Status               OrderStatus    `db:"status" json:"status"`
+	SubtotalCents        int64          `db:"subtotal_cents" json:"subtotalCents"`
+	DiscountCents        int64          `db:"discount_cents" json:"discountCents"`
+	TotalCents           int64          `db:"total_cents" json:"totalCents"`
+	DiscountCodeID       uuid.NullUUID  `db:"discount_code_id" json:"discountCodeId"`
+	DiscountCodeSnapshot sql.NullString `db:"discount_code_snapshot" json:"discountCodeSnapshot"`
+	CreatedAt            time.Time      `db:"created_at" json:"createdAt"`
+	UpdatedAt            time.Time      `db:"updated_at" json:"updatedAt"`
+	CustomerEmail        string         `db:"customer_email" json:"customerEmail"`
+	CustomerDisplayName  sql.NullString `db:"customer_display_name" json:"customerDisplayName"`
+}
+
+// StaffGetOrderByID
+//
+//	SELECT
+//	  o.id,
+//	  o.user_id,
+//	  o.status,
+//	  o.subtotal_cents,
+//	  o.discount_cents,
+//	  o.total_cents,
+//	  o.discount_code_id,
+//	  o.discount_code_snapshot,
+//	  o.created_at,
+//	  o.updated_at,
+//	  u.email AS customer_email,
+//	  cp.display_name AS customer_display_name
+//	FROM orders o
+//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+//	WHERE o.id = $1
+func (q *Queries) StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGetOrderByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, staffGetOrderByID, id)
+	var i StaffGetOrderByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CustomerEmail,
+		&i.CustomerDisplayName,
+	)
+	return i, err
+}
+
+const staffListOrders = `-- name: StaffListOrders :many
+SELECT
+  o.id,
+  o.user_id,
+  o.status,
+  o.subtotal_cents,
+  o.discount_cents,
+  o.total_cents,
+  o.discount_code_id,
+  o.discount_code_snapshot,
+  o.created_at,
+  o.updated_at,
+  u.email AS customer_email,
+  cp.display_name AS customer_display_name
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+WHERE (
+    $1::order_status IS NULL
+    OR o.status = $1::order_status
+)
+ORDER BY o.created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type StaffListOrdersParams struct {
+	Status NullOrderStatus `db:"status" json:"status"`
+	Offset int32           `db:"offset" json:"offset"`
+	Limit  int32           `db:"limit" json:"limit"`
+}
+
+type StaffListOrdersRow struct {
+	ID                   uuid.UUID      `db:"id" json:"id"`
+	UserID               uuid.UUID      `db:"user_id" json:"userId"`
+	Status               OrderStatus    `db:"status" json:"status"`
+	SubtotalCents        int64          `db:"subtotal_cents" json:"subtotalCents"`
+	DiscountCents        int64          `db:"discount_cents" json:"discountCents"`
+	TotalCents           int64          `db:"total_cents" json:"totalCents"`
+	DiscountCodeID       uuid.NullUUID  `db:"discount_code_id" json:"discountCodeId"`
+	DiscountCodeSnapshot sql.NullString `db:"discount_code_snapshot" json:"discountCodeSnapshot"`
+	CreatedAt            time.Time      `db:"created_at" json:"createdAt"`
+	UpdatedAt            time.Time      `db:"updated_at" json:"updatedAt"`
+	CustomerEmail        string         `db:"customer_email" json:"customerEmail"`
+	CustomerDisplayName  sql.NullString `db:"customer_display_name" json:"customerDisplayName"`
+}
+
+// StaffListOrders
+//
+//	SELECT
+//	  o.id,
+//	  o.user_id,
+//	  o.status,
+//	  o.subtotal_cents,
+//	  o.discount_cents,
+//	  o.total_cents,
+//	  o.discount_code_id,
+//	  o.discount_code_snapshot,
+//	  o.created_at,
+//	  o.updated_at,
+//	  u.email AS customer_email,
+//	  cp.display_name AS customer_display_name
+//	FROM orders o
+//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+//	WHERE (
+//	    $1::order_status IS NULL
+//	    OR o.status = $1::order_status
+//	)
+//	ORDER BY o.created_at DESC
+//	LIMIT $3 OFFSET $2
+func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error) {
+	rows, err := q.db.QueryContext(ctx, staffListOrders, arg.Status, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []StaffListOrdersRow{}
+	for rows.Next() {
+		var i StaffListOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Status,
+			&i.SubtotalCents,
+			&i.DiscountCents,
+			&i.TotalCents,
+			&i.DiscountCodeID,
+			&i.DiscountCodeSnapshot,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CustomerEmail,
+			&i.CustomerDisplayName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const staffListOrdersCount = `-- name: StaffListOrdersCount :one
+SELECT COUNT(*)::bigint AS count
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE (
+    $1::order_status IS NULL
+    OR o.status = $1::order_status
+)
+`
+
+// StaffListOrdersCount
+//
+//	SELECT COUNT(*)::bigint AS count
+//	FROM orders o
+//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	WHERE (
+//	    $1::order_status IS NULL
+//	    OR o.status = $1::order_status
+//	)
+func (q *Queries) StaffListOrdersCount(ctx context.Context, status NullOrderStatus) (int64, error) {
+	row := q.db.QueryRowContext(ctx, staffListOrdersCount, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const sumOrderItemQuantitiesByOrderIDs = `-- name: SumOrderItemQuantitiesByOrderIDs :many
 SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count
 FROM order_items
@@ -446,4 +653,65 @@ func (q *Queries) SumOrderItemQuantitiesByOrderIDs(ctx context.Context, orderIds
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateOrderStatus = `-- name: UpdateOrderStatus :one
+UPDATE orders
+SET status = $1::order_status,
+    updated_at = now()
+WHERE id = $2
+  AND status = $3::order_status
+RETURNING
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  created_at,
+  updated_at
+`
+
+type UpdateOrderStatusParams struct {
+	ToStatus   OrderStatus `db:"to_status" json:"toStatus"`
+	ID         uuid.UUID   `db:"id" json:"id"`
+	FromStatus OrderStatus `db:"from_status" json:"fromStatus"`
+}
+
+// UpdateOrderStatus
+//
+//	UPDATE orders
+//	SET status = $1::order_status,
+//	    updated_at = now()
+//	WHERE id = $2
+//	  AND status = $3::order_status
+//	RETURNING
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  created_at,
+//	  updated_at
+func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error) {
+	row := q.db.QueryRowContext(ctx, updateOrderStatus, arg.ToStatus, arg.ID, arg.FromStatus)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

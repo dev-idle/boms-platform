@@ -96,6 +96,8 @@ func writeMapUsecaseError(c *fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("line", "provide exactly one of product_id or combo_id"))
 	case errors.Is(err, domainorder.ErrNotFound):
 		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domainorder.ErrInvalidStatusTransition):
+		return writeAppError(c, apperrors.ErrInvalidOrderStatusTransition)
 	}
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {

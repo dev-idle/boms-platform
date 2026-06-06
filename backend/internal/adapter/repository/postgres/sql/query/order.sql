@@ -106,3 +106,73 @@ SELECT
 FROM order_items
 WHERE order_id = $1
 ORDER BY created_at ASC;
+
+-- name: StaffListOrders :many
+SELECT
+  o.id,
+  o.user_id,
+  o.status,
+  o.subtotal_cents,
+  o.discount_cents,
+  o.total_cents,
+  o.discount_code_id,
+  o.discount_code_snapshot,
+  o.created_at,
+  o.updated_at,
+  u.email AS customer_email,
+  cp.display_name AS customer_display_name
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+WHERE (
+    sqlc.narg('status')::order_status IS NULL
+    OR o.status = sqlc.narg('status')::order_status
+)
+ORDER BY o.created_at DESC
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: StaffListOrdersCount :one
+SELECT COUNT(*)::bigint AS count
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE (
+    sqlc.narg('status')::order_status IS NULL
+    OR o.status = sqlc.narg('status')::order_status
+);
+
+-- name: StaffGetOrderByID :one
+SELECT
+  o.id,
+  o.user_id,
+  o.status,
+  o.subtotal_cents,
+  o.discount_cents,
+  o.total_cents,
+  o.discount_code_id,
+  o.discount_code_snapshot,
+  o.created_at,
+  o.updated_at,
+  u.email AS customer_email,
+  cp.display_name AS customer_display_name
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+WHERE o.id = $1;
+
+-- name: UpdateOrderStatus :one
+UPDATE orders
+SET status = sqlc.arg('to_status')::order_status,
+    updated_at = now()
+WHERE id = sqlc.arg('id')
+  AND status = sqlc.arg('from_status')::order_status
+RETURNING
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  created_at,
+  updated_at;

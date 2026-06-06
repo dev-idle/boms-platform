@@ -2,6 +2,9 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"time"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domaincart "github.com/boms/backend/internal/domain/cart"
@@ -80,6 +83,72 @@ func (r *OrderRepository) ListCountByUser(ctx context.Context, userID uuid.UUID)
 		return 0, mapRepoError(err, "list orders count")
 	}
 	return count, nil
+}
+
+func (r *OrderRepository) StaffGetByID(ctx context.Context, orderID uuid.UUID) (*port.StaffOrderListRow, error) {
+	row, err := r.q(ctx).StaffGetOrderByID(ctx, orderID)
+	if err != nil {
+		return nil, mapRepoError(err, "staff get order")
+	}
+	return mapStaffGetOrderByIDRow(row), nil
+}
+
+func (r *OrderRepository) StaffList(ctx context.Context, params port.StaffListOrdersParams) ([]port.StaffOrderListRow, error) {
+	status, err := optionalOrderStatus(params.Status)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.q(ctx).StaffListOrders(ctx, sqlcgen.StaffListOrdersParams{
+		Status: status,
+		Limit:  params.Limit,
+		Offset: params.Offset,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "staff list orders")
+	}
+	out := make([]port.StaffOrderListRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, *mapStaffListOrdersRow(row))
+	}
+	return out, nil
+}
+
+func (r *OrderRepository) StaffListCount(ctx context.Context, status *domainorder.Status) (int64, error) {
+	statusSQL, err := optionalOrderStatus(status)
+	if err != nil {
+		return 0, err
+	}
+	count, err := r.q(ctx).StaffListOrdersCount(ctx, statusSQL)
+	if err != nil {
+		return 0, mapRepoError(err, "staff list orders count")
+	}
+	return count, nil
+}
+
+func (r *OrderRepository) UpdateStatus(
+	ctx context.Context,
+	params port.UpdateOrderStatusParams,
+) (*domainorder.Order, error) {
+	fromStatus, err := mapOrderStatusToSQL(params.FromStatus)
+	if err != nil {
+		return nil, err
+	}
+	toStatus, err := mapOrderStatusToSQL(params.ToStatus)
+	if err != nil {
+		return nil, err
+	}
+	row, err := r.q(ctx).UpdateOrderStatus(ctx, sqlcgen.UpdateOrderStatusParams{
+		ID:         params.OrderID,
+		FromStatus: fromStatus,
+		ToStatus:   toStatus,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperrors.ErrNotFound
+		}
+		return nil, mapRepoError(err, "update order status")
+	}
+	return mapOrder(row), nil
 }
 
 func (r *OrderRepository) CreateItems(ctx context.Context, items []port.CreateOrderItemParams) error {
@@ -193,6 +262,92 @@ func mapOrderStatusToSQL(s domainorder.Status) (sqlcgen.OrderStatus, error) {
 	default:
 		return "", apperrors.Errorf("unsupported order status: %s", s)
 	}
+}
+
+func mapStaffListOrdersRow(row sqlcgen.StaffListOrdersRow) *port.StaffOrderListRow {
+	return mapStaffOrderJoined(
+		row.ID,
+		row.UserID,
+		row.Status,
+		row.SubtotalCents,
+		row.DiscountCents,
+		row.TotalCents,
+		row.DiscountCodeID,
+		row.DiscountCodeSnapshot,
+		row.CreatedAt,
+		row.UpdatedAt,
+		row.CustomerEmail,
+		row.CustomerDisplayName,
+	)
+}
+
+func mapStaffGetOrderByIDRow(row sqlcgen.StaffGetOrderByIDRow) *port.StaffOrderListRow {
+	return mapStaffOrderJoined(
+		row.ID,
+		row.UserID,
+		row.Status,
+		row.SubtotalCents,
+		row.DiscountCents,
+		row.TotalCents,
+		row.DiscountCodeID,
+		row.DiscountCodeSnapshot,
+		row.CreatedAt,
+		row.UpdatedAt,
+		row.CustomerEmail,
+		row.CustomerDisplayName,
+	)
+}
+
+func mapStaffOrderJoined(
+	id, userID uuid.UUID,
+	status sqlcgen.OrderStatus,
+	subtotalCents, discountCents, totalCents int64,
+	discountCodeID uuid.NullUUID,
+	discountCodeSnapshot sql.NullString,
+	createdAt, updatedAt time.Time,
+	customerEmail string,
+	customerDisplayName sql.NullString,
+) *port.StaffOrderListRow {
+	out := &port.StaffOrderListRow{
+		Order: domainorder.Order{
+			ID:            id,
+			UserID:        userID,
+			Status:        mapOrderStatusFromSQL(status),
+			SubtotalCents: subtotalCents,
+			DiscountCents: discountCents,
+			TotalCents:    totalCents,
+			CreatedAt:     createdAt,
+			UpdatedAt:     updatedAt,
+		},
+		CustomerEmail: customerEmail,
+	}
+	if discountCodeID.Valid {
+		did := discountCodeID.UUID
+		out.Order.DiscountCodeID = &did
+	}
+	if discountCodeSnapshot.Valid {
+		s := discountCodeSnapshot.String
+		out.Order.DiscountCodeSnapshot = &s
+	}
+	if customerDisplayName.Valid {
+		name := customerDisplayName.String
+		out.CustomerDisplayName = &name
+	}
+	return out
+}
+
+func optionalOrderStatus(status *domainorder.Status) (sqlcgen.NullOrderStatus, error) {
+	if status == nil {
+		return sqlcgen.NullOrderStatus{}, nil
+	}
+	if !status.Valid() {
+		return sqlcgen.NullOrderStatus{}, apperrors.ErrValidation.WithDetail("status", "invalid order status")
+	}
+	mapped, err := mapOrderStatusToSQL(*status)
+	if err != nil {
+		return sqlcgen.NullOrderStatus{}, err
+	}
+	return sqlcgen.NullOrderStatus{OrderStatus: mapped, Valid: true}, nil
 }
 
 func mapOrderStatusFromSQL(s sqlcgen.OrderStatus) domainorder.Status {

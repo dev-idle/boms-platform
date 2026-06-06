@@ -893,6 +893,61 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	SoftDeleteProduct(ctx context.Context, id uuid.UUID) (int64, error)
+	//StaffGetOrderByID
+	//
+	//  SELECT
+	//    o.id,
+	//    o.user_id,
+	//    o.status,
+	//    o.subtotal_cents,
+	//    o.discount_cents,
+	//    o.total_cents,
+	//    o.discount_code_id,
+	//    o.discount_code_snapshot,
+	//    o.created_at,
+	//    o.updated_at,
+	//    u.email AS customer_email,
+	//    cp.display_name AS customer_display_name
+	//  FROM orders o
+	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+	//  WHERE o.id = $1
+	StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGetOrderByIDRow, error)
+	//StaffListOrders
+	//
+	//  SELECT
+	//    o.id,
+	//    o.user_id,
+	//    o.status,
+	//    o.subtotal_cents,
+	//    o.discount_cents,
+	//    o.total_cents,
+	//    o.discount_code_id,
+	//    o.discount_code_snapshot,
+	//    o.created_at,
+	//    o.updated_at,
+	//    u.email AS customer_email,
+	//    cp.display_name AS customer_display_name
+	//  FROM orders o
+	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+	//  WHERE (
+	//      $1::order_status IS NULL
+	//      OR o.status = $1::order_status
+	//  )
+	//  ORDER BY o.created_at DESC
+	//  LIMIT $3 OFFSET $2
+	StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error)
+	//StaffListOrdersCount
+	//
+	//  SELECT COUNT(*)::bigint AS count
+	//  FROM orders o
+	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  WHERE (
+	//      $1::order_status IS NULL
+	//      OR o.status = $1::order_status
+	//  )
+	StaffListOrdersCount(ctx context.Context, status NullOrderStatus) (int64, error)
 	//SumOrderItemQuantitiesByOrderIDs
 	//
 	//  SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count
@@ -980,6 +1035,25 @@ type Querier interface {
 	//      updated_at,
 	//      deleted_at
 	UpdateDiscountCode(ctx context.Context, arg UpdateDiscountCodeParams) (DiscountCode, error)
+	//UpdateOrderStatus
+	//
+	//  UPDATE orders
+	//  SET status = $1::order_status,
+	//      updated_at = now()
+	//  WHERE id = $2
+	//    AND status = $3::order_status
+	//  RETURNING
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    created_at,
+	//    updated_at
+	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	//UpdateProduct
 	//
 	//  UPDATE products

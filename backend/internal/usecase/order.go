@@ -165,29 +165,9 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		DiscountCents:        order.DiscountCents,
 		TotalCents:           order.TotalCents,
 		DiscountCodeSnapshot: order.DiscountCodeSnapshot,
-		Items:                make([]dto.OrderItemResponse, 0, len(items)),
+		Items:                mapOrderItemsToDTO(items),
 		CreatedAt:            order.CreatedAt,
 		UpdatedAt:            order.UpdatedAt,
-	}
-	for _, item := range items {
-		row := dto.OrderItemResponse{
-			ID:             item.ID.String(),
-			LineType:       string(item.LineType),
-			Name:           item.Name,
-			Slug:           item.Slug,
-			Quantity:       item.Quantity,
-			UnitPriceCents: item.UnitPriceCents,
-			LineTotalCents: item.LineTotalCents,
-		}
-		if item.ProductID != nil {
-			id := item.ProductID.String()
-			row.ProductID = &id
-		}
-		if item.ComboID != nil {
-			id := item.ComboID.String()
-			row.ComboID = &id
-		}
-		resp.Items = append(resp.Items, row)
 	}
 	return resp, nil
 }

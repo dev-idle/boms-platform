@@ -4,7 +4,7 @@
  * URL conventions (one role = one namespace):
  *   - Public:   /, /login, /register
  *   - Customer: /products, /products/:id, /cart, /orders, /customer/account/*
- *   - Staff:    /staff/account/*
+ *   - Staff:    /staff/orders, /staff/orders/:id, /staff/account/*
  *   - Baker:    /baker/account/*
  *   - Manager:  /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/account/*
@@ -27,6 +27,8 @@ export const ROUTE = {
     },
   },
   staff: {
+    orders: "/staff/orders",
+    orderDetail: (id: string) => `/staff/orders/${id}`,
     account: {
       profile: "/staff/account/profile",
       password: "/staff/account/password",

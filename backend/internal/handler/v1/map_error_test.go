@@ -12,6 +12,7 @@ import (
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
+	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/middleware"
@@ -48,6 +49,7 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "discount_expired", err: domaindiscount.ErrExpired, wantStatus: 422, wantCode: "discount_expired"},
 		{name: "cart_empty", err: domaincart.ErrEmpty, wantStatus: 422, wantCode: "cart_empty"},
 		{name: "product_unavailable", err: domaincart.ErrProductUnavailable, wantStatus: 422, wantCode: "product_unavailable"},
+		{name: "invalid_order_status_transition", err: domainorder.ErrInvalidStatusTransition, wantStatus: 422, wantCode: "invalid_order_status_transition"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

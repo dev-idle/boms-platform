@@ -29,6 +29,7 @@ export const ApiErrorCode = {
   CartMaxItems: "cart_max_items",
   ProductUnavailable: "product_unavailable",
   ComboUnavailable: "combo_unavailable",
+  InvalidOrderStatusTransition: "invalid_order_status_transition",
   Validation: "validation_error",
   RateLimited: "rate_limited",
   Internal: "internal_error",

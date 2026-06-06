@@ -92,7 +92,8 @@ var (
 	ErrCartEmpty              = New(http.StatusUnprocessableEntity, "cart_empty", "Cart is empty")
 	ErrCartMaxItems           = New(http.StatusUnprocessableEntity, "cart_max_items", "Cart cannot hold more items")
 	ErrProductUnavailable     = New(http.StatusUnprocessableEntity, "product_unavailable", "Product is not available")
-	ErrComboUnavailable       = New(http.StatusUnprocessableEntity, "combo_unavailable", "Combo is not available")
+	ErrComboUnavailable            = New(http.StatusUnprocessableEntity, "combo_unavailable", "Combo is not available")
+	ErrInvalidOrderStatusTransition = New(http.StatusUnprocessableEntity, "invalid_order_status_transition", "Invalid order status transition")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

@@ -118,19 +118,20 @@ frontend/src/
 ├── app/                         # Route layer ONLY (thin pages)
 │   ├── (public)/                # /, /login, /register (+ PublicSessionGate layout)
 │   ├── (customer)/              # /products, /cart, /orders, /customer/account/*
-│   ├── (staff)/                 # /staff/account/*
+│   ├── (staff)/                 # /staff/orders, /staff/account/*
 │   ├── (baker)/                 # /baker/account/*
 │   ├── (manager)/               # /manager/categories, /manager/products, /combos, /discount-codes, /account/*
 │   └── (admin)/admin/           # /admin, /admin/users, /admin/account/*
-├── features/                    # Feature slices (auth | user | admin | manager | customer)
+├── features/                    # Feature slices (auth | user | admin | manager | staff | customer)
 │   ├── auth/                    # api/, schemas/, hooks/, components/, lib/, provider/
 │   ├── user/                    # api/, schemas/, types/, hooks/, components/
 │   ├── admin/                   # api/, schemas/, types/, hooks/, components/
 │   ├── manager/                 # catalog CRUD → /api/v1/manager/*
+│   ├── staff/                   # order queue → /api/v1/staff/orders/*
 │   └── customer/                # catalog browse → /api/v1/catalog/*
 ├── components/
 │   ├── ui/                      # Primitives (button, input, form, confirm-dialog)
-│   └── layouts/                 # operational-role-shell.tsx, manager-shell.tsx, admin-shell.tsx
+│   └── layouts/                 # staff-shell.tsx, manager-shell.tsx, admin-shell.tsx, operational-role-shell.tsx
 ├── lib/
 │   ├── api-client.ts, browser-api-client.ts, api-envelope.ts, env.ts, utils.ts
 │   ├── validate-next.ts
@@ -190,7 +191,7 @@ features/<slice>/
 |----------|------|
 | Public | `/`, `/login`, `/register` |
 | Customer | `/products`, `/cart`, `/orders`, `/customer/account/{profile,password,delete}` |
-| Staff | `/staff/account/{profile,password}` |
+| Staff | `/staff/orders`, `/staff/orders/{id}`, `/staff/account/{profile,password}` |
 | Baker | `/baker/account/{profile,password}` |
 | Manager | `/manager/categories`, `/manager/products`, `/manager/account/{profile,password}` |
 | Admin | `/admin`, `/admin/users`, `/admin/users/{new,[id]}`, `/admin/account/profile` (profile + password) |
@@ -260,6 +261,7 @@ features/<slice>/
 | Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` + `manager_combo` + `manager_discount_code` (BE) |
 | Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
 | Customer cart & checkout | `features/customer` (FE) + `usecase/cart` + `usecase/order` (BE) — `/cart/*`, `/orders/*` (session + server pricing) |
+| Staff order queue | `features/staff` (FE) + `usecase/staff_order` (BE) — `/staff/orders/*` (list, detail, status transitions) |
 | Audit logs | `service/auditlogger` (BE only) |
 | Profile entity dispatch | `service/profilesvc` (BE) |
 | Routes table | `constants/routes.ts` (FE) |
