@@ -30,6 +30,7 @@ export const catalogProductsListFilterSchema = z.object({
   page: z.number().int().min(1).default(1),
   page_size: z.number().int().min(1).max(100).default(24),
   category_id: z.string().uuid().optional(),
+  search: z.string().max(100).optional().default(""),
 });
 
 export type CatalogCategory = z.infer<typeof catalogCategorySchema>;

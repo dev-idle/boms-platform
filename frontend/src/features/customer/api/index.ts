@@ -70,6 +70,9 @@ export async function listCatalogProducts(
   if (filter.category_id) {
     params.set("category_id", filter.category_id);
   }
+  if (filter.search) {
+    params.set("search", filter.search);
+  }
   const result = await browserRequestWithMeta<CatalogProduct[]>(
     `/api/v1/catalog/products?${params.toString()}`,
     { method: "GET", schema: z.array(catalogProductSchema) },

@@ -9,6 +9,7 @@ import (
 const (
 	CatalogListDefaultPageSize int32 = 20
 	CatalogListMaxPageSize     int32 = 100
+	catalogSearchMaxLen              = 100
 )
 
 // CatalogListDefaultPageSizeQuery is the Fiber query default for page_size.

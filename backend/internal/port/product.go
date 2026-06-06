@@ -37,6 +37,7 @@ type ManagerListProductsParams struct {
 
 type CatalogListProductsParams struct {
 	CategoryID *uuid.UUID
+	Search     *string
 	Limit      int32
 	Offset     int32
 }
@@ -67,7 +68,7 @@ type ProductRepository interface {
 	ManagerListCount(ctx context.Context, categoryID *uuid.UUID, search *string) (int64, error)
 	ManagerGetByID(ctx context.Context, id uuid.UUID) (*ManagerListProduct, error)
 	CatalogList(ctx context.Context, params CatalogListProductsParams) ([]CatalogListProduct, error)
-	CatalogListCount(ctx context.Context, categoryID *uuid.UUID) (int64, error)
+	CatalogListCount(ctx context.Context, categoryID *uuid.UUID, search *string) (int64, error)
 	CatalogGetByID(ctx context.Context, id uuid.UUID) (*CatalogListProduct, error)
 	CatalogGetByIDs(ctx context.Context, ids []uuid.UUID) ([]CatalogListProduct, error)
 }

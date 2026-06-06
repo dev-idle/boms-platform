@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ROUTE } from "@/constants/routes";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -15,6 +16,8 @@ const PRODUCTS_PAGE_SIZE = 24;
 
 export function ProductCatalog() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const categoriesQuery = useCatalogCategories();
@@ -23,17 +26,25 @@ export function ProductCatalog() {
       page,
       page_size: PRODUCTS_PAGE_SIZE,
       category_id: selectedCategoryId,
+      search,
     }),
-    [page, selectedCategoryId],
+    [page, search, selectedCategoryId],
   );
   const productsQuery = useCatalogProducts(productsFilter);
 
   const categories = categoriesQuery.data?.categories ?? [];
   const products = productsQuery.data?.products ?? [];
   const pagination = productsQuery.data?.pagination;
+  const hasActiveFilters = search !== "" || selectedCategoryId !== undefined;
 
   function selectCategory(categoryId: string | undefined): void {
     setSelectedCategoryId(categoryId);
+    setPage(1);
+  }
+
+  function clearSearch(): void {
+    setSearchInput("");
+    setSearch("");
     setPage(1);
   }
 
@@ -82,12 +93,39 @@ export function ProductCatalog() {
         </div>
       )}
 
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setPage(1);
+          setSearch(searchInput.trim());
+        }}
+      >
+        <Input
+          className="max-w-sm"
+          maxLength={100}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="Search products"
+          value={searchInput}
+        />
+        <Button type="submit">Search</Button>
+        {search ? (
+          <Button onClick={clearSearch} type="button" variant="ghost">
+            Clear
+          </Button>
+        ) : null}
+      </form>
+
       {productsQuery.isPending ? (
         <p className="text-sm text-zinc-500">Loading products…</p>
       ) : productsQuery.isError ? (
         <p className="text-sm text-red-600">Failed to load products.</p>
       ) : products.length === 0 ? (
-        <p className="text-sm text-zinc-500">No products available.</p>
+        <p className="text-sm text-zinc-500">
+          {hasActiveFilters
+            ? "No products match your filters."
+            : "No products available."}
+        </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (

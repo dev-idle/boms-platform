@@ -40,8 +40,15 @@ func (h *CatalogHandler) ListProducts(c *fiber.Ctx) error {
 		usecase.CatalogListDefaultPageSize,
 	)
 	categoryID := c.Query("category_id", "")
+	search := c.Query("search", "")
 
-	items, total, page, pageSize, err := h.usecase.ListProducts(c.UserContext(), page, pageSize, categoryID)
+	items, total, page, pageSize, err := h.usecase.ListProducts(
+		c.UserContext(),
+		page,
+		pageSize,
+		categoryID,
+		search,
+	)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

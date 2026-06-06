@@ -195,6 +195,11 @@ type Querier interface {
 	//      $3::uuid IS NULL
 	//      OR p.category_id = $3::uuid
 	//    )
+	//    AND (
+	//      $4::text IS NULL
+	//      OR p.name ILIKE '%' || $4::text || '%'
+	//      OR p.slug ILIKE '%' || $4::text || '%'
+	//    )
 	//  ORDER BY c.sort_order ASC, p.name ASC
 	//  LIMIT $1 OFFSET $2
 	CatalogListProducts(ctx context.Context, arg CatalogListProductsParams) ([]CatalogListProductsRow, error)
@@ -209,7 +214,12 @@ type Querier interface {
 	//      $1::uuid IS NULL
 	//      OR p.category_id = $1::uuid
 	//    )
-	CatalogListProductsCount(ctx context.Context, categoryID uuid.NullUUID) (int64, error)
+	//    AND (
+	//      $2::text IS NULL
+	//      OR p.name ILIKE '%' || $2::text || '%'
+	//      OR p.slug ILIKE '%' || $2::text || '%'
+	//    )
+	CatalogListProductsCount(ctx context.Context, arg CatalogListProductsCountParams) (int64, error)
 	//ClearCartDiscountCode
 	//
 	//  UPDATE carts

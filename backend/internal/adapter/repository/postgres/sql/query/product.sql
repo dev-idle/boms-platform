@@ -111,6 +111,11 @@ WHERE p.deleted_at IS NULL
     sqlc.narg('category_id')::uuid IS NULL
     OR p.category_id = sqlc.narg('category_id')::uuid
   )
+  AND (
+    sqlc.narg('search')::text IS NULL
+    OR p.name ILIKE '%' || sqlc.narg('search')::text || '%'
+    OR p.slug ILIKE '%' || sqlc.narg('search')::text || '%'
+  )
 ORDER BY c.sort_order ASC, p.name ASC
 LIMIT $1 OFFSET $2;
 
@@ -123,6 +128,11 @@ WHERE p.deleted_at IS NULL
   AND (
     sqlc.narg('category_id')::uuid IS NULL
     OR p.category_id = sqlc.narg('category_id')::uuid
+  )
+  AND (
+    sqlc.narg('search')::text IS NULL
+    OR p.name ILIKE '%' || sqlc.narg('search')::text || '%'
+    OR p.slug ILIKE '%' || sqlc.narg('search')::text || '%'
   );
 
 -- name: CatalogGetProductsByIDs :many

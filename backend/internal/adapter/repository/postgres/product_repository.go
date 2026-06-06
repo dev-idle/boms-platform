@@ -120,6 +120,7 @@ func (r *ProductRepository) CatalogList(ctx context.Context, params port.Catalog
 		Limit:      params.Limit,
 		Offset:     params.Offset,
 		CategoryID: optionalUUID(params.CategoryID),
+		Search:     optionalSearch(params.Search),
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "catalog list products")
@@ -131,8 +132,15 @@ func (r *ProductRepository) CatalogList(ctx context.Context, params port.Catalog
 	return out, nil
 }
 
-func (r *ProductRepository) CatalogListCount(ctx context.Context, categoryID *uuid.UUID) (int64, error) {
-	count, err := r.q(ctx).CatalogListProductsCount(ctx, optionalUUID(categoryID))
+func (r *ProductRepository) CatalogListCount(
+	ctx context.Context,
+	categoryID *uuid.UUID,
+	search *string,
+) (int64, error) {
+	count, err := r.q(ctx).CatalogListProductsCount(ctx, sqlcgen.CatalogListProductsCountParams{
+		CategoryID: optionalUUID(categoryID),
+		Search:     optionalSearch(search),
+	})
 	if err != nil {
 		return 0, mapRepoError(err, "catalog list products count")
 	}

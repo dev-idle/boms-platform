@@ -177,14 +177,20 @@ WHERE p.deleted_at IS NULL
     $3::uuid IS NULL
     OR p.category_id = $3::uuid
   )
+  AND (
+    $4::text IS NULL
+    OR p.name ILIKE '%' || $4::text || '%'
+    OR p.slug ILIKE '%' || $4::text || '%'
+  )
 ORDER BY c.sort_order ASC, p.name ASC
 LIMIT $1 OFFSET $2
 `
 
 type CatalogListProductsParams struct {
-	Limit      int32         `db:"limit" json:"limit"`
-	Offset     int32         `db:"offset" json:"offset"`
-	CategoryID uuid.NullUUID `db:"category_id" json:"categoryId"`
+	Limit      int32          `db:"limit" json:"limit"`
+	Offset     int32          `db:"offset" json:"offset"`
+	CategoryID uuid.NullUUID  `db:"category_id" json:"categoryId"`
+	Search     sql.NullString `db:"search" json:"search"`
 }
 
 type CatalogListProductsRow struct {
@@ -219,10 +225,20 @@ type CatalogListProductsRow struct {
 //	    $3::uuid IS NULL
 //	    OR p.category_id = $3::uuid
 //	  )
+//	  AND (
+//	    $4::text IS NULL
+//	    OR p.name ILIKE '%' || $4::text || '%'
+//	    OR p.slug ILIKE '%' || $4::text || '%'
+//	  )
 //	ORDER BY c.sort_order ASC, p.name ASC
 //	LIMIT $1 OFFSET $2
 func (q *Queries) CatalogListProducts(ctx context.Context, arg CatalogListProductsParams) ([]CatalogListProductsRow, error) {
-	rows, err := q.db.QueryContext(ctx, catalogListProducts, arg.Limit, arg.Offset, arg.CategoryID)
+	rows, err := q.db.QueryContext(ctx, catalogListProducts,
+		arg.Limit,
+		arg.Offset,
+		arg.CategoryID,
+		arg.Search,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +280,17 @@ WHERE p.deleted_at IS NULL
     $1::uuid IS NULL
     OR p.category_id = $1::uuid
   )
+  AND (
+    $2::text IS NULL
+    OR p.name ILIKE '%' || $2::text || '%'
+    OR p.slug ILIKE '%' || $2::text || '%'
+  )
 `
+
+type CatalogListProductsCountParams struct {
+	CategoryID uuid.NullUUID  `db:"category_id" json:"categoryId"`
+	Search     sql.NullString `db:"search" json:"search"`
+}
 
 // CatalogListProductsCount
 //
@@ -277,8 +303,13 @@ WHERE p.deleted_at IS NULL
 //	    $1::uuid IS NULL
 //	    OR p.category_id = $1::uuid
 //	  )
-func (q *Queries) CatalogListProductsCount(ctx context.Context, categoryID uuid.NullUUID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, catalogListProductsCount, categoryID)
+//	  AND (
+//	    $2::text IS NULL
+//	    OR p.name ILIKE '%' || $2::text || '%'
+//	    OR p.slug ILIKE '%' || $2::text || '%'
+//	  )
+func (q *Queries) CatalogListProductsCount(ctx context.Context, arg CatalogListProductsCountParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, catalogListProductsCount, arg.CategoryID, arg.Search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

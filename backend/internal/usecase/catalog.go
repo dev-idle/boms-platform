@@ -58,7 +58,7 @@ func (u *CatalogUsecase) ListCategories(
 func (u *CatalogUsecase) ListProducts(
 	ctx context.Context,
 	page, pageSize int32,
-	categoryIDStr string,
+	categoryIDStr, search string,
 ) ([]dto.CatalogProductResponse, int64, int32, int32, error) {
 	page, pageSize = normalizeCatalogListPage(page, pageSize)
 
@@ -71,15 +71,24 @@ func (u *CatalogUsecase) ListProducts(
 		categoryID = &parsed
 	}
 
+	var searchPtr *string
+	if trimmed := strings.TrimSpace(search); trimmed != "" {
+		if len(trimmed) > catalogSearchMaxLen {
+			return nil, 0, page, pageSize, apperrors.ErrValidation.WithDetail("search", "must be at most 100 characters")
+		}
+		searchPtr = &trimmed
+	}
+
 	items, err := u.products.CatalogList(ctx, port.CatalogListProductsParams{
 		CategoryID: categoryID,
+		Search:     searchPtr,
 		Limit:      pageSize,
 		Offset:     utils.PageOffset(page, pageSize),
 	})
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}
-	total, err := u.products.CatalogListCount(ctx, categoryID)
+	total, err := u.products.CatalogListCount(ctx, categoryID, searchPtr)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}
