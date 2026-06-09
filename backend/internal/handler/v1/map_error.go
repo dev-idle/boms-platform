@@ -44,6 +44,8 @@ func writeMapUsecaseError(c *fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrTokenExpired)
 	case errors.Is(err, apperrors.ErrForbidden):
 		return writeAppError(c, apperrors.ErrForbidden)
+	case errors.Is(err, domainuser.ErrSelfDeleteCustomerOnly):
+		return writeAppError(c, apperrors.ErrSelfDeleteCustomerOnly)
 	case errors.Is(err, domainuser.ErrProfileNotFound):
 		return writeAppError(c, apperrors.ErrProfileNotFound)
 	case errors.Is(err, domainuser.ErrEmployeeCodeExists):

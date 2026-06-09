@@ -314,6 +314,18 @@ func TestRequireRole(t *testing.T) {
 			assertErrorCode(t, resp, "forbidden")
 		})
 	})
+
+	t.Run("missing role returns 403", func(t *testing.T) {
+		t.Parallel()
+		app := fiber.New()
+		app.Get("/", middleware.RequireRole(domainuser.RoleAdmin), func(c *fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusOK)
+		})
+		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+			assertErrorCode(t, resp, "forbidden")
+		})
+	})
 }
 
 func TestRequirePasswordChanged(t *testing.T) {

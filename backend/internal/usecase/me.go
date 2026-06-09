@@ -162,7 +162,7 @@ func (u *MeUsecase) SoftDeleteSelf(ctx context.Context, userID uuid.UUID) error 
 		return err
 	}
 	if user.Role != domainuser.RoleCustomer {
-		return apperrors.ErrForbidden
+		return domainuser.ErrSelfDeleteCustomerOnly
 	}
 	if err := u.users.SoftDelete(ctx, userID); err != nil {
 		return err

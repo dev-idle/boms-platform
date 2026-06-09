@@ -84,19 +84,12 @@ func OptionalAuth(signer port.TokenSigner) fiber.Handler {
 	}
 }
 
-// RequireRole ensures the authenticated user has one of the allowed roles.
-// Chain after RequireAuth or RequireAuthWithSession.
-func RequireRole(roles ...domainuser.Role) fiber.Handler {
-	allowed := make(map[domainuser.Role]struct{}, len(roles))
-	for _, r := range roles {
-		allowed[r] = struct{}{}
-	}
+// RequireRole ensures the authenticated user has the expected role.
+// Pass exactly one role per call. Chain after RequireAuth or RequireAuthWithSession.
+func RequireRole(role domainuser.Role) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		role, ok := GetRole(c)
-		if !ok {
-			return forbidden(c)
-		}
-		if _, ok := allowed[role]; !ok {
+		actual, ok := GetRole(c)
+		if !ok || actual != role {
 			return forbidden(c)
 		}
 		return c.Next()

@@ -1,8 +1,6 @@
 package v1
 
 import (
-	"errors"
-
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
@@ -84,13 +82,6 @@ func (h *MeHandler) Delete(c *fiber.Ctx) error {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	if err := h.usecase.SoftDeleteSelf(c.UserContext(), userID); err != nil {
-		if errors.Is(err, apperrors.ErrForbidden) {
-			return writeAppError(c, apperrors.New(
-				apperrors.ErrForbidden.StatusCode,
-				apperrors.ErrForbidden.Code,
-				"Only customers can self-delete",
-			))
-		}
 		return writeMapUsecaseError(c, err)
 	}
 	return response.NoContent(c)

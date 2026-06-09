@@ -75,6 +75,7 @@ var (
 	ErrMissingRefreshToken    = New(http.StatusUnauthorized, "missing_refresh_token", "Refresh token required")
 	ErrSessionRevoked         = New(http.StatusUnauthorized, "session_revoked", "Session revoked")
 	ErrForbidden              = New(http.StatusForbidden, "forbidden", "Insufficient permissions")
+	ErrSelfDeleteCustomerOnly = New(http.StatusForbidden, "forbidden", "Only customers can self-delete")
 	ErrPasswordChangeRequired = New(http.StatusForbidden, "password_change_required", "Password change required before accessing this resource")
 	ErrInternal               = New(http.StatusInternalServerError, "internal_error", "Internal server error")
 	ErrServiceUnavailable     = New(http.StatusServiceUnavailable, "service_unavailable", "Service unavailable")
