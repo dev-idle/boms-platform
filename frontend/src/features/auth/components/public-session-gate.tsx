@@ -4,6 +4,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, type ReactNode } from "react";
 
 import { ROUTE } from "@/constants/routes";
+import {
+  allowsAuthenticatedCustomerPublicBrowsing,
+  isPublicAuthEntryPath,
+  shouldRedirectAuthenticatedPublicUser,
+} from "@/lib/routing/guest-storefront";
+import { homeRouteForRole } from "@/lib/routing/role-routes";
 import { resolvePostAuthDestination } from "@/lib/routing/post-auth-destination";
 import { validateNext } from "@/lib/validate-next";
 import { useAuthStore } from "@/stores/auth-store";
@@ -11,7 +17,10 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useSessionAuthHint } from "../provider";
 import { SessionRestoreShell } from "./session-restore-shell";
 
-function useRoleHomeRedirect(next?: string) {
+function useAuthenticatedPublicRedirect(
+  pathname: string,
+  loginNext?: string,
+) {
   const status = useAuthStore((state) => state.status);
   const role = useAuthStore((state) => state.user?.role);
   const mustChangePassword = useAuthStore(
@@ -23,18 +32,27 @@ function useRoleHomeRedirect(next?: string) {
     if (status !== "authenticated" || !role) {
       return;
     }
-    router.replace(
-      resolvePostAuthDestination(role, {
-        next,
-        mustChangePassword,
-      }),
-    );
-  }, [status, role, mustChangePassword, router, next]);
+
+    if (isPublicAuthEntryPath(pathname)) {
+      router.replace(
+        resolvePostAuthDestination(role, {
+          next: loginNext,
+          mustChangePassword,
+        }),
+      );
+      return;
+    }
+
+    if (shouldRedirectAuthenticatedPublicUser(pathname, role)) {
+      router.replace(homeRouteForRole(role));
+    }
+  }, [status, role, mustChangePassword, router, pathname, loginNext]);
 }
 
 function PublicSessionGateInner({ children }: { children: ReactNode }) {
   const hasRefreshCookie = useSessionAuthHint();
   const status = useAuthStore((state) => state.status);
+  const role = useAuthStore((state) => state.user?.role);
   const clearLogoutIntent = useAuthStore((state) => state.clearLogoutIntent);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -45,27 +63,35 @@ function PublicSessionGateInner({ children }: { children: ReactNode }) {
     }
   }, [pathname, clearLogoutIntent]);
 
-  const next =
+  const loginNext =
     pathname === ROUTE.login
       ? (validateNext(searchParams.get("next")) ?? undefined)
       : undefined;
 
-  useRoleHomeRedirect(status === "authenticated" ? next : undefined);
+  useAuthenticatedPublicRedirect(pathname, loginNext);
 
   if (hasRefreshCookie && status === "idle") {
     return <SessionRestoreShell />;
   }
 
-  if (status === "authenticated") {
-    return <SessionRestoreShell />;
+  if (status === "authenticated" && role) {
+    if (allowsAuthenticatedCustomerPublicBrowsing(pathname)) {
+      return children;
+    }
+    if (
+      isPublicAuthEntryPath(pathname) ||
+      shouldRedirectAuthenticatedPublicUser(pathname, role)
+    ) {
+      return <SessionRestoreShell />;
+    }
   }
 
   return children;
 }
 
 /**
- * Public routes (/, /login, /register): restore session from refresh cookie,
- * then send authenticated users to their role home (or safe `?next=` on login).
+ * Public routes: restore session from refresh cookie.
+ * Login/register redirect authenticated users; customers may browse home + catalog.
  */
 export function PublicSessionGate({ children }: { children: ReactNode }) {
   return (

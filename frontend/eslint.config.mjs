@@ -31,6 +31,24 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    name: "boms/lib-boundary",
+    files: ["src/lib/**/*.{ts,tsx}"],
+    ignores: ["src/lib/dal/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*"],
+              message: "lib/ must not import features/* — move shared contracts to lib/.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

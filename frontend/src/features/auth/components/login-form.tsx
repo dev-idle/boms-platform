@@ -18,9 +18,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
-import { useLogin } from "../hooks";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
+
+import { useLogin } from "../hooks";
 import { loginSchema, type LoginInput } from "../schemas";
+import { AuthPageShell } from "./auth-page-shell";
 
 type LoginFormProps = {
   next?: string;
@@ -62,7 +64,7 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
           }
           if (error.isInvalidCredentials()) {
             form.setError("root", {
-              message: "Invalid credentials",
+              message: "Invalid email or password",
             });
             return;
           }
@@ -81,81 +83,84 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-16">
-        <h1 className="font-heading text-2xl font-medium text-foreground">
-          Sign in
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          Access token stays in memory. Refresh is handled via HttpOnly cookie.
-        </p>
-
-        <Form {...form}>
-          <form
-            className="mt-8 space-y-4"
-            onSubmit={form.handleSubmit(onSubmit)}
-            noValidate
+    <AuthPageShell
+      brandDescription="Sign in to browse our menu, schedule pickup, and follow your order from oven to counter."
+      brandTitle="Freshly baked, ready when you are."
+      description="Welcome back. Enter your details to continue."
+      footer={
+        <p className="text-sm text-muted">
+          New here?{" "}
+          <Link
+            className="font-medium text-foreground underline underline-offset-4 transition-colors duration-default ease-default hover:text-primary"
+            href={ROUTE.register}
           >
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      autoComplete="email"
-                      inputMode="email"
-                      placeholder="you@example.com"
-                      type="email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input
-                      autoComplete="current-password"
-                      placeholder="••••••••"
-                      type="password"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {form.formState.errors.root?.message ? (
-              <p className="text-sm font-medium text-error">
-                {form.formState.errors.root.message}
-              </p>
-            ) : null}
-
-            <Button
-              className="w-full"
-              disabled={login.isPending}
-              type="submit"
-            >
-              {login.isPending ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-        </Form>
-
-        <Link
-          className="mt-8 text-sm font-medium text-foreground underline underline-offset-4"
-          href={ROUTE.register}
+            Create an account
+          </Link>
+        </p>
+      }
+      title="Sign in"
+    >
+      <Form {...form}>
+        <form
+          className="space-y-5"
+          onSubmit={form.handleSubmit(onSubmit)}
+          noValidate
         >
-          Create an account
-        </Link>
-      </div>
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input
+                    autoComplete="email"
+                    inputMode="email"
+                    placeholder="you@example.com"
+                    type="email"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    type="password"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {form.formState.errors.root?.message ? (
+            <p className="text-sm font-medium text-error" role="alert">
+              {form.formState.errors.root.message}
+            </p>
+          ) : null}
+
+          <Button
+            className="w-full"
+            disabled={login.isPending}
+            size="lg"
+            type="submit"
+          >
+            {login.isPending ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+      </Form>
+    </AuthPageShell>
   );
 }

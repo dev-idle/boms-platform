@@ -2,8 +2,8 @@
  * Canonical paths — single source for `src/proxy.ts`, layouts, and links.
  *
  * URL conventions (one role = one namespace):
- *   - Public:   /, /login, /register
- *   - Customer: /products, /products/:id, /cart, /orders, /customer/account/*
+ *   - Public:   /, /login, /register, /products, /products/:id
+ *   - Customer: /cart, /orders, /customer/account/*
  *   - Staff:    /staff/orders, /staff/orders/:id, /staff/account/*
  *   - Baker:    /baker/account/*
  *   - Manager:  /manager/categories, /manager/products, /manager/combos,
@@ -70,11 +70,19 @@ export const ROUTE = {
   },
 } as const;
 
-export const CUSTOMER_ROUTE_PREFIXES = [
-  ROUTE.products,
+/** Guest-accessible storefront browse (no session required). */
+export const GUEST_STOREFRONT_ROUTE_PREFIXES = [ROUTE.products] as const;
+
+/** Customer session required (cart, orders, account). */
+export const CUSTOMER_PROTECTED_ROUTE_PREFIXES = [
   ROUTE.cart,
   ROUTE.orders,
   "/customer",
+] as const;
+
+export const CUSTOMER_ROUTE_PREFIXES = [
+  ...GUEST_STOREFRONT_ROUTE_PREFIXES,
+  ...CUSTOMER_PROTECTED_ROUTE_PREFIXES,
 ] as const;
 
 export const STAFF_ROUTE_PREFIXES = ["/staff"] as const;
@@ -86,7 +94,7 @@ export const MANAGER_ROUTE_PREFIXES = ["/manager"] as const;
 export const ADMIN_ROUTE_PREFIXES = ["/admin"] as const;
 
 export const PROTECTED_ROUTE_PREFIXES = [
-  ...CUSTOMER_ROUTE_PREFIXES,
+  ...CUSTOMER_PROTECTED_ROUTE_PREFIXES,
   ...STAFF_ROUTE_PREFIXES,
   ...BAKER_ROUTE_PREFIXES,
   ...MANAGER_ROUTE_PREFIXES,

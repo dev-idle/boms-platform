@@ -17,10 +17,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
+import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
 import { useRegister } from "../hooks";
-import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 import { registerSchema, type RegisterInput } from "../schemas";
+import { AuthPageShell } from "./auth-page-shell";
+
 function PasswordChecklist({ password }: { password: string }) {
   const checks = [
     { label: "At least 8 characters", ok: password.length >= 8 },
@@ -29,13 +31,17 @@ function PasswordChecklist({ password }: { password: string }) {
   ];
 
   return (
-    <ul className="space-y-1 text-xs text-muted">
+    <ul aria-label="Password requirements" className="mt-2 space-y-1 text-xs">
       {checks.map((check) => (
         <li
           key={check.label}
-          className={check.ok ? "text-success" : undefined}
+          className={
+            check.ok
+              ? "text-success"
+              : "text-muted"
+          }
         >
-          {check.ok ? "✓" : "○"} {check.label}
+          <span aria-hidden="true">{check.ok ? "✓" : "○"}</span> {check.label}
         </li>
       ))}
     </ul>
@@ -84,78 +90,81 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-16">
-        <h1 className="font-heading text-2xl font-medium text-foreground">
-          Create account
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          Password rules mirror the backend validator.
-        </p>
-
-        <Form {...form}>
-          <form
-            className="mt-8 space-y-4"
-            onSubmit={form.handleSubmit(onSubmit)}
-            noValidate
+    <AuthPageShell
+      brandDescription="Create an account to order for pickup, choose your time slot, and track every step until your treats are ready."
+      brandTitle="Your next celebration starts here."
+      description="A few details and you can start ordering for pickup."
+      footer={
+        <p className="text-sm text-muted">
+          Already have an account?{" "}
+          <Link
+            className="font-medium text-foreground underline underline-offset-4 transition-colors duration-default ease-default hover:text-primary"
+            href={ROUTE.login}
           >
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      autoComplete="email"
-                      inputMode="email"
-                      placeholder="you@example.com"
-                      type="email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input
-                      autoComplete="new-password"
-                      placeholder="••••••••"
-                      type="password"
-                      {...field}
-                    />
-                  </FormControl>
-                  <PasswordChecklist password={password} />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button
-              className="w-full"
-              disabled={registerMutation.isPending}
-              type="submit"
-            >
-              {registerMutation.isPending
-                ? "Creating account…"
-                : "Create account"}
-            </Button>
-          </form>
-        </Form>
-
-        <Link
-          className="mt-8 text-sm font-medium text-foreground underline underline-offset-4"
-          href={ROUTE.login}
+            Sign in
+          </Link>
+        </p>
+      }
+      title="Create account"
+    >
+      <Form {...form}>
+        <form
+          className="space-y-5"
+          onSubmit={form.handleSubmit(onSubmit)}
+          noValidate
         >
-          Already registered?
-        </Link>
-      </div>
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input
+                    autoComplete="email"
+                    inputMode="email"
+                    placeholder="you@example.com"
+                    type="email"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                    type="password"
+                    {...field}
+                  />
+                </FormControl>
+                <PasswordChecklist password={password} />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button
+            className="w-full"
+            disabled={registerMutation.isPending}
+            size="lg"
+            type="submit"
+          >
+            {registerMutation.isPending
+              ? "Creating account…"
+              : "Create account"}
+          </Button>
+        </form>
+      </Form>
+    </AuthPageShell>
   );
 }

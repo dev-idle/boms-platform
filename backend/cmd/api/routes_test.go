@@ -61,6 +61,28 @@ func (m *routeTestSessionStore) Rotate(ctx context.Context, userID, oldSessionID
 	return m.Called(ctx, userID, oldSessionID, newSessionID, expectedRefreshJTI, meta).Error(0)
 }
 
+func TestCatalogReadIsPublic(t *testing.T) {
+	t.Parallel()
+
+	okHandler := func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }
+
+	app := fiber.New()
+	apiV1 := app.Group("/api/v1")
+	catalogRead := apiV1.Group("/catalog")
+	catalogRead.Get("/products", okHandler)
+
+	req := httptest.NewRequestWithContext(
+		context.Background(),
+		http.MethodGet,
+		"/api/v1/catalog/products",
+		nil,
+	)
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
 func TestCustomerSessionGroupDoesNotLeakRoleMiddleware(t *testing.T) {
 	t.Parallel()
 

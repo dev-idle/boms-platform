@@ -1,18 +1,14 @@
 /**
- * Customer feature — storefront browse (customer-only).
+ * Customer feature — cart, checkout, and orders (session required).
  *
- * Internal: api/, components/, hooks/, schemas/
+ * Public catalog browse lives in `features/catalog`.
  */
 export {
   addCartItem,
   applyCartDiscount,
   checkoutCart,
   getCart,
-  getCatalogProduct,
   getOrder,
-  listCatalogCategories,
-  listCatalogCombos,
-  listCatalogProducts,
   listOrders,
   removeCartDiscount,
   removeCartItem,
@@ -21,21 +17,15 @@ export {
 export {
   AddToCartButton,
   CartView,
-  ComboCatalog,
   OrderDetail,
   OrderList,
-  ProductCatalog,
-  ProductDetail,
+  ProductPurchaseActions,
 } from "./components";
 export {
   customerQueryKeys,
   useAddCartItem,
   useApplyCartDiscount,
   useCart,
-  useCatalogCategories,
-  useCatalogCombos,
-  useCatalogProduct,
-  useCatalogProducts,
   useCheckoutCart,
   useOrder,
   useOrders,
@@ -44,13 +34,7 @@ export {
   useUpdateCartItem,
 } from "./hooks";
 export {
-  catalogCategoriesListFilterSchema,
-  catalogCategorySchema,
-  catalogComboSchema,
-  catalogCombosListFilterSchema,
-  catalogProductSchema,
   cartSchema,
-  catalogProductsListFilterSchema,
   orderSchema,
   ordersListFilterSchema,
 } from "./schemas";
@@ -58,15 +42,6 @@ export type {
   AddCartItemInput,
   ApplyCartDiscountInput,
   Cart,
-  CatalogCategoriesListFilterInput,
-  CatalogCategoriesListResult,
-  CatalogCategory,
-  CatalogCombo,
-  CatalogCombosListFilterInput,
-  CatalogCombosListResult,
-  CatalogProduct,
-  CatalogProductsListFilterInput,
-  CatalogProductsListResult,
   Order,
   OrdersListFilterInput,
   OrdersListResult,

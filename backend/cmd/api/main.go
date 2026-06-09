@@ -175,11 +175,8 @@ func main() {
 	adminWrite.Patch("/:id/disable", adminUserHandler.PatchDisable)
 	adminWrite.Post("/:id/revoke-sessions", adminUserHandler.RevokeSessions)
 
-	catalogRead := apiV1.Group(
-		"/catalog",
-		middleware.RequireAuth(tokenSigner),
-		middleware.RequireRole(domainuser.RoleCustomer),
-	)
+	// Public storefront read — proxy secret only; no JWT (guest browse).
+	catalogRead := apiV1.Group("/catalog")
 	catalogRead.Get("/categories", catalogHandler.ListCategories)
 	catalogRead.Get("/products", catalogHandler.ListProducts)
 	catalogRead.Get("/products/:id", catalogHandler.GetProduct)
