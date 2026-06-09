@@ -29,13 +29,11 @@ function PasswordChecklist({ password }: { password: string }) {
   ];
 
   return (
-    <ul className="space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
+    <ul className="space-y-1 text-xs text-muted">
       {checks.map((check) => (
         <li
           key={check.label}
-          className={
-            check.ok ? "text-emerald-600 dark:text-emerald-400" : undefined
-          }
+          className={check.ok ? "text-success" : undefined}
         >
           {check.ok ? "✓" : "○"} {check.label}
         </li>
@@ -87,10 +85,10 @@ export function RegisterForm() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-16">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="font-heading text-2xl font-medium text-foreground">
           Create account
         </h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mt-2 text-sm text-muted">
           Password rules mirror the backend validator.
         </p>
 
@@ -153,7 +151,7 @@ export function RegisterForm() {
         </Form>
 
         <Link
-          className="mt-8 text-sm font-medium text-zinc-900 underline dark:text-zinc-100"
+          className="mt-8 text-sm font-medium text-foreground underline underline-offset-4"
           href={ROUTE.login}
         >
           Already registered?

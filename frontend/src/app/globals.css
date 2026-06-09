@@ -1,26 +1,273 @@
 @import "tailwindcss";
 
+/* =============================================================================
+   LAYER 1 — Global primitives (theme-agnostic scales & semantics)
+   ============================================================================= */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand — Rosé / Magenta */
+  --brand-50: #fdf2f6;
+  --brand-100: #fbe3ec;
+  --brand-200: #f6c2d6;
+  --brand-300: #ee96b7;
+  --brand-400: #e26397;
+  --brand-500: #d6336c;
+  --brand-600: #b82a5c;
+  --brand-700: #96204a;
+  --brand-800: #741839;
+  --brand-900: #54112a;
+
+  /* Greige neutral */
+  --greige-50: #faf7f5;
+  --greige-100: #f4efec;
+  --greige-200: #ebe3de;
+  --greige-300: #dacfc8;
+  --greige-400: #b5acb1;
+  --greige-500: #8a7f86;
+  --greige-600: #6b626a;
+  --greige-700: #4a434c;
+  --greige-800: #2a2228;
+  --greige-900: #1a141a;
+
+  /* Semantic */
+  --semantic-success: #2fa968;
+  --semantic-success-bg: #e7f4ed;
+  --semantic-warning: #e0962b;
+  --semantic-warning-bg: #fbf0e0;
+  --semantic-error: #dc3a4b;
+  --semantic-error-bg: #fbe8ea;
+  --semantic-info: #3b82c4;
+  --semantic-info-bg: #e8f0f8;
+
+  /* Champagne accent (storefront usage only — never dashboard fills) */
+  --gold: #c5a572;
+  --gold-soft: #e3d2b0;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Motion */
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-default: 200ms;
 }
+
+/* =============================================================================
+   LAYER 2 — Theme: Storefront (customer-facing)
+   ============================================================================= */
+
+:root,
+[data-theme="storefront"] {
+  --color-bg: var(--greige-50);
+  --color-surface: #ffffff;
+  --color-surface-alt: var(--greige-100);
+  --color-border: var(--greige-200);
+  --color-border-strong: var(--greige-300);
+
+  --color-text-primary: var(--greige-800);
+  --color-text-secondary: var(--greige-500);
+  --color-text-tertiary: var(--greige-400);
+
+  --color-primary: var(--brand-500);
+  --color-primary-hover: var(--brand-600);
+  --color-primary-active: var(--brand-700);
+  --color-on-primary: #ffffff;
+  --color-primary-subtle: var(--brand-50);
+
+  --color-accent: var(--gold);
+  --color-accent-soft: var(--gold-soft);
+}
+
+/* =============================================================================
+   LAYER 2 — Theme: Dashboard (staff · baker · manager · admin)
+   ============================================================================= */
+
+[data-theme="dashboard"] {
+  --color-bg: #f7f5f4;
+  --color-surface: #ffffff;
+  --color-surface-alt: #faf8f7;
+  --color-border: #e9e3df;
+  --color-border-strong: #d8d0cb;
+
+  --color-text-primary: #211c20;
+  --color-text-secondary: #6b626a;
+  --color-text-tertiary: #9b929a;
+
+  --color-primary: var(--brand-600);
+  --color-primary-hover: var(--brand-700);
+  --color-primary-active: var(--brand-800);
+  --color-on-primary: #ffffff;
+  --color-primary-subtle: var(--brand-50);
+
+  /* Dashboard never uses gold accent */
+  --color-accent: transparent;
+  --color-accent-soft: transparent;
+}
+
+/* =============================================================================
+   LAYER 3 — Dark mode (both themes; `data-mode` on <html>)
+   ============================================================================= */
+
+html[data-mode="dark"] :is(:root, [data-theme="storefront"], [data-theme="dashboard"]) {
+  --color-bg: var(--greige-900);
+  --color-surface: #241c24;
+  --color-surface-alt: #2e242e;
+  --color-border: #3a2f3a;
+  --color-border-strong: #4a3d4a;
+
+  --color-text-primary: var(--greige-100);
+  --color-text-secondary: var(--greige-400);
+  --color-text-tertiary: var(--greige-500);
+
+  --color-primary: var(--brand-400);
+  --color-primary-hover: var(--brand-300);
+  --color-primary-active: var(--brand-200);
+  --color-on-primary: var(--greige-900);
+  --color-primary-subtle: color-mix(in srgb, var(--brand-400) 14%, var(--color-surface));
+
+  --semantic-success-bg: color-mix(in srgb, var(--semantic-success) 18%, var(--color-surface));
+  --semantic-warning-bg: color-mix(in srgb, var(--semantic-warning) 18%, var(--color-surface));
+  --semantic-error-bg: color-mix(in srgb, var(--semantic-error) 18%, var(--color-surface));
+  --semantic-info-bg: color-mix(in srgb, var(--semantic-info) 18%, var(--color-surface));
+}
+
+html[data-mode="dark"] [data-theme="storefront"] {
+  --color-accent: var(--gold-soft);
+  --color-accent-soft: var(--gold-soft);
+}
+
+html[data-mode="dark"] [data-theme="dashboard"] {
+  --color-accent: transparent;
+  --color-accent-soft: transparent;
+}
+
+/* =============================================================================
+   Tailwind v4 theme bridge (single config; values resolve per scope)
+   ============================================================================= */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+
+  --color-greige-50: var(--greige-50);
+  --color-greige-100: var(--greige-100);
+  --color-greige-200: var(--greige-200);
+  --color-greige-300: var(--greige-300);
+  --color-greige-400: var(--greige-400);
+  --color-greige-500: var(--greige-500);
+  --color-greige-600: var(--greige-600);
+  --color-greige-700: var(--greige-700);
+  --color-greige-800: var(--greige-800);
+  --color-greige-900: var(--greige-900);
+
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-alt: var(--color-surface-alt);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+
+  --color-foreground: var(--color-text-primary);
+  --color-muted: var(--color-text-secondary);
+  --color-subtle: var(--color-text-tertiary);
+
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-active: var(--color-primary-active);
+  --color-primary-foreground: var(--color-on-primary);
+  --color-primary-subtle: var(--color-primary-subtle);
+
+  --color-accent: var(--color-accent);
+  --color-accent-soft: var(--color-accent-soft);
+
+  --color-success: var(--semantic-success);
+  --color-success-bg: var(--semantic-success-bg);
+  --color-warning: var(--semantic-warning);
+  --color-warning-bg: var(--semantic-warning-bg);
+  --color-error: var(--semantic-error);
+  --color-error-bg: var(--semantic-error-bg);
+  --color-info: var(--semantic-info);
+  --color-info-bg: var(--semantic-info-bg);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  --ease-default: var(--ease-default);
+  --default-transition-duration: var(--duration-default);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* =============================================================================
+   Base typography & surfaces
+   ============================================================================= */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html[data-mode="dark"] {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 500;
+    letter-spacing: -0.02em;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .role-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--greige-200);
+    background-color: var(--greige-100);
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--greige-700);
+  }
+
+  html[data-mode="dark"] .role-badge {
+    border-color: var(--greige-700);
+    background-color: color-mix(in srgb, var(--greige-800) 60%, var(--color-surface));
+    color: var(--greige-300);
+  }
 }

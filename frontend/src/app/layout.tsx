@@ -1,11 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 
 import "./globals.css";
+import { ColorModeListener } from "@/components/theme/color-mode-listener";
 import { AuthBootstrap } from "@/features/auth/server";
-import { QueryProvider, ThemeProvider } from "@/providers";
+import { COLOR_MODE_INIT_SCRIPT } from "@/lib/theme/color-mode";
+import { QueryProvider } from "@/providers";
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,8 +45,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#faf7f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a141a" },
   ],
 };
 
@@ -50,23 +58,27 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-mode="light"
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
-        <ThemeProvider>
-          <QueryProvider>
-            <Suspense
-              fallback={
-                <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
-                  Loading…
-                </div>
-              }
-            >
-              <AuthBootstrap>{children}</AuthBootstrap>
-            </Suspense>
-            <Toaster closeButton richColors position="top-center" />
-          </QueryProvider>
-        </ThemeProvider>
+      <body className="flex min-h-full flex-col bg-bg font-sans text-foreground">
+        <Script id="color-mode-init" strategy="beforeInteractive">
+          {COLOR_MODE_INIT_SCRIPT}
+        </Script>
+        <ColorModeListener />
+        <QueryProvider>
+          <Suspense
+            fallback={
+              <div className="flex flex-1 items-center justify-center text-sm text-muted">
+                Loading…
+              </div>
+            }
+          >
+            <AuthBootstrap>{children}</AuthBootstrap>
+          </Suspense>
+          <Toaster closeButton richColors position="top-center" />
+        </QueryProvider>
       </body>
     </html>
   );

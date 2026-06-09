@@ -39,14 +39,12 @@ export function ManagerShell({ children }: ManagerShellProps) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-full bg-zinc-50 dark:bg-black">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <>
+      <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-6 py-4">
-          <span className="text-xs font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">
-            Manager
-          </span>
+          <span className="role-badge">Manager</span>
           <nav
-            className="flex flex-wrap items-center gap-4 text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            className="flex flex-wrap items-center gap-4 text-sm font-medium text-muted"
             aria-label="Manager"
           >
             {MANAGER_NAV_ITEMS.map(({ href, label, match }) => {
@@ -56,7 +54,8 @@ export function ManagerShell({ children }: ManagerShellProps) {
                   key={href}
                   href={href}
                   className={cn(
-                    active && "text-sky-700 dark:text-sky-400",
+                    "rounded-md px-2 py-1 transition-colors duration-default ease-default hover:text-foreground",
+                    active && "bg-primary-subtle text-foreground",
                   )}
                   aria-current={active ? "page" : undefined}
                 >
@@ -71,6 +70,6 @@ export function ManagerShell({ children }: ManagerShellProps) {
         </div>
       </header>
       <div className="mx-auto max-w-6xl px-6 py-10">{children}</div>
-    </div>
+    </>
   );
 }

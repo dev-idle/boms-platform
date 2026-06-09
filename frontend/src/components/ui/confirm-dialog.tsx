@@ -45,14 +45,12 @@ export function ConfirmDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 px-4">
-      <div className="w-full max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-greige-900/60 px-4">
+      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-6">
+        <h2 className="font-heading text-lg font-medium text-foreground">
           {title}
         </h2>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-          {description}
-        </p>
+        <p className="mt-2 text-sm text-muted">{description}</p>
         <div className="mt-6 flex justify-end gap-3">
           <Button
             disabled={isPending}

@@ -23,14 +23,12 @@ export function StaffShell({ children }: StaffShellProps) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-full bg-zinc-50 dark:bg-black">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <>
+      <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-6 py-4">
-          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            Staff
-          </span>
+          <span className="role-badge">Staff</span>
           <nav
-            className="flex flex-wrap items-center gap-4 text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            className="flex flex-wrap items-center gap-4 text-sm font-medium text-muted"
             aria-label="Staff"
           >
             {STAFF_NAV_ITEMS.map(({ href, label, match }) => {
@@ -39,7 +37,10 @@ export function StaffShell({ children }: StaffShellProps) {
                 <Link
                   key={href}
                   href={href}
-                  className={cn(active && "text-zinc-900 dark:text-zinc-50")}
+                  className={cn(
+                    "rounded-md px-2 py-1 transition-colors duration-default ease-default hover:text-foreground",
+                    active && "bg-primary-subtle text-foreground",
+                  )}
                   aria-current={active ? "page" : undefined}
                 >
                   {label}
@@ -53,6 +54,6 @@ export function StaffShell({ children }: StaffShellProps) {
         </div>
       </header>
       <div className="mx-auto max-w-6xl px-6 py-10">{children}</div>
-    </div>
+    </>
   );
 }

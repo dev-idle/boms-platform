@@ -28,11 +28,9 @@ export function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-full bg-zinc-100 dark:bg-zinc-950">
-      <aside className="fixed inset-y-0 left-0 flex w-56 flex-col border-r border-zinc-200 bg-white px-4 py-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="px-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          Admin
-        </p>
+    <div className="min-h-full">
+      <aside className="fixed inset-y-0 left-0 flex w-56 flex-col border-r border-border bg-surface px-4 py-6">
+        <span className="role-badge mx-3">Admin</span>
         <nav
           className="mt-6 flex flex-col gap-1 text-sm font-medium"
           aria-label="Admin"
@@ -44,10 +42,10 @@ export function AdminShell({ children }: AdminShellProps) {
                 key={href}
                 href={href}
                 className={cn(
-                  "rounded-md px-3 py-2 transition-colors",
+                  "rounded-md px-3 py-2 transition-colors duration-default ease-default",
                   active
-                    ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
-                    : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50",
+                    ? "bg-primary-subtle text-foreground"
+                    : "text-muted hover:bg-surface-alt hover:text-foreground",
                 )}
                 aria-current={active ? "page" : undefined}
               >

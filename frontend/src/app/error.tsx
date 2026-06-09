@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { Button } from "@/components/ui/button";
+
 export default function Error({
   error,
   reset,
@@ -15,17 +17,15 @@ export default function Error({
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 px-6 py-24 text-center">
-      <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Something went wrong</h1>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <h1 className="font-heading text-xl font-medium text-foreground">
+        Something went wrong
+      </h1>
+      <p className="text-sm text-muted">
         {error.message || "An unexpected error occurred."}
       </p>
-      <button
-        type="button"
-        className="mx-auto rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-        onClick={() => reset()}
-      >
+      <Button className="mx-auto" onClick={() => reset()} type="button">
         Try again
-      </button>
+      </Button>
     </div>
   );
 }

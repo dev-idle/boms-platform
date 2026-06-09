@@ -1,42 +1,43 @@
 import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import { AUTH_REFRESH_COOKIE } from "@/constants/cookies";
 import { ROUTE } from "@/constants/routes";
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-full flex-col items-center justify-center bg-zinc-50 px-6 py-24 font-sans dark:bg-black">
-      <main className="flex w-full max-w-2xl flex-col gap-10 rounded-2xl border border-zinc-200 bg-white p-12 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="flex min-h-full flex-col items-center justify-center px-6 py-24">
+      <main className="flex w-full max-w-2xl flex-col gap-10 rounded-lg border border-border bg-surface p-12">
         <div className="flex flex-col gap-4">
-          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-subtle">
             Bakery Ordering and Management System
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">
             BOMS storefront
           </h1>
-          <p className="text-lg leading-relaxed text-zinc-600 dark:text-zinc-300">
+          <p className="text-lg leading-relaxed text-muted">
             Access tokens live in memory only. Refresh sessions use the HttpOnly{" "}
-            <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">
+            <code className="rounded-sm bg-surface-alt px-1 py-0.5 text-sm text-foreground">
               {AUTH_REFRESH_COOKIE}
             </code>{" "}
-            HttpOnly refresh cookie (site path <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">/</code>, used only on <code className="rounded bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-900">/api/v1/auth/*</code>).
+            cookie (site path{" "}
+            <code className="rounded-sm bg-surface-alt px-1 py-0.5 text-sm text-foreground">/</code>
+            , used only on{" "}
+            <code className="rounded-sm bg-surface-alt px-1 py-0.5 text-sm text-foreground">
+              /api/v1/auth/*
+            </code>
+            ).
           </p>
         </div>
-        <div className="flex flex-wrap gap-3 text-sm font-medium">
-          <Link
-            className="rounded-full bg-zinc-900 px-5 py-2.5 text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-            href={ROUTE.products}
-          >
-            Browse products
-          </Link>
-          <Link
-            className="rounded-full border border-zinc-300 px-5 py-2.5 text-zinc-900 transition hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-100 dark:hover:border-zinc-500"
-            href={ROUTE.login}
-          >
-            Sign in
-          </Link>
+        <div className="flex flex-wrap gap-3">
+          <Button asChild>
+            <Link href={ROUTE.products}>Browse products</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={ROUTE.login}>Sign in</Link>
+          </Button>
         </div>
-        <p className="border-t border-zinc-100 pt-8 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+        <p className="border-t border-border pt-8 text-xs text-subtle">
           Next.js 16 · React 19 · Tailwind v4
         </p>
       </main>
