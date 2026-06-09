@@ -3,8 +3,8 @@ export {
   clearStaleSession,
   isAuthSessionError,
   readApiEnvelope,
-  throwApiErrorFromEnvelope,
 } from "./session";
+export { throwApiErrorFromEnvelope } from "@/lib/errors";
 export {
   ensureRefreshScheduled,
   refreshNow,

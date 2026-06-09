@@ -1,4 +1,6 @@
-import { getMe } from "@/features/user";
+import type { QueryClient } from "@tanstack/react-query";
+
+import { getMe, primeMeQueryCache } from "@/features/user";
 import { refreshNow, scheduleRefresh } from "@/lib/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -6,7 +8,9 @@ import { useAuthStore } from "@/stores/auth-store";
  * Exchanges HttpOnly refresh cookie for access token + loads /me.
  * Caller must ensure refresh cookie is present (server hint) before calling.
  */
-export async function restoreSessionFromCookie(): Promise<void> {
+export async function restoreSessionFromCookie(
+  queryClient: QueryClient,
+): Promise<void> {
   await refreshNow({ redirectOnFailure: false });
 
   const user = await getMe();
@@ -21,5 +25,6 @@ export async function restoreSessionFromCookie(): Promise<void> {
     expiresIn: Math.max(Math.floor((expiresAt - Date.now()) / 1000), 1),
     user,
   });
+  primeMeQueryCache(queryClient, user);
   scheduleRefresh(useAuthStore.getState().expiresAt);
 }

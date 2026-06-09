@@ -23,6 +23,8 @@ export function useMe() {
   const query = useQuery({
     ...meQueryOptions(),
     enabled: status === "authenticated",
+    // Bootstrap/login already fetch /me into the auth store; skip a redundant mount fetch.
+    refetchOnMount: () => useAuthStore.getState().user === null,
   });
 
   useEffect(() => {
@@ -62,9 +64,6 @@ export function useUpdateProfile() {
       updateUserStore(me);
       queryClient.setQueryData(userQueryKeys.me, me);
       toast.success("Profile updated");
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: userQueryKeys.me });
     },
   });
 }

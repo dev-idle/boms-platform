@@ -2,7 +2,11 @@
 
 import type { ZodType } from "zod";
 
-import { ApiError, ApiErrorCode } from "@/lib/errors";
+import {
+  ApiError,
+  ApiErrorCode,
+  throwApiErrorFromPayload,
+} from "@/lib/errors";
 import { parseApiEnvelope, parseResponseBody } from "@/lib/api-envelope";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -35,17 +39,6 @@ function isAuthLoopPath(path: string): boolean {
 function buildUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return normalized;
-}
-
-function throwFromResponse(status: number, payload: unknown): never {
-  const envelope = parseApiEnvelope(payload);
-  if (envelope.success && envelope.data.error) {
-    throw new ApiError(status, envelope.data.error);
-  }
-  throw new ApiError(status, {
-    code: ApiErrorCode.Unknown,
-    message: `Request failed with HTTP ${status}`,
-  });
 }
 
 async function executeRequest<T>(
@@ -102,7 +95,7 @@ async function executeRequest<T>(
       await refreshNow();
       return executeRequest<T>(path, init, true);
     }
-    throwFromResponse(response.status, await parseResponseBody(response));
+    throwApiErrorFromPayload(response.status, await parseResponseBody(response));
   }
 
   if (response.status === 204) {
@@ -112,7 +105,7 @@ async function executeRequest<T>(
   const payload = await parseResponseBody(response);
 
   if (!response.ok) {
-    throwFromResponse(response.status, payload);
+    throwApiErrorFromPayload(response.status, payload);
   }
 
   const envelope = parseApiEnvelope(payload);

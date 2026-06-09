@@ -14,7 +14,8 @@ describe("homeRouteForRole", () => {
   it("returns the canonical home per role", () => {
     expect(homeRouteForRole(USER_ROLE.customer)).toBe(ROUTE.products);
     expect(homeRouteForRole(USER_ROLE.admin)).toBe(ROUTE.admin.dashboard);
-    expect(homeRouteForRole(USER_ROLE.staff)).toBe(ROUTE.staff.orders);
+    expect(homeRouteForRole(USER_ROLE.staff)).toBe(ROUTE.staff.account.profile);
+    expect(homeRouteForRole(USER_ROLE.baker)).toBe(ROUTE.baker.account.profile);
     expect(homeRouteForRole(USER_ROLE.manager)).toBe(ROUTE.manager.categories);
   });
 });

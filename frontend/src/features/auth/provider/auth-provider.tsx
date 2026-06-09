@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { endLocalSession, ensureRefreshScheduled } from "@/lib/auth";
@@ -15,6 +16,7 @@ type AuthBootstrapEffectProps = {
 };
 
 function AuthBootstrapEffect({ hasRefreshCookie }: AuthBootstrapEffectProps) {
+  const queryClient = useQueryClient();
   const setStatus = useAuthStore((state) => state.setStatus);
   const bootIdRef = useRef(0);
 
@@ -48,7 +50,7 @@ function AuthBootstrapEffect({ hasRefreshCookie }: AuthBootstrapEffectProps) {
       }
 
       try {
-        await restoreSessionFromCookie();
+        await restoreSessionFromCookie(queryClient);
       } catch {
         if (bootId === bootIdRef.current) {
           endLocalSession();
@@ -57,7 +59,7 @@ function AuthBootstrapEffect({ hasRefreshCookie }: AuthBootstrapEffectProps) {
     }
 
     void bootstrap();
-  }, [hasRefreshCookie, setStatus]);
+  }, [hasRefreshCookie, queryClient, setStatus]);
 
   return null;
 }

@@ -2,14 +2,18 @@
 
 import { refreshResponseSchema } from "@/lib/schemas/auth";
 import { ROUTE } from "@/constants/routes";
-import { ApiError, ApiErrorCode, isApiError } from "@/lib/errors";
+import {
+  ApiError,
+  ApiErrorCode,
+  isApiError,
+  throwApiErrorFromEnvelope,
+} from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
 
 import {
   clearStaleSession,
   isAuthSessionError,
   readApiEnvelope,
-  throwApiErrorFromEnvelope,
 } from "./session";
 
 const REFRESH_BUFFER_MS = 60_000;

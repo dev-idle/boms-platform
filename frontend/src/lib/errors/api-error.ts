@@ -1,4 +1,5 @@
-import type { ApiErrorBody } from "@/lib/api-envelope";
+import type { ApiEnvelope } from "@/lib/api-envelope";
+import { parseApiEnvelope, type ApiErrorBody } from "@/lib/api-envelope";
 
 /** Stable error codes returned by the backend (snake_case). Keep in sync with `internal/shared/errors`. */
 export const ApiErrorCode = {
@@ -125,4 +126,33 @@ export class ApiError extends Error {
 
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
+}
+
+/** Maps a parsed HTTP failure envelope to ApiError (browser + refresh paths). */
+export function throwApiErrorFromEnvelope(
+  status: number,
+  envelope: ApiEnvelope,
+): never {
+  if (envelope.error) {
+    throw new ApiError(status, envelope.error);
+  }
+  throw new ApiError(status, {
+    code: ApiErrorCode.Unknown,
+    message: `Request failed with HTTP ${status}`,
+  });
+}
+
+/** Maps an unvalidated JSON payload to ApiError (browser fetch path). */
+export function throwApiErrorFromPayload(
+  status: number,
+  payload: unknown,
+): never {
+  const envelope = parseApiEnvelope(payload);
+  if (envelope.success && envelope.data.error) {
+    throw new ApiError(status, envelope.data.error);
+  }
+  throw new ApiError(status, {
+    code: ApiErrorCode.Unknown,
+    message: `Request failed with HTTP ${status}`,
+  });
 }

@@ -7,7 +7,11 @@ import { toast } from "sonner";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
-import { getMe as getMeFromUserApi, userQueryKeys } from "@/features/user";
+import {
+  getMe as getMeFromUserApi,
+  primeMeQueryCache,
+  userQueryKeys,
+} from "@/features/user";
 import { resolvePostAuthDestination } from "@/lib/routing/post-auth-destination";
 
 import { login, logout, register } from "../api";
@@ -66,7 +70,7 @@ export function useLogin() {
         user: me,
       });
 
-      void queryClient.invalidateQueries({ queryKey: userQueryKeys.me });
+      primeMeQueryCache(queryClient, me);
 
       const mustChangePassword =
         data.must_change_password ?? me.must_change_password;

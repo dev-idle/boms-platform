@@ -21,19 +21,6 @@ export async function readApiEnvelope(response: Response): Promise<{
   return { status: response.status, envelope: parsed.data, raw };
 }
 
-export function throwApiErrorFromEnvelope(
-  status: number,
-  envelope: z.infer<typeof apiEnvelopeSchema>,
-): never {
-  if (envelope.error) {
-    throw new ApiError(status, envelope.error);
-  }
-  throw new ApiError(status, {
-    code: ApiErrorCode.Unknown,
-    message: `Request failed with HTTP ${status}`,
-  });
-}
-
 export function isAuthSessionError(error: unknown): boolean {
   return isApiError(error) && error.isAuthError();
 }

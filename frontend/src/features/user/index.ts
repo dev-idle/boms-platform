@@ -5,6 +5,7 @@
  * Session identity: re-exported via auth; `/api/v1/me` is the source of truth.
  */
 export { changePassword, deleteAccount, getMe, updateProfile } from "./api";
+export { primeMeQueryCache } from "./lib/prime-me-cache";
 export {
   AdminAccountProfileForm,
   AdminAccountProfileView,
