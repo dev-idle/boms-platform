@@ -186,21 +186,18 @@ func main() {
 	catalogRead.Get("/combos", catalogHandler.ListCombos)
 	catalogRead.Get("/combos/:id", catalogHandler.GetCombo)
 
-	customerSession := apiV1.Group(
-		"",
-		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
-		middleware.RequireRole(domainuser.RoleCustomer),
-		passwordChanged,
-	)
-	customerSession.Get("/cart", cartHandler.Get)
-	customerSession.Post("/cart/items", cartHandler.AddItem)
-	customerSession.Patch("/cart/items/:id", cartHandler.UpdateItem)
-	customerSession.Delete("/cart/items/:id", cartHandler.RemoveItem)
-	customerSession.Put("/cart/discount", cartHandler.ApplyDiscount)
-	customerSession.Delete("/cart/discount", cartHandler.RemoveDiscount)
-	customerSession.Post("/orders/checkout", orderHandler.Checkout)
-	customerSession.Get("/orders", orderHandler.List)
-	customerSession.Get("/orders/:id", orderHandler.Get)
+	customerCart := customerSessionGroup(apiV1, "/cart", tokenSigner, sessionStore, passwordChanged)
+	customerCart.Get("", cartHandler.Get)
+	customerCart.Post("/items", cartHandler.AddItem)
+	customerCart.Patch("/items/:id", cartHandler.UpdateItem)
+	customerCart.Delete("/items/:id", cartHandler.RemoveItem)
+	customerCart.Put("/discount", cartHandler.ApplyDiscount)
+	customerCart.Delete("/discount", cartHandler.RemoveDiscount)
+
+	customerOrders := customerSessionGroup(apiV1, "/orders", tokenSigner, sessionStore, passwordChanged)
+	customerOrders.Post("/checkout", orderHandler.Checkout)
+	customerOrders.Get("", orderHandler.List)
+	customerOrders.Get("/:id", orderHandler.Get)
 
 	managerRead := apiV1.Group(
 		"/manager",
@@ -305,4 +302,22 @@ func newFiberApp(cfg *config.Config, log *zap.Logger) *fiber.App {
 	app.Use(middleware.RateLimit(cfg.Rate))
 
 	return app
+}
+
+// customerSessionGroup scopes customer session auth to an explicit sub-path.
+// Never call apiV1.Group("") — empty prefix registers middleware on /api/v1 and
+// leaks RequireRole(customer) onto every route declared later in main.
+func customerSessionGroup(
+	parent fiber.Router,
+	path string,
+	tokenSigner port.TokenSigner,
+	sessions port.SessionStore,
+	passwordChanged fiber.Handler,
+) fiber.Router {
+	return parent.Group(
+		path,
+		middleware.RequireAuthWithSession(tokenSigner, sessions),
+		middleware.RequireRole(domainuser.RoleCustomer),
+		passwordChanged,
+	)
 }
