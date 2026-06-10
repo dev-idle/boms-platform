@@ -10,7 +10,7 @@ export function HomeCta() {
     <section className="storefront-section bg-blush">
       <div className="storefront-container">
         <div className="reveal rounded-card bg-surface px-8 py-14 text-center shadow-rest sm:px-12 sm:py-16">
-          <h2 className="font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+          <h2 className="text-h2">
             Planning a celebration?
           </h2>
           <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-ink-2 sm:text-base">

@@ -95,7 +95,7 @@ export function ProductDetail({
           <p className="text-caption uppercase tracking-wide">
             {product.category_name}
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+          <h1 className="mt-2">
             {product.name}
           </h1>
           <p className="text-price mt-4 text-2xl">

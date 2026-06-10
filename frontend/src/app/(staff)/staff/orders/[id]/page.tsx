@@ -11,7 +11,7 @@ export default async function StaffOrderDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium text-ink">
+        <h1 className="text-page-title">
           Order detail
         </h1>
       </div>

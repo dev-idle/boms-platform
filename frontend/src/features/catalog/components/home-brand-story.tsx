@@ -17,7 +17,7 @@ export function HomeBrandStory() {
         </div>
         <div className="reveal reveal-delay-1">
           <div className="divider-gold" />
-          <h2 className="mt-6 font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+          <h2 className="text-h2 mt-6">
             Baked with care, picked up on your schedule.
           </h2>
           <p className="mt-5 text-base leading-relaxed text-ink-2">

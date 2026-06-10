@@ -18,14 +18,14 @@ export function StorefrontFooter() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <BrandLogo linked={false} size="md" />
-            <p className="mt-3 text-sm leading-relaxed text-ink-2">
+            <p className="text-body mt-3">
               {BRAND.tagline}
             </p>
           </div>
 
           <div>
-            <p className="text-sm font-medium text-ink">Visit us</p>
-            <address className="mt-2 space-y-1 text-sm not-italic text-ink-2">
+            <p className="text-body font-medium text-ink">Visit us</p>
+            <address className="text-body mt-2 space-y-1 not-italic">
               <p>{BRAND.addressLine}</p>
               <p>
                 <a
@@ -47,8 +47,8 @@ export function StorefrontFooter() {
           </div>
 
           <div>
-            <p className="text-sm font-medium text-ink">Hours</p>
-            <ul className="mt-2 space-y-1 text-sm text-ink-2">
+            <p className="text-body font-medium text-ink">Hours</p>
+            <ul className="text-body mt-2 space-y-1">
               <li>Mon–Fri · 7:00 AM – 6:00 PM</li>
               <li>Sat · 8:00 AM – 5:00 PM</li>
               <li>Sun · 8:00 AM – 2:00 PM</li>

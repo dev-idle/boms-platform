@@ -36,10 +36,8 @@ export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
   if (combosQuery.isError) {
     return (
       <section className="mx-auto w-full max-w-7xl space-y-2 px-4 pb-10 pt-10 sm:px-6 lg:px-8">
-        <h2 className="font-heading text-2xl font-medium text-ink">
-          Combo deals
-        </h2>
-        <p className="text-sm text-error">Failed to load combo deals.</p>
+        <h2 className="text-h2">Combo deals</h2>
+        <p className="text-caption text-error">Failed to load combo deals.</p>
       </section>
     );
   }
@@ -51,10 +49,8 @@ export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
   return (
     <section className="mx-auto w-full max-w-7xl space-y-6 bg-blush px-4 pb-12 pt-12 sm:px-6 lg:px-8">
       <div>
-        <h2 className="font-heading text-2xl font-medium text-ink">
-          Combo deals
-        </h2>
-        <p className="mt-2 text-sm text-ink-2">
+        <h2 className="text-h2">Combo deals</h2>
+        <p className="text-body mt-2">
           Limited-time bundles with special pricing.
         </p>
       </div>
@@ -65,10 +61,8 @@ export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
             key={combo.id}
             className="rounded-card bg-surface p-6 shadow-rest"
           >
-            <h3 className="font-heading text-xl font-medium text-ink">
-              {combo.name}
-            </h3>
-            <p className="mt-2 text-sm text-ink-2">
+            <h3 className="text-h3">{combo.name}</h3>
+            <p className="text-caption mt-2">
               Valid until {formatDateTime(combo.ends_at)}
             </p>
             <ul className="mt-4 space-y-1 text-sm text-ink-2">

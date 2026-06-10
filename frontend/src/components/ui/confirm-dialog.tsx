@@ -47,7 +47,7 @@ export function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
       <div className="w-full max-w-md rounded-modal border border-border bg-surface p-6 shadow-hover">
-        <h2 className="font-heading text-lg font-medium text-ink">
+        <h2 className="text-section-heading">
           {title}
         </h2>
         <p className="mt-2 text-sm text-ink-2">{description}</p>

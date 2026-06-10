@@ -30,7 +30,7 @@ export default function ManagerEditProductPage({ params }: PageProps) {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-medium text-ink">
+        <h1 className="text-page-title">
           Edit product
         </h1>
       </div>

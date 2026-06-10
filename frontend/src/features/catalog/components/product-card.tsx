@@ -48,18 +48,16 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
           )}
         </div>
         <div className={cn("flex flex-col p-5", featured && "sm:justify-center sm:p-8")}>
-          <p className="text-caption uppercase tracking-wide">
-            {product.category_name}
-          </p>
+          <p className="text-overline">{product.category_name}</p>
           <h2
             className={cn(
-              "mt-1.5 font-heading font-medium leading-snug text-ink",
-              featured ? "text-2xl" : "text-lg",
+              "mt-1.5",
+              featured ? "text-h3" : "text-product-title",
             )}
           >
             {product.name}
           </h2>
-          <p className="text-price mt-3 text-base">
+          <p className="text-price mt-3 text-lg">
             {formatPriceCents(product.price_cents)}
           </p>
         </div>

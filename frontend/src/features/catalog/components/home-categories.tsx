@@ -22,7 +22,7 @@ export function HomeCategories({ categories }: HomeCategoriesProps) {
         <div className="reveal flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2
-              className="font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl"
+              className="text-h2"
               id="home-categories-heading"
             >
               Browse by category

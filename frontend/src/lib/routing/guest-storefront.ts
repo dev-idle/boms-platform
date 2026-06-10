@@ -12,7 +12,11 @@ export function isGuestStorefrontPath(pathname: string): boolean {
 }
 
 export function isPublicAuthEntryPath(pathname: string): boolean {
-  return pathname === ROUTE.login || pathname === ROUTE.register;
+  return (
+    pathname === ROUTE.login ||
+    pathname === ROUTE.register ||
+    pathname === ROUTE.forgotPassword
+  );
 }
 
 /** Customer may browse home + catalog while signed in. */

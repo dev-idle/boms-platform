@@ -50,16 +50,16 @@ func FieldErrors(err error) map[string]string {
 
 func passwordComplexity(fl validator.FieldLevel) bool {
 	s := fl.Field().String()
-	var upper, digit bool
+	var letter, digit bool
 	for _, r := range s {
-		if unicode.IsUpper(r) {
-			upper = true
+		if unicode.IsLetter(r) {
+			letter = true
 		}
 		if unicode.IsDigit(r) {
 			digit = true
 		}
 	}
-	return upper && digit
+	return letter && digit
 }
 
 func formatValidationError(err error) error {

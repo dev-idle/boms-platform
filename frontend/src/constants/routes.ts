@@ -2,7 +2,7 @@
  * Canonical paths — single source for `src/proxy.ts`, layouts, and links.
  *
  * URL conventions (one role = one namespace):
- *   - Public:   /, /login, /register, /products, /products/:id
+ *   - Public:   /, /login, /register, /forgot-password, /products, /products/:id
  *   - Customer: /cart, /orders, /customer/account/*
  *   - Staff:    /staff/orders, /staff/orders/:id, /staff/account/*
  *   - Baker:    /baker/account/*
@@ -14,6 +14,7 @@ export const ROUTE = {
   home: "/",
   login: "/login",
   register: "/register",
+  forgotPassword: "/forgot-password",
   products: "/products",
   productDetail: (id: string) => `/products/${id}`,
   cart: "/cart",

@@ -1,52 +1,23 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
+import { AUTH_INPUT_CLASS } from "../lib/auth-form-styles";
 import { useRegister } from "../hooks";
 import { registerSchema, type RegisterInput } from "../schemas";
-import { AuthPageShell } from "./auth-page-shell";
-
-function PasswordChecklist({ password }: { password: string }) {
-  const checks = [
-    { label: "At least 8 characters", ok: password.length >= 8 },
-    { label: "Uppercase letter", ok: /[A-Z]/.test(password) },
-    { label: "Digit", ok: /\d/.test(password) },
-  ];
-
-  return (
-    <ul aria-label="Password requirements" className="mt-2 space-y-1 text-xs">
-      {checks.map((check) => (
-        <li
-          key={check.label}
-          className={
-            check.ok
-              ? "text-success"
-              : "text-muted"
-          }
-        >
-          <span aria-hidden="true">{check.ok ? "✓" : "○"}</span> {check.label}
-        </li>
-      ))}
-    </ul>
-  );
-}
+import { AuthFormFieldControl } from "./auth-form-field-control";
+import { AuthInlineLink } from "./auth-inline-link";
+import { AuthFormShell } from "./auth-form-shell";
+import { AuthPasswordChecklist } from "./auth-password-checklist";
 
 export function RegisterForm() {
   const registerMutation = useRegister();
@@ -90,26 +61,19 @@ export function RegisterForm() {
   }
 
   return (
-    <AuthPageShell
-      brandDescription="Create an account to order for pickup, choose your time slot, and track every step until your treats are ready."
-      brandTitle="Your next celebration starts here."
-      description="A few details and you can start ordering for pickup."
+    <AuthFormShell
+      description="Create your account to order for pickup."
       footer={
-        <p className="text-sm text-muted">
+        <p className="auth-page-switch">
           Already have an account?{" "}
-          <Link
-            className="font-medium text-rose-500 underline-offset-4 transition-colors duration-standard ease-default hover:text-rose-600 hover:underline"
-            href={ROUTE.login}
-          >
-            Sign in
-          </Link>
+          <AuthInlineLink href={ROUTE.login}>Sign in</AuthInlineLink>
         </p>
       }
       title="Create account"
     >
       <Form {...form}>
         <form
-          className="space-y-5"
+          className="auth-form"
           onSubmit={form.handleSubmit(onSubmit)}
           noValidate
         >
@@ -117,17 +81,17 @@ export function RegisterForm() {
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
+              <FormItem className="auth-field">
+                <AuthFormFieldControl label="Email">
                   <Input
                     autoComplete="email"
+                    className={AUTH_INPUT_CLASS}
                     inputMode="email"
                     placeholder="you@example.com"
                     type="email"
                     {...field}
                   />
-                </FormControl>
+                </AuthFormFieldControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -137,26 +101,25 @@ export function RegisterForm() {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
+              <FormItem className="auth-field">
+                <AuthFormFieldControl label="Password">
                   <Input
                     autoComplete="new-password"
+                    className={AUTH_INPUT_CLASS}
                     placeholder="••••••••"
                     type="password"
                     {...field}
                   />
-                </FormControl>
-                <PasswordChecklist password={password} />
+                </AuthFormFieldControl>
+                <AuthPasswordChecklist password={password} />
                 <FormMessage />
               </FormItem>
             )}
           />
 
           <Button
-            className="w-full"
+            className="auth-submit w-full"
             disabled={registerMutation.isPending}
-            size="lg"
             type="submit"
           >
             {registerMutation.isPending
@@ -165,6 +128,6 @@ export function RegisterForm() {
           </Button>
         </form>
       </Form>
-    </AuthPageShell>
+    </AuthFormShell>
   );
 }

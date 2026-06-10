@@ -21,7 +21,7 @@ export function HomeFeaturedProducts({ products }: HomeFeaturedProductsProps) {
         <div className="reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2
-              className="font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl"
+              className="text-h2"
               id="home-featured-heading"
             >
               Fresh from the oven

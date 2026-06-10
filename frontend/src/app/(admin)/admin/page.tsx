@@ -1,7 +1,7 @@
 export default function AdminDashboardPage() {
   return (
     <div>
-      <h1 className="text-2xl font-medium text-ink">
+      <h1 className="text-page-title">
         Dashboard
       </h1>
       <p className="mt-2 max-w-prose text-sm text-ink-2">

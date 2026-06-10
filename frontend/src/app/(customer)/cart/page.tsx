@@ -3,7 +3,7 @@ import { CartView } from "@/features/customer";
 export default function CartPage() {
   return (
     <div>
-      <h1 className="text-2xl font-medium text-ink">Cart</h1>
+      <h1 className="text-page-title">Cart</h1>
       <p className="mt-2 max-w-prose text-sm text-ink-2">
         Prices and discounts are calculated on the server when your cart loads or
         at checkout.

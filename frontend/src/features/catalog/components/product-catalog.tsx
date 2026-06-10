@@ -51,10 +51,8 @@ export function ProductCatalog() {
   return (
     <div className="storefront-container py-12">
       <header className="space-y-3">
-        <h1 className="font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl">
-          Shop
-        </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-ink-2">
+        <h1>Shop</h1>
+        <p className="text-body max-w-2xl">
           Browse our daily selection. Filter by category or search by name.
         </p>
       </header>

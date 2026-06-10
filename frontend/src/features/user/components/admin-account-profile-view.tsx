@@ -6,7 +6,7 @@ export function AdminAccountProfileView() {
   return (
     <div className="max-w-2xl space-y-10">
       <header>
-        <h1 className="text-2xl font-medium text-ink">
+        <h1 className="text-page-title">
           Profile
         </h1>
         <p className="mt-2 text-sm text-ink-2">

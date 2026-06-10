@@ -21,9 +21,10 @@ describe("isGuestStorefrontPath", () => {
 });
 
 describe("isPublicAuthEntryPath", () => {
-  it("matches login and register only", () => {
+  it("matches login, register, and forgot password", () => {
     expect(isPublicAuthEntryPath(ROUTE.login)).toBe(true);
     expect(isPublicAuthEntryPath(ROUTE.register)).toBe(true);
+    expect(isPublicAuthEntryPath(ROUTE.forgotPassword)).toBe(true);
     expect(isPublicAuthEntryPath(ROUTE.home)).toBe(false);
   });
 });

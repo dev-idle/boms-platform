@@ -1,28 +1,23 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
+import { AUTH_INPUT_CLASS } from "../lib/auth-form-styles";
 import { useLogin } from "../hooks";
 import { loginSchema, type LoginInput } from "../schemas";
-import { AuthPageShell } from "./auth-page-shell";
+import { AuthFormFieldControl } from "./auth-form-field-control";
+import { AuthInlineLink } from "./auth-inline-link";
+import { AuthFormShell } from "./auth-form-shell";
 
 type LoginFormProps = {
   next?: string;
@@ -83,26 +78,19 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
   }
 
   return (
-    <AuthPageShell
-      brandDescription="Sign in to browse our menu, schedule pickup, and follow your order from oven to counter."
-      brandTitle="Freshly baked, ready when you are."
-      description="Welcome back. Enter your details to continue."
+    <AuthFormShell
+      description="Enter your email and password to continue."
       footer={
-        <p className="text-sm text-muted">
+        <p className="auth-page-switch">
           New here?{" "}
-          <Link
-            className="font-medium text-rose-500 underline-offset-4 transition-colors duration-standard ease-default hover:text-rose-600 hover:underline"
-            href={ROUTE.register}
-          >
-            Create an account
-          </Link>
+          <AuthInlineLink href={ROUTE.register}>Create an account</AuthInlineLink>
         </p>
       }
       title="Sign in"
     >
       <Form {...form}>
         <form
-          className="space-y-5"
+          className="auth-form"
           onSubmit={form.handleSubmit(onSubmit)}
           noValidate
         >
@@ -110,17 +98,17 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
+              <FormItem className="auth-field">
+                <AuthFormFieldControl label="Email">
                   <Input
                     autoComplete="email"
+                    className={AUTH_INPUT_CLASS}
                     inputMode="email"
                     placeholder="you@example.com"
                     type="email"
                     {...field}
                   />
-                </FormControl>
+                </AuthFormFieldControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -130,37 +118,44 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
+              <FormItem className="auth-field">
+                <AuthFormFieldControl label="Password">
                   <Input
                     autoComplete="current-password"
+                    className={AUTH_INPUT_CLASS}
                     placeholder="••••••••"
                     type="password"
                     {...field}
                   />
-                </FormControl>
+                </AuthFormFieldControl>
+                <div className="auth-forgot-row">
+                  <AuthInlineLink
+                    className="auth-forgot-link"
+                    href={ROUTE.forgotPassword}
+                  >
+                    Forgot password?
+                  </AuthInlineLink>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
           />
 
           {form.formState.errors.root?.message ? (
-            <p className="text-sm font-medium text-error" role="alert">
+            <p className="text-caption text-error" role="alert">
               {form.formState.errors.root.message}
             </p>
           ) : null}
 
           <Button
-            className="w-full"
+            className="auth-submit w-full"
             disabled={login.isPending}
-            size="lg"
             type="submit"
           >
             {login.isPending ? "Signing in…" : "Sign in"}
           </Button>
         </form>
       </Form>
-    </AuthPageShell>
+    </AuthFormShell>
   );
 }

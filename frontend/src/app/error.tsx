@@ -17,7 +17,7 @@ export default function Error({
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 px-6 py-24 text-center">
-      <h1 className="font-heading text-xl font-medium text-foreground">
+      <h1 className="text-empty-title text-foreground">
         Something went wrong
       </h1>
       <p className="text-sm text-muted">

@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 
@@ -8,23 +7,7 @@ import { BRAND } from "@/constants/brand";
 import { AuthBootstrap } from "@/features/auth/server";
 import { QueryProvider } from "@/providers";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  axes: ["SOFT", "WONK", "opsz"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const cormorantBrand = Cormorant_Garamond({
-  variable: "--font-cormorant",
-  subsets: ["latin"],
-  style: ["italic"],
-  weight: ["500", "600"],
-});
+import { fraunces, instrument, mono } from "./fonts";
 
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
@@ -56,10 +39,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${inter.variable} ${cormorantBrand.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${instrument.variable} ${mono.variable} h-full`}
       suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col bg-bg font-sans text-ink-2">
+      <body className="flex min-h-full flex-col bg-bg font-body text-ink-2">
         <QueryProvider>
           <Suspense
             fallback={
@@ -77,8 +60,8 @@ export default function RootLayout({
               classNames: {
                 toast:
                   "rounded-card border border-border bg-surface text-ink-2 shadow-rest",
-                title: "text-ink font-medium",
-                description: "text-muted",
+                title: "text-toast-title text-ink",
+                description: "text-toast-description text-muted",
                 success: "border-l-[3px] border-l-success !rounded-l-none",
                 error: "border-l-[3px] border-l-error !rounded-l-none",
                 warning: "border-l-[3px] border-l-warning !rounded-l-none",

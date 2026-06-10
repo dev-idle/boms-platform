@@ -10,6 +10,8 @@ import {
   type FieldValues,
 } from "react-hook-form";
 
+import { Slot } from "@radix-ui/react-slot";
+
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -96,12 +98,12 @@ function FormLabel({
   );
 }
 
-function FormControl({ ...props }: React.ComponentPropsWithoutRef<"div">) {
+function FormControl({ ...props }: React.ComponentPropsWithoutRef<typeof Slot>) {
   const { error, formItemId, formDescriptionId, formMessageId } =
     useFormField();
 
   return (
-    <div
+    <Slot
       id={formItemId}
       aria-describedby={
         error
@@ -129,7 +131,7 @@ function FormMessage({
   return (
     <p
       id={formMessageId}
-      className={cn("text-sm font-medium text-error", className)}
+      className={cn("text-caption text-error", className)}
       {...props}
     >
       {body}

@@ -49,7 +49,7 @@ export function ManagerDiscountCodesTable() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-medium text-ink">
+          <h1 className="text-page-title">
             Discount codes
           </h1>
           <p className="mt-2 text-sm text-ink-2">

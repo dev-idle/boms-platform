@@ -3,7 +3,7 @@ const VALIDATION_TAG_MESSAGES: Record<string, string> = {
   email: "Enter a valid email address",
   min: "Value is too short",
   max: "Value is too long",
-  password_complexity: "Password must include an uppercase letter and a digit",
+  password_complexity: "Password must include a letter and a number",
 };
 
 export function fieldErrorFromTag(tag: string): string {
