@@ -4,7 +4,6 @@ import type { RefObject } from "react";
 import { useRouter } from "next/navigation";
 
 import { CloseIcon, SearchIcon } from "@/components/icons/storefront-icons";
-import { Input } from "@/components/ui/input";
 import {
   buildCatalogBrowseHref,
   CATALOG_SEARCH_MAX_LENGTH,
@@ -50,11 +49,11 @@ export function StorefrontHeaderSearch({
         >
           <div className="storefront-header-search-field">
             <SearchIcon className="storefront-header-search-field-icon size-[1.125rem]" />
-            <Input
+            <input
               ref={inputRef}
               aria-label="Search products"
               autoComplete="off"
-              className="storefront-header-search-input focus-visible:ring-0"
+              className="storefront-header-search-input"
               maxLength={CATALOG_SEARCH_MAX_LENGTH}
               name="search"
               placeholder="Search pastries, cakes, gifts…"
