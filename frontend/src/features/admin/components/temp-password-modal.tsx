@@ -47,18 +47,18 @@ function TempPasswordModalContent({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 px-4">
-      <div className="w-full max-w-lg rounded-lg border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
+      <div className="w-full max-w-lg rounded-modal border border-border bg-surface p-6 shadow-hover">
+        <h2 className="text-lg font-medium text-ink">
           Temporary password
         </h2>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+        <p className="mt-2 text-sm text-ink-2">
           Share this password securely with{" "}
           <span className="font-medium">{userEmail}</span>. It is shown only
           once.
         </p>
 
-        <div className="mt-4 rounded-md border border-zinc-200 bg-zinc-50 p-3 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-950">
+        <div className="mt-4 rounded-input border border-border bg-surface-alt p-3 font-mono text-sm">
           {tempPassword}
         </div>
 
@@ -66,10 +66,10 @@ function TempPasswordModalContent({
           <Button onClick={() => void handleCopy()} type="button">
             {copied ? "Copied" : "Copy password"}
           </Button>
-          <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <label className="flex items-center gap-2 text-sm text-ink">
             <input
               checked={acknowledged}
-              className="h-4 w-4 accent-zinc-900"
+              className="h-4 w-4 accent-rose-500"
               onChange={(event) => setAcknowledged(event.target.checked)}
               type="checkbox"
             />

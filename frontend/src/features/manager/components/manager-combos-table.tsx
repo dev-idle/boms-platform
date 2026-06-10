@@ -38,10 +38,10 @@ export function ManagerCombosTable() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-medium text-ink">
             Combos
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+          <p className="mt-2 text-sm text-ink-2">
             Bundle products with promotional pricing and time windows.
           </p>
         </div>
@@ -67,10 +67,10 @@ export function ManagerCombosTable() {
         <Button type="submit">Search</Button>
       </form>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-        <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
-          <thead className="bg-zinc-50 dark:bg-zinc-900">
-            <tr className="text-left text-xs uppercase tracking-wide text-zinc-500">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="min-w-full divide-y divide-border text-sm">
+          <thead className="bg-surface-alt">
+            <tr className="text-left text-xs uppercase tracking-wide text-muted">
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Price</th>
               <th className="px-4 py-3">Window</th>
@@ -79,22 +79,22 @@ export function ManagerCombosTable() {
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <tbody className="divide-y divide-border">
             {query.isPending ? (
               <tr>
-                <td className="px-4 py-6 text-zinc-500" colSpan={6}>
+                <td className="px-4 py-6 text-muted" colSpan={6}>
                   Loading combos…
                 </td>
               </tr>
             ) : query.isError ? (
               <tr>
-                <td className="px-4 py-6 text-red-600" colSpan={6}>
+                <td className="px-4 py-6 text-error" colSpan={6}>
                   Failed to load combos.
                 </td>
               </tr>
             ) : combos.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-zinc-500" colSpan={6}>
+                <td className="px-4 py-6 text-muted" colSpan={6}>
                   No combos found.
                 </td>
               </tr>
@@ -103,7 +103,7 @@ export function ManagerCombosTable() {
                 <tr key={combo.id}>
                   <td className="px-4 py-3 font-medium">{combo.name}</td>
                   <td className="px-4 py-3">{formatPriceCents(combo.price_cents)}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  <td className="px-4 py-3 text-ink-2">
                     {formatDateTime(combo.starts_at)} – {formatDateTime(combo.ends_at)}
                   </td>
                   <td className="px-4 py-3">{combo.items.length}</td>
@@ -146,7 +146,7 @@ export function ManagerCombosTable() {
           >
             Previous
           </Button>
-          <span className="text-sm text-zinc-600">
+          <span className="text-sm text-ink-2">
             Page {pagination.page} of {pagination.total_pages}
           </span>
           <Button

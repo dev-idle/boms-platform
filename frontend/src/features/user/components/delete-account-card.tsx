@@ -15,11 +15,11 @@ export function DeleteAccountCard() {
   const canDelete = me.data?.role === "customer";
 
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/40">
-      <h2 className="text-lg font-semibold text-red-800 dark:text-red-300">
+    <div className="rounded-lg border border-error/30 bg-error-bg p-4 rounded-card">
+      <h2 className="text-lg font-medium text-red-800">
         Delete account
       </h2>
-      <p className="mt-2 text-sm text-red-700 dark:text-red-200">
+      <p className="mt-2 text-sm text-red-700">
         This action disables your account and signs you out immediately.
       </p>
       <Button

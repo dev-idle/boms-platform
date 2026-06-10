@@ -91,7 +91,7 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
         <p className="text-sm text-muted">
           New here?{" "}
           <Link
-            className="font-medium text-foreground underline underline-offset-4 transition-colors duration-default ease-default hover:text-primary"
+            className="font-medium text-rose-500 underline-offset-4 transition-colors duration-standard ease-default hover:text-rose-600 hover:underline"
             href={ROUTE.register}
           >
             Create an account

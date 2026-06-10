@@ -42,10 +42,10 @@ export function AdminShell({ children }: AdminShellProps) {
                 key={href}
                 href={href}
                 className={cn(
-                  "rounded-md px-3 py-2 transition-colors duration-default ease-default",
+                  "rounded-full px-3 py-2 transition-colors duration-standard ease-default",
                   active
-                    ? "bg-primary-subtle text-foreground"
-                    : "text-muted hover:bg-surface-alt hover:text-foreground",
+                    ? "bg-rose-100 text-rose-700"
+                    : "text-muted hover:bg-surface-alt hover:text-ink",
                 )}
                 aria-current={active ? "page" : undefined}
               >

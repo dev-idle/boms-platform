@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
+
 type AuthPageShellProps = {
   brandTitle: string;
   brandDescription: string;
@@ -21,33 +23,29 @@ export function AuthPageShell({
     <div className="flex flex-1 flex-col lg:grid lg:grid-cols-2">
       <section
         aria-hidden="true"
-        className="relative hidden overflow-hidden bg-surface-alt lg:flex lg:flex-col lg:justify-center"
+        className="relative hidden bg-blush lg:flex lg:flex-col lg:justify-center"
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary-subtle via-surface-alt to-greige-100"
-        />
         <div className="relative mx-auto max-w-md px-8 py-16 xl:px-12">
-          <div className="h-px w-12 border-t border-accent" />
-          <h2 className="mt-8 font-heading text-3xl font-medium leading-tight tracking-tight text-foreground xl:text-4xl">
+          <BrandLogo linked={false} size="lg" />
+          <h2 className="mt-8 font-heading text-3xl font-medium leading-tight tracking-tight text-ink xl:text-4xl">
             {brandTitle}
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-muted">
+          <p className="mt-4 text-base leading-relaxed text-ink-2">
             {brandDescription}
           </p>
         </div>
       </section>
 
-      <section className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <section className="flex flex-1 flex-col justify-center bg-bg px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-md">
-          <div className="rounded-lg border border-border bg-surface p-8 sm:p-10">
+          <div className="rounded-card bg-surface p-8 shadow-rest sm:p-10">
             <div className="lg:hidden">
-              <div className="h-px w-10 border-t border-accent" />
+              <BrandLogo linked={false} size="md" />
             </div>
-            <h1 className="mt-4 font-heading text-2xl font-medium tracking-tight text-foreground lg:mt-0">
+            <h1 className="mt-6 font-heading text-2xl font-medium tracking-tight text-ink lg:mt-0">
               {title}
             </h1>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
+            <p className="mt-2 text-sm leading-relaxed text-ink-2">
               {description}
             </p>
             <div className="mt-8">{children}</div>

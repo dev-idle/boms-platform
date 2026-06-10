@@ -23,11 +23,11 @@ export function AdminUserDetail({ userId }: { userId: string }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-medium text-ink">
             User detail
           </h1>
           {user ? (
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+            <p className="mt-2 text-sm text-ink-2">
               {user.email} · {user.role}
             </p>
           ) : null}
@@ -64,9 +64,9 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       </div>
 
       {userQuery.isPending ? (
-        <p className="text-sm text-zinc-500">Loading user details…</p>
+        <p className="text-sm text-muted">Loading user details…</p>
       ) : !user ? (
-        <p className="text-sm text-zinc-500">Unable to load this user.</p>
+        <p className="text-sm text-muted">Unable to load this user.</p>
       ) : null}
 
       {tab === "profile" && user ? (

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { ROUTE } from "@/constants/routes";
 
-import type { CatalogProductsListFilterInput } from "../schemas";
+import type { CatalogProductsListFilterInput } from "@/lib/schemas/catalog";
 
 const catalogBrowseParamsSchema = z.object({
   search: z

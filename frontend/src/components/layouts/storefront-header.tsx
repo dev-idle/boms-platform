@@ -1,28 +1,41 @@
-import Link from "next/link";
-import { Suspense } from "react";
+"use client";
 
-import { CatalogSearchForm } from "@/features/catalog";
+import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
+
+import { BrandLogo } from "@/components/brand/brand-logo";
+import { CatalogSearchForm } from "@/features/catalog/components/catalog-search-form";
 import { ROUTE } from "@/constants/routes";
+import { cn } from "@/lib/utils";
 
 import { StorefrontAccountLink } from "./storefront-account-link";
 
 export function StorefrontHeader() {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-surface/95 backdrop-blur-sm">
+    <header
+      className={cn(
+        "sticky top-0 z-50 bg-bg/95 backdrop-blur-sm transition-[border-color] duration-standard ease-default",
+        scrolled && "border-b border-border",
+      )}
+    >
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <Link
-          className="shrink-0 font-heading text-lg font-medium tracking-tight text-foreground transition-colors duration-default ease-default hover:text-primary"
-          href={ROUTE.home}
-        >
-          BOMS
-        </Link>
+        <BrandLogo />
 
         <nav
           aria-label="Storefront"
           className="hidden flex-1 items-center justify-center gap-8 text-sm font-medium text-muted md:flex"
         >
           <Link
-            className="transition-colors duration-default ease-default hover:text-foreground"
+            className="flex min-h-11 items-center rounded-full px-3 py-2 transition-colors duration-standard ease-default hover:text-rose-500"
             href={ROUTE.products}
           >
             Shop
@@ -38,13 +51,13 @@ export function StorefrontHeader() {
             />
           </Suspense>
           <Link
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors duration-default ease-default hover:bg-surface-alt hover:text-foreground md:hidden"
+            className="flex min-h-11 items-center rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors duration-standard ease-default hover:bg-blush hover:text-ink md:hidden"
             href={ROUTE.products}
           >
             Search
           </Link>
           <Link
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors duration-default ease-default hover:bg-surface-alt hover:text-foreground"
+            className="flex min-h-11 items-center rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors duration-standard ease-default hover:bg-blush hover:text-ink"
             href={ROUTE.cart}
           >
             Cart

@@ -14,7 +14,11 @@ export function ThemeScope({ theme, children, className }: ThemeScopeProps) {
   return (
     <div
       data-theme={theme}
-      className={cn("min-h-full bg-bg text-foreground", className)}
+      className={cn(
+        "min-h-full bg-bg text-ink-2",
+        theme === "dashboard" && "text-sm",
+        className,
+      )}
     >
       {children}
     </div>

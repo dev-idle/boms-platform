@@ -106,11 +106,11 @@ export function CustomerAccountProfileForm() {
   const me = useMe();
 
   if (me.isPending) {
-    return <p className="text-sm text-zinc-500">Loading profile…</p>;
+    return <p className="text-sm text-muted">Loading profile…</p>;
   }
 
   if (!me.data || me.data.role !== USER_ROLE.customer) {
-    return <p className="text-sm text-zinc-500">Customer profile not available.</p>;
+    return <p className="text-sm text-muted">Customer profile not available.</p>;
   }
 
   return (

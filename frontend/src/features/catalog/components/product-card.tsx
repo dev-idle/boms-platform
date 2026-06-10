@@ -2,45 +2,64 @@ import Link from "next/link";
 
 import { ROUTE } from "@/constants/routes";
 import { formatPriceCents } from "@/lib/validation/catalog";
+import { cn } from "@/lib/utils";
 
-import type { CatalogProduct } from "../schemas";
+import type { CatalogProduct } from "@/lib/schemas/catalog";
 
 type ProductCardProps = {
   product: CatalogProduct;
+  featured?: boolean;
 };
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, featured = false }: ProductCardProps) {
   return (
-    <article className="group overflow-hidden rounded-lg border border-border bg-surface transition-colors duration-default ease-default hover:border-border-strong">
+    <article
+      className={cn(
+        "group overflow-hidden rounded-card bg-surface shadow-rest transition-[box-shadow,transform] duration-standard ease-default hover:shadow-hover",
+        featured && "sm:flex sm:flex-row",
+      )}
+    >
       <Link
-        className="flex flex-col"
+        className={cn("flex flex-col", featured && "sm:flex-1 sm:flex-row")}
         href={ROUTE.productDetail(product.id)}
       >
-        <div className="relative aspect-square overflow-hidden bg-surface-alt">
+        <div
+          className={cn(
+            "relative overflow-hidden bg-blush",
+            featured
+              ? "aspect-square sm:aspect-auto sm:w-1/2"
+              : "aspect-square",
+          )}
+        >
           {product.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are external manager-provided links
             <img
               alt={product.name}
-              className="size-full object-cover transition-transform duration-default ease-default group-hover:scale-[1.02]"
+              className="size-full rounded-t-card object-cover transition-transform duration-standard ease-default group-hover:scale-[1.02] motion-reduce:transform-none"
               src={product.image_url}
             />
           ) : (
             <div
               aria-hidden="true"
-              className="flex size-full items-center justify-center text-sm text-subtle"
+              className="flex size-full items-center justify-center text-caption"
             >
               No image
             </div>
           )}
         </div>
-        <div className="flex flex-col p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-subtle">
+        <div className={cn("flex flex-col p-5", featured && "sm:justify-center sm:p-8")}>
+          <p className="text-caption uppercase tracking-wide">
             {product.category_name}
           </p>
-          <h2 className="mt-1 font-heading text-lg font-medium leading-snug text-foreground">
+          <h2
+            className={cn(
+              "mt-1.5 font-heading font-medium leading-snug text-ink",
+              featured ? "text-2xl" : "text-lg",
+            )}
+          >
             {product.name}
           </h2>
-          <p className="mt-2 text-base font-medium text-foreground">
+          <p className="text-price mt-3 text-base">
             {formatPriceCents(product.price_cents)}
           </p>
         </div>

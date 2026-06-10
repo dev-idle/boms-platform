@@ -66,10 +66,10 @@ export function CreateOperationalUserForm() {
     <>
       <div className="max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-medium text-ink">
             New operational user
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+          <p className="mt-2 text-sm text-ink-2">
             Create staff, baker, or manager accounts. Platform admins are created via dev seed only.
           </p>
         </div>
@@ -102,7 +102,7 @@ export function CreateOperationalUserForm() {
                   <FormLabel>Role</FormLabel>
                   <FormControl>
                     <select
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+                      className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
                       {...field}
                     >
                       {ASSIGNABLE_OPERATIONAL_ROLES.map((role) => (

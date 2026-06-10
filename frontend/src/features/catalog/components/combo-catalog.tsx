@@ -1,8 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-import { ProductPurchaseActions } from "@/features/customer";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -11,7 +11,11 @@ import { CatalogPagination } from "./catalog-pagination";
 
 const COMBOS_PAGE_SIZE = 12;
 
-export function ComboCatalog() {
+type ComboCatalogProps = {
+  renderPurchaseActions?: (comboId: string) => ReactNode;
+};
+
+export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
   const [page, setPage] = useState(1);
   const filter = useMemo(
     () => ({ page, page_size: COMBOS_PAGE_SIZE }),
@@ -31,8 +35,8 @@ export function ComboCatalog() {
 
   if (combosQuery.isError) {
     return (
-      <section className="mx-auto w-full max-w-7xl space-y-2 border-t border-border px-4 pb-10 pt-10 sm:px-6 lg:px-8">
-        <h2 className="font-heading text-2xl font-medium text-foreground">
+      <section className="mx-auto w-full max-w-7xl space-y-2 px-4 pb-10 pt-10 sm:px-6 lg:px-8">
+        <h2 className="font-heading text-2xl font-medium text-ink">
           Combo deals
         </h2>
         <p className="text-sm text-error">Failed to load combo deals.</p>
@@ -45,44 +49,41 @@ export function ComboCatalog() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl space-y-6 border-t border-border px-4 pb-10 pt-10 sm:px-6 lg:px-8">
+    <section className="mx-auto w-full max-w-7xl space-y-6 bg-blush px-4 pb-12 pt-12 sm:px-6 lg:px-8">
       <div>
-        <h2 className="font-heading text-2xl font-medium text-foreground">
+        <h2 className="font-heading text-2xl font-medium text-ink">
           Combo deals
         </h2>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-sm text-ink-2">
           Limited-time bundles with special pricing.
         </p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         {combos.map((combo) => (
           <article
             key={combo.id}
-            className="rounded-lg border border-border bg-surface p-6"
+            className="rounded-card bg-surface p-6 shadow-rest"
           >
-            <h3 className="font-heading text-xl font-medium text-foreground">
+            <h3 className="font-heading text-xl font-medium text-ink">
               {combo.name}
             </h3>
-            <p className="mt-2 text-sm text-muted">
+            <p className="mt-2 text-sm text-ink-2">
               Valid until {formatDateTime(combo.ends_at)}
             </p>
-            <ul className="mt-4 space-y-1 text-sm text-muted">
+            <ul className="mt-4 space-y-1 text-sm text-ink-2">
               {combo.items.map((item) => (
                 <li key={`${combo.id}-${item.product_id}`}>
                   {item.quantity}× {item.product_name}
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-lg font-medium text-foreground">
+            <p className="text-price mt-4 text-lg">
               {formatPriceCents(combo.price_cents)}
             </p>
-            <div className="mt-4">
-              <ProductPurchaseActions
-                comboId={combo.id}
-                label="Add combo to cart"
-              />
-            </div>
+            {renderPurchaseActions ? (
+              <div className="mt-4">{renderPurchaseActions(combo.id)}</div>
+            ) : null}
           </article>
         ))}
       </div>

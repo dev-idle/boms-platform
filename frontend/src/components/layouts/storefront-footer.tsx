@@ -1,48 +1,54 @@
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
+import { BRAND } from "@/constants/brand";
 import { ROUTE } from "@/constants/routes";
 
 export function StorefrontFooter() {
   return (
-    <footer className="border-t border-border bg-surface">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <footer className="relative overflow-hidden bg-blush">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-8 bottom-0 select-none opacity-[0.04]"
+      >
+        <BrandLogo className="scale-[2.5] origin-bottom-right" linked={false} size="lg" />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <p className="font-heading text-lg font-medium text-foreground">
-              BOMS Bakery
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Handcrafted pastries and celebration cakes, made fresh daily for
-              pickup.
+            <BrandLogo linked={false} size="md" />
+            <p className="mt-3 text-sm leading-relaxed text-ink-2">
+              {BRAND.tagline}
             </p>
           </div>
 
           <div>
-            <p className="text-sm font-medium text-foreground">Visit us</p>
-            <address className="mt-2 space-y-1 text-sm not-italic text-muted">
-              <p>123 Greige Lane</p>
+            <p className="text-sm font-medium text-ink">Visit us</p>
+            <address className="mt-2 space-y-1 text-sm not-italic text-ink-2">
+              <p>{BRAND.addressLine}</p>
               <p>
                 <a
-                  className="transition-colors duration-default ease-default hover:text-foreground"
-                  href="mailto:hello@boms.example"
+                  className="transition-colors duration-standard ease-default hover:text-rose-500"
+                  href={`mailto:${BRAND.contactEmail}`}
                 >
-                  hello@boms.example
+                  {BRAND.contactEmail}
                 </a>
               </p>
               <p>
                 <a
-                  className="transition-colors duration-default ease-default hover:text-foreground"
-                  href="tel:+15551234567"
+                  className="transition-colors duration-standard ease-default hover:text-rose-500"
+                  href={`tel:${BRAND.contactPhone.replace(/\D/g, "")}`}
                 >
-                  (555) 123-4567
+                  {BRAND.contactPhone}
                 </a>
               </p>
             </address>
           </div>
 
           <div>
-            <p className="text-sm font-medium text-foreground">Hours</p>
-            <ul className="mt-2 space-y-1 text-sm text-muted">
+            <p className="text-sm font-medium text-ink">Hours</p>
+            <ul className="mt-2 space-y-1 text-sm text-ink-2">
               <li>Mon–Fri · 7:00 AM – 6:00 PM</li>
               <li>Sat · 8:00 AM – 5:00 PM</li>
               <li>Sun · 8:00 AM – 2:00 PM</li>
@@ -50,28 +56,28 @@ export function StorefrontFooter() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col gap-4 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-subtle">
-            © BOMS Bakery. All rights reserved.
+        <div className="mt-12 flex flex-col gap-4 pt-8 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-caption">
+            © {BRAND.name}. All rights reserved.
           </p>
           <nav
             aria-label="Policies"
-            className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted"
+            className="flex flex-wrap gap-x-6 gap-y-2 text-caption"
           >
             <Link
-              className="transition-colors duration-default ease-default hover:text-foreground"
+              className="transition-colors duration-standard ease-default hover:text-rose-500"
               href={ROUTE.home}
             >
               Privacy
             </Link>
             <Link
-              className="transition-colors duration-default ease-default hover:text-foreground"
+              className="transition-colors duration-standard ease-default hover:text-rose-500"
               href={ROUTE.home}
             >
               Terms
             </Link>
             <Link
-              className="transition-colors duration-default ease-default hover:text-foreground"
+              className="transition-colors duration-standard ease-default hover:text-rose-500"
               href={ROUTE.home}
             >
               Pickup policy

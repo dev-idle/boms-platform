@@ -1,11 +1,7 @@
 import { z } from "zod";
 
-import {
-  browserRequest,
-  browserRequestWithMeta,
-} from "@/lib/browser-api-client";
+import { browserRequest, browserRequestWithMeta } from "@/lib/browser-api-client";
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
-
 import {
   catalogCategoriesListFilterSchema,
   catalogCategorySchema,
@@ -22,7 +18,7 @@ import {
   type CatalogProduct,
   type CatalogProductsListFilterInput,
   type CatalogProductsListResult,
-} from "../schemas";
+} from "@/lib/schemas/catalog";
 
 export async function listCatalogCategories(
   input: CatalogCategoriesListFilterInput = { page: 1, page_size: 100 },

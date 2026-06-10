@@ -215,7 +215,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
               <FormControl>
                 <input
                   checked={field.value}
-                  className="size-4 rounded border-zinc-300"
+                  className="size-4 rounded border-border"
                   onChange={(event) => field.onChange(event.target.checked)}
                   type="checkbox"
                 />
@@ -244,12 +244,12 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
             </Button>
           </div>
           {productsQuery.isPending ? (
-            <p className="text-sm text-zinc-500">Loading products…</p>
+            <p className="text-sm text-muted">Loading products…</p>
           ) : null}
           {fields.map((field, index) => (
             <div
               key={field.id}
-              className="grid gap-3 rounded-lg border border-zinc-200 p-3 sm:grid-cols-[1fr_120px_auto] dark:border-zinc-800"
+              className="grid gap-3 rounded-card border border-border p-3 sm:grid-cols-[1fr_120px_auto]"
             >
               <FormField
                 control={form.control}
@@ -259,7 +259,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
                     <FormLabel className="sr-only">Product</FormLabel>
                     <FormControl>
                       <select
-                        className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+                        className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
                         value={productField.value}
                         onChange={productField.onChange}
                       >

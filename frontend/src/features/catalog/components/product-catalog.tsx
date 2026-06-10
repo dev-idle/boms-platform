@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import { toCatalogProductsFilter } from "../lib/catalog-browse-params";
 import {
@@ -15,6 +16,15 @@ import { CatalogSearchForm } from "./catalog-search-form";
 import { ProductCard } from "./product-card";
 
 const PRODUCTS_PAGE_SIZE = 24;
+
+function filterPillClass(active: boolean) {
+  return cn(
+    "min-h-11 rounded-full border px-4 py-2 text-sm font-medium transition-[background-color,color,box-shadow] duration-standard ease-default",
+    active
+      ? "border-rose-200 bg-rose-100 text-rose-700"
+      : "border-border bg-surface text-ink-2 hover:bg-blush hover:text-rose-500",
+  );
+}
 
 export function ProductCatalog() {
   const {
@@ -39,12 +49,12 @@ export function ProductCatalog() {
   const pagination = productsQuery.data?.pagination;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="space-y-3">
-        <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">
+        <h1 className="font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl">
           Shop
         </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">
+        <p className="max-w-2xl text-sm leading-relaxed text-ink-2">
           Browse our daily selection. Filter by category or search by name.
         </p>
       </header>
@@ -58,11 +68,7 @@ export function ProductCatalog() {
           ) : categories.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               <button
-                className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors duration-default ease-default ${
-                  params.category === undefined
-                    ? "border-primary bg-primary-subtle text-foreground"
-                    : "border-border bg-surface text-muted hover:border-border-strong hover:text-foreground"
-                }`}
+                className={filterPillClass(params.category === undefined)}
                 onClick={() => setCategory(undefined)}
                 type="button"
               >
@@ -71,11 +77,7 @@ export function ProductCatalog() {
               {categories.map((category) => (
                 <button
                   key={category.id}
-                  className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors duration-default ease-default ${
-                    params.category === category.id
-                      ? "border-primary bg-primary-subtle text-foreground"
-                      : "border-border bg-surface text-muted hover:border-border-strong hover:text-foreground"
-                  }`}
+                  className={filterPillClass(params.category === category.id)}
                   onClick={() => setCategory(category.id)}
                   type="button"
                 >
@@ -105,13 +107,13 @@ export function ProductCatalog() {
           ) : productsQuery.isError ? (
             <p className="text-sm text-error">Failed to load products.</p>
           ) : products.length === 0 ? (
-            <p className="text-sm text-muted">
+            <p className="text-sm text-ink-2">
               {hasActiveFilters
                 ? "No products match your filters."
                 : "No products available."}
             </p>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

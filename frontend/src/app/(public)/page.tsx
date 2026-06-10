@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
-import { StorefrontHome } from "@/features/catalog";
+import { BRAND } from "@/constants/brand";
+import { StorefrontHome } from "@/features/catalog/components/storefront-home";
 import {
   dalListCatalogCategories,
   dalListCatalogProducts,
@@ -9,8 +10,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Home",
-  description:
-    "Handcrafted pastries and celebration cakes — order online for pickup at BOMS Bakery.",
+  description: `Order online for pickup at ${BRAND.name}. ${BRAND.tagline}`,
 };
 
 export default async function HomePage() {

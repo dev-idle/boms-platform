@@ -41,12 +41,12 @@ export function OperationalAccountProfileForm({
   const me = useMe();
 
   if (me.isPending) {
-    return <p className="text-sm text-zinc-500">Loading profile…</p>;
+    return <p className="text-sm text-muted">Loading profile…</p>;
   }
 
   if (!me.data || !isOperationalMe(me.data, expectedRole)) {
     return (
-      <p className="text-sm text-zinc-500">{roleLabel} profile not available.</p>
+      <p className="text-sm text-muted">{roleLabel} profile not available.</p>
     );
   }
 

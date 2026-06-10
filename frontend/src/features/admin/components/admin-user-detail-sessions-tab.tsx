@@ -24,11 +24,11 @@ export function AdminUserDetailSessionsTab({
 
   return (
     <div className="max-w-2xl space-y-4">
-      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
+      <div className="rounded-lg border border-border p-4 rounded-card border bg-surface">
+        <h2 className="font-medium text-ink">
           Revoke sessions
         </h2>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+        <p className="mt-1 text-sm text-ink-2">
           Force this user to sign in again on all devices.
         </p>
         <Button
@@ -41,11 +41,11 @@ export function AdminUserDetailSessionsTab({
         </Button>
       </div>
 
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/60 dark:bg-red-950/40">
-        <h2 className="font-semibold text-red-800 dark:text-red-300">
+      <div className="rounded-lg border border-error/30 bg-error-bg p-4 rounded-card">
+        <h2 className="font-medium text-red-800">
           Disable user
         </h2>
-        <p className="mt-1 text-sm text-red-700 dark:text-red-200">
+        <p className="mt-1 text-sm text-red-700">
           This action soft-deletes the account.
         </p>
         <Button

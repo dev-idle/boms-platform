@@ -25,7 +25,7 @@ export function StaffShell({ children }: StaffShellProps) {
   return (
     <>
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-6 py-4">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
           <span className="role-badge">Staff</span>
           <nav
             className="flex flex-wrap items-center gap-4 text-sm font-medium text-muted"
@@ -38,8 +38,8 @@ export function StaffShell({ children }: StaffShellProps) {
                   key={href}
                   href={href}
                   className={cn(
-                    "rounded-md px-2 py-1 transition-colors duration-default ease-default hover:text-foreground",
-                    active && "bg-primary-subtle text-foreground",
+                    "rounded-full px-3 py-1.5 transition-colors duration-standard ease-default hover:text-ink",
+                    active && "bg-rose-100 text-rose-700",
                   )}
                   aria-current={active ? "page" : undefined}
                 >

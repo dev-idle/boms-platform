@@ -4,10 +4,10 @@ export default function CustomerAccountProfilePage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-medium text-ink">
           My profile
         </h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+        <p className="mt-2 text-sm text-ink-2">
           Update your customer profile details.
         </p>
       </div>

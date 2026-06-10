@@ -25,21 +25,21 @@ function CartLineItem({ item }: { item: CartItem }) {
   const removeItem = useRemoveCartItem();
 
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+    <li className="flex flex-col gap-3 rounded-lg border border-border p-4 rounded-card border bg-surface">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="font-medium text-zinc-900 dark:text-zinc-50">{item.name}</p>
-          <p className="text-sm text-zinc-500">
+          <p className="font-medium text-ink">{item.name}</p>
+          <p className="text-sm text-muted">
             {item.line_type === "combo" ? "Combo" : "Product"} ·{" "}
             {formatPriceCents(item.unit_price_cents)} each
           </p>
           {!item.is_available ? (
-            <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+            <p className="mt-1 text-sm text-amber-700">
               No longer available — remove to continue checkout.
             </p>
           ) : null}
         </div>
-        <p className="font-semibold text-zinc-900 dark:text-zinc-50">
+        <p className="font-medium text-ink">
           {formatPriceCents(item.line_total_cents)}
         </p>
       </div>
@@ -85,7 +85,7 @@ export function CartView() {
   const [discountCode, setDiscountCode] = useState("");
 
   if (cartQuery.isPending) {
-    return <p className="text-sm text-zinc-500">Loading cart…</p>;
+    return <p className="text-sm text-muted">Loading cart…</p>;
   }
 
   if (cartQuery.isError) {
@@ -93,7 +93,7 @@ export function CartView() {
       isApiError(cartQuery.error) && cartQuery.error.isAuthError()
         ? "Sign in to view your cart."
         : "Failed to load cart.";
-    return <p className="text-sm text-red-600">{message}</p>;
+    return <p className="text-sm text-error">{message}</p>;
   }
 
   const cart = cartQuery.data;
@@ -105,7 +105,7 @@ export function CartView() {
     <div className="space-y-6">
       {cart.items.length === 0 ? (
         <div className="space-y-4">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-ink-2">
             Your cart is empty.
           </p>
           <Link href={ROUTE.products}>
@@ -122,25 +122,25 @@ export function CartView() {
             ))}
           </ul>
 
-          <div className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <div className="space-y-3 rounded-lg border border-border p-4 rounded-card border bg-surface">
             <div className="flex justify-between text-sm">
-              <span className="text-zinc-600 dark:text-zinc-400">Subtotal</span>
+              <span className="text-ink-2">Subtotal</span>
               <span>{formatPriceCents(cart.subtotal_cents)}</span>
             </div>
             {cart.discount ? (
-              <div className="flex justify-between text-sm text-emerald-700 dark:text-emerald-400">
+              <div className="flex justify-between text-sm text-emerald-700">
                 <span>Discount ({cart.discount.code})</span>
                 <span>-{formatPriceCents(cart.discount_cents)}</span>
               </div>
             ) : null}
-            <div className="flex justify-between text-base font-semibold">
+            <div className="flex justify-between text-base font-medium">
               <span>Total</span>
               <span>{formatPriceCents(cart.total_cents)}</span>
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+            <p className="text-sm font-medium text-ink">
               Discount code
             </p>
             <div className="flex flex-wrap gap-2">

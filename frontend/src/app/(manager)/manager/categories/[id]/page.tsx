@@ -16,21 +16,21 @@ export default function ManagerEditCategoryPage({ params }: PageProps) {
   const categoryQuery = useCategory(id);
 
   if (categoryQuery.isPending) {
-    return <p className="text-sm text-zinc-500">Loading category…</p>;
+    return <p className="text-sm text-muted">Loading category…</p>;
   }
 
   if (categoryQuery.isError) {
-    return <p className="text-sm text-red-600">Failed to load category.</p>;
+    return <p className="text-sm text-error">Failed to load category.</p>;
   }
 
   if (!categoryQuery.data) {
-    return <p className="text-sm text-zinc-500">Category not found.</p>;
+    return <p className="text-sm text-muted">Category not found.</p>;
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-medium text-ink">
           Edit category
         </h1>
       </div>

@@ -158,7 +158,7 @@ export function AdminUserDetailProfileTab({
 }: AdminUserDetailProfileTabProps) {
   if (user.role === USER_ROLE.customer) {
     return (
-      <p className="text-sm text-zinc-600 dark:text-zinc-300">
+      <p className="text-sm text-ink-2">
         Customer profiles are not editable from this endpoint.
       </p>
     );

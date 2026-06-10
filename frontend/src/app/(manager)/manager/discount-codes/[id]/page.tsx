@@ -16,21 +16,21 @@ export default function ManagerEditDiscountCodePage({ params }: PageProps) {
   const discountCodeQuery = useDiscountCode(id);
 
   if (discountCodeQuery.isPending) {
-    return <p className="text-sm text-zinc-500">Loading discount code…</p>;
+    return <p className="text-sm text-muted">Loading discount code…</p>;
   }
 
   if (discountCodeQuery.isError) {
-    return <p className="text-sm text-red-600">Failed to load discount code.</p>;
+    return <p className="text-sm text-error">Failed to load discount code.</p>;
   }
 
   if (!discountCodeQuery.data) {
-    return <p className="text-sm text-zinc-500">Discount code not found.</p>;
+    return <p className="text-sm text-muted">Discount code not found.</p>;
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-medium text-ink">
           Edit discount code
         </h1>
       </div>

@@ -115,7 +115,7 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
     <>
       <div className="max-w-2xl space-y-4">
         {user.role === USER_ROLE.admin || user.role === USER_ROLE.customer ? (
-          <p className="text-sm text-amber-800 dark:text-amber-200">
+          <p className="text-sm text-amber-800">
             Current role: <strong>{user.role}</strong>. Select an operational role below
             (staff, baker, or manager). Platform admin accounts are created via dev seed
             only.
@@ -135,7 +135,7 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
                   <FormLabel>Role</FormLabel>
                   <FormControl>
                     <select
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+                      className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
                       {...field}
                     >
                       {ASSIGNABLE_OPERATIONAL_ROLES.map((role) => (

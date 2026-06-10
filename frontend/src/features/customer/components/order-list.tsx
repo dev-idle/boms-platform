@@ -17,7 +17,7 @@ export function OrderList() {
   const ordersQuery = useOrders(filter);
 
   if (ordersQuery.isPending) {
-    return <p className="text-sm text-zinc-500">Loading orders…</p>;
+    return <p className="text-sm text-muted">Loading orders…</p>;
   }
 
   if (ordersQuery.isError) {
@@ -25,7 +25,7 @@ export function OrderList() {
       isApiError(ordersQuery.error) && ordersQuery.error.isAuthError()
         ? "Sign in to view your orders."
         : "Failed to load orders.";
-    return <p className="text-sm text-red-600">{message}</p>;
+    return <p className="text-sm text-error">{message}</p>;
   }
 
   const orders = ordersQuery.data?.orders ?? [];
@@ -33,7 +33,7 @@ export function OrderList() {
 
   if (orders.length === 0) {
     return (
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-ink-2">
         You have not placed any orders yet.
       </p>
     );
@@ -41,14 +41,14 @@ export function OrderList() {
 
   return (
     <div className="space-y-4">
-      <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+      <ul className="divide-y divide-border rounded-card border border-border">
         {orders.map((order) => (
           <li key={order.id} className="flex items-center justify-between gap-4 p-4">
             <div>
-              <p className="font-medium text-zinc-900 dark:text-zinc-50">
+              <p className="font-medium text-ink">
                 {formatPriceCents(order.total_cents)}
               </p>
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-muted">
                 {formatDateTime(order.created_at)} · {order.item_count} item
                 {order.item_count === 1 ? "" : "s"} · {order.status}
               </p>
@@ -72,7 +72,7 @@ export function OrderList() {
           >
             Previous
           </Button>
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
+          <span className="text-sm text-ink-2">
             Page {pagination.page} of {pagination.total_pages}
           </span>
           <Button

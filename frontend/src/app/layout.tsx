@@ -1,27 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
+import { Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 
 import "./globals.css";
-import { ColorModeListener } from "@/components/theme/color-mode-listener";
+import { BRAND } from "@/constants/brand";
 import { AuthBootstrap } from "@/features/auth/server";
-import { COLOR_MODE_INIT_SCRIPT } from "@/lib/theme/color-mode";
 import { QueryProvider } from "@/providers";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
+  axes: ["SOFT", "WONK", "opsz"],
 });
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -31,11 +25,11 @@ const appUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "BOMS",
-    template: "%s · BOMS",
+    default: BRAND.name,
+    template: `%s · ${BRAND.name}`,
   },
-  description: "Bakery Ordering and Management System",
-  applicationName: "BOMS",
+  description: BRAND.tagline,
+  applicationName: BRAND.name,
   referrer: "strict-origin-when-cross-origin",
 };
 
@@ -44,10 +38,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#faf7f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#1a141a" },
-  ],
+  themeColor: "#FBF6F2",
 };
 
 export default function RootLayout({
@@ -58,26 +49,36 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      data-mode="light"
+      className={`${fraunces.variable} ${inter.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col bg-bg font-sans text-foreground">
-        <Script id="color-mode-init" strategy="beforeInteractive">
-          {COLOR_MODE_INIT_SCRIPT}
-        </Script>
-        <ColorModeListener />
+      <body className="flex min-h-full flex-col bg-bg font-sans text-ink-2">
         <QueryProvider>
           <Suspense
             fallback={
-              <div className="flex flex-1 items-center justify-center text-sm text-muted">
+              <div className="flex flex-1 items-center justify-center text-caption">
                 Loading…
               </div>
             }
           >
             <AuthBootstrap>{children}</AuthBootstrap>
           </Suspense>
-          <Toaster closeButton richColors position="top-center" />
+          <Toaster
+            closeButton
+            position="top-center"
+            toastOptions={{
+              classNames: {
+                toast:
+                  "rounded-card border border-border bg-surface text-ink-2 shadow-rest",
+                title: "text-ink font-medium",
+                description: "text-muted",
+                success: "border-l-[3px] border-l-success !rounded-l-none",
+                error: "border-l-[3px] border-l-error !rounded-l-none",
+                warning: "border-l-[3px] border-l-warning !rounded-l-none",
+                info: "border-l-[3px] border-l-info !rounded-l-none",
+              },
+            }}
+          />
         </QueryProvider>
       </body>
     </html>

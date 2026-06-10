@@ -31,11 +31,11 @@ export function StaffOrdersTable() {
   const ordersQuery = useStaffOrders(filter);
 
   if (ordersQuery.isPending) {
-    return <p className="text-sm text-zinc-500">Loading orders…</p>;
+    return <p className="text-sm text-muted">Loading orders…</p>;
   }
 
   if (ordersQuery.isError) {
-    return <p className="text-sm text-red-600">Failed to load orders.</p>;
+    return <p className="text-sm text-error">Failed to load orders.</p>;
   }
 
   const orders = ordersQuery.data?.orders ?? [];
@@ -47,10 +47,10 @@ export function StaffOrdersTable() {
         {STATUS_FILTERS.map((option) => (
           <button
             key={option.label}
-            className={`rounded-full px-4 py-2 text-sm font-medium ${
+            className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-standard ease-default ${
               status === option.value
-                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                ? "bg-rose-500 text-surface"
+                : "bg-blush text-ink-2 hover:text-rose-500"
             }`}
             onClick={() => {
               setStatus(option.value);
@@ -64,25 +64,25 @@ export function StaffOrdersTable() {
       </div>
 
       {orders.length === 0 ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-ink-2">
           No orders match this filter.
         </p>
       ) : (
-        <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+        <ul className="divide-y divide-border rounded-card border border-border">
           {orders.map((order) => (
             <li
               key={order.id}
               className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                <p className="font-medium text-ink">
                   {formatPriceCents(order.total_cents)} · {order.status}
                 </p>
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-muted">
                   {formatDateTime(order.created_at)} · {order.item_count} item
                   {order.item_count === 1 ? "" : "s"}
                 </p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="text-sm text-ink-2">
                   {order.customer.display_name
                     ? `${order.customer.display_name} · `
                     : ""}
@@ -109,7 +109,7 @@ export function StaffOrdersTable() {
           >
             Previous
           </Button>
-          <span className="text-sm text-zinc-600">
+          <span className="text-sm text-ink-2">
             Page {pagination.page} of {pagination.total_pages}
           </span>
           <Button

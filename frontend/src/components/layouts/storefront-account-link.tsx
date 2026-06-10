@@ -16,7 +16,7 @@ export function StorefrontAccountLink() {
 
   return (
     <Link
-      className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors duration-default ease-default hover:bg-surface-alt"
+      className="flex min-h-11 items-center rounded-full px-3 py-2 text-sm font-medium text-ink transition-colors duration-standard ease-default hover:bg-blush hover:text-rose-500"
       href={href}
     >
       {label}

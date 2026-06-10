@@ -123,7 +123,7 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
               <FormControl>
                 <input
                   checked={field.value}
-                  className="h-4 w-4 rounded border-zinc-300"
+                  className="h-4 w-4 rounded border-border"
                   onChange={(event) => field.onChange(event.target.checked)}
                   type="checkbox"
                 />

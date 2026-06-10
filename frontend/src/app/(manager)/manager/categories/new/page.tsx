@@ -11,7 +11,7 @@ export default function ManagerNewCategoryPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-medium text-ink">
           New category
         </h1>
       </div>

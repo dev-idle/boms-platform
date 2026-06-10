@@ -1,4 +1,4 @@
-import type { CatalogCategory, CatalogProduct } from "../schemas";
+import type { CatalogCategory, CatalogProduct } from "@/lib/schemas/catalog";
 import { HomeBrandStory } from "./home-brand-story";
 import { HomeCategories } from "./home-categories";
 import { HomeCta } from "./home-cta";

@@ -1,19 +1,20 @@
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 
 import {
-  getCatalogProduct,
-  listCatalogCategories,
-  listCatalogCombos,
-  listCatalogProducts,
-} from "../api";
-import {
   catalogCategoriesListFilterSchema,
   catalogCombosListFilterSchema,
   catalogProductsListFilterSchema,
   type CatalogCategoriesListFilterInput,
   type CatalogCombosListFilterInput,
   type CatalogProductsListFilterInput,
-} from "../schemas";
+} from "@/lib/schemas/catalog";
+
+import {
+  getCatalogProduct,
+  listCatalogCategories,
+  listCatalogCombos,
+  listCatalogProducts,
+} from "../api";
 
 export const catalogQueryKeys = {
   categoriesRoot: ["catalog", "categories"] as const,
@@ -60,6 +61,7 @@ export function catalogProductQueryOptions(id: string, enabled: boolean) {
     queryFn: () => getCatalogProduct(id),
     enabled,
     retry: false,
+    staleTime: 60_000,
   });
 }
 

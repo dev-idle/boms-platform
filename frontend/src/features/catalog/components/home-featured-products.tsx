@@ -2,8 +2,9 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { ROUTE } from "@/constants/routes";
+import { cn } from "@/lib/utils";
 
-import type { CatalogProduct } from "../schemas";
+import type { CatalogProduct } from "@/lib/schemas/catalog";
 import { ProductCard } from "./product-card";
 
 type HomeFeaturedProductsProps = {
@@ -14,18 +15,18 @@ export function HomeFeaturedProducts({ products }: HomeFeaturedProductsProps) {
   return (
     <section
       aria-labelledby="home-featured-heading"
-      className="border-t border-border bg-surface-alt/40 py-16 sm:py-20"
+      className="bg-blush py-24 sm:py-28"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2
-              className="font-heading text-2xl font-medium tracking-tight text-foreground sm:text-3xl"
+              className="font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl"
               id="home-featured-heading"
             >
               Fresh from the oven
             </h2>
-            <p className="mt-2 text-sm text-muted">
+            <p className="mt-3 text-sm text-ink-2">
               Customer favorites and seasonal picks, made daily.
             </p>
           </div>
@@ -35,10 +36,10 @@ export function HomeFeaturedProducts({ products }: HomeFeaturedProductsProps) {
         </div>
 
         {products.length === 0 ? (
-          <p className="mt-10 text-sm text-muted">
+          <p className="mt-10 text-sm text-ink-2">
             Our shelves are being filled — check back soon or{" "}
             <Link
-              className="font-medium text-foreground underline underline-offset-4"
+              className="font-medium text-rose-500 underline-offset-4 hover:underline"
               href={ROUTE.products}
             >
               browse the shop
@@ -46,9 +47,14 @@ export function HomeFeaturedProducts({ products }: HomeFeaturedProductsProps) {
             .
           </p>
         ) : (
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+          <div className="reveal reveal-delay-1 mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {products.map((product, index) => (
+              <div
+                key={product.id}
+                className={cn(index === 0 && "sm:col-span-2")}
+              >
+                <ProductCard featured={index === 0} product={product} />
+              </div>
             ))}
           </div>
         )}

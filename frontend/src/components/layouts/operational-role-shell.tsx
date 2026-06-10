@@ -22,10 +22,10 @@ export function OperationalRoleShell({
       <header className="border-b border-border bg-surface">
         <nav className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-4 text-sm font-medium text-muted">
           <span className="role-badge">{roleLabel}</span>
-          <Link className="transition-colors duration-default ease-default hover:text-foreground" href={profileHref}>
+          <Link className="transition-colors duration-standard ease-default hover:text-ink" href={profileHref}>
             Profile
           </Link>
-          <Link className="transition-colors duration-default ease-default hover:text-foreground" href={passwordHref}>
+          <Link className="transition-colors duration-standard ease-default hover:text-ink" href={passwordHref}>
             Password
           </Link>
           <div className="ml-auto flex items-center gap-3">

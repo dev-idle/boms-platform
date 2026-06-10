@@ -121,7 +121,7 @@ export function DiscountCodeForm({
               <FormLabel>Discount type</FormLabel>
               <FormControl>
                 <select
-                  className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+                  className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
                   value={field.value}
                   onChange={field.onChange}
                 >
@@ -247,7 +247,7 @@ export function DiscountCodeForm({
               <FormControl>
                 <input
                   checked={field.value}
-                  className="size-4 rounded border-zinc-300"
+                  className="size-4 rounded border-border"
                   onChange={(event) => field.onChange(event.target.checked)}
                   type="checkbox"
                 />
@@ -258,7 +258,7 @@ export function DiscountCodeForm({
         />
 
         {mode === "edit" && discountCode ? (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted">
             Used {discountCode.used_count} time
             {discountCode.used_count === 1 ? "" : "s"}
           </p>

@@ -1,23 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { ProductPurchaseActions } from "@/features/customer";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
+import type { CatalogProduct } from "@/lib/schemas/catalog";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useCatalogProduct } from "../hooks";
 
 type ProductDetailProps = {
   productId: string;
+  /** Server-fetched product avoids a duplicate client request on first paint. */
+  initialProduct?: CatalogProduct;
+  purchaseActions?: ReactNode;
 };
 
-export function ProductDetail({ productId }: ProductDetailProps) {
+export function ProductDetail({
+  productId,
+  initialProduct,
+  purchaseActions,
+}: ProductDetailProps) {
   const isValidId = z.string().uuid().safeParse(productId).success;
-  const productQuery = useCatalogProduct(productId);
+  const productQuery = useCatalogProduct(productId, {
+    enabled: isValidId && !initialProduct,
+  });
 
   if (!isValidId) {
     return (
@@ -27,7 +37,9 @@ export function ProductDetail({ productId }: ProductDetailProps) {
     );
   }
 
-  if (productQuery.isPending) {
+  const product = initialProduct ?? productQuery.data;
+
+  if (!product && productQuery.isPending) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <p className="text-sm text-muted">Loading product…</p>
@@ -35,7 +47,7 @@ export function ProductDetail({ productId }: ProductDetailProps) {
     );
   }
 
-  if (productQuery.isError) {
+  if (!product && productQuery.isError) {
     const message =
       isApiError(productQuery.error) && productQuery.error.status === 404
         ? "Product not found."
@@ -47,7 +59,6 @@ export function ProductDetail({ productId }: ProductDetailProps) {
     );
   }
 
-  const product = productQuery.data;
   if (!product) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -65,7 +76,7 @@ export function ProductDetail({ productId }: ProductDetailProps) {
       </Link>
 
       <article className="mt-8 grid gap-10 lg:grid-cols-2 lg:gap-16">
-        <div className="overflow-hidden rounded-lg border border-border bg-surface-alt">
+        <div className="overflow-hidden rounded-card bg-blush shadow-rest">
           {product.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are external manager-provided links
             <img
@@ -74,30 +85,28 @@ export function ProductDetail({ productId }: ProductDetailProps) {
               src={product.image_url}
             />
           ) : (
-            <div className="flex aspect-square items-center justify-center text-sm text-subtle">
+            <div className="flex aspect-square items-center justify-center text-caption">
               No image available
             </div>
           )}
         </div>
 
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-subtle">
+          <p className="text-caption uppercase tracking-wide">
             {product.category_name}
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-2 font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl">
             {product.name}
           </h1>
-          <p className="mt-4 text-2xl font-medium text-foreground">
+          <p className="text-price mt-4 text-2xl">
             {formatPriceCents(product.price_cents)}
           </p>
           {product.description ? (
-            <p className="mt-6 text-base leading-relaxed text-muted">
+            <p className="mt-6 text-base leading-relaxed text-ink-2">
               {product.description}
             </p>
           ) : null}
-          <div className="mt-8">
-            <ProductPurchaseActions productId={product.id} />
-          </div>
+          {purchaseActions ? <div className="mt-8">{purchaseActions}</div> : null}
         </div>
       </article>
     </div>

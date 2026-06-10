@@ -93,7 +93,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
               <FormLabel>Category</FormLabel>
               <FormControl>
                 <select
-                  className="flex h-10 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  className="flex h-10 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
                   onChange={field.onChange}
                   value={field.value}
                 >
@@ -194,7 +194,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
               <FormControl>
                 <input
                   checked={field.value}
-                  className="h-4 w-4 rounded border-zinc-300"
+                  className="h-4 w-4 rounded border-border"
                   onChange={(event) => field.onChange(event.target.checked)}
                   type="checkbox"
                 />

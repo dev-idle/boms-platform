@@ -16,21 +16,21 @@ export default function ManagerEditComboPage({ params }: PageProps) {
   const comboQuery = useCombo(id);
 
   if (comboQuery.isPending) {
-    return <p className="text-sm text-zinc-500">Loading combo…</p>;
+    return <p className="text-sm text-muted">Loading combo…</p>;
   }
 
   if (comboQuery.isError) {
-    return <p className="text-sm text-red-600">Failed to load combo.</p>;
+    return <p className="text-sm text-error">Failed to load combo.</p>;
   }
 
   if (!comboQuery.data) {
-    return <p className="text-sm text-zinc-500">Combo not found.</p>;
+    return <p className="text-sm text-muted">Combo not found.</p>;
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-medium text-ink">
           Edit combo
         </h1>
       </div>

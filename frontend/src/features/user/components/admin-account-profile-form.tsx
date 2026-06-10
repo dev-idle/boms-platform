@@ -10,11 +10,11 @@ export function AdminAccountProfileForm() {
   const me = useMe();
 
   if (me.isPending) {
-    return <p className="text-sm text-zinc-500">Loading profile…</p>;
+    return <p className="text-sm text-muted">Loading profile…</p>;
   }
 
   if (!me.data || me.data.role !== USER_ROLE.admin) {
-    return <p className="text-sm text-zinc-500">Admin profile not available.</p>;
+    return <p className="text-sm text-muted">Admin profile not available.</p>;
   }
 
   return (

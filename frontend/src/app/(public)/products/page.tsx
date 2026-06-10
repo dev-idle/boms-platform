@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { ComboCatalog, ProductCatalog } from "@/features/catalog";
+import { ProductCatalog } from "@/features/catalog/components/product-catalog";
+
+import { ComboCatalogSection } from "./combo-catalog-section";
 
 export const metadata: Metadata = {
   title: "Shop",
@@ -18,7 +20,7 @@ export default function ProductsPage() {
       }
     >
       <ProductCatalog />
-      <ComboCatalog />
+      <ComboCatalogSection />
     </Suspense>
   );
 }

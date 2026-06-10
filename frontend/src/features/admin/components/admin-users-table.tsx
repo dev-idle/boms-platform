@@ -30,10 +30,10 @@ export function AdminUsersTable() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-medium text-ink">
             Admin users
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+          <p className="mt-2 text-sm text-ink-2">
             Manage operational users and account status.
           </p>
         </div>
@@ -72,10 +72,10 @@ export function AdminUsersTable() {
         ) : null}
       </form>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-        <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
-          <thead className="bg-zinc-50 dark:bg-zinc-900">
-            <tr className="text-left text-xs uppercase tracking-wide text-zinc-500">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="min-w-full divide-y divide-border text-sm">
+          <thead className="bg-surface-alt">
+            <tr className="text-left text-xs uppercase tracking-wide text-muted">
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Name</th>
@@ -83,16 +83,16 @@ export function AdminUsersTable() {
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <tbody className="divide-y divide-border">
             {usersQuery.isPending ? (
               <tr>
-                <td className="px-4 py-4 text-zinc-500" colSpan={5}>
+                <td className="px-4 py-4 text-muted" colSpan={5}>
                   Loading users…
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-zinc-500" colSpan={5}>
+                <td className="px-4 py-4 text-muted" colSpan={5}>
                   No users found.
                 </td>
               </tr>
@@ -109,7 +109,7 @@ export function AdminUsersTable() {
                   </td>
                   <td className="px-4 py-3">
                     <Link
-                      className="text-sm font-medium text-zinc-900 underline dark:text-zinc-100"
+                      className="text-sm font-medium text-ink underline"
                       href={ROUTE.admin.userDetail(user.id)}
                     >
                       Detail
@@ -123,7 +123,7 @@ export function AdminUsersTable() {
       </div>
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">
+        <p className="text-sm text-ink-2">
           Page {pagination?.page ?? page} of {pagination?.total_pages ?? 1}
         </p>
         <div className="flex gap-2">
