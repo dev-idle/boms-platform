@@ -14,7 +14,7 @@ export function StorefrontFooter() {
         <BrandLogo className="scale-[2.5] origin-bottom-right" linked={false} size="lg" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+      <div className="storefront-container relative py-16 sm:py-20">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <BrandLogo linked={false} size="md" />

@@ -16,9 +16,9 @@ export function HomeCategories({ categories }: HomeCategoriesProps) {
   return (
     <section
       aria-labelledby="home-categories-heading"
-      className="bg-bg py-24 sm:py-28"
+      className="storefront-section bg-bg"
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="storefront-container">
         <div className="reveal flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2

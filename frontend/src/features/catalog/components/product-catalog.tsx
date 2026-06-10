@@ -49,7 +49,7 @@ export function ProductCatalog() {
   const pagination = productsQuery.data?.pagination;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="storefront-container py-12">
       <header className="space-y-3">
         <h1 className="font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl">
           Shop

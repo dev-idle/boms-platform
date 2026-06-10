@@ -32,6 +32,7 @@ export {
 } from "./hooks";
 export {
   buildCatalogBrowseHref,
+  CATALOG_SEARCH_MAX_LENGTH,
   parseCatalogBrowseParams,
   toCatalogProductsFilter,
 } from "./lib/catalog-browse-params";

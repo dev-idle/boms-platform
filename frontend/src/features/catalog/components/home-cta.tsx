@@ -3,10 +3,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ROUTE } from "@/constants/routes";
 
+import { CUSTOM_CAKE_BROWSE_HREF } from "../lib/storefront-links";
+
 export function HomeCta() {
   return (
-    <section className="bg-blush py-24 sm:py-28">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section className="storefront-section bg-blush">
+      <div className="storefront-container">
         <div className="reveal rounded-card bg-surface px-8 py-14 text-center shadow-rest sm:px-12 sm:py-16">
           <h2 className="font-heading text-3xl font-medium tracking-tight text-ink sm:text-4xl">
             Planning a celebration?
@@ -20,7 +22,7 @@ export function HomeCta() {
               <Link href={ROUTE.products}>Order for pickup</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href={ROUTE.register}>Sign up free</Link>
+              <Link href={CUSTOM_CAKE_BROWSE_HREF}>Custom cakes</Link>
             </Button>
           </div>
         </div>

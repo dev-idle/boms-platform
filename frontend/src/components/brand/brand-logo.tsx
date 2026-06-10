@@ -1,23 +1,24 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import Link from "next/link";
 
-import { BRAND } from "@/constants/brand";
 import { ROUTE } from "@/constants/routes";
 import { cn } from "@/lib/utils";
 
 import { BrandMark } from "./brand-mark";
+import { BrandWordmark } from "./brand-wordmark";
 
-const brandWordmarkPrefix = BRAND.name.slice(0, -1);
-const brandWordmarkAccent = BRAND.name.slice(-1);
+type BrandLogoSize = NonNullable<VariantProps<typeof brandLogoVariants>["size"]>;
 
 const brandLogoVariants = cva(
-  "inline-flex shrink-0 items-center font-heading font-normal tracking-tight text-ink",
+  "inline-flex shrink-0 items-center leading-none text-ink",
   {
     variants: {
       size: {
-        sm: "gap-2 text-lg",
-        md: "gap-2.5 text-xl",
-        lg: "gap-3 text-2xl",
+        sm: "gap-2.5 text-[1.75rem]",
+        md: "gap-3 text-[2.125rem]",
+        header: "gap-2.5 text-[1.9rem] sm:gap-3 sm:text-[2.1rem] lg:text-[2.3rem]",
+        nav: "gap-3 text-[2.25rem] sm:text-[2.5rem] lg:text-[2.65rem]",
+        lg: "gap-3.5 text-[2.75rem] sm:text-3xl",
       },
     },
     defaultVariants: {
@@ -26,59 +27,47 @@ const brandLogoVariants = cva(
   },
 );
 
+const markSizeForLogo: Record<
+  BrandLogoSize,
+  "sm" | "md" | "lg" | "xl" | "2xl"
+> = {
+  sm: "md",
+  md: "lg",
+  header: "lg",
+  nav: "xl",
+  lg: "2xl",
+};
+
 type BrandLogoProps = VariantProps<typeof brandLogoVariants> & {
   className?: string;
   /** When false, renders a non-interactive wordmark (e.g. footer heading). */
   linked?: boolean;
 };
 
-function BrandLogoContent({
-  className,
-  size,
-}: Pick<BrandLogoProps, "className" | "size">) {
-  const resolvedSize = size ?? "sm";
-
+function BrandLogoInner({ size }: { size: BrandLogoSize | null | undefined }) {
   return (
-    <span className={cn(brandLogoVariants({ size }), className)}>
-      <BrandMark size={resolvedSize} />
-      <span className="leading-none">
-        {brandWordmarkPrefix}
-        <span className="text-rose-500">{brandWordmarkAccent}</span>
-      </span>
-    </span>
+    <>
+      <BrandMark size={markSizeForLogo[size ?? "sm"]} />
+      <BrandWordmark />
+    </>
   );
 }
 
-export function BrandLogo({
-  className,
-  size,
-  linked = true,
-}: BrandLogoProps) {
-  const resolvedSize = size ?? "sm";
-
+export function BrandLogo({ className, size, linked = true }: BrandLogoProps) {
   if (!linked) {
-    return <BrandLogoContent className={className} size={size} />;
+    return (
+      <span className={cn(brandLogoVariants({ size }), className)}>
+        <BrandLogoInner size={size} />
+      </span>
+    );
   }
 
   return (
     <Link
-      className={cn(
-        brandLogoVariants({ size }),
-        "group transition-colors duration-standard ease-default hover:text-rose-500",
-        className,
-      )}
+      className={cn(brandLogoVariants({ size }), "brand-logo", className)}
       href={ROUTE.home}
     >
-      <BrandMark
-        className="transition-transform duration-standard ease-default group-hover:scale-105 motion-reduce:transform-none"
-        size={resolvedSize}
-      />
-      <span className="leading-none">
-        {brandWordmarkPrefix}
-        <span className="text-rose-500 transition-colors duration-standard ease-default group-hover:text-rose-600">
-          {brandWordmarkAccent}
-        </span>
-      </span>
+      <BrandLogoInner size={size} />
     </Link>
   );
 }

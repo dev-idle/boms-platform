@@ -4,10 +4,12 @@ import { ROUTE } from "@/constants/routes";
 
 import type { CatalogProductsListFilterInput } from "@/lib/schemas/catalog";
 
+export const CATALOG_SEARCH_MAX_LENGTH = 100;
+
 const catalogBrowseParamsSchema = z.object({
   search: z
     .string()
-    .max(100)
+    .max(CATALOG_SEARCH_MAX_LENGTH)
     .optional()
     .transform((value) => value?.trim() ?? ""),
   category: z

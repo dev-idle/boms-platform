@@ -18,6 +18,7 @@
   --color-rose-100: #f7e6eb;
   --color-rose-200: #efd2db;
   --color-rose-300: #e2b3c3;
+  --color-rose-400: #cf6b8a;
   --color-rose-500: #b9486e;
   --color-rose-600: #a03a5c;
   --color-rose-700: #86304d;
@@ -122,6 +123,7 @@
   --color-rose-100: var(--color-rose-100);
   --color-rose-200: var(--color-rose-200);
   --color-rose-300: var(--color-rose-300);
+  --color-rose-400: var(--color-rose-400);
   --color-rose-500: var(--color-rose-500);
   --color-rose-600: var(--color-rose-600);
   --color-rose-700: var(--color-rose-700);
@@ -183,6 +185,8 @@
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-brand: var(--font-cormorant), "Cormorant Garamond", ui-serif, Georgia,
+    serif;
   --font-mono: ui-monospace, monospace;
 }
 
@@ -289,6 +293,309 @@
     width: 2.5rem;
   }
 
+  .brand-wordmark {
+    align-items: baseline;
+    color: var(--color-ink);
+    display: inline-flex;
+    font-family: var(--font-brand);
+    font-style: italic;
+    font-weight: 500;
+    letter-spacing: 0.045em;
+    line-height: 1;
+  }
+
+  .brand-wordmark-body,
+  .brand-wordmark-accent {
+    display: inline-block;
+    transform-origin: center bottom;
+    transition:
+      color 0.5s var(--ease-luxury),
+      letter-spacing 0.5s var(--ease-luxury),
+      transform 0.5s var(--ease-luxury);
+  }
+
+  .brand-wordmark-body {
+    color: inherit;
+    transition-delay: 50ms;
+  }
+
+  .brand-wordmark-accent {
+    color: var(--theme-primary);
+    font-weight: 600;
+    margin-inline-start: -0.02em;
+    transition-delay: 100ms;
+  }
+
+  .brand-logo:hover .brand-wordmark-body {
+    color: var(--color-rose-600);
+    letter-spacing: 0.065em;
+    transform: translateY(-1px);
+  }
+
+  .brand-logo:hover .brand-wordmark-accent {
+    color: var(--color-rose-500);
+    transform: scale(1.12) translateY(-2px);
+  }
+
+  .brand-mark {
+    overflow: visible;
+  }
+
+  .brand-mark-petal {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition:
+      transform 0.5s var(--ease-luxury),
+      filter 0.5s var(--ease-luxury);
+  }
+
+  .brand-logo:hover .brand-mark-petal-outer {
+    transform: scale(1.035) rotate(-1.25deg);
+    transition-delay: 0ms;
+  }
+
+  .brand-logo:hover .brand-mark-petal-mid {
+    transform: scale(1.045);
+    transition-delay: 45ms;
+  }
+
+  .brand-logo:hover .brand-mark-petal-inner {
+    transform: scale(1.055);
+    transition-delay: 90ms;
+  }
+
+  .brand-logo:hover .brand-mark-petal-highlight {
+    filter: brightness(1.12);
+    transform: scale(1.07);
+    transition-delay: 110ms;
+  }
+
+  .brand-logo:hover .brand-mark-petal-deep {
+    transform: scale(1.025);
+    transition-delay: 130ms;
+  }
+
+  .storefront-eyebrow {
+    color: var(--color-muted);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .storefront-container {
+    margin-inline: auto;
+    max-width: 80rem;
+    padding-inline: 1.25rem;
+    width: 100%;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-container {
+      padding-inline: 2rem;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .storefront-container {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  .storefront-section {
+    padding-block: 6rem;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-section {
+      padding-block: 7rem;
+    }
+  }
+
+  .storefront-section-hero {
+    padding-block: 4rem 7rem;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-section-hero {
+      padding-block: 5rem 8rem;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .storefront-section-hero {
+      padding-block: 6rem 9rem;
+    }
+  }
+
+  .storefront-header {
+    background-color: color-mix(in srgb, var(--color-bg) 94%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid transparent;
+    transition:
+      border-color var(--duration-standard) var(--ease-luxury),
+      box-shadow var(--duration-standard) var(--ease-luxury);
+  }
+
+  .storefront-header-scrolled {
+    border-bottom-color: var(--color-border);
+    box-shadow: var(--shadow-rest);
+  }
+
+  .storefront-header-toolbar {
+    align-items: center;
+    display: flex;
+    height: 4.5rem;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  @media (min-width: 64rem) {
+    .storefront-header-toolbar {
+      height: 4.75rem;
+    }
+  }
+
+  .storefront-header-actions {
+    align-items: center;
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 0.125rem;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-header-actions {
+      gap: 0.25rem;
+    }
+  }
+
+  .storefront-header-icon {
+    align-items: center;
+    border-radius: 999px;
+    color: var(--color-ink-2);
+    cursor: pointer;
+    display: inline-flex;
+    height: 3rem;
+    justify-content: center;
+    min-width: 3rem;
+    padding-inline: 0.625rem;
+    transition: color var(--duration-standard) var(--ease-luxury);
+  }
+
+  .storefront-header-icon:hover {
+    color: var(--color-rose-500);
+  }
+
+  .storefront-header-icon-pressed {
+    color: var(--color-rose-600);
+  }
+
+  .storefront-header-search {
+    animation: storefront-search-reveal 0.4s var(--ease-luxury) both;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-blush) 55%, var(--color-bg)) 0%,
+      var(--color-bg) 100%
+    );
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+    overflow: hidden;
+    padding-block: 1.125rem 1.375rem;
+    width: 100%;
+  }
+
+  .storefront-header-search-form {
+    display: block;
+    width: 100%;
+  }
+
+  .storefront-header-search-field {
+    align-items: center;
+    background-color: var(--color-surface);
+    border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+    border-radius: 999px;
+    box-shadow: var(--shadow-rest);
+    column-gap: 0.625rem;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding-inline: 1rem 0.5rem;
+    transition:
+      border-color var(--duration-standard) var(--ease-luxury),
+      box-shadow var(--duration-standard) var(--ease-luxury);
+    width: 100%;
+  }
+
+  .storefront-header-search-field:hover {
+    border-color: color-mix(in srgb, var(--color-rose-200) 70%, var(--color-border));
+  }
+
+  .storefront-header-search-field:focus-within {
+    border-color: var(--color-rose-300);
+    box-shadow:
+      var(--shadow-rest),
+      0 0 0 3px color-mix(in srgb, var(--color-rose-200) 55%, transparent);
+  }
+
+  .storefront-header-search-field:focus-within
+    .storefront-header-search-field-icon {
+    color: var(--color-rose-500);
+  }
+
+  .storefront-header-search-field-icon {
+    color: var(--color-muted);
+    flex-shrink: 0;
+    pointer-events: none;
+    transition: color var(--duration-standard) var(--ease-luxury);
+  }
+
+  .storefront-header-search-input {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: text;
+    font-size: 1rem;
+    height: 3.125rem;
+    min-width: 0;
+    padding: 0;
+    width: 100%;
+  }
+
+  .storefront-header-search-input::-webkit-search-decoration,
+  .storefront-header-search-input::-webkit-search-cancel-button {
+    appearance: none;
+  }
+
+  .storefront-header-search-input::placeholder {
+    color: var(--color-muted);
+    letter-spacing: 0.01em;
+  }
+
+  .storefront-header-search-input:focus-visible {
+    outline: none;
+    --tw-ring-shadow: 0 0 #0000;
+  }
+
+  .storefront-header-search-dismiss {
+    align-items: center;
+    border-radius: 999px;
+    color: var(--color-muted);
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 2rem;
+    justify-content: center;
+    justify-self: end;
+    transition:
+      background-color var(--duration-standard) var(--ease-luxury),
+      color var(--duration-standard) var(--ease-luxury);
+    width: 2rem;
+  }
+
+  .storefront-header-search-dismiss:hover {
+    background-color: color-mix(in srgb, var(--color-blush) 80%, transparent);
+    color: var(--color-rose-500);
+  }
+
   .role-badge {
     display: inline-flex;
     align-items: center;
@@ -339,6 +646,18 @@
 
   100% {
     background-position: -200% 0;
+  }
+}
+
+@keyframes storefront-search-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-0.375rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

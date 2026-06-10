@@ -1,12 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { buildCatalogBrowseHref } from "../lib/catalog-browse-params";
+import {
+  buildCatalogBrowseHref,
+  CATALOG_SEARCH_MAX_LENGTH,
+} from "../lib/catalog-browse-params";
 
 type CatalogSearchFormProps = {
   className?: string;
@@ -16,6 +19,7 @@ type CatalogSearchFormProps = {
   /** When set, updates in-place filters instead of navigating away. */
   onSearch?: (query: string) => void;
   trailing?: ReactNode;
+  inputRef?: Ref<HTMLInputElement>;
 };
 
 export function CatalogSearchForm({
@@ -25,6 +29,7 @@ export function CatalogSearchForm({
   defaultValue = "",
   onSearch,
   trailing,
+  inputRef,
 }: CatalogSearchFormProps) {
   const router = useRouter();
 
@@ -50,17 +55,16 @@ export function CatalogSearchForm({
     >
       <div className="flex flex-wrap items-center gap-2">
         <Input
+          ref={inputRef}
           aria-label="Search products"
           className={inputClassName}
           defaultValue={defaultValue}
-          maxLength={100}
+          maxLength={CATALOG_SEARCH_MAX_LENGTH}
           name="search"
           placeholder="Search pastries, cakes…"
           type="search"
         />
-        {showSubmitButton ? (
-          <Button type="submit">Search</Button>
-        ) : null}
+        {showSubmitButton ? <Button type="submit">Search</Button> : null}
         {trailing}
       </div>
     </form>

@@ -1,70 +1,104 @@
 "use client";
 
-import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
-import { CatalogSearchForm } from "@/features/catalog/components/catalog-search-form";
+import {
+  CartIcon,
+  HeartIcon,
+  SearchIcon,
+  UserIcon,
+} from "@/components/icons/storefront-icons";
 import { ROUTE } from "@/constants/routes";
+import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
-import { StorefrontAccountLink } from "./storefront-account-link";
+import { StorefrontHeaderSearch } from "./storefront-header-search";
+import { StorefrontIconButton } from "./storefront-icon-button";
+import { useStorefrontSearchPanel } from "./use-storefront-search-panel";
 
 export function StorefrontHeader() {
   const [scrolled, setScrolled] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelId = useId();
+  const searchPanelRef = useRef<HTMLDivElement>(null);
+  const searchToggleRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const status = useAuthStore((state) => state.status);
+
+  const accountHref =
+    status === "authenticated"
+      ? ROUTE.customer.account.profile
+      : ROUTE.login;
+  const accountLabel =
+    status === "authenticated" ? "Account" : "Sign in";
+
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useStorefrontSearchPanel({
+    open: searchOpen,
+    onClose: closeSearch,
+    panelRef: searchPanelRef,
+    toggleRef: searchToggleRef,
+    inputRef: searchInputRef,
+  });
+
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 bg-bg/95 backdrop-blur-sm transition-[border-color] duration-standard ease-default",
-        scrolled && "border-b border-border",
+        "storefront-header sticky top-0 z-50",
+        scrolled && "storefront-header-scrolled",
       )}
     >
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <BrandLogo />
+      <div className="storefront-container">
+        <div className="storefront-header-toolbar">
+          <BrandLogo className="min-w-0" size="header" />
 
-        <nav
-          aria-label="Storefront"
-          className="hidden flex-1 items-center justify-center gap-8 text-sm font-medium text-muted md:flex"
-        >
-          <Link
-            className="flex min-h-11 items-center rounded-full px-3 py-2 transition-colors duration-standard ease-default hover:text-rose-500"
-            href={ROUTE.products}
+          <div
+            aria-label="Shop actions"
+            className="storefront-header-actions"
+            role="toolbar"
           >
-            Shop
-          </Link>
-        </nav>
+            <StorefrontIconButton
+              ref={searchToggleRef}
+              aria-controls={searchOpen ? searchPanelId : undefined}
+              label={searchOpen ? "Close search" : "Search"}
+              onClick={() => setSearchOpen((open) => !open)}
+              pressed={searchOpen}
+            >
+              <SearchIcon />
+            </StorefrontIconButton>
 
-        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2 md:flex-none">
-          <Suspense fallback={null}>
-            <CatalogSearchForm
-              className="hidden min-w-0 flex-1 md:block md:max-w-xs lg:max-w-sm"
-              inputClassName="h-9"
-              showSubmitButton={false}
-            />
-          </Suspense>
-          <Link
-            className="flex min-h-11 items-center rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors duration-standard ease-default hover:bg-blush hover:text-ink md:hidden"
-            href={ROUTE.products}
-          >
-            Search
-          </Link>
-          <Link
-            className="flex min-h-11 items-center rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors duration-standard ease-default hover:bg-blush hover:text-ink"
-            href={ROUTE.cart}
-          >
-            Cart
-          </Link>
-          <StorefrontAccountLink />
+            <StorefrontIconButton href={ROUTE.products} label="Favorites">
+              <HeartIcon />
+            </StorefrontIconButton>
+
+            <StorefrontIconButton href={ROUTE.cart} label="Cart">
+              <CartIcon />
+            </StorefrontIconButton>
+
+            <StorefrontIconButton href={accountHref} label={accountLabel}>
+              <UserIcon />
+            </StorefrontIconButton>
+          </div>
         </div>
       </div>
+
+      {searchOpen ? (
+        <StorefrontHeaderSearch
+          inputRef={searchInputRef}
+          onClose={closeSearch}
+          panelId={searchPanelId}
+          panelRef={searchPanelRef}
+        />
+      ) : null}
     </header>
   );
 }

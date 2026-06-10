@@ -15,9 +15,9 @@ export function HomeFeaturedProducts({ products }: HomeFeaturedProductsProps) {
   return (
     <section
       aria-labelledby="home-featured-heading"
-      className="bg-blush py-24 sm:py-28"
+      className="storefront-section bg-blush"
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="storefront-container">
         <div className="reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2

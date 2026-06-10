@@ -4,9 +4,16 @@ import { ROUTE } from "@/constants/routes";
 
 import {
   buildCatalogBrowseHref,
+  CATALOG_SEARCH_MAX_LENGTH,
   parseCatalogBrowseParams,
   toCatalogProductsFilter,
 } from "./catalog-browse-params";
+
+describe("CATALOG_SEARCH_MAX_LENGTH", () => {
+  it("matches the browse params schema cap", () => {
+    expect(CATALOG_SEARCH_MAX_LENGTH).toBe(100);
+  });
+});
 
 describe("parseCatalogBrowseParams", () => {
   it("returns defaults for an empty query", () => {

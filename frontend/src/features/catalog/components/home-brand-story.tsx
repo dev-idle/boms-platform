@@ -5,8 +5,8 @@ import { ROUTE } from "@/constants/routes";
 
 export function HomeBrandStory() {
   return (
-    <section className="bg-bg py-24 sm:py-32">
-      <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-20 lg:px-8">
+    <section className="storefront-section bg-bg">
+      <div className="storefront-container grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-20">
         <div className="reveal relative aspect-[4/5] overflow-hidden rounded-card bg-blush sm:aspect-[5/4] lg:aspect-square">
           {/* eslint-disable-next-line @next/next/no-img-element -- brand story imagery */}
           <img
