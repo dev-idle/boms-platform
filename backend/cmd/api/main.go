@@ -82,7 +82,7 @@ func main() {
 		zlog.Fatal("auth_usecase", zap.Error(err))
 	}
 	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, hasher, auditLogger, zlog)
-	adminUserUC := usecase.NewAdminUserUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger, zlog)
+	adminUserUC := usecase.NewAdminUserUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger, auditLogRepo, zlog)
 	categoryRepo := postgresrepo.NewCategoryRepository(pgPool)
 	productRepo := postgresrepo.NewProductRepository(pgPool)
 	comboRepo := postgresrepo.NewComboRepository(pgPool)
@@ -160,6 +160,7 @@ func main() {
 		passwordChanged,
 	)
 	adminRead.Get("", adminUserHandler.List)
+	adminRead.Get("/:id/activity", adminUserHandler.ListActivity)
 	adminRead.Get("/:id", adminUserHandler.Get)
 
 	adminWrite := apiV1.Group(
@@ -173,6 +174,8 @@ func main() {
 	adminWrite.Patch("/:id", adminUserHandler.PatchProfile)
 	adminWrite.Patch("/:id/role", adminUserHandler.PatchRole)
 	adminWrite.Patch("/:id/disable", adminUserHandler.PatchDisable)
+	adminWrite.Patch("/:id/enable", adminUserHandler.PatchEnable)
+	adminWrite.Post("/:id/reset-password", adminUserHandler.PostResetPassword)
 	adminWrite.Post("/:id/revoke-sessions", adminUserHandler.RevokeSessions)
 
 	// Public storefront read — proxy secret only; no JWT (guest browse).

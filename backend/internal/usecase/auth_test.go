@@ -61,6 +61,17 @@ func (m *mockUserRepo) ClearMustChangePassword(ctx context.Context, id uuid.UUID
 func (m *mockUserRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return m.Called(ctx, id).Error(0)
 }
+func (m *mockUserRepo) AdminGetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
+	args := m.Called(ctx, id)
+	out, _ := args.Get(0).(*domainuser.User)
+	return out, args.Error(1)
+}
+func (m *mockUserRepo) Restore(ctx context.Context, id uuid.UUID) error {
+	return m.Called(ctx, id).Error(0)
+}
+func (m *mockUserRepo) AdminUpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	return m.Called(ctx, id, passwordHash).Error(0)
+}
 func (m *mockUserRepo) AdminList(ctx context.Context, params port.AdminListUsersParams) ([]port.AdminListUser, int64, error) {
 	args := m.Called(ctx, params)
 	rows, _ := args.Get(0).([]port.AdminListUser)

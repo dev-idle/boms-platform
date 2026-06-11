@@ -15,6 +15,11 @@ type CreateOperationalUserResponse struct {
 	TempPassword string            `json:"temp_password"`
 }
 
+type AdminResetPasswordResponse struct {
+	User         AdminUserResponse `json:"user"`
+	TempPassword string            `json:"temp_password"`
+}
+
 type UpdateOperationalProfileRequest struct {
 	FullName     string  `json:"full_name" validate:"required,max=255"`
 	Phone        *string `json:"phone,omitempty" validate:"omitempty,max=50"`
@@ -26,6 +31,16 @@ type UpdateUserRoleRequest struct {
 	FullName     string  `json:"full_name,omitempty" validate:"omitempty,max=255"`
 	Phone        *string `json:"phone,omitempty" validate:"omitempty,max=50"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
+}
+
+type AdminUserActivityLogResponse struct {
+	ID         string    `json:"id"`
+	Action     string    `json:"action"`
+	Summary    string    `json:"summary"`
+	ActorID    string    `json:"actor_id"`
+	ActorEmail string    `json:"actor_email"`
+	ActorRole  string    `json:"actor_role"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type AdminUserResponse struct {

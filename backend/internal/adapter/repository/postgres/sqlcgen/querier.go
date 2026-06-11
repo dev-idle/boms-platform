@@ -18,6 +18,12 @@ type Querier interface {
 	//  VALUES ($1, $2, $3, $4)
 	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
 	AdminCreate(ctx context.Context, arg AdminCreateParams) (User, error)
+	//AdminGetByID
+	//
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	//  FROM users
+	//  WHERE id = $1
+	AdminGetByID(ctx context.Context, id uuid.UUID) (User, error)
 	//AdminList
 	//
 	//  SELECT
@@ -37,15 +43,18 @@ type Querier interface {
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 	//  LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 	//  LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-	//  WHERE u.deleted_at IS NULL
-	//    AND (
+	//  WHERE (
 	//      $1::text = ''
 	//      OR u.email ILIKE '%' || $1 || '%'
 	//      OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
 	//      OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
 	//    )
+	//    AND (
+	//      $2::text = ''
+	//      OR u.role::text = $2
+	//    )
 	//  ORDER BY u.created_at DESC
-	//  LIMIT $2 OFFSET $3
+	//  LIMIT $4 OFFSET $3
 	AdminList(ctx context.Context, arg AdminListParams) ([]AdminListRow, error)
 	//AdminListCount
 	//
@@ -54,14 +63,33 @@ type Querier interface {
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 	//  LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 	//  LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-	//  WHERE u.deleted_at IS NULL
-	//    AND (
+	//  WHERE (
 	//      $1::text = ''
 	//      OR u.email ILIKE '%' || $1 || '%'
 	//      OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
 	//      OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
 	//    )
-	AdminListCount(ctx context.Context, dollar_1 string) (int64, error)
+	//    AND (
+	//      $2::text = ''
+	//      OR u.role::text = $2
+	//    )
+	AdminListCount(ctx context.Context, arg AdminListCountParams) (int64, error)
+	//AdminRestore
+	//
+	//  UPDATE users
+	//  SET deleted_at = NULL,
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NOT NULL
+	AdminRestore(ctx context.Context, id uuid.UUID) (int64, error)
+	//AdminUpdateUserPassword
+	//
+	//  UPDATE users
+	//  SET password_hash = $2,
+	//      must_change_password = true,
+	//      updated_at = now()
+	//  WHERE id = $1
+	AdminUpdateUserPassword(ctx context.Context, arg AdminUpdateUserPasswordParams) (int64, error)
 	//CatalogGetComboByID
 	//
 	//  SELECT id, name, slug, price_cents, starts_at, ends_at
@@ -234,6 +262,12 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	ClearMustChangePassword(ctx context.Context, id uuid.UUID) (int64, error)
+	//CountAuditLogsByTargetID
+	//
+	//  SELECT COUNT(*)::bigint AS total
+	//  FROM audit_logs
+	//  WHERE target_id = $1
+	CountAuditLogsByTargetID(ctx context.Context, targetID uuid.NullUUID) (int64, error)
 	//CountAvailableProductsForCombo
 	//
 	//  SELECT COUNT(DISTINCT p.id)::bigint AS count
@@ -596,6 +630,23 @@ type Querier interface {
 	//  INSERT INTO combo_items (combo_id, product_id, quantity)
 	//  VALUES ($1, $2, $3)
 	InsertComboItem(ctx context.Context, arg InsertComboItemParams) error
+	//ListAuditLogsByTargetID
+	//
+	//  SELECT
+	//      al.id,
+	//      al.actor_id,
+	//      al.actor_role,
+	//      u.email AS actor_email,
+	//      al.action,
+	//      al.before_jsonb,
+	//      al.after_jsonb,
+	//      al.created_at
+	//  FROM audit_logs al
+	//  INNER JOIN users u ON u.id = al.actor_id
+	//  WHERE al.target_id = $1
+	//  ORDER BY al.created_at DESC
+	//  LIMIT $2 OFFSET $3
+	ListAuditLogsByTargetID(ctx context.Context, arg ListAuditLogsByTargetIDParams) ([]ListAuditLogsByTargetIDRow, error)
 	//ListCartItemsByCartID
 	//
 	//  SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at

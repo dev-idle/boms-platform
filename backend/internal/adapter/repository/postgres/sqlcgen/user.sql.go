@@ -53,6 +53,34 @@ func (q *Queries) AdminCreate(ctx context.Context, arg AdminCreateParams) (User,
 	return i, err
 }
 
+const adminGetByID = `-- name: AdminGetByID :one
+SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+FROM users
+WHERE id = $1
+`
+
+// AdminGetByID
+//
+//	SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+//	FROM users
+//	WHERE id = $1
+func (q *Queries) AdminGetByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, adminGetByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.EmailVerifiedAt,
+		&i.MustChangePassword,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const adminList = `-- name: AdminList :many
 SELECT
     u.id,
@@ -71,21 +99,25 @@ FROM users u
 LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-WHERE u.deleted_at IS NULL
-  AND (
+WHERE (
     $1::text = ''
     OR u.email ILIKE '%' || $1 || '%'
     OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
     OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
   )
+  AND (
+    $2::text = ''
+    OR u.role::text = $2
+  )
 ORDER BY u.created_at DESC
-LIMIT $2 OFFSET $3
+LIMIT $4 OFFSET $3
 `
 
 type AdminListParams struct {
-	Column1 string `db:"column_1" json:"column1"`
-	Limit   int32  `db:"limit" json:"limit"`
-	Offset  int32  `db:"offset" json:"offset"`
+	Search     string `db:"search" json:"search"`
+	RoleFilter string `db:"role_filter" json:"roleFilter"`
+	Offset     int32  `db:"offset" json:"offset"`
+	Limit      int32  `db:"limit" json:"limit"`
 }
 
 type AdminListRow struct {
@@ -122,17 +154,25 @@ type AdminListRow struct {
 //	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 //	LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 //	LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-//	WHERE u.deleted_at IS NULL
-//	  AND (
+//	WHERE (
 //	    $1::text = ''
 //	    OR u.email ILIKE '%' || $1 || '%'
 //	    OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
 //	    OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
 //	  )
+//	  AND (
+//	    $2::text = ''
+//	    OR u.role::text = $2
+//	  )
 //	ORDER BY u.created_at DESC
-//	LIMIT $2 OFFSET $3
+//	LIMIT $4 OFFSET $3
 func (q *Queries) AdminList(ctx context.Context, arg AdminListParams) ([]AdminListRow, error) {
-	rows, err := q.db.QueryContext(ctx, adminList, arg.Column1, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, adminList,
+		arg.Search,
+		arg.RoleFilter,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -173,14 +213,22 @@ FROM users u
 LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-WHERE u.deleted_at IS NULL
-  AND (
+WHERE (
     $1::text = ''
     OR u.email ILIKE '%' || $1 || '%'
     OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
     OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
   )
+  AND (
+    $2::text = ''
+    OR u.role::text = $2
+  )
 `
+
+type AdminListCountParams struct {
+	Search     string `db:"search" json:"search"`
+	RoleFilter string `db:"role_filter" json:"roleFilter"`
+}
 
 // AdminListCount
 //
@@ -189,18 +237,72 @@ WHERE u.deleted_at IS NULL
 //	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 //	LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 //	LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-//	WHERE u.deleted_at IS NULL
-//	  AND (
+//	WHERE (
 //	    $1::text = ''
 //	    OR u.email ILIKE '%' || $1 || '%'
 //	    OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
 //	    OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
 //	  )
-func (q *Queries) AdminListCount(ctx context.Context, dollar_1 string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, adminListCount, dollar_1)
+//	  AND (
+//	    $2::text = ''
+//	    OR u.role::text = $2
+//	  )
+func (q *Queries) AdminListCount(ctx context.Context, arg AdminListCountParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, adminListCount, arg.Search, arg.RoleFilter)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const adminRestore = `-- name: AdminRestore :execrows
+UPDATE users
+SET deleted_at = NULL,
+    updated_at = now()
+WHERE id = $1
+  AND deleted_at IS NOT NULL
+`
+
+// AdminRestore
+//
+//	UPDATE users
+//	SET deleted_at = NULL,
+//	    updated_at = now()
+//	WHERE id = $1
+//	  AND deleted_at IS NOT NULL
+func (q *Queries) AdminRestore(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, adminRestore, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const adminUpdateUserPassword = `-- name: AdminUpdateUserPassword :execrows
+UPDATE users
+SET password_hash = $2,
+    must_change_password = true,
+    updated_at = now()
+WHERE id = $1
+`
+
+type AdminUpdateUserPasswordParams struct {
+	ID           uuid.UUID `db:"id" json:"id"`
+	PasswordHash string    `db:"password_hash" json:"passwordHash"`
+}
+
+// AdminUpdateUserPassword
+//
+//	UPDATE users
+//	SET password_hash = $2,
+//	    must_change_password = true,
+//	    updated_at = now()
+//	WHERE id = $1
+func (q *Queries) AdminUpdateUserPassword(ctx context.Context, arg AdminUpdateUserPasswordParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, adminUpdateUserPassword, arg.ID, arg.PasswordHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const clearMustChangePassword = `-- name: ClearMustChangePassword :execrows

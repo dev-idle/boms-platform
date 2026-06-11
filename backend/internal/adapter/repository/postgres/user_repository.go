@@ -173,17 +173,63 @@ func (r *UserRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// AdminGetByID implements port.UserRepository.
+func (r *UserRepository) AdminGetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
+	row, err := r.q(ctx).AdminGetByID(ctx, id)
+	if err != nil {
+		return nil, mapRepoError(err, "admin get user by id")
+	}
+	return mapUserFields(
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+	), nil
+}
+
+// Restore implements port.UserRepository.
+func (r *UserRepository) Restore(ctx context.Context, id uuid.UUID) error {
+	rows, err := r.q(ctx).AdminRestore(ctx, id)
+	if err != nil {
+		return mapRepoError(err, "restore user")
+	}
+	if rows == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
+// AdminUpdatePassword implements port.UserRepository.
+func (r *UserRepository) AdminUpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	rows, err := r.q(ctx).AdminUpdateUserPassword(ctx, sqlcgen.AdminUpdateUserPasswordParams{
+		ID:           id,
+		PasswordHash: passwordHash,
+	})
+	if err != nil {
+		return mapRepoError(err, "admin update user password")
+	}
+	if rows == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
 // AdminList implements port.UserRepository.
 func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUsersParams) ([]port.AdminListUser, int64, error) {
+	roleFilter, err := adminListRoleFilter(params.Role)
+	if err != nil {
+		return nil, 0, err
+	}
 	rows, err := r.q(ctx).AdminList(ctx, sqlcgen.AdminListParams{
-		Column1: params.Search,
-		Limit:   params.Limit,
-		Offset:  params.Offset,
+		Search:     params.Search,
+		RoleFilter: roleFilter,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
 	})
 	if err != nil {
 		return nil, 0, mapRepoError(err, "admin list users")
 	}
-	total, err := r.q(ctx).AdminListCount(ctx, params.Search)
+	total, err := r.q(ctx).AdminListCount(ctx, sqlcgen.AdminListCountParams{
+		Search:     params.Search,
+		RoleFilter: roleFilter,
+	})
 	if err != nil {
 		return nil, 0, mapRepoError(err, "admin list count")
 	}
@@ -258,6 +304,16 @@ func toSQLRole(role domainuser.Role) (sqlcgen.UserRole, error) {
 
 func fromSQLRole(role sqlcgen.UserRole) domainuser.Role {
 	return domainuser.Role(role)
+}
+
+func adminListRoleFilter(role *domainuser.Role) (string, error) {
+	if role == nil {
+		return "", nil
+	}
+	if _, err := toSQLRole(*role); err != nil {
+		return "", apperrors.ErrValidation.WithDetail("role", "unsupported role")
+	}
+	return string(*role), nil
 }
 
 func nullStringPtr(v sql.NullString) *string {

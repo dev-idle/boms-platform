@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
+	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
 	"github.com/google/uuid"
 )
@@ -50,6 +51,43 @@ func (r *AuditLogRepository) Create(ctx context.Context, params port.CreateAudit
 		UserAgent:   ua,
 	})
 	return mapRepoError(err, "create audit log")
+}
+
+func (r *AuditLogRepository) CountByTargetID(ctx context.Context, targetID uuid.UUID) (int64, error) {
+	total, err := r.q(ctx).CountAuditLogsByTargetID(ctx, uuid.NullUUID{UUID: targetID, Valid: true})
+	if err != nil {
+		return 0, mapRepoError(err, "count audit logs by target")
+	}
+	return total, nil
+}
+
+func (r *AuditLogRepository) ListByTargetID(
+	ctx context.Context,
+	params port.ListAuditLogsByTargetParams,
+) ([]port.AuditLogEntry, error) {
+	rows, err := r.q(ctx).ListAuditLogsByTargetID(ctx, sqlcgen.ListAuditLogsByTargetIDParams{
+		TargetID: uuid.NullUUID{UUID: params.TargetID, Valid: true},
+		Limit:    params.Limit,
+		Offset:   params.Offset,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "list audit logs by target")
+	}
+
+	out := make([]port.AuditLogEntry, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, port.AuditLogEntry{
+			ID:         row.ID,
+			ActorID:    row.ActorID,
+			ActorRole:  domainuser.Role(row.ActorRole),
+			ActorEmail: row.ActorEmail,
+			Action:     domainuser.AuditAction(row.Action),
+			BeforeJSON: row.BeforeJsonb,
+			AfterJSON:  row.AfterJsonb,
+			CreatedAt:  row.CreatedAt,
+		})
+	}
+	return out, nil
 }
 
 var _ port.AuditLogRepository = (*AuditLogRepository)(nil)

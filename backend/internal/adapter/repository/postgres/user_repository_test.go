@@ -110,6 +110,45 @@ func TestUserRepository_Integration(t *testing.T) {
 		assert.Equal(t, apperrors.ErrNotFound.Code, ae.Code)
 	})
 
+	t.Run("AdminList filters by role", func(t *testing.T) {
+		_, err := repo.Create(ctx, port.CreateUserParams{
+			Email:        "role-filter-customer@example.com",
+			PasswordHash: testPasswordHashFixture,
+			Role:         domainuser.RoleCustomer,
+		})
+		require.NoError(t, err)
+
+		_, err = repo.AdminCreate(ctx, port.CreateUserParams{
+			Email:        "role-filter-manager@example.com",
+			PasswordHash: testPasswordHashFixture,
+			Role:         domainuser.RoleManager,
+		})
+		require.NoError(t, err)
+
+		customerRole := domainuser.RoleCustomer
+		rows, total, err := repo.AdminList(ctx, port.AdminListUsersParams{
+			Search: "",
+			Role:   &customerRole,
+			Limit:  20,
+			Offset: 0,
+		})
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, total, int64(1))
+
+		for _, row := range rows {
+			assert.Equal(t, domainuser.RoleCustomer, row.Role)
+		}
+
+		var foundCustomer bool
+		for _, row := range rows {
+			if row.Email == "role-filter-customer@example.com" {
+				foundCustomer = true
+			}
+			assert.NotEqual(t, "role-filter-manager@example.com", row.Email)
+		}
+		assert.True(t, foundCustomer)
+	})
+
 	t.Run("AdminList includes customer without staff or admin full_name", func(t *testing.T) {
 		_, err := repo.Create(ctx, port.CreateUserParams{
 			Email:        "customer-list@example.com",

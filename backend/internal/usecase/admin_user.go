@@ -26,6 +26,7 @@ type AdminUserUsecase struct {
 	tx        port.TxManager
 	hasher    port.PasswordHasher
 	audit     *auditlogger.Service
+	auditLogs port.AuditLogRepository
 	profiles  *profilesvc.Service
 	log       *zap.Logger
 }
@@ -39,6 +40,7 @@ func NewAdminUserUsecase(
 	tx port.TxManager,
 	hasher port.PasswordHasher,
 	audit *auditlogger.Service,
+	auditLogs port.AuditLogRepository,
 	log *zap.Logger,
 ) *AdminUserUsecase {
 	return &AdminUserUsecase{
@@ -50,6 +52,7 @@ func NewAdminUserUsecase(
 		tx:        tx,
 		hasher:    hasher,
 		audit:     audit,
+		auditLogs: auditLogs,
 		profiles:  profilesvc.NewService(customers, staff, admins),
 		log:       log,
 	}
@@ -220,9 +223,15 @@ func (u *AdminUserUsecase) UpdateRole(
 	var beforeRole, afterRole string
 	roleChanged := false
 	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
-		target, getErr := u.users.GetByIDForUpdate(txCtx, targetID)
+		target, getErr := u.users.AdminGetByID(txCtx, targetID)
 		if getErr != nil {
 			return getErr
+		}
+		if target.Disabled() {
+			return apperrors.ErrValidation.WithDetail("account", "user is disabled")
+		}
+		if !isOperationalRoleChangeTarget(target.Role) {
+			return domainuser.ErrInvalidRoleTransition
 		}
 		beforeRole = string(target.Role)
 		afterRole = string(newRole)
@@ -300,6 +309,63 @@ func (u *AdminUserUsecase) UpdateRole(
 	return u.getAdminUserResponse(ctx, targetID)
 }
 
+func (u *AdminUserUsecase) Enable(ctx context.Context, actorID uuid.UUID, actorRole domainuser.Role, targetID uuid.UUID) error {
+	if actorID == targetID {
+		return domainuser.ErrCannotModifySelf
+	}
+	if err := u.users.Restore(ctx, targetID); err != nil {
+		return err
+	}
+	u.logAudit(ctx, domainuser.AuditActionAdminEnabledUser, actorID, actorRole, &targetID, "user", map[string]any{"disabled": true}, map[string]any{"disabled": false})
+	return nil
+}
+
+func (u *AdminUserUsecase) ResetPassword(
+	ctx context.Context,
+	actorID uuid.UUID,
+	actorRole domainuser.Role,
+	targetID uuid.UUID,
+) (*dto.AdminResetPasswordResponse, error) {
+	if actorID == targetID {
+		return nil, domainuser.ErrCannotModifySelf
+	}
+	target, err := u.users.AdminGetByID(ctx, targetID)
+	if err != nil {
+		return nil, err
+	}
+	if target.Disabled() {
+		return nil, apperrors.ErrValidation.WithDetail("account", "user is disabled")
+	}
+	if !target.Role.IsOperational() {
+		return nil, domainuser.ErrInvalidRoleTransition
+	}
+
+	tempPassword, err := utils.GenerateTempPassword(16)
+	if err != nil {
+		return nil, err
+	}
+	hash, err := u.hasher.Hash(tempPassword)
+	if err != nil {
+		return nil, apperrors.Errorf("hash temp password: %w", err)
+	}
+	if err := u.users.AdminUpdatePassword(ctx, targetID, hash); err != nil {
+		return nil, err
+	}
+	if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
+		return nil, err
+	}
+
+	u.logAudit(ctx, domainuser.AuditActionAdminResetUserPassword, actorID, actorRole, &targetID, "user", nil, map[string]any{"must_change_password": true})
+	resp, err := u.getAdminUserResponse(ctx, targetID)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.AdminResetPasswordResponse{
+		User:         *resp,
+		TempPassword: tempPassword,
+	}, nil
+}
+
 func (u *AdminUserUsecase) Disable(ctx context.Context, actorID uuid.UUID, actorRole domainuser.Role, targetID uuid.UUID) error {
 	if actorID == targetID {
 		return domainuser.ErrCannotModifySelf
@@ -333,10 +399,16 @@ func (u *AdminUserUsecase) List(
 	ctx context.Context,
 	rawPage, rawPageSize int32,
 	search string,
+	roleFilter string,
 ) (items []dto.AdminUserResponse, total int64, page, pageSize int32, err error) {
 	page, pageSize = normalizeAdminUserListPage(rawPage, rawPageSize)
+	role, err := parseAdminListRoleFilter(roleFilter)
+	if err != nil {
+		return nil, 0, 0, 0, err
+	}
 	rows, total, err := u.users.AdminList(ctx, port.AdminListUsersParams{
 		Search: strings.TrimSpace(search),
+		Role:   role,
 		Limit:  pageSize,
 		Offset: utils.PageOffset(page, pageSize),
 	})
@@ -351,7 +423,7 @@ func (u *AdminUserUsecase) List(
 }
 
 func (u *AdminUserUsecase) getAdminUserResponse(ctx context.Context, userID uuid.UUID) (*dto.AdminUserResponse, error) {
-	user, err := u.users.GetByID(ctx, userID)
+	user, err := u.users.AdminGetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -408,6 +480,29 @@ func parseRole(raw string) (domainuser.Role, error) {
 		return role, nil
 	default:
 		return "", apperrors.ErrValidation.WithDetail("role", "unsupported role")
+	}
+}
+
+func isOperationalRoleChangeTarget(role domainuser.Role) bool {
+	switch role {
+	case domainuser.RoleStaff, domainuser.RoleBaker, domainuser.RoleManager:
+		return true
+	default:
+		return false
+	}
+}
+
+func parseAdminListRoleFilter(raw string) (*domainuser.Role, error) {
+	trimmed := strings.TrimSpace(strings.ToLower(raw))
+	if trimmed == "" {
+		return nil, nil
+	}
+	role := domainuser.Role(trimmed)
+	switch role {
+	case domainuser.RoleCustomer, domainuser.RoleStaff, domainuser.RoleBaker, domainuser.RoleManager, domainuser.RoleAdmin:
+		return &role, nil
+	default:
+		return nil, apperrors.ErrValidation.WithDetail("role", "unsupported role")
 	}
 }
 

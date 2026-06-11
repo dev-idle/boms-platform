@@ -9,9 +9,28 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const countAuditLogsByTargetID = `-- name: CountAuditLogsByTargetID :one
+SELECT COUNT(*)::bigint AS total
+FROM audit_logs
+WHERE target_id = $1
+`
+
+// CountAuditLogsByTargetID
+//
+//	SELECT COUNT(*)::bigint AS total
+//	FROM audit_logs
+//	WHERE target_id = $1
+func (q *Queries) CountAuditLogsByTargetID(ctx context.Context, targetID uuid.NullUUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAuditLogsByTargetID, targetID)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
 
 const createAuditLog = `-- name: CreateAuditLog :exec
 INSERT INTO audit_logs (
@@ -67,4 +86,86 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 		arg.UserAgent,
 	)
 	return err
+}
+
+const listAuditLogsByTargetID = `-- name: ListAuditLogsByTargetID :many
+SELECT
+    al.id,
+    al.actor_id,
+    al.actor_role,
+    u.email AS actor_email,
+    al.action,
+    al.before_jsonb,
+    al.after_jsonb,
+    al.created_at
+FROM audit_logs al
+INNER JOIN users u ON u.id = al.actor_id
+WHERE al.target_id = $1
+ORDER BY al.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListAuditLogsByTargetIDParams struct {
+	TargetID uuid.NullUUID `db:"target_id" json:"targetId"`
+	Limit    int32         `db:"limit" json:"limit"`
+	Offset   int32         `db:"offset" json:"offset"`
+}
+
+type ListAuditLogsByTargetIDRow struct {
+	ID          uuid.UUID       `db:"id" json:"id"`
+	ActorID     uuid.UUID       `db:"actor_id" json:"actorId"`
+	ActorRole   UserRole        `db:"actor_role" json:"actorRole"`
+	ActorEmail  string          `db:"actor_email" json:"actorEmail"`
+	Action      string          `db:"action" json:"action"`
+	BeforeJsonb json.RawMessage `db:"before_jsonb" json:"beforeJsonb"`
+	AfterJsonb  json.RawMessage `db:"after_jsonb" json:"afterJsonb"`
+	CreatedAt   time.Time       `db:"created_at" json:"createdAt"`
+}
+
+// ListAuditLogsByTargetID
+//
+//	SELECT
+//	    al.id,
+//	    al.actor_id,
+//	    al.actor_role,
+//	    u.email AS actor_email,
+//	    al.action,
+//	    al.before_jsonb,
+//	    al.after_jsonb,
+//	    al.created_at
+//	FROM audit_logs al
+//	INNER JOIN users u ON u.id = al.actor_id
+//	WHERE al.target_id = $1
+//	ORDER BY al.created_at DESC
+//	LIMIT $2 OFFSET $3
+func (q *Queries) ListAuditLogsByTargetID(ctx context.Context, arg ListAuditLogsByTargetIDParams) ([]ListAuditLogsByTargetIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAuditLogsByTargetID, arg.TargetID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAuditLogsByTargetIDRow{}
+	for rows.Next() {
+		var i ListAuditLogsByTargetIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorID,
+			&i.ActorRole,
+			&i.ActorEmail,
+			&i.Action,
+			&i.BeforeJsonb,
+			&i.AfterJsonb,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

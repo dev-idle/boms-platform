@@ -62,6 +62,25 @@ SET deleted_at = now(),
 WHERE id = $1
   AND deleted_at IS NULL;
 
+-- name: AdminGetByID :one
+SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+FROM users
+WHERE id = $1;
+
+-- name: AdminRestore :execrows
+UPDATE users
+SET deleted_at = NULL,
+    updated_at = now()
+WHERE id = $1
+  AND deleted_at IS NOT NULL;
+
+-- name: AdminUpdateUserPassword :execrows
+UPDATE users
+SET password_hash = $2,
+    must_change_password = true,
+    updated_at = now()
+WHERE id = $1;
+
 -- name: AdminList :many
 SELECT
     u.id,
@@ -80,15 +99,18 @@ FROM users u
 LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-WHERE u.deleted_at IS NULL
+WHERE (
+    sqlc.arg('search')::text = ''
+    OR u.email ILIKE '%' || sqlc.arg('search') || '%'
+    OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || sqlc.arg('search') || '%'
+    OR COALESCE(sp.employee_code::text, '') ILIKE '%' || sqlc.arg('search') || '%'
+  )
   AND (
-    $1::text = ''
-    OR u.email ILIKE '%' || $1 || '%'
-    OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
-    OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
+    sqlc.arg('role_filter')::text = ''
+    OR u.role::text = sqlc.arg('role_filter')
   )
 ORDER BY u.created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: AdminListCount :one
 SELECT COUNT(*)
@@ -96,10 +118,13 @@ FROM users u
 LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 LEFT JOIN admin_profiles ap ON ap.user_id = u.id
-WHERE u.deleted_at IS NULL
+WHERE (
+    sqlc.arg('search')::text = ''
+    OR u.email ILIKE '%' || sqlc.arg('search') || '%'
+    OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || sqlc.arg('search') || '%'
+    OR COALESCE(sp.employee_code::text, '') ILIKE '%' || sqlc.arg('search') || '%'
+  )
   AND (
-    $1::text = ''
-    OR u.email ILIKE '%' || $1 || '%'
-    OR COALESCE(cp.display_name, sp.full_name, ap.full_name, '') ILIKE '%' || $1 || '%'
-    OR COALESCE(sp.employee_code::text, '') ILIKE '%' || $1 || '%'
+    sqlc.arg('role_filter')::text = ''
+    OR u.role::text = sqlc.arg('role_filter')
   );

@@ -18,6 +18,7 @@ type CreateUserParams struct {
 
 type AdminListUsersParams struct {
 	Search string
+	Role   *domainuser.Role
 	Limit  int32
 	Offset int32
 }
@@ -49,5 +50,8 @@ type UserRepository interface {
 	SetMustChangePassword(ctx context.Context, id uuid.UUID) error
 	ClearMustChangePassword(ctx context.Context, id uuid.UUID) error
 	SoftDelete(ctx context.Context, id uuid.UUID) error
+	AdminGetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error)
+	Restore(ctx context.Context, id uuid.UUID) error
+	AdminUpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	AdminList(ctx context.Context, params AdminListUsersParams) ([]AdminListUser, int64, error)
 }

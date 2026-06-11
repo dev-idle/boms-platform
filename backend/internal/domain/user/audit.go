@@ -11,5 +11,7 @@ const (
 	AuditActionAdminUpdatedProfile      AuditAction = "admin.updated_profile"
 	AuditActionAdminUpdatedRole         AuditAction = "admin.updated_role"
 	AuditActionAdminDisabledUser        AuditAction = "admin.disabled_user"
+	AuditActionAdminEnabledUser         AuditAction = "admin.enabled_user"
+	AuditActionAdminResetUserPassword   AuditAction = "admin.reset_user_password"
 	AuditActionAdminRevokedUserSessions AuditAction = "admin.revoked_user_sessions"
 )
