@@ -109,6 +109,34 @@ func TestUserRepository_Integration(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, apperrors.ErrNotFound.Code, ae.Code)
 	})
+
+	t.Run("AdminList includes customer without staff or admin full_name", func(t *testing.T) {
+		_, err := repo.Create(ctx, port.CreateUserParams{
+			Email:        "customer-list@example.com",
+			PasswordHash: testPasswordHashFixture,
+			Role:         domainuser.RoleCustomer,
+		})
+		require.NoError(t, err)
+
+		rows, total, err := repo.AdminList(ctx, port.AdminListUsersParams{
+			Search: "",
+			Limit:  20,
+			Offset: 0,
+		})
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, total, int64(1))
+		assert.NotEmpty(t, rows)
+
+		var found bool
+		for _, row := range rows {
+			if row.Email == "customer-list@example.com" {
+				found = true
+				assert.Nil(t, row.FullName)
+				break
+			}
+		}
+		assert.True(t, found, "customer row should be listable")
+	})
 }
 
 func startPostgres(ctx context.Context, t *testing.T) (*tcpostgres.PostgresContainer, string, error) {

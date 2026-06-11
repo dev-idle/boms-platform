@@ -90,6 +90,12 @@ export function AdminUsersTable() {
                   Loading users…
                 </td>
               </tr>
+            ) : usersQuery.isError ? (
+              <tr>
+                <td className="px-4 py-4 text-error" colSpan={5}>
+                  Failed to load users.
+                </td>
+              </tr>
             ) : users.length === 0 ? (
               <tr>
                 <td className="px-4 py-4 text-muted" colSpan={5}>

@@ -64,7 +64,7 @@ SELECT
     u.updated_at,
     u.deleted_at,
     cp.display_name,
-    COALESCE(sp.full_name, ap.full_name) AS full_name,
+    COALESCE(sp.full_name, ap.full_name, '') AS full_name,
     COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
     sp.employee_code
 FROM users u
@@ -115,7 +115,7 @@ type AdminListRow struct {
 //	    u.updated_at,
 //	    u.deleted_at,
 //	    cp.display_name,
-//	    COALESCE(sp.full_name, ap.full_name) AS full_name,
+//	    COALESCE(sp.full_name, ap.full_name, '') AS full_name,
 //	    COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
 //	    sp.employee_code
 //	FROM users u
