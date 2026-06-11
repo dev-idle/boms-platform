@@ -50,6 +50,7 @@ function CartLineItem({ item }: { item: CartItem }) {
         <Input
           className="w-20"
           disabled={updateItem.isPending || !item.is_available}
+          variant="inline"
           id={`qty-${item.id}`}
           max={99}
           min={1}
@@ -148,6 +149,7 @@ export function CartView() {
                 className="max-w-xs"
                 placeholder="Enter code"
                 value={discountCode}
+                variant="inline"
                 onChange={(event) => setDiscountCode(event.target.value)}
               />
               <Button

@@ -21,6 +21,17 @@ export const metadata: Metadata = {
   description: BRAND.tagline,
   applicationName: BRAND.name,
   referrer: "strict-origin-when-cross-origin",
+  openGraph: {
+    title: BRAND.name,
+    description: BRAND.tagline,
+    siteName: BRAND.name,
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: BRAND.name,
+    description: BRAND.tagline,
+  },
 };
 
 export const viewport: Viewport = {
@@ -28,7 +39,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: "#FBF6F2",
+  themeColor: "#FBFAF9",
 };
 
 export default function RootLayout({

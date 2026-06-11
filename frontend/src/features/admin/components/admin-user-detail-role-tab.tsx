@@ -8,15 +8,10 @@ import { toast } from "sonner";
 import { ASSIGNABLE_OPERATIONAL_ROLES, USER_ROLE } from "@/constants/roles";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { FieldControl } from "@/components/ui/field-control";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 
 import { useUpdateRole } from "../hooks";
@@ -132,19 +127,15 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <FormControl>
-                    <select
-                      className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
-                      {...field}
-                    >
+                  <FieldControl label="Role">
+                    <Select {...field}>
                       {ASSIGNABLE_OPERATIONAL_ROLES.map((role) => (
                         <option key={role} value={role}>
                           {role}
                         </option>
                       ))}
-                    </select>
-                  </FormControl>
+                    </Select>
+                  </FieldControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -155,10 +146,9 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full name (optional)</FormLabel>
-                  <FormControl>
+                  <FieldControl label="Full name (optional)">
                     <Input {...field} />
-                  </FormControl>
+                  </FieldControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -169,14 +159,13 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone</FormLabel>
-                  <FormControl>
+                  <FieldControl label="Phone">
                     <Input
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value || null)}
                     />
-                  </FormControl>
+                  </FieldControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -187,14 +176,13 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               name="employee_code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Employee code</FormLabel>
-                  <FormControl>
+                  <FieldControl label="Employee code">
                     <Input
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value || null)}
                     />
-                  </FormControl>
+                  </FieldControl>
                   <FormMessage />
                 </FormItem>
               )}

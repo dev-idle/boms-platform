@@ -5,16 +5,15 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
-import { AUTH_INPUT_CLASS } from "../lib/auth-form-styles";
 import { useRegister } from "../hooks";
 import { registerSchema, type RegisterInput } from "../schemas";
-import { AuthFormFieldControl } from "./auth-form-field-control";
 import { AuthInlineLink } from "./auth-inline-link";
 import { AuthFormShell } from "./auth-form-shell";
 import { AuthPasswordChecklist } from "./auth-password-checklist";
@@ -82,16 +81,15 @@ export function RegisterForm() {
             name="email"
             render={({ field }) => (
               <FormItem className="auth-field">
-                <AuthFormFieldControl label="Email">
+                <FieldControl label="Email">
                   <Input
                     autoComplete="email"
-                    className={AUTH_INPUT_CLASS}
                     inputMode="email"
                     placeholder="you@example.com"
                     type="email"
                     {...field}
                   />
-                </AuthFormFieldControl>
+                </FieldControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -102,15 +100,14 @@ export function RegisterForm() {
             name="password"
             render={({ field }) => (
               <FormItem className="auth-field">
-                <AuthFormFieldControl label="Password">
+                <FieldControl label="Password">
                   <Input
                     autoComplete="new-password"
-                    className={AUTH_INPUT_CLASS}
                     placeholder="••••••••"
                     type="password"
                     {...field}
                   />
-                </AuthFormFieldControl>
+                </FieldControl>
                 <AuthPasswordChecklist password={password} />
                 <FormMessage />
               </FormItem>

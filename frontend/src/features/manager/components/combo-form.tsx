@@ -6,6 +6,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { FieldControl } from "@/components/ui/field-control";
 import {
   Form,
   FormControl,
@@ -15,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import {
   fromDatetimeLocalValue,
@@ -129,10 +131,9 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
+              <FieldControl label="Name">
                 <Input {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -143,10 +144,9 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           name="slug"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Slug</FormLabel>
-              <FormControl>
+              <FieldControl label="Slug">
                 <Input {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -157,10 +157,9 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           name="price_cents"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Combo price (cents)</FormLabel>
-              <FormControl>
+              <FieldControl label="Combo price (cents)">
                 <Input min={0} step={1} type="number" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -172,8 +171,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
             name="starts_at"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Starts at</FormLabel>
-                <FormControl>
+                <FieldControl label="Starts at">
                   <Input
                     type="datetime-local"
                     value={toDatetimeLocalValue(field.value)}
@@ -181,7 +179,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
                       field.onChange(fromDatetimeLocalValue(event.target.value))
                     }
                   />
-                </FormControl>
+                </FieldControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -191,8 +189,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
             name="ends_at"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Ends at</FormLabel>
-                <FormControl>
+                <FieldControl label="Ends at">
                   <Input
                     type="datetime-local"
                     value={toDatetimeLocalValue(field.value)}
@@ -200,7 +197,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
                       field.onChange(fromDatetimeLocalValue(event.target.value))
                     }
                   />
-                </FormControl>
+                </FieldControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -233,6 +230,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
                 onChange={(event) => setProductSearch(event.target.value)}
                 placeholder="Search products by name or slug"
                 value={productSearch}
+                variant="inline"
               />
             </div>
             <Button
@@ -258,10 +256,9 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
                   <FormItem>
                     <FormLabel className="sr-only">Product</FormLabel>
                     <FormControl>
-                      <select
-                        className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
-                        value={productField.value}
+                      <Select
                         onChange={productField.onChange}
+                        value={productField.value}
                       >
                         <option value="">Select product</option>
                         {productOptions.map((product) => (
@@ -269,7 +266,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
                             {product.name}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

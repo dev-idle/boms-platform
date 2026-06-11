@@ -5,15 +5,10 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { FieldControl } from "@/components/ui/field-control";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
@@ -85,10 +80,9 @@ export function CreateOperationalUserForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
+                  <FieldControl label="Email">
                     <Input type="email" {...field} />
-                  </FormControl>
+                  </FieldControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -99,19 +93,15 @@ export function CreateOperationalUserForm() {
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <FormControl>
-                    <select
-                      className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
-                      {...field}
-                    >
+                  <FieldControl label="Role">
+                    <Select {...field}>
                       {ASSIGNABLE_OPERATIONAL_ROLES.map((role) => (
                         <option key={role} value={role}>
                           {role}
                         </option>
                       ))}
-                    </select>
-                  </FormControl>
+                    </Select>
+                  </FieldControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -122,10 +112,9 @@ export function CreateOperationalUserForm() {
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full name</FormLabel>
-                  <FormControl>
+                  <FieldControl label="Full name">
                     <Input {...field} />
-                  </FormControl>
+                  </FieldControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -136,14 +125,13 @@ export function CreateOperationalUserForm() {
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone</FormLabel>
-                  <FormControl>
+                  <FieldControl label="Phone">
                     <Input
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value || null)}
                     />
-                  </FormControl>
+                  </FieldControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -154,10 +142,9 @@ export function CreateOperationalUserForm() {
               name="employee_code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Employee code</FormLabel>
-                  <FormControl>
+                  <FieldControl label="Employee code">
                     <Input {...field} />
-                  </FormControl>
+                  </FieldControl>
                   <FormMessage />
                 </FormItem>
               )}

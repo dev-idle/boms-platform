@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { FieldControl } from "@/components/ui/field-control";
 import {
   Form,
   FormControl,
@@ -14,6 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
@@ -90,21 +92,16 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="category_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
-              <FormControl>
-                <select
-                  className="flex h-10 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-                  onChange={field.onChange}
-                  value={field.value}
-                >
+              <FieldControl label="Category">
+                <Select onChange={field.onChange} value={field.value}>
                   <option value="">Select a category</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
                   ))}
-                </select>
-              </FormControl>
+                </Select>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -114,10 +111,9 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
+              <FieldControl label="Name">
                 <Input placeholder="Sourdough loaf" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -127,10 +123,9 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="slug"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Slug</FormLabel>
-              <FormControl>
+              <FieldControl label="Slug">
                 <Input placeholder="sourdough-loaf" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -140,8 +135,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
+              <FieldControl label="Description">
                 <Input
                   placeholder="Optional description"
                   value={field.value ?? ""}
@@ -149,7 +143,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
                     field.onChange(event.target.value || null)
                   }
                 />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -159,10 +153,9 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="price_cents"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Price (cents)</FormLabel>
-              <FormControl>
+              <FieldControl label="Price (cents)">
                 <Input min={0} type="number" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -172,8 +165,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="image_url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Image URL</FormLabel>
-              <FormControl>
+              <FieldControl label="Image URL">
                 <Input
                   placeholder="https://example.com/image.jpg"
                   value={field.value ?? ""}
@@ -181,7 +173,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
                     field.onChange(event.target.value || null)
                   }
                 />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}

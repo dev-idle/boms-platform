@@ -1,5 +1,4 @@
 import { BrandLogo } from "@/components/brand/brand-logo";
-
 import { AUTH_PATISSERIE_IMAGE_URL } from "@/constants/storefront-imagery";
 import { AUTH_BRAND_DESCRIPTION, AuthBrandTitle } from "../lib/auth-brand-copy";
 

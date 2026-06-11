@@ -6,16 +6,15 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
-import { AUTH_INPUT_CLASS } from "../lib/auth-form-styles";
 import { useLogin } from "../hooks";
 import { loginSchema, type LoginInput } from "../schemas";
-import { AuthFormFieldControl } from "./auth-form-field-control";
 import { AuthInlineLink } from "./auth-inline-link";
 import { AuthFormShell } from "./auth-form-shell";
 
@@ -99,16 +98,15 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
             name="email"
             render={({ field }) => (
               <FormItem className="auth-field">
-                <AuthFormFieldControl label="Email">
+                <FieldControl label="Email">
                   <Input
                     autoComplete="email"
-                    className={AUTH_INPUT_CLASS}
                     inputMode="email"
                     placeholder="you@example.com"
                     type="email"
                     {...field}
                   />
-                </AuthFormFieldControl>
+                </FieldControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -119,15 +117,14 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
             name="password"
             render={({ field }) => (
               <FormItem className="auth-field">
-                <AuthFormFieldControl label="Password">
+                <FieldControl label="Password">
                   <Input
                     autoComplete="current-password"
-                    className={AUTH_INPUT_CLASS}
                     placeholder="••••••••"
                     type="password"
                     {...field}
                   />
-                </AuthFormFieldControl>
+                </FieldControl>
                 <div className="auth-forgot-row">
                   <AuthInlineLink
                     className="auth-forgot-link"

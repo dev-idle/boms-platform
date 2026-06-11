@@ -5,14 +5,8 @@ import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { FieldControl } from "@/components/ui/field-control";
+import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
 import {
@@ -72,10 +66,9 @@ export function FullNamePhoneSelfProfileForm({
           name="full_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full name</FormLabel>
-              <FormControl>
+              <FieldControl label="Full name">
                 <Input placeholder="Full name" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -86,10 +79,9 @@ export function FullNamePhoneSelfProfileForm({
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone</FormLabel>
-              <FormControl>
+              <FieldControl label="Phone">
                 <Input placeholder="Optional phone number" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}

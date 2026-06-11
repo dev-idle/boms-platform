@@ -55,6 +55,7 @@ export function AdminUsersTable() {
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Search email, name, employee code"
           value={searchInput}
+          variant="inline"
         />
         <Button type="submit">Search</Button>
         {search ? (

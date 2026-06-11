@@ -5,17 +5,17 @@
    ============================================================================= */
 
 :root {
-  /* Neutrals — warm linen */
-  --color-bg: #fbf6f2;
-  --color-surface: #fffdfb;
-  --color-blush: #f7e6eb;
-  --color-border: #f2e6e6;
-  --color-ink: #463139;
-  --color-ink-2: #6b5560;
-  --color-muted: #94808a;
+  /* Neutrals — porcelain */
+  --color-bg: #fbfaf9;
+  --color-surface: #ffffff;
+  --color-blush: #faf0f4;
+  --color-border: #efe9eb;
+  --color-ink: #3e2d36;
+  --color-ink-2: #675562;
+  --color-muted: #93818c;
 
   /* Velvet rosé */
-  --color-rose-100: #f7e6eb;
+  --color-rose-100: #fce8ef;
   --color-rose-200: #efd2db;
   --color-rose-300: #e2b3c3;
   --color-rose-400: #cf6b8a;
@@ -52,11 +52,27 @@
   --radius-card: 16px;
   --radius-modal: 20px;
   --radius-input: 12px;
+  --radius-button: 12px;
 
-  /* Depth — plum tint */
-  --shadow-rest: 0 1px 3px rgb(70 49 57 / 0.05);
-  --shadow-hover: 0 8px 24px rgb(70 49 57 / 0.07);
+  /* Button — refined rosé (crisp hairline + clear hierarchy) */
+  --btn-rose-fill: var(--color-surface);
+  --btn-rose-fill-hover: var(--color-blush);
+  --btn-rose-line: var(--color-rose-200);
+  --btn-rose-line-hover: var(--color-rose-300);
+  --btn-rose-text: var(--color-rose-600);
+  --btn-rose-text-active: var(--color-rose-500);
+  --btn-shadow-primary:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 1px 2px rgb(62 45 54 / 0.05),
+    0 4px 14px rgb(185 72 110 / 0.14);
+  --btn-shadow-primary-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 2px 4px rgb(62 45 54 / 0.05),
+    0 6px 18px rgb(185 72 110 / 0.18);
 
+  /* Depth — ink tint */
+  --shadow-rest: 0 1px 3px rgb(62 45 54 / 0.05);
+  --shadow-hover: 0 8px 24px rgb(62 45 54 / 0.07);
   /* Motion */
   --ease-luxury: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-micro: 150ms;
@@ -66,15 +82,18 @@
   /* Layout — keep storefront + auth header heights in sync */
   --storefront-header-height: 4.5rem;
 
-  /* Field chrome — auth inputs + storefront search */
-  --field-bg: color-mix(in srgb, var(--color-surface) 92%, var(--color-blush));
-  --field-border: color-mix(in srgb, var(--color-border) 62%, transparent);
+  /* Field chrome — porcelain inputs (SSOT) */
+  --field-bg: color-mix(in srgb, var(--color-surface) 88%, var(--color-blush));
+  --field-bg-focus: color-mix(in srgb, var(--color-surface) 94%, var(--color-blush));
+  --field-bg-disabled: color-mix(in srgb, var(--color-blush) 32%, var(--color-surface));
+  --field-border: color-mix(in srgb, var(--color-rose-200) 40%, var(--color-border));
   --field-border-hover: color-mix(in srgb, var(--color-rose-300) 55%, var(--color-border));
   --field-border-focus: var(--color-rose-400);
-  --field-frame-focus: color-mix(in srgb, var(--color-rose-300) 42%, transparent);
+  --field-frame-focus: color-mix(in srgb, var(--color-rose-300) 38%, transparent);
+  --field-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.72);
   --field-label-active: var(--color-rose-600);
   --field-caret: var(--color-rose-500);
-  --field-placeholder: color-mix(in srgb, var(--color-muted) 82%, transparent);
+  --field-placeholder: color-mix(in srgb, var(--color-muted) 62%, transparent);
 }
 
 @media (min-width: 64rem) {
@@ -192,6 +211,7 @@
   --radius-sm: var(--radius-input);
   --radius-md: var(--radius-card);
   --radius-lg: var(--radius-modal);
+  --radius-button: var(--radius-button);
 
   --shadow-rest: var(--shadow-rest);
   --shadow-hover: var(--shadow-hover);
@@ -389,6 +409,7 @@
     font-family: var(--font-body);
     font-size: 0.8125rem;
     font-weight: 500;
+    letter-spacing: 0.02em;
     line-height: 1.4;
   }
 
@@ -465,15 +486,176 @@
     box-shadow: var(--shadow-hover);
   }
 
+  /* Button system — Refined Line (components/ui/button.tsx) */
+  .btn-chrome {
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-weight: 500;
+    min-height: 44px;
+    min-width: 44px;
+    transition:
+      background-color var(--duration-standard) var(--ease-luxury),
+      box-shadow var(--duration-standard) var(--ease-luxury),
+      color var(--duration-standard) var(--ease-luxury);
+  }
+
+  .btn-chrome:focus {
+    outline: none;
+  }
+
+  .btn-chrome:focus-visible {
+    outline: 2px solid var(--color-rose-300);
+    outline-offset: 2px;
+  }
+
+  .btn-chrome:disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Primary — decisive rosé, satin edge, soft lift */
+  .btn-primary {
+    background-color: var(--color-rose-500);
+    box-shadow: var(--btn-shadow-primary);
+    color: #fff;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-rose-600);
+    box-shadow: var(--btn-shadow-primary-hover);
+    color: #fff;
+  }
+
+  .btn-primary:active:not(:disabled) {
+    background-color: var(--color-rose-700);
+    box-shadow: inset 0 1px 2px rgb(62 45 54 / 0.12);
+    color: #fff;
+  }
+
+  .btn-primary:disabled {
+    background-color: var(--color-rose-200);
+    box-shadow: none;
+    color: #fff;
+  }
+
+  .btn-primary .btn-arrow {
+    opacity: 0.9;
+    transition: transform var(--duration-standard) var(--ease-luxury);
+  }
+
+  .btn-primary:hover:not(:disabled) .btn-arrow {
+    opacity: 1;
+    transform: translateX(3px);
+  }
+
+  /* Secondary — white + crisp rosé hairline */
+  .btn-variant-outline {
+    background-color: var(--btn-rose-fill);
+    box-shadow: inset 0 0 0 1px var(--btn-rose-line);
+    color: var(--btn-rose-text);
+  }
+
+  .btn-variant-outline:hover:not(:disabled) {
+    background-color: var(--btn-rose-fill-hover);
+    box-shadow: inset 0 0 0 1px var(--btn-rose-line-hover);
+    color: var(--btn-rose-text-active);
+  }
+
+  .btn-variant-outline:active:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-blush) 82%, var(--color-rose-100));
+    box-shadow: inset 0 0 0 1px var(--color-rose-400);
+  }
+
+  .btn-variant-outline:disabled {
+    background-color: var(--color-surface);
+    box-shadow: inset 0 0 0 1px var(--color-border);
+    color: var(--color-muted);
+  }
+
+  /* Gold — premium hairline, max one per viewport */
+  .btn-variant-gold {
+    background-color: var(--color-surface);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--color-gold-500) 38%, var(--color-border));
+    color: var(--color-gold-700);
+  }
+
+  .btn-variant-gold:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-gold-100) 45%, var(--color-surface));
+    box-shadow: inset 0 0 0 1px var(--color-gold-500);
+  }
+
+  .btn-variant-gold:disabled {
+    background-color: var(--color-surface);
+    box-shadow: inset 0 0 0 1px var(--color-border);
+    color: var(--color-muted);
+  }
+
+  /* Tertiary — rosé text + hairline sweep */
+  .btn-variant-ghost {
+    background: transparent;
+    box-shadow: none;
+    color: var(--btn-rose-text);
+    position: relative;
+  }
+
+  .btn-variant-ghost::after {
+    background-color: var(--color-rose-300);
+    bottom: 0.5rem;
+    content: "";
+    height: 1px;
+    left: 0;
+    position: absolute;
+    transition: width var(--duration-standard) var(--ease-luxury);
+    width: 0;
+  }
+
+  .btn-variant-ghost:hover:not(:disabled) {
+    background: transparent;
+    color: var(--btn-rose-text-active);
+  }
+
+  .btn-variant-ghost:hover:not(:disabled)::after {
+    width: 100%;
+  }
+
+  .btn-variant-ghost:disabled {
+    color: var(--color-muted);
+    opacity: 0.55;
+  }
+
+  .btn-variant-destructive {
+    background-color: var(--color-danger-bg);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--color-danger) 18%, var(--color-border));
+    color: var(--color-danger);
+  }
+
+  .btn-variant-destructive:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-danger-bg) 55%, var(--color-surface));
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--color-danger) 26%, var(--color-border));
+  }
+
+  .btn-variant-destructive:disabled {
+    opacity: 0.45;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn-primary:hover:not(:disabled) .btn-arrow {
+      transform: none;
+    }
+  }
+
   .divider-gold {
     border-top: 1px solid var(--color-gold-500);
-    opacity: 0.45;
-    width: 2.5rem;
+    width: 3rem;
   }
 
   .brand-wordmark {
     align-items: baseline;
-    color: var(--color-ink);
+    color: var(--color-rose-500);
     display: inline-flex;
     font-family: var(--font-display);
     font-optical-sizing: auto;
@@ -499,7 +681,7 @@
   }
 
   .brand-wordmark-accent {
-    color: var(--theme-primary);
+    color: inherit;
     font-weight: 600;
     margin-inline-start: -0.02em;
     transition-delay: 100ms;
@@ -688,6 +870,7 @@
     align-items: center;
     background-color: var(--field-bg);
     border: 1px solid var(--field-border);
+    box-shadow: var(--field-inset-highlight);
     border-radius: 999px;
     column-gap: 0.75rem;
     display: grid;
@@ -710,8 +893,9 @@
   }
 
   .storefront-header-search-field:focus-within {
+    background-color: var(--field-bg-focus);
     border-color: var(--field-border-focus);
-    box-shadow: 0 0 0 1px var(--field-frame-focus);
+    box-shadow: var(--field-inset-highlight), 0 0 0 1px var(--field-frame-focus);
   }
 
   .storefront-header-search-field:focus-within
@@ -1154,25 +1338,6 @@
     margin-top: 0;
   }
 
-  .auth-field-control {
-    display: grid;
-    gap: 0.375rem;
-  }
-
-  .auth-field-control label {
-    cursor: text;
-    transition: color var(--duration-standard) var(--ease-luxury);
-  }
-
-  .auth-field-control:hover label,
-  .auth-field-control:focus-within label {
-    color: var(--field-label-active);
-  }
-
-  .auth-field-control:hover .field-chrome:not(:disabled):not(:focus):not(:focus-visible) {
-    border-color: var(--field-border-hover);
-  }
-
   .auth-forgot-row {
     display: flex;
     justify-content: flex-start;
@@ -1188,15 +1353,6 @@
     display: grid;
     gap: 1rem;
     justify-items: center;
-  }
-
-  .auth-form label {
-    color: var(--color-ink-2);
-    font-family: var(--font-body);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    letter-spacing: 0;
-    text-transform: none;
   }
 
   .auth-submit {
@@ -1315,29 +1471,54 @@
 }
 
 /* -----------------------------------------------------------------------------
-   Field chrome — unlayered so it wins over Tailwind `Input` utilities.
+   Field system — unlayered SSOT for Input, Select, search chrome.
    ----------------------------------------------------------------------------- */
+
+.field-control {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.field-control label {
+  cursor: text;
+  transition: color var(--duration-standard) var(--ease-luxury);
+}
+
+.field-control:hover label,
+.field-control:focus-within label {
+  color: var(--field-label-active);
+}
+
+.field-control:hover .field-chrome:not(:disabled):not(:focus):not(:focus-visible) {
+  border-color: var(--field-border-hover);
+}
 
 .field-chrome {
   background-color: var(--field-bg);
   border: 1px solid var(--field-border);
   border-radius: var(--radius-input);
-  box-shadow: none;
+  box-shadow: var(--field-inset-highlight);
   caret-color: var(--field-caret);
   color: var(--color-ink);
+  display: block;
   font-size: 0.9375rem;
   height: 2.75rem;
   letter-spacing: 0.01em;
   line-height: 1.25;
+  min-height: 2.75rem;
   outline: none;
   padding-inline: 0.875rem;
   transition:
+    background-color var(--duration-standard) var(--ease-luxury),
     border-color var(--duration-standard) var(--ease-luxury),
-    box-shadow var(--duration-standard) var(--ease-luxury);
+    box-shadow var(--duration-standard) var(--ease-luxury),
+    color var(--duration-standard) var(--ease-luxury);
+  width: 100%;
 }
 
 .field-chrome::placeholder {
   color: var(--field-placeholder);
+  letter-spacing: 0.015em;
 }
 
 .field-chrome:hover:not(:disabled):not(:focus):not(:focus-visible) {
@@ -1346,8 +1527,9 @@
 
 .field-chrome:focus,
 .field-chrome:focus-visible {
+  background-color: var(--field-bg-focus);
   border-color: var(--field-border-focus);
-  box-shadow: 0 0 0 1px var(--field-frame-focus);
+  box-shadow: var(--field-inset-highlight), 0 0 0 1px var(--field-frame-focus);
 }
 
 .field-chrome[aria-invalid="true"] {
@@ -1356,13 +1538,52 @@
 
 .field-chrome[aria-invalid="true"]:focus,
 .field-chrome[aria-invalid="true"]:focus-visible {
+  background-color: color-mix(in srgb, var(--color-danger-bg) 22%, var(--field-bg-focus));
   border-color: color-mix(in srgb, var(--color-danger) 80%, var(--color-border));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger) 22%, transparent);
+  box-shadow: var(--field-inset-highlight),
+    0 0 0 1px color-mix(in srgb, var(--color-danger) 22%, transparent);
 }
 
 .field-chrome:disabled {
+  background-color: var(--field-bg-disabled);
+  border-color: var(--color-border);
+  box-shadow: none;
+  color: var(--color-muted);
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 1;
+}
+
+/* Toolbar / table search — neutral surface, same chrome mechanics */
+.field-chrome--inline {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.field-chrome--inline:hover:not(:disabled):not(:focus):not(:focus-visible) {
+  border-color: color-mix(in srgb, var(--color-ink) 6%, var(--color-border));
+}
+
+.field-chrome--inline:focus,
+.field-chrome--inline:focus-visible {
+  background-color: var(--field-bg-focus);
+  border-color: var(--field-border-focus);
+}
+
+.field-chrome--select {
+  --field-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23675562' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --field-chevron-active: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a03a5c' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  appearance: none;
+  background-image: var(--field-chevron);
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  padding-inline-end: 2.5rem;
+}
+
+.field-chrome--select:focus,
+.field-chrome--select:focus-visible {
+  background-color: var(--field-bg-focus);
+  background-image: var(--field-chevron-active);
 }
 
 @media (prefers-reduced-motion: reduce) {

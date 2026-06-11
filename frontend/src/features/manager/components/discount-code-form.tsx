@@ -13,7 +13,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { FieldControl } from "@/components/ui/field-control";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import {
   fromDatetimeLocalValue,
@@ -104,10 +106,9 @@ export function DiscountCodeForm({
           name="code"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Code</FormLabel>
-              <FormControl>
+              <FieldControl label="Code">
                 <Input {...field} className="uppercase" />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -118,17 +119,12 @@ export function DiscountCodeForm({
           name="discount_type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Discount type</FormLabel>
-              <FormControl>
-                <select
-                  className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
-                  value={field.value}
-                  onChange={field.onChange}
-                >
+              <FieldControl label="Discount type">
+                <Select onChange={field.onChange} value={field.value}>
                   <option value={DISCOUNT_TYPE.percent}>Percent</option>
                   <option value={DISCOUNT_TYPE.fixedCents}>Fixed amount (cents)</option>
-                </select>
-              </FormControl>
+                </Select>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -139,14 +135,15 @@ export function DiscountCodeForm({
           name="value"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                {discountType === DISCOUNT_TYPE.percent
-                  ? "Percent off (1–100)"
-                  : "Discount amount (cents)"}
-              </FormLabel>
-              <FormControl>
+              <FieldControl
+                label={
+                  discountType === DISCOUNT_TYPE.percent
+                    ? "Percent off (1–100)"
+                    : "Discount amount (cents)"
+                }
+              >
                 <Input min={1} step={1} type="number" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -157,8 +154,7 @@ export function DiscountCodeForm({
           name="min_order_cents"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Minimum order (cents, optional)</FormLabel>
-              <FormControl>
+              <FieldControl label="Minimum order (cents, optional)">
                 <Input
                   min={0}
                   step={1}
@@ -169,7 +165,7 @@ export function DiscountCodeForm({
                     field.onChange(raw === "" ? null : Number(raw));
                   }}
                 />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -180,8 +176,7 @@ export function DiscountCodeForm({
           name="max_uses"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Maximum uses (optional)</FormLabel>
-              <FormControl>
+              <FieldControl label="Maximum uses (optional)">
                 <Input
                   min={1}
                   step={1}
@@ -192,7 +187,7 @@ export function DiscountCodeForm({
                     field.onChange(raw === "" ? null : Number(raw));
                   }}
                 />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -204,8 +199,7 @@ export function DiscountCodeForm({
             name="starts_at"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Starts at</FormLabel>
-                <FormControl>
+                <FieldControl label="Starts at">
                   <Input
                     type="datetime-local"
                     value={toDatetimeLocalValue(field.value)}
@@ -213,7 +207,7 @@ export function DiscountCodeForm({
                       field.onChange(fromDatetimeLocalValue(event.target.value))
                     }
                   />
-                </FormControl>
+                </FieldControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -223,8 +217,7 @@ export function DiscountCodeForm({
             name="ends_at"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Ends at</FormLabel>
-                <FormControl>
+                <FieldControl label="Ends at">
                   <Input
                     type="datetime-local"
                     value={toDatetimeLocalValue(field.value)}
@@ -232,7 +225,7 @@ export function DiscountCodeForm({
                       field.onChange(fromDatetimeLocalValue(event.target.value))
                     }
                   />
-                </FormControl>
+                </FieldControl>
                 <FormMessage />
               </FormItem>
             )}

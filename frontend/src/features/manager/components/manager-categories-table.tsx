@@ -61,6 +61,7 @@ export function ManagerCategoriesTable() {
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Search name or slug"
           value={searchInput}
+          variant="inline"
         />
         <Button type="submit">Search</Button>
       </form>

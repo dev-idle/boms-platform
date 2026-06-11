@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { ROUTE } from "@/constants/routes";
+import { STOREFRONT_CHOCOLATE_PRODUCT_IMAGE_URL } from "@/constants/storefront-imagery";
 import { cn } from "@/lib/utils";
 
 import type { CatalogProduct } from "@/lib/schemas/catalog";
@@ -30,8 +31,8 @@ export function HomeFeaturedProducts({ products }: HomeFeaturedProductsProps) {
               Customer favorites and seasonal picks, made daily.
             </p>
           </div>
-          <Button asChild variant="outline">
-            <Link href={ROUTE.products}>View all</Link>
+          <Button asChild variant="gold">
+            <Link href={ROUTE.products}>View collection</Link>
           </Button>
         </div>
 
@@ -53,7 +54,13 @@ export function HomeFeaturedProducts({ products }: HomeFeaturedProductsProps) {
                 key={product.id}
                 className={cn(index === 0 && "sm:col-span-2")}
               >
-                <ProductCard featured={index === 0} product={product} />
+                <ProductCard
+                  fallbackImageUrl={
+                    index === 0 ? STOREFRONT_CHOCOLATE_PRODUCT_IMAGE_URL : undefined
+                  }
+                  featured={index === 0}
+                  product={product}
+                />
               </div>
             ))}
           </div>

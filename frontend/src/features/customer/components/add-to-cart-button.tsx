@@ -22,6 +22,7 @@ export function AddToCartButton({
   return (
     <Button
       disabled={addCartItem.isPending}
+      showArrow
       type="button"
       onClick={() => {
         addCartItem.mutate({

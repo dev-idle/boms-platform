@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { FieldControl } from "@/components/ui/field-control";
 import {
   Form,
   FormControl,
@@ -81,10 +82,9 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
+              <FieldControl label="Name">
                 <Input placeholder="Breads" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -94,10 +94,9 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
           name="slug"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Slug</FormLabel>
-              <FormControl>
+              <FieldControl label="Slug">
                 <Input placeholder="breads" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -107,10 +106,9 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
           name="sort_order"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Sort order</FormLabel>
-              <FormControl>
-                <Input type="number" min={0} {...field} />
-              </FormControl>
+              <FieldControl label="Sort order">
+                <Input min={0} type="number" {...field} />
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}

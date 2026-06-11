@@ -5,14 +5,8 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { FieldControl } from "@/components/ui/field-control";
+import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { isApiError } from "@/lib/errors";
 
@@ -81,10 +75,9 @@ export function ChangePasswordForm() {
           name="old_password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Current password</FormLabel>
-              <FormControl>
+              <FieldControl label="Current password">
                 <Input autoComplete="current-password" type="password" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -95,10 +88,9 @@ export function ChangePasswordForm() {
           name="new_password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>New password</FormLabel>
-              <FormControl>
+              <FieldControl label="New password">
                 <Input autoComplete="new-password" type="password" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -109,10 +101,9 @@ export function ChangePasswordForm() {
           name="confirm_password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm password</FormLabel>
-              <FormControl>
+              <FieldControl label="Confirm password">
                 <Input autoComplete="new-password" type="password" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}

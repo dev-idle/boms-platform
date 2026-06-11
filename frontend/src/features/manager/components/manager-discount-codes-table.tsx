@@ -74,6 +74,7 @@ export function ManagerDiscountCodesTable() {
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Search code"
           value={searchInput}
+          variant="inline"
         />
         <Button type="submit">Search</Button>
       </form>

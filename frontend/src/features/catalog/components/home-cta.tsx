@@ -17,8 +17,8 @@ export function HomeCta() {
             Custom cakes and party trays available for advance order. Start with
             our menu, then pick your pickup date and time.
           </p>
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg">
+          <div className="mt-10 flex flex-wrap justify-center gap-2.5">
+            <Button asChild showArrow size="lg">
               <Link href={ROUTE.products}>Order for pickup</Link>
             </Button>
             <Button asChild size="lg" variant="outline">

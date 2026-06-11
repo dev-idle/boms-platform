@@ -63,6 +63,7 @@ export function CatalogSearchForm({
           name="search"
           placeholder="Search pastries, cakes…"
           type="search"
+          variant="inline"
         />
         {showSubmitButton ? <Button type="submit">Search</Button> : null}
         {trailing}

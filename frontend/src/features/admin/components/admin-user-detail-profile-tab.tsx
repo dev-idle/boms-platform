@@ -6,14 +6,8 @@ import { toast } from "sonner";
 
 import { USER_ROLE } from "@/constants/roles";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { FieldControl } from "@/components/ui/field-control";
+import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { isApiError } from "@/lib/errors";
 
@@ -96,10 +90,9 @@ function AdminUserDetailProfileForm({
             name="full_name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Full name</FormLabel>
-                <FormControl>
+                <FieldControl label="Full name">
                   <Input {...field} />
-                </FormControl>
+                </FieldControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -110,32 +103,27 @@ function AdminUserDetailProfileForm({
             name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Phone</FormLabel>
-                <FormControl>
+                <FieldControl label="Phone">
                   <Input {...field} />
-                </FormControl>
+                </FieldControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
           {isStaffLike ? (
-            <>
-              <FormField
-                control={form.control}
-                name="employee_code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Employee code</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-            </>
+            <FormField
+              control={form.control}
+              name="employee_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FieldControl label="Employee code">
+                    <Input {...field} />
+                  </FieldControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           ) : null}
 
           <Button disabled={updateProfile.isPending} type="submit">

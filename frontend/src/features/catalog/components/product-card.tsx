@@ -9,9 +9,16 @@ import type { CatalogProduct } from "@/lib/schemas/catalog";
 type ProductCardProps = {
   product: CatalogProduct;
   featured?: boolean;
+  /** Shown when the catalog item has no manager-provided image URL. */
+  fallbackImageUrl?: string;
 };
 
-export function ProductCard({ product, featured = false }: ProductCardProps) {
+export function ProductCard({
+  product,
+  featured = false,
+  fallbackImageUrl,
+}: ProductCardProps) {
+  const imageUrl = product.image_url ?? fallbackImageUrl;
   return (
     <article
       className={cn(
@@ -31,12 +38,12 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
               : "aspect-square",
           )}
         >
-          {product.image_url ? (
+          {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are external manager-provided links
             <img
               alt={product.name}
               className="size-full rounded-t-card object-cover transition-transform duration-standard ease-default group-hover:scale-[1.02] motion-reduce:transform-none"
-              src={product.image_url}
+              src={imageUrl}
             />
           ) : (
             <div

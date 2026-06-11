@@ -1,18 +1,30 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
+const inputVariants = cva("field-chrome text-form-input w-full", {
+  variants: {
+    variant: {
+      default: "",
+      /** Neutral chrome for toolbar / table filters (no blush fill). */
+      inline: "field-chrome--inline",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
+export type InputProps = React.InputHTMLAttributes<HTMLInputElement> &
+  VariantProps<typeof inputVariants>;
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type, variant, ...props }, ref) => {
     return (
       <input
         type={type}
-        className={cn(
-          "text-form-input flex h-11 w-full rounded-input border border-border bg-surface px-3 py-2 transition-colors duration-standard ease-default placeholder:text-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-rose-200 disabled:cursor-not-allowed disabled:opacity-50",
-          className,
-        )}
+        className={cn(inputVariants({ variant }), className)}
         ref={ref}
         {...props}
       />

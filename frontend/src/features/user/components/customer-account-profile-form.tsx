@@ -5,14 +5,8 @@ import { useForm } from "react-hook-form";
 
 import { USER_ROLE } from "@/constants/roles";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { FieldControl } from "@/components/ui/field-control";
+import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
 import {
@@ -71,10 +65,9 @@ function CustomerAccountProfileFormBody({
           name="display_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Display name</FormLabel>
-              <FormControl>
+              <FieldControl label="Display name">
                 <Input placeholder="Your display name" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
@@ -85,10 +78,9 @@ function CustomerAccountProfileFormBody({
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone</FormLabel>
-              <FormControl>
+              <FieldControl label="Phone">
                 <Input placeholder="Optional phone number" {...field} />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}
