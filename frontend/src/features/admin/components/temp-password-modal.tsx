@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { AppDialog, AppDialogFooterActions } from "@/components/ui/app-dialog";
 import { Button } from "@/components/ui/button";
 
-import type { CreateOperationalResponse } from "../schemas";
+import type { AdminTempPasswordPayload } from "../schemas";
 
 type TempPasswordModalProps = {
-  open: boolean;
-  data: CreateOperationalResponse | null;
+  data: AdminTempPasswordPayload | null;
   onClose: () => void;
+  open: boolean;
 };
 
 export function TempPasswordModal({
@@ -26,7 +27,7 @@ export function TempPasswordModal({
 }
 
 type TempPasswordModalContentProps = {
-  data: CreateOperationalResponse;
+  data: AdminTempPasswordPayload;
   onClose: () => void;
 };
 
@@ -47,37 +48,12 @@ function TempPasswordModalContent({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
-      <div className="w-full max-w-lg rounded-modal border border-border bg-surface p-6 shadow-hover">
-        <h2 className="text-lg font-medium text-ink">
-          Temporary password
-        </h2>
-        <p className="mt-2 text-sm text-ink-2">
-          Share this password securely with{" "}
-          <span className="font-medium">{userEmail}</span>. It is shown only
-          once.
-        </p>
-
-        <div className="mt-4 rounded-input border border-border bg-surface-alt p-3 font-mono text-sm">
-          {tempPassword}
-        </div>
-
-        <div className="mt-4 flex items-center gap-3">
-          <Button onClick={() => void handleCopy()} type="button">
-            {copied ? "Copied" : "Copy password"}
-          </Button>
-          <label className="flex items-center gap-2 text-sm text-ink">
-            <input
-              checked={acknowledged}
-              className="h-4 w-4 accent-rose-500"
-              onChange={(event) => setAcknowledged(event.target.checked)}
-              type="checkbox"
-            />
-            I have copied the password
-          </label>
-        </div>
-
-        <div className="mt-6 flex justify-end">
+    <AppDialog
+      closeOnBackdrop={acknowledged}
+      closeOnEscape={acknowledged}
+      description={`Share this password securely with ${userEmail}. It is shown only once.`}
+      footer={
+        <AppDialogFooterActions>
           <Button
             disabled={!acknowledged}
             onClick={onClose}
@@ -86,8 +62,29 @@ function TempPasswordModalContent({
           >
             Close
           </Button>
-        </div>
+        </AppDialogFooterActions>
+      }
+      onClose={onClose}
+      open
+      size="lg"
+      title="Temporary password"
+    >
+      <div className="app-dialog-code">{tempPassword}</div>
+
+      <div className="app-dialog-inline-actions">
+        <Button onClick={() => void handleCopy()} type="button" variant="outline">
+          {copied ? "Copied" : "Copy password"}
+        </Button>
+        <label className="app-dialog-checkbox">
+          <input
+            checked={acknowledged}
+            className="app-dialog-checkbox-input"
+            onChange={(event) => setAcknowledged(event.target.checked)}
+            type="checkbox"
+          />
+          <span>I have copied the password</span>
+        </label>
       </div>
-    </div>
+    </AppDialog>
   );
 }

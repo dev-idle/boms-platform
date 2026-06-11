@@ -48,6 +48,23 @@ export function homeRouteForRole(role: UserRole): string {
   }
 }
 
+export function profileRouteForRole(role: UserRole): string {
+  switch (role) {
+    case USER_ROLE.customer:
+      return ROUTE.customer.account.profile;
+    case USER_ROLE.staff:
+      return ROUTE.staff.account.profile;
+    case USER_ROLE.baker:
+      return ROUTE.baker.account.profile;
+    case USER_ROLE.manager:
+      return ROUTE.manager.account.profile;
+    case USER_ROLE.admin:
+      return ROUTE.admin.account.profile;
+    default:
+      return assertNeverRole(role);
+  }
+}
+
 export function passwordRouteForRole(role: UserRole): string {
   switch (role) {
     case USER_ROLE.customer:

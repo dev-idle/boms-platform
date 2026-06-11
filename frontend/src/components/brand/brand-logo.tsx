@@ -40,6 +40,8 @@ const markSizeForLogo: Record<
 
 type BrandLogoProps = VariantProps<typeof brandLogoVariants> & {
   className?: string;
+  /** Override link target (defaults to storefront home). */
+  href?: string;
   /** When false, renders a non-interactive wordmark (e.g. footer heading). */
   linked?: boolean;
 };
@@ -53,7 +55,12 @@ function BrandLogoInner({ size }: { size: BrandLogoSize | null | undefined }) {
   );
 }
 
-export function BrandLogo({ className, size, linked = true }: BrandLogoProps) {
+export function BrandLogo({
+  className,
+  href = ROUTE.home,
+  linked = true,
+  size,
+}: BrandLogoProps) {
   if (!linked) {
     return (
       <span className={cn(brandLogoVariants({ size }), className)}>
@@ -65,7 +72,7 @@ export function BrandLogo({ className, size, linked = true }: BrandLogoProps) {
   return (
     <Link
       className={cn(brandLogoVariants({ size }), "brand-logo", className)}
-      href={ROUTE.home}
+      href={href}
     >
       <BrandLogoInner size={size} />
     </Link>

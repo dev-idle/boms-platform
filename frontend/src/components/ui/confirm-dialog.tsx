@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
-
 import { Button } from "@/components/ui/button";
 
+import { AppDialog, AppDialogFooterActions } from "./app-dialog";
+
 type ConfirmDialogProps = {
+  cancelLabel?: string;
+  confirmLabel?: string;
+  confirmVariant?: "default" | "destructive";
+  description: string;
+  isPending?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
   open: boolean;
   title: string;
-  description: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  isPending?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
 };
 
 export function ConfirmDialog({
@@ -21,37 +22,16 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  confirmVariant = "default",
   isPending = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function onEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isPending) {
-        onCancel();
-      }
-    }
-
-    window.addEventListener("keydown", onEscape);
-    return () => window.removeEventListener("keydown", onEscape);
-  }, [open, isPending, onCancel]);
-
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
-      <div className="w-full max-w-md rounded-modal border border-border bg-surface p-6 shadow-hover">
-        <h2 className="text-section-heading">
-          {title}
-        </h2>
-        <p className="mt-2 text-sm text-ink-2">{description}</p>
-        <div className="mt-6 flex justify-end gap-3">
+    <AppDialog
+      description={description}
+      footer={
+        <AppDialogFooterActions className="app-dialog-footer-actions--split">
           <Button
             disabled={isPending}
             onClick={onCancel}
@@ -60,11 +40,22 @@ export function ConfirmDialog({
           >
             {cancelLabel}
           </Button>
-          <Button disabled={isPending} onClick={onConfirm} type="button">
+          <Button
+            disabled={isPending}
+            onClick={onConfirm}
+            type="button"
+            variant={confirmVariant}
+          >
             {isPending ? "Processing…" : confirmLabel}
           </Button>
-        </div>
-      </div>
-    </div>
+        </AppDialogFooterActions>
+      }
+      isPending={isPending}
+      onClose={onCancel}
+      open={open}
+      panelClassName="app-dialog-panel--confirm"
+      size="sm"
+      title={title}
+    />
   );
 }

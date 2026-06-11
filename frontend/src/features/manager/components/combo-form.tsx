@@ -6,6 +6,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { FieldControl } from "@/components/ui/field-control";
 import {
   Form,
@@ -18,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
@@ -49,7 +51,8 @@ const defaultEndsAt = (): string =>
 export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
   const createCombo = useCreateCombo();
   const updateCombo = useUpdateCombo(combo?.id ?? "");
-  const [productSearch, setProductSearch] = useState("");
+  const [productSearchInput, setProductSearchInput] = useState("");
+  const productSearch = useDebouncedValue(productSearchInput, 280).trim();
   const productsQuery = useProducts({
     page: 1,
     page_size: 100,
@@ -226,11 +229,11 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-[16rem] flex-1 space-y-2">
               <FormLabel>Products in combo</FormLabel>
-              <Input
-                onChange={(event) => setProductSearch(event.target.value)}
+              <DashboardSearchField
+                onChange={setProductSearchInput}
+                onClear={() => setProductSearchInput("")}
                 placeholder="Search products by name or slug"
-                value={productSearch}
-                variant="inline"
+                value={productSearchInput}
               />
             </div>
             <Button

@@ -6,6 +6,11 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  formatOrderStatusLabel,
+  orderStatusToPillVariant,
+  StatusPill,
+} from "@/components/ui/status-pill";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
@@ -74,10 +79,17 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
         </Button>
       </Link>
 
-      <div className="rounded-lg border border-border p-4 rounded-card border bg-surface">
-        <p className="text-sm text-muted">
-          Placed {formatDateTime(order.created_at)} · Status: {order.status}
-        </p>
+      <div className="db-card space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm text-muted">
+            Placed {formatDateTime(order.created_at)}
+          </p>
+          <StatusPill
+            label={formatOrderStatusLabel(order.status)}
+            variant={orderStatusToPillVariant(order.status)}
+          />
+        </div>
+        <p className="text-order-code">{order.id}</p>
         <p className="mt-1 text-sm text-ink-2">
           Customer:{" "}
           {order.customer.display_name
@@ -118,7 +130,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
             <span>{formatPriceCents(order.subtotal_cents)}</span>
           </div>
           {order.discount_cents > 0 ? (
-            <div className="flex justify-between text-emerald-700">
+            <div className="flex justify-between text-ink-2">
               <span>Discount</span>
               <span>-{formatPriceCents(order.discount_cents)}</span>
             </div>
@@ -155,6 +167,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
       <ConfirmDialog
         cancelLabel="Keep order"
         confirmLabel="Cancel order"
+        confirmVariant="destructive"
         description="The customer will see this order as cancelled."
         isPending={patchStatus.isPending}
         onCancel={() => setCancelOpen(false)}

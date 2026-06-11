@@ -56,6 +56,11 @@ export const createOperationalResponseSchema = z.object({
   temp_password: z.string().min(1),
 });
 
+export const adminResetPasswordResponseSchema = z.object({
+  user: adminUserSchema,
+  temp_password: z.string().min(1),
+});
+
 export const updateOperationalProfileSchema = z.object({
   full_name: z.string().trim().min(1, "Full name is required").max(255),
   phone: optionalNullableTrimmedString(50, "Phone"),
@@ -97,10 +102,19 @@ export const updateRoleSchema = updateRoleBaseSchema.superRefine((input, ctx) =>
   }
 });
 
+const adminUserRoleFilterSchema = z.enum([
+  USER_ROLE.customer,
+  USER_ROLE.staff,
+  USER_ROLE.baker,
+  USER_ROLE.manager,
+  USER_ROLE.admin,
+]);
+
 export const listFilterSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   page_size: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().trim().default(""),
+  role: adminUserRoleFilterSchema.optional(),
 });
 
 export const paginationMetaSchema = z.object({
@@ -116,15 +130,50 @@ export const usersListResultSchema = z.object({
   request_id: z.string().optional(),
 });
 
+export const adminUserActivityLogSchema = z.object({
+  id: z.string().uuid(),
+  action: z.string().min(1),
+  summary: z.string().min(1),
+  actor_id: z.string().uuid(),
+  actor_email: z.string().email(),
+  actor_role: z.enum([
+    USER_ROLE.customer,
+    USER_ROLE.staff,
+    USER_ROLE.baker,
+    USER_ROLE.manager,
+    USER_ROLE.admin,
+  ]),
+  created_at: z.string(),
+});
+
+export const userActivityFilterSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const userActivityListResultSchema = z.object({
+  entries: z.array(adminUserActivityLogSchema),
+  pagination: paginationMetaSchema,
+  request_id: z.string().optional(),
+});
+
 export type AdminUser = z.infer<typeof adminUserSchema>;
 export type CreateOperationalInput = z.infer<typeof createOperationalSchema>;
 export type CreateOperationalResponse = z.infer<
   typeof createOperationalResponseSchema
 >;
+export type AdminResetPasswordResponse = z.infer<
+  typeof adminResetPasswordResponseSchema
+>;
+export type AdminTempPasswordPayload = CreateOperationalResponse | AdminResetPasswordResponse;
 export type UpdateOperationalProfileInput = z.infer<
   typeof updateOperationalProfileSchema
 >;
 export type AdminUserProfileFormValues = z.infer<typeof adminUserProfileFormSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
+export type AdminUserRoleFilter = z.infer<typeof adminUserRoleFilterSchema>;
 export type ListFilterInput = z.infer<typeof listFilterSchema>;
 export type UsersListResult = z.infer<typeof usersListResultSchema>;
+export type AdminUserActivityLog = z.infer<typeof adminUserActivityLogSchema>;
+export type UserActivityFilterInput = z.infer<typeof userActivityFilterSchema>;
+export type UserActivityListResult = z.infer<typeof userActivityListResultSchema>;

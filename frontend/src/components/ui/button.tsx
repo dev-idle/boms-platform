@@ -40,9 +40,9 @@ const buttonVariants = cva(
         destructive: "btn-variant-destructive",
       },
       size: {
-        default: "h-10 min-h-11 min-w-11 px-5",
-        sm: "h-9 min-h-11 min-w-11 px-4 text-xs",
-        lg: "h-11 min-h-11 min-w-11 px-6",
+        default: "",
+        sm: "text-xs [--btn-control-min-height:2.25rem] [--btn-control-min-width:2.25rem] [--btn-control-padding-inline:0.875rem]",
+        lg: "[--btn-control-min-height:2.875rem] [--btn-control-min-width:2.875rem] [--btn-control-padding-inline:1.5rem]",
       },
     },
     defaultVariants: {

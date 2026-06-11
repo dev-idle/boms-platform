@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { ASSIGNABLE_OPERATIONAL_ROLES, USER_ROLE } from "@/constants/roles";
+import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
@@ -109,13 +109,6 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
   return (
     <>
       <div className="max-w-2xl space-y-4">
-        {user.role === USER_ROLE.admin || user.role === USER_ROLE.customer ? (
-          <p className="text-sm text-amber-800">
-            Current role: <strong>{user.role}</strong>. Select an operational role below
-            (staff, baker, or manager). Platform admin accounts are created via dev seed
-            only.
-          </p>
-        ) : null}
         <Form {...form}>
           <form
             className="space-y-4"

@@ -16,9 +16,15 @@ import {
 } from "../schemas/index";
 import { useChangePassword } from "../hooks";
 
+import { cn } from "@/lib/utils";
+
 import { applyValidationDetails } from "./helpers";
 
-export function ChangePasswordForm() {
+type ChangePasswordFormProps = {
+  formClassName?: string;
+};
+
+export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
   const mutation = useChangePassword();
   const form = useForm<ChangePasswordFormInput>({
     resolver: zodResolver(changePasswordFormSchema),
@@ -66,7 +72,7 @@ export function ChangePasswordForm() {
   return (
     <Form {...form}>
       <form
-        className="space-y-4"
+        className={cn("dashboard-profile-form", formClassName)}
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}
       >
@@ -109,9 +115,11 @@ export function ChangePasswordForm() {
           )}
         />
 
-        <Button disabled={mutation.isPending} type="submit">
-          {mutation.isPending ? "Changing…" : "Change password"}
-        </Button>
+        <div className="dashboard-profile-form-actions">
+          <Button disabled={mutation.isPending} type="submit">
+            {mutation.isPending ? "Changing…" : "Change password"}
+          </Button>
+        </div>
       </form>
     </Form>
   );

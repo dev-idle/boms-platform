@@ -4,16 +4,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { DashboardBreadcrumb } from "@/components/ui/dashboard-breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { FieldControl } from "@/components/ui/field-control";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
+import { DashboardProfileSection } from "@/features/user";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
 import { useCreateOperational } from "../hooks";
+import { adminUsersNewBreadcrumbItems } from "../lib/admin-breadcrumbs";
 import { createOperationalSchema, type CreateOperationalInput } from "../schemas";
 
 import { TempPasswordModal } from "./temp-password-modal";
@@ -59,102 +62,108 @@ export function CreateOperationalUserForm() {
 
   return (
     <>
-      <div className="max-w-2xl space-y-6">
-        <div>
-          <h1 className="text-page-title">
-            New operational user
-          </h1>
+      <div className="dashboard-page-stack dashboard-account-profile-page max-w-4xl">
+        <header className="dashboard-page-header">
+          <DashboardBreadcrumb items={adminUsersNewBreadcrumbItems()} />
+          <h1 className="mt-2 text-page-title">New operational user</h1>
           <p className="mt-2 text-sm text-ink-2">
-            Create staff, baker, or manager accounts. Platform admins are created via dev seed only.
+            Create staff, baker, or manager accounts. Platform admins are created
+            via dev seed only.
           </p>
+        </header>
+
+        <div className="dashboard-profile-stack">
+          <DashboardProfileSection id="admin-users-new" title="Account details">
+            <Form {...form}>
+              <form
+                className="dashboard-profile-form"
+                noValidate
+                onSubmit={form.handleSubmit(onSubmit)}
+              >
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldControl label="Email">
+                        <Input type="email" {...field} />
+                      </FieldControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldControl label="Role">
+                        <Select {...field}>
+                          {ASSIGNABLE_OPERATIONAL_ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {role}
+                            </option>
+                          ))}
+                        </Select>
+                      </FieldControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="full_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldControl label="Full name">
+                        <Input {...field} />
+                      </FieldControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldControl label="Phone">
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                        />
+                      </FieldControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="employee_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldControl label="Employee code">
+                        <Input {...field} />
+                      </FieldControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="dashboard-profile-form-actions dashboard-profile-form-actions--start">
+                  <Button disabled={createUser.isPending} type="submit">
+                    {createUser.isPending ? "Creating…" : "Create user"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DashboardProfileSection>
         </div>
-
-        <Form {...form}>
-          <form
-            className="space-y-4"
-            noValidate
-            onSubmit={form.handleSubmit(onSubmit)}
-          >
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FieldControl label="Email">
-                    <Input type="email" {...field} />
-                  </FieldControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FieldControl label="Role">
-                    <Select {...field}>
-                      {ASSIGNABLE_OPERATIONAL_ROLES.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </Select>
-                  </FieldControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="full_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FieldControl label="Full name">
-                    <Input {...field} />
-                  </FieldControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FieldControl label="Phone">
-                    <Input
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value || null)}
-                    />
-                  </FieldControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="employee_code"
-              render={({ field }) => (
-                <FormItem>
-                  <FieldControl label="Employee code">
-                    <Input {...field} />
-                  </FieldControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button disabled={createUser.isPending} type="submit">
-              {createUser.isPending ? "Creating…" : "Create user"}
-            </Button>
-          </form>
-        </Form>
       </div>
 
       <TempPasswordModal

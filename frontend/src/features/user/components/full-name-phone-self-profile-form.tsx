@@ -15,6 +15,8 @@ import {
 } from "../schemas/index";
 import { useUpdateProfile } from "../hooks";
 
+import { cn } from "@/lib/utils";
+
 import {
   applySelfProfileFormErrors,
   fullNamePhoneFormDefaults,
@@ -25,6 +27,8 @@ type FullNamePhoneSelfProfileFormProps = {
   fullName: string;
   phone: string | null | undefined;
   children?: ReactNode;
+  formClassName?: string;
+  splitFields?: boolean;
 };
 
 /** PATCH /me self-service form for roles that edit `full_name` and `phone`. */
@@ -32,6 +36,8 @@ export function FullNamePhoneSelfProfileForm({
   fullName,
   phone,
   children,
+  formClassName,
+  splitFields = false,
 }: FullNamePhoneSelfProfileFormProps) {
   const updateProfile = useUpdateProfile();
 
@@ -57,7 +63,11 @@ export function FullNamePhoneSelfProfileForm({
   return (
     <Form {...form}>
       <form
-        className="space-y-4"
+        className={cn(
+          "dashboard-profile-form",
+          splitFields && "dashboard-profile-form--split",
+          formClassName,
+        )}
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}
       >
@@ -87,11 +97,15 @@ export function FullNamePhoneSelfProfileForm({
           )}
         />
 
-        {children}
+        {children ? (
+          <div className="dashboard-profile-form-span">{children}</div>
+        ) : null}
 
-        <Button disabled={updateProfile.isPending} type="submit">
-          {updateProfile.isPending ? "Saving…" : "Save changes"}
-        </Button>
+        <div className="dashboard-profile-form-actions dashboard-profile-form-span">
+          <Button disabled={updateProfile.isPending} type="submit">
+            {updateProfile.isPending ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
       </form>
     </Form>
   );

@@ -11,6 +11,8 @@ export {
   AdminAccountProfileView,
   ChangePasswordForm,
   CustomerAccountProfileForm,
+  DashboardAccountProfileLayout,
+  DashboardProfileSection,
   DeleteAccountCard,
   OperationalAccountProfileForm,
 } from "./components";

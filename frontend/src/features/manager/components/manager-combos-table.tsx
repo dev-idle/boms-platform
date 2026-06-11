@@ -6,9 +6,16 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Input } from "@/components/ui/input";
+import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
+import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
+import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import {
+  isInitialQueryLoad,
+  isQueryRefetching,
+} from "@/lib/react-query/query-surface";
+import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -17,9 +24,14 @@ import { useCombos, useDeleteCombo } from "../hooks";
 const PAGE_SIZE = 20;
 
 export function ManagerCombosTable() {
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const {
+    clear,
+    input,
+    page,
+    search,
+    setInput,
+    setPage,
+  } = useDebouncedTableSearch();
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
@@ -33,6 +45,12 @@ export function ManagerCombosTable() {
   const query = useCombos(filter);
   const combos = query.data?.combos ?? [];
   const pagination = query.data?.pagination;
+  const initialLoad = isInitialQueryLoad(query.isPending, query.data);
+  const refetching = isQueryRefetching(
+    query.isFetching,
+    query.isPending,
+    query.data,
+  );
 
   return (
     <div className="space-y-6">
@@ -50,68 +68,57 @@ export function ManagerCombosTable() {
         </Link>
       </div>
 
-      <form
-        className="flex flex-wrap items-center gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setPage(1);
-          setSearch(searchInput.trim());
-        }}
-      >
-        <Input
-          className="max-w-sm"
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search name or slug"
-          value={searchInput}
-          variant="inline"
-        />
-        <Button type="submit">Search</Button>
-      </form>
+      <DashboardSearchField
+        onChange={setInput}
+        onClear={clear}
+        placeholder="Search name or slug"
+        value={input}
+      />
 
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="min-w-full divide-y divide-border text-sm">
-          <thead className="bg-surface-alt">
-            <tr className="text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Window</th>
-              <th className="px-4 py-3">Items</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <table className="db-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Price</th>
+              <th>Window</th>
+              <th>Items</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {query.isPending ? (
+          <tbody>
+            {initialLoad ? (
               <tr>
-                <td className="px-4 py-6 text-muted" colSpan={6}>
+                <td className="text-muted" colSpan={6}>
                   Loading combos…
                 </td>
               </tr>
             ) : query.isError ? (
               <tr>
-                <td className="px-4 py-6 text-error" colSpan={6}>
+                <td className="text-error" colSpan={6}>
                   Failed to load combos.
                 </td>
               </tr>
             ) : combos.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-muted" colSpan={6}>
+                <td className="text-muted" colSpan={6}>
                   No combos found.
                 </td>
               </tr>
             ) : (
               combos.map((combo) => (
                 <tr key={combo.id}>
-                  <td className="px-4 py-3 font-medium">{combo.name}</td>
-                  <td className="px-4 py-3">{formatPriceCents(combo.price_cents)}</td>
-                  <td className="px-4 py-3 text-ink-2">
+                  <td className="font-medium">{combo.name}</td>
+                  <td className="text-tabular">
+                    {formatPriceCents(combo.price_cents)}
+                  </td>
+                  <td className="text-ink-2">
                     {formatDateTime(combo.starts_at)} – {formatDateTime(combo.ends_at)}
                   </td>
-                  <td className="px-4 py-3">{combo.items.length}</td>
-                  <td className="px-4 py-3">
-                    {combo.is_active ? "Active" : "Inactive"}
-                  </td>
-                  <td className="px-4 py-3">
+                  <td className="text-tabular">{combo.items.length}</td>
+                  <td>{combo.is_active ? "Active" : "Inactive"}</td>
+                  <td>
                     <div className="flex flex-wrap gap-2">
                       <Link href={ROUTE.manager.comboDetail(combo.id)}>
                         <Button size="sm" type="button" variant="outline">
@@ -135,34 +142,21 @@ export function ManagerCombosTable() {
             )}
           </tbody>
         </table>
+        {pagination ? (
+          <DashboardTablePagination
+            disabled={query.isFetching}
+            onPageChange={setPage}
+            page={pagination.page}
+            pageSize={pagination.page_size}
+            totalItems={pagination.total}
+            totalPages={pagination.total_pages}
+          />
+        ) : null}
       </div>
-
-      {pagination && pagination.total_pages > 1 ? (
-        <div className="flex items-center gap-2">
-          <Button
-            disabled={page <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-            type="button"
-            variant="outline"
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-ink-2">
-            Page {pagination.page} of {pagination.total_pages}
-          </span>
-          <Button
-            disabled={page >= pagination.total_pages}
-            onClick={() => setPage((current) => current + 1)}
-            type="button"
-            variant="outline"
-          >
-            Next
-          </Button>
-        </div>
-      ) : null}
 
       <ConfirmDialog
         confirmLabel="Delete"
+        confirmVariant="destructive"
         description={`This will remove "${deleteTarget?.name ?? "this combo"}". This cannot be undone.`}
         isPending={deleteCombo.isPending}
         onCancel={() => setDeleteTarget(null)}

@@ -131,7 +131,7 @@ frontend/src/
 │   └── customer/                # catalog browse → /api/v1/catalog/*
 ├── components/
 │   ├── ui/                      # Primitives (button, input, form, confirm-dialog)
-│   └── layouts/                 # staff-shell.tsx, manager-shell.tsx, admin-shell.tsx, operational-role-shell.tsx
+│   └── layouts/                 # dashboard-shell.tsx, staff/manager/baker/admin-shell.tsx
 ├── lib/
 │   ├── api-client.ts, browser-api-client.ts, api-envelope.ts, env.ts, utils.ts
 │   ├── validate-next.ts
@@ -175,7 +175,7 @@ features/<slice>/
 | Browser API BFF | `app/api/v1/[...path]/route.ts`, `lib/server/backend-proxy.ts` |
 | API envelope | `lib/api-envelope.ts` — `parseResponseBody`, `parseApiEnvelope` (browser + server clients) |
 | Password complexity (forms) | `lib/validation/password.ts` (`newPasswordZodString`) |
-| Operational account chrome | `components/layouts/operational-role-shell.tsx` |
+| Internal dashboard chrome | `components/layouts/dashboard-shell.tsx` (+ role shells) |
 | Auth refresh / session | `lib/auth/` + `lib/schemas/auth.ts` (`refreshResponseSchema`) |
 | RSC auth bootstrap | `features/auth/server.ts` → `provider/auth-bootstrap.tsx` (not `@/features/auth` barrel) |
 | Validation messages | `lib/validation/messages.ts` |

@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
+import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
+import {
+  formatOrderStatusLabel,
+  orderStatusToPillVariant,
+  StatusPill,
+} from "@/components/ui/status-pill";
 import { ROUTE } from "@/constants/routes";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -43,85 +50,85 @@ export function StaffOrdersTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {STATUS_FILTERS.map((option) => (
-          <button
-            key={option.label}
-            className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-standard ease-default ${
-              status === option.value
-                ? "bg-rose-500 text-surface"
-                : "bg-blush text-ink-2 hover:text-rose-500"
-            }`}
-            onClick={() => {
-              setStatus(option.value);
-              setPage(1);
-            }}
-            type="button"
-          >
-            {option.label}
-          </button>
-        ))}
+      <div className="db-filter-row">
+        <span className="db-filter-label">Status</span>
+        <DashboardFilterGroup
+          aria-label="Filter by status"
+          onChange={(next) => {
+            setStatus(next);
+            setPage(1);
+          }}
+          options={STATUS_FILTERS}
+          value={status}
+        />
       </div>
 
       {orders.length === 0 ? (
-        <p className="text-sm text-ink-2">
-          No orders match this filter.
-        </p>
+        <p className="text-sm text-muted">No orders match this filter.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-card border border-border">
-          {orders.map((order) => (
-            <li
-              key={order.id}
-              className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="font-medium text-ink">
-                  {formatPriceCents(order.total_cents)} · {order.status}
-                </p>
-                <p className="text-sm text-muted">
-                  {formatDateTime(order.created_at)} · {order.item_count} item
-                  {order.item_count === 1 ? "" : "s"}
-                </p>
-                <p className="text-sm text-ink-2">
-                  {order.customer.display_name
-                    ? `${order.customer.display_name} · `
-                    : ""}
-                  {order.customer.email}
-                </p>
-              </div>
-              <Link href={ROUTE.staff.orderDetail(order.id)}>
-                <Button type="button" variant="outline">
-                  View
-                </Button>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {pagination && pagination.total_pages > 1 ? (
-        <div className="flex items-center gap-2">
-          <Button
-            disabled={page <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-            type="button"
-            variant="outline"
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-ink-2">
-            Page {pagination.page} of {pagination.total_pages}
-          </span>
-          <Button
-            disabled={page >= pagination.total_pages}
-            onClick={() => setPage((current) => current + 1)}
-            type="button"
-            variant="outline"
-          >
-            Next
-          </Button>
+        <div className="db-table-wrap">
+          <table className="db-table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Placed</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id}>
+                  <td>
+                    <span className="text-order-code">{order.id.slice(0, 8)}</span>
+                  </td>
+                  <td>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ink">
+                        {order.customer.display_name ?? order.customer.email}
+                      </p>
+                      {order.customer.display_name ? (
+                        <p className="truncate text-caption-dashboard">
+                          {order.customer.email}
+                        </p>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="text-ink-2">{formatDateTime(order.created_at)}</td>
+                  <td className="text-tabular font-medium">
+                    {formatPriceCents(order.total_cents)}
+                  </td>
+                  <td>
+                    <StatusPill
+                      label={formatOrderStatusLabel(order.status)}
+                      variant={orderStatusToPillVariant(order.status)}
+                    />
+                  </td>
+                  <td>
+                    <Link href={ROUTE.staff.orderDetail(order.id)}>
+                      <Button size="sm" type="button" variant="outline">
+                        View
+                      </Button>
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {pagination ? (
+            <DashboardTablePagination
+              disabled={ordersQuery.isFetching}
+              onPageChange={setPage}
+              page={pagination.page}
+              pageSize={pagination.page_size}
+              totalItems={pagination.total}
+              totalPages={pagination.total_pages}
+            />
+          ) : null}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

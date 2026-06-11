@@ -6,9 +6,16 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Input } from "@/components/ui/input";
+import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
+import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
+import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import {
+  isInitialQueryLoad,
+  isQueryRefetching,
+} from "@/lib/react-query/query-surface";
+import { cn } from "@/lib/utils";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useDeleteProduct, useProducts } from "../hooks";
@@ -16,9 +23,14 @@ import { useDeleteProduct, useProducts } from "../hooks";
 const PAGE_SIZE = 20;
 
 export function ManagerProductsTable() {
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const {
+    clear,
+    input,
+    page,
+    search,
+    setInput,
+    setPage,
+  } = useDebouncedTableSearch();
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
@@ -32,6 +44,12 @@ export function ManagerProductsTable() {
   const query = useProducts(filter);
   const products = query.data?.products ?? [];
   const pagination = query.data?.pagination;
+  const initialLoad = isInitialQueryLoad(query.isPending, query.data);
+  const refetching = isQueryRefetching(
+    query.isFetching,
+    query.isPending,
+    query.data,
+  );
 
   return (
     <div className="space-y-6">
@@ -49,60 +67,47 @@ export function ManagerProductsTable() {
         </Link>
       </div>
 
-      <form
-        className="flex flex-wrap items-center gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setPage(1);
-          setSearch(searchInput.trim());
-        }}
-      >
-        <Input
-          className="max-w-sm"
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search name or slug"
-          value={searchInput}
-          variant="inline"
-        />
-        <Button type="submit">Search</Button>
-      </form>
+      <DashboardSearchField
+        onChange={setInput}
+        onClear={clear}
+        placeholder="Search name or slug"
+        value={input}
+      />
 
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="min-w-full divide-y divide-border text-sm">
-          <thead className="bg-surface-alt">
-            <tr className="text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <table className="db-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {query.isPending ? (
+          <tbody>
+            {initialLoad ? (
               <tr>
-                <td className="px-4 py-4 text-muted" colSpan={5}>
+                <td className="text-muted" colSpan={5}>
                   Loading products…
                 </td>
               </tr>
             ) : products.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-muted" colSpan={5}>
+                <td className="text-muted" colSpan={5}>
                   No products found.
                 </td>
               </tr>
             ) : (
               products.map((product) => (
                 <tr key={product.id}>
-                  <td className="px-4 py-3 font-medium">{product.name}</td>
-                  <td className="px-4 py-3 text-ink-2">
-                    {product.category_name ?? "—"}
+                  <td className="font-medium">{product.name}</td>
+                  <td className="text-ink-2">{product.category_name ?? "—"}</td>
+                  <td className="text-tabular">
+                    {formatPriceCents(product.price_cents)}
                   </td>
-                  <td className="px-4 py-3">{formatPriceCents(product.price_cents)}</td>
-                  <td className="px-4 py-3">
-                    {product.is_available ? "Available" : "Unavailable"}
-                  </td>
-                  <td className="px-4 py-3">
+                  <td>{product.is_available ? "Available" : "Unavailable"}</td>
+                  <td>
                     <div className="flex gap-2">
                       <Link href={ROUTE.manager.productDetail(product.id)}>
                         <Button size="sm" type="button" variant="outline">
@@ -129,34 +134,21 @@ export function ManagerProductsTable() {
             )}
           </tbody>
         </table>
+        {pagination ? (
+          <DashboardTablePagination
+            disabled={query.isFetching}
+            onPageChange={setPage}
+            page={pagination.page}
+            pageSize={pagination.page_size}
+            totalItems={pagination.total}
+            totalPages={pagination.total_pages}
+          />
+        ) : null}
       </div>
-
-      {pagination && pagination.total_pages > 1 ? (
-        <div className="flex items-center gap-2">
-          <Button
-            disabled={page <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-            type="button"
-            variant="outline"
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-ink-2">
-            Page {pagination.page} of {pagination.total_pages}
-          </span>
-          <Button
-            disabled={page >= pagination.total_pages}
-            onClick={() => setPage((current) => current + 1)}
-            type="button"
-            variant="outline"
-          >
-            Next
-          </Button>
-        </div>
-      ) : null}
 
       <ConfirmDialog
         confirmLabel="Delete"
+        confirmVariant="destructive"
         description={`This will remove "${deleteTarget?.name ?? "this product"}". This cannot be undone.`}
         isPending={deleteProduct.isPending}
         onCancel={() => setDeleteTarget(null)}

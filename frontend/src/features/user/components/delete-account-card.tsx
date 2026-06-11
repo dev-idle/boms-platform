@@ -34,6 +34,7 @@ export function DeleteAccountCard() {
       <ConfirmDialog
         cancelLabel="Keep account"
         confirmLabel="Delete account"
+        confirmVariant="destructive"
         description="This cannot be undone from the app."
         isPending={mutation.isPending}
         onCancel={() => setOpen(false)}

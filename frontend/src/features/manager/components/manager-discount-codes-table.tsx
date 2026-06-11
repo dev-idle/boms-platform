@@ -6,9 +6,16 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Input } from "@/components/ui/input";
+import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
+import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
+import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import {
+  isInitialQueryLoad,
+  isQueryRefetching,
+} from "@/lib/react-query/query-surface";
+import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -28,9 +35,14 @@ function formatDiscountValue(
 }
 
 export function ManagerDiscountCodesTable() {
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const {
+    clear,
+    input,
+    page,
+    search,
+    setInput,
+    setPage,
+  } = useDebouncedTableSearch();
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     code: string;
@@ -44,6 +56,12 @@ export function ManagerDiscountCodesTable() {
   const query = useDiscountCodes(filter);
   const discountCodes = query.data?.discount_codes ?? [];
   const pagination = query.data?.pagination;
+  const initialLoad = isInitialQueryLoad(query.isPending, query.data);
+  const refetching = isQueryRefetching(
+    query.isFetching,
+    query.isPending,
+    query.data,
+  );
 
   return (
     <div className="space-y-6">
@@ -61,81 +79,68 @@ export function ManagerDiscountCodesTable() {
         </Link>
       </div>
 
-      <form
-        className="flex flex-wrap items-center gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setPage(1);
-          setSearch(searchInput.trim());
-        }}
-      >
-        <Input
-          className="max-w-sm"
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search code"
-          value={searchInput}
-          variant="inline"
-        />
-        <Button type="submit">Search</Button>
-      </form>
+      <DashboardSearchField
+        onChange={setInput}
+        onClear={clear}
+        placeholder="Search code"
+        value={input}
+      />
 
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="min-w-full divide-y divide-border text-sm">
-          <thead className="bg-surface-alt">
-            <tr className="text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-3">Code</th>
-              <th className="px-4 py-3">Value</th>
-              <th className="px-4 py-3">Uses</th>
-              <th className="px-4 py-3">Window</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <table className="db-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Value</th>
+              <th>Uses</th>
+              <th>Window</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {query.isPending ? (
+          <tbody>
+            {initialLoad ? (
               <tr>
-                <td className="px-4 py-6 text-muted" colSpan={6}>
+                <td className="text-muted" colSpan={6}>
                   Loading discount codes…
                 </td>
               </tr>
             ) : query.isError ? (
               <tr>
-                <td className="px-4 py-6 text-error" colSpan={6}>
+                <td className="text-error" colSpan={6}>
                   Failed to load discount codes.
                 </td>
               </tr>
             ) : discountCodes.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-muted" colSpan={6}>
+                <td className="text-muted" colSpan={6}>
                   No discount codes found.
                 </td>
               </tr>
             ) : (
               discountCodes.map((discountCode) => (
                 <tr key={discountCode.id}>
-                  <td className="px-4 py-3 font-mono font-medium">
+                  <td className="text-order-code font-medium">
                     {discountCode.code}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="text-tabular">
                     {formatDiscountValue(
                       discountCode.discount_type,
                       discountCode.value,
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="text-tabular">
                     {discountCode.used_count}
                     {discountCode.max_uses != null
                       ? ` / ${discountCode.max_uses}`
                       : ""}
                   </td>
-                  <td className="px-4 py-3 text-ink-2">
+                  <td className="text-ink-2">
                     {formatDateTime(discountCode.starts_at)} –{" "}
                     {formatDateTime(discountCode.ends_at)}
                   </td>
-                  <td className="px-4 py-3">
-                    {discountCode.is_active ? "Active" : "Inactive"}
-                  </td>
-                  <td className="px-4 py-3">
+                  <td>{discountCode.is_active ? "Active" : "Inactive"}</td>
+                  <td>
                     <div className="flex flex-wrap gap-2">
                       <Link href={ROUTE.manager.discountCodeDetail(discountCode.id)}>
                         <Button size="sm" type="button" variant="outline">
@@ -162,34 +167,21 @@ export function ManagerDiscountCodesTable() {
             )}
           </tbody>
         </table>
+        {pagination ? (
+          <DashboardTablePagination
+            disabled={query.isFetching}
+            onPageChange={setPage}
+            page={pagination.page}
+            pageSize={pagination.page_size}
+            totalItems={pagination.total}
+            totalPages={pagination.total_pages}
+          />
+        ) : null}
       </div>
-
-      {pagination && pagination.total_pages > 1 ? (
-        <div className="flex items-center gap-2">
-          <Button
-            disabled={page <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-            type="button"
-            variant="outline"
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-ink-2">
-            Page {pagination.page} of {pagination.total_pages}
-          </span>
-          <Button
-            disabled={page >= pagination.total_pages}
-            onClick={() => setPage((current) => current + 1)}
-            type="button"
-            variant="outline"
-          >
-            Next
-          </Button>
-        </div>
-      ) : null}
 
       <ConfirmDialog
         confirmLabel="Delete"
+        confirmVariant="destructive"
         description={`This will remove "${deleteTarget?.code ?? "this discount code"}". This cannot be undone.`}
         isPending={deleteDiscountCode.isPending}
         onCancel={() => setDeleteTarget(null)}
