@@ -29,7 +29,7 @@ import { AdminUserSessionAction } from "./admin-user-session-action";
 
 type PendingAction = "revoke" | "toggle";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 const ROLE_FILTERS: Array<{ value: AdminUserRoleFilter | undefined; label: string }> = [
   { value: undefined, label: "All roles" },
@@ -64,19 +64,17 @@ export function AdminUsersTable() {
     [page, role, search],
   );
   const usersQuery = useUsers(filter);
-
-  const filterPending = usersQuery.isFetching && usersQuery.isPlaceholderData;
+  const filterPending =
+    usersQuery.isFetching && usersQuery.isPlaceholderData;
   const users = filterPending ? [] : (usersQuery.data?.users ?? []);
   const pagination = filterPending ? undefined : usersQuery.data?.pagination;
-  const initialLoad = isInitialQueryLoad(
-    usersQuery.isPending,
-    usersQuery.data,
-  );
+  const initialLoad = isInitialQueryLoad(usersQuery.isPending, usersQuery.data);
   const refetching = isQueryRefetching(
     usersQuery.isFetching,
     usersQuery.isPending,
     usersQuery.data,
   );
+
   function clearPendingAction(): void {
     setPendingAction(null);
     setActionUser(null);
@@ -123,12 +121,20 @@ export function AdminUsersTable() {
       </div>
 
       <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table">
+        <table className="db-table db-table--admin-users">
+          <colgroup>
+            <col className="db-table-col-email" />
+            <col className="db-table-col-name" />
+            <col className="db-table-col-role" />
+            <col className="db-table-col-action" />
+            <col className="db-table-col-revoke" />
+            <col className="db-table-col-action" />
+          </colgroup>
           <thead>
             <tr>
-              <th>Email</th>
+              <th className="db-table-cell-email">Email</th>
+              <th className="db-table-cell-name">Name</th>
               <th>Role</th>
-              <th>Name</th>
               <th className="db-table-status">Status</th>
               <th className="db-table-revoke-sessions">Revoke sessions</th>
               <th className="db-table-detail">Detail</th>
@@ -156,11 +162,21 @@ export function AdminUsersTable() {
                 </td>
               </tr>
             ) : (
-              users.map((user: AdminUser) => (
+              users.map((user) => (
                 <tr key={user.id}>
-                  <td className="db-table-cell-primary">{user.email}</td>
+                  <td
+                    className="db-table-cell-email db-table-cell-primary db-table-cell-truncate"
+                    title={user.email}
+                  >
+                    {user.email}
+                  </td>
+                  <td
+                    className="db-table-cell-name db-table-cell-truncate text-ink-2"
+                    title={adminUserListName(user)}
+                  >
+                    {adminUserListName(user)}
+                  </td>
                   <td className="db-table-cell-role">{user.role}</td>
-                  <td className="text-ink-2">{adminUserListName(user)}</td>
                   <td className="db-table-status">
                     <AdminUserAccountStatusToggle
                       currentUserId={currentUserId}
@@ -194,7 +210,7 @@ export function AdminUsersTable() {
         </table>
         <DashboardTablePagination
           disabled={usersQuery.isFetching}
-          hideWhenSinglePage={false}
+          itemLabel="users"
           onPageChange={setPage}
           page={pagination?.page ?? page}
           pageSize={pagination?.page_size ?? PAGE_SIZE}

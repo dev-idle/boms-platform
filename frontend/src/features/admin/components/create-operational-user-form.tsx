@@ -62,7 +62,7 @@ export function CreateOperationalUserForm() {
 
   return (
     <>
-      <div className="dashboard-page-stack dashboard-account-profile-page max-w-4xl">
+      <div className="dashboard-page-stack dashboard-account-profile-page">
         <header className="dashboard-page-header">
           <DashboardBreadcrumb items={adminUsersNewBreadcrumbItems()} />
           <h1 className="mt-2 text-page-title">New operational user</h1>
@@ -130,7 +130,7 @@ export function CreateOperationalUserForm() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FieldControl label="Phone">
+                      <FieldControl label="Phone" optional>
                         <Input
                           {...field}
                           value={field.value ?? ""}

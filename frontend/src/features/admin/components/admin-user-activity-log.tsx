@@ -85,6 +85,7 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
         <DashboardTablePagination
           disabled={activityQuery.isFetching}
           hideWhenSinglePage
+          itemLabel="events"
           onPageChange={setPage}
           page={pagination?.page ?? page}
           pageSize={pagination?.page_size ?? PAGE_SIZE}

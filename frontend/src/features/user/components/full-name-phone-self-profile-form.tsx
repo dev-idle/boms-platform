@@ -89,8 +89,8 @@ export function FullNamePhoneSelfProfileForm({
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Phone">
-                <Input placeholder="Optional phone number" {...field} />
+              <FieldControl label="Phone" optional>
+                <Input placeholder="Phone number" {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>

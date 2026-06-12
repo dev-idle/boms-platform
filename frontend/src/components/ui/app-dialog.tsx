@@ -84,11 +84,11 @@ export function AppDialog({
       return;
     }
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const root = document.documentElement;
+    root.classList.add("app-dialog-scroll-lock");
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      root.classList.remove("app-dialog-scroll-lock");
     };
   }, [open]);
 

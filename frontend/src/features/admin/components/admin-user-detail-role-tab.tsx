@@ -139,7 +139,7 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FieldControl label="Full name (optional)">
+                  <FieldControl label="Full name" optional>
                     <Input {...field} />
                   </FieldControl>
                   <FormMessage />
@@ -152,7 +152,7 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FieldControl label="Phone">
+                  <FieldControl label="Phone" optional>
                     <Input
                       {...field}
                       value={field.value ?? ""}

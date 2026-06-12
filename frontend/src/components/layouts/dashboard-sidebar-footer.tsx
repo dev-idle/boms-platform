@@ -35,27 +35,29 @@ export function DashboardSidebarFooter() {
 
   return (
     <div className="dashboard-sidebar-footer">
-      {profileHref ? (
-        <Link className="dashboard-account-link" href={profileHref}>
-          {accountBody}
-        </Link>
-      ) : (
-        <div className="dashboard-account-link">{accountBody}</div>
-      )}
-      <div aria-hidden className="dashboard-sidebar-footer-divider" />
-      <button
-        className="dashboard-sign-out-btn"
-        disabled={logout.isPending}
-        onClick={() => logout.mutate()}
-        type="button"
-      >
-        <span className="dashboard-sidebar-action-lead">
-          <LogOutIcon className="dashboard-nav-icon-svg" />
-        </span>
-        <span className="dashboard-sidebar-action-label">
-          {logout.isPending ? "Signing out…" : "Sign out"}
-        </span>
-      </button>
+      <div className="dashboard-sidebar-footer-menu">
+        {profileHref ? (
+          <Link className="dashboard-account-link" href={profileHref}>
+            {accountBody}
+          </Link>
+        ) : (
+          <div className="dashboard-account-link">{accountBody}</div>
+        )}
+        <div aria-hidden className="dashboard-sidebar-footer-divider" />
+        <button
+          className="dashboard-sign-out-btn"
+          disabled={logout.isPending}
+          onClick={() => logout.mutate()}
+          type="button"
+        >
+          <span className="dashboard-sidebar-action-lead">
+            <LogOutIcon className="dashboard-nav-icon-svg" />
+          </span>
+          <span className="dashboard-sidebar-action-label">
+            {logout.isPending ? "Signing out…" : "Sign out"}
+          </span>
+        </button>
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
@@ -101,10 +102,9 @@ export function RegisterForm() {
             render={({ field }) => (
               <FormItem className="auth-field">
                 <FieldControl label="Password">
-                  <Input
+                  <PasswordInput
                     autoComplete="new-password"
                     placeholder="••••••••"
-                    type="password"
                     {...field}
                   />
                 </FieldControl>

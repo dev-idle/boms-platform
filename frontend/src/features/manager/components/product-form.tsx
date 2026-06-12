@@ -135,9 +135,9 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Description">
+              <FieldControl label="Description" optional>
                 <Input
-                  placeholder="Optional description"
+                  placeholder="Short product description"
                   value={field.value ?? ""}
                   onChange={(event) =>
                     field.onChange(event.target.value || null)
@@ -165,7 +165,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="image_url"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Image URL">
+              <FieldControl label="Image URL" optional>
                 <Input
                   placeholder="https://example.com/image.jpg"
                   value={field.value ?? ""}

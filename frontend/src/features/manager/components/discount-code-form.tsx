@@ -154,7 +154,7 @@ export function DiscountCodeForm({
           name="min_order_cents"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Minimum order (cents, optional)">
+              <FieldControl label="Minimum order (cents)" optional>
                 <Input
                   min={0}
                   step={1}
@@ -176,7 +176,7 @@ export function DiscountCodeForm({
           name="max_uses"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Maximum uses (optional)">
+              <FieldControl label="Maximum uses" optional>
                 <Input
                   min={1}
                   step={1}

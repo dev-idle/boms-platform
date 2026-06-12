@@ -13,7 +13,7 @@ export function DashboardAccountProfileLayout({
   title,
 }: DashboardAccountProfileLayoutProps) {
   return (
-    <div className="dashboard-page-stack dashboard-account-profile-page max-w-4xl">
+    <div className="dashboard-page-stack dashboard-account-profile-page">
       <header className="dashboard-page-header">
         <h1 className="text-page-title">{title}</h1>
         <p className="mt-2 text-sm text-ink-2">{description}</p>

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { isApiError } from "@/lib/errors";
 
 import {
@@ -82,7 +82,7 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Current password">
-                <Input autoComplete="current-password" type="password" {...field} />
+                <PasswordInput autoComplete="current-password" {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -95,7 +95,7 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
           render={({ field }) => (
             <FormItem>
               <FieldControl label="New password">
-                <Input autoComplete="new-password" type="password" {...field} />
+                <PasswordInput autoComplete="new-password" {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -108,7 +108,7 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Confirm password">
-                <Input autoComplete="new-password" type="password" {...field} />
+                <PasswordInput autoComplete="new-password" {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>

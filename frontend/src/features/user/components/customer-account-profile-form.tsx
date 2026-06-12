@@ -65,7 +65,7 @@ function CustomerAccountProfileFormBody({
           name="display_name"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Display name">
+              <FieldControl label="Display name" optional>
                 <Input placeholder="Your display name" {...field} />
               </FieldControl>
               <FormMessage />
@@ -78,8 +78,8 @@ function CustomerAccountProfileFormBody({
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Phone">
-                <Input placeholder="Optional phone number" {...field} />
+              <FieldControl label="Phone" optional>
+                <Input placeholder="Phone number" {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>
