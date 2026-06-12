@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { DashboardBreadcrumb } from "@/components/ui/dashboard-breadcrumb";
+import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
+import { roleDisplayLabel } from "@/constants/roles";
 import { adminUserDetailBreadcrumbItems } from "../lib/admin-breadcrumbs";
 import { adminUserDisplayName } from "../lib/user-display";
 import type { AdminUser } from "../schemas";
@@ -15,25 +16,27 @@ export function AdminUserDetailHeader({ actions, user }: AdminUserDetailHeaderPr
   const showEmailInMeta = displayName.trim().toLowerCase() !== user.email.trim().toLowerCase();
 
   return (
-    <header className="dashboard-page-header">
-      <DashboardBreadcrumb items={adminUserDetailBreadcrumbItems()} />
-      <h1 className="mt-2 text-page-title">{displayName}</h1>
-      <div className="admin-user-detail-meta-row">
-        <p className="dashboard-page-lead admin-user-detail-lead">
-          {showEmailInMeta ? (
-            <>
-              <span>{user.email}</span>
-              <span aria-hidden className="admin-user-detail-lead-sep">
-                |
-              </span>
-            </>
+    <DashboardPageHeader
+      breadcrumbItems={adminUserDetailBreadcrumbItems()}
+      meta={
+        <div className="admin-user-detail-meta-row">
+          <p className="dashboard-page-lead admin-user-detail-lead">
+            {showEmailInMeta ? (
+              <>
+                <span>{user.email}</span>
+                <span aria-hidden className="admin-user-detail-lead-sep">
+                  |
+                </span>
+              </>
+            ) : null}
+            <span>{roleDisplayLabel(user.role)}</span>
+          </p>
+          {actions ? (
+            <div className="admin-user-detail-header-actions">{actions}</div>
           ) : null}
-          <span className="capitalize">{user.role}</span>
-        </p>
-        {actions ? (
-          <div className="admin-user-detail-header-actions">{actions}</div>
-        ) : null}
-      </div>
-    </header>
+        </div>
+      }
+      title={displayName}
+    />
   );
 }

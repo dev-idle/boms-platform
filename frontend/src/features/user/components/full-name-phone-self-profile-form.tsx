@@ -2,7 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ReactNode } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useRef } from "react";
+import { useForm, useFormState } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { FieldControl } from "@/components/ui/field-control";
@@ -46,6 +47,22 @@ export function FullNamePhoneSelfProfileForm({
     defaultValues: fullNamePhoneFormDefaults(fullName, phone),
   });
 
+  const { reset, control } = form;
+  const { isDirty } = useFormState({ control });
+  const syncedServerValuesRef = useRef({ fullName, phone });
+
+  // Sync when /me changes after save — never put the full `form` object in deps (wipes keystrokes).
+  useEffect(() => {
+    const prev = syncedServerValuesRef.current;
+    const serverPhone = phone ?? null;
+    const prevPhone = prev.phone ?? null;
+    if (prev.fullName === fullName && prevPhone === serverPhone) {
+      return;
+    }
+    syncedServerValuesRef.current = { fullName, phone };
+    reset(fullNamePhoneFormDefaults(fullName, phone));
+  }, [fullName, phone, reset]);
+
   function onSubmit(values: FullNamePhoneSelfProfileFormValues): void {
     updateProfile.mutate(
       {
@@ -77,7 +94,11 @@ export function FullNamePhoneSelfProfileForm({
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Full name">
-                <Input placeholder="Full name" {...field} />
+                <Input
+                  placeholder="Full name"
+                  {...field}
+                  value={field.value ?? ""}
+                />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -90,7 +111,11 @@ export function FullNamePhoneSelfProfileForm({
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Phone" optional>
-                <Input placeholder="Phone number" {...field} />
+                <Input
+                  placeholder="Phone number"
+                  {...field}
+                  value={field.value ?? ""}
+                />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -102,7 +127,10 @@ export function FullNamePhoneSelfProfileForm({
         ) : null}
 
         <div className="dashboard-profile-form-actions dashboard-profile-form-span">
-          <Button disabled={updateProfile.isPending} type="submit">
+          <Button
+            disabled={updateProfile.isPending || !isDirty}
+            type="submit"
+          >
             {updateProfile.isPending ? "Saving…" : "Save changes"}
           </Button>
         </div>

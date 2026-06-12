@@ -20,37 +20,28 @@ export function DashboardBreadcrumb({
     return null;
   }
 
+  const current = items[items.length - 1];
+  const parent = items.length > 1 ? items[items.length - 2] : undefined;
+
   return (
     <nav aria-label="Breadcrumb" className={cn("dashboard-breadcrumb", className)}>
-      <ol className="dashboard-breadcrumb-list">
-        {items.map((item, index) => {
-          const isLast = index === items.length - 1;
-          const isLink = Boolean(item.href) && !isLast;
-
-          return (
-            <li className="dashboard-breadcrumb-item" key={`${item.label}-${index}`}>
-              {index > 0 ? (
-                <span aria-hidden className="dashboard-breadcrumb-sep">
-                  /
-                </span>
-              ) : null}
-              {isLink && item.href ? (
-                <Link className="dashboard-breadcrumb-link" href={item.href}>
-                  {item.label}
-                </Link>
-              ) : (
-                <span
-                  aria-current={isLast ? "page" : undefined}
-                  className="dashboard-breadcrumb-current"
-                  title={item.label}
-                >
-                  {item.label}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+      {parent?.href ? (
+        <Link className="dashboard-breadcrumb-back" href={parent.href}>
+          {parent.label}
+        </Link>
+      ) : null}
+      {items.length > 1 ? (
+        <span aria-hidden className="dashboard-breadcrumb-sep">
+          /
+        </span>
+      ) : null}
+      <span
+        aria-current="page"
+        className="dashboard-breadcrumb-current"
+        title={current.label}
+      >
+        {current.label}
+      </span>
     </nav>
   );
 }

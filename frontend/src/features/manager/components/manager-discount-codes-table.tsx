@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { ROUTE } from "@/constants/routes";
@@ -64,20 +65,16 @@ export function ManagerDiscountCodesTable() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-page-title">
-            Discount codes
-          </h1>
-          <p className="mt-2 text-sm text-ink-2">
-            Create promotion codes for checkout (validated server-side at cart).
-          </p>
-        </div>
-        <Link href={ROUTE.manager.discountCodesNew}>
-          <Button type="button">New discount code</Button>
-        </Link>
-      </div>
+    <div className="dashboard-page-stack">
+      <DashboardPageHeader
+        actions={
+          <Link href={ROUTE.manager.discountCodesNew}>
+            <Button type="button">New discount code</Button>
+          </Link>
+        }
+        description="Create promotion codes for checkout (validated server-side at cart)."
+        title="Discount codes"
+      />
 
       <DashboardSearchField
         onChange={setInput}

@@ -4,13 +4,15 @@ import { USER_ROLE } from "@/constants/roles";
 
 import { useMe } from "../hooks";
 
+import { DashboardProfileFormSkeleton } from "@/components/ui/dashboard-profile-form-skeleton";
+
 import { FullNamePhoneSelfProfileForm } from "./full-name-phone-self-profile-form";
 
 export function AdminAccountProfileForm() {
   const me = useMe();
 
   if (me.isPending) {
-    return <p className="text-sm text-muted">Loading profile…</p>;
+    return <DashboardProfileFormSkeleton />;
   }
 
   if (!me.data || me.data.role !== USER_ROLE.admin) {

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { ROUTE } from "@/constants/routes";
@@ -53,20 +54,16 @@ export function ManagerCombosTable() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-page-title">
-            Combos
-          </h1>
-          <p className="mt-2 text-sm text-ink-2">
-            Bundle products with promotional pricing and time windows.
-          </p>
-        </div>
-        <Link href={ROUTE.manager.combosNew}>
-          <Button type="button">New combo</Button>
-        </Link>
-      </div>
+    <div className="dashboard-page-stack">
+      <DashboardPageHeader
+        actions={
+          <Link href={ROUTE.manager.combosNew}>
+            <Button type="button">New combo</Button>
+          </Link>
+        }
+        description="Bundle products with promotional pricing and time windows."
+        title="Combos"
+      />
 
       <DashboardSearchField
         onChange={setInput}

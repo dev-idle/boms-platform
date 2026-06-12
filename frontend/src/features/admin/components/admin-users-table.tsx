@@ -5,12 +5,13 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { Button } from "@/components/ui/button";
-import { USER_ROLE } from "@/constants/roles";
+import { USER_ROLE, roleDisplayLabel } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -33,11 +34,11 @@ const PAGE_SIZE = 10;
 
 const ROLE_FILTERS: Array<{ value: AdminUserRoleFilter | undefined; label: string }> = [
   { value: undefined, label: "All roles" },
-  { value: USER_ROLE.customer, label: "Customer" },
-  { value: USER_ROLE.staff, label: "Staff" },
-  { value: USER_ROLE.baker, label: "Baker" },
-  { value: USER_ROLE.manager, label: "Manager" },
-  { value: USER_ROLE.admin, label: "Admin" },
+  { value: USER_ROLE.customer, label: roleDisplayLabel(USER_ROLE.customer) },
+  { value: USER_ROLE.staff, label: roleDisplayLabel(USER_ROLE.staff) },
+  { value: USER_ROLE.baker, label: roleDisplayLabel(USER_ROLE.baker) },
+  { value: USER_ROLE.manager, label: roleDisplayLabel(USER_ROLE.manager) },
+  { value: USER_ROLE.admin, label: roleDisplayLabel(USER_ROLE.admin) },
 ];
 
 export function AdminUsersTable() {
@@ -89,18 +90,16 @@ export function AdminUsersTable() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-page-title">Admin users</h1>
-          <p className="mt-2 text-sm text-ink-2">
-            Manage operational users and account status.
-          </p>
-        </div>
-        <Link href={ROUTE.admin.usersNew}>
-          <Button type="button">New user</Button>
-        </Link>
-      </div>
+    <div className="dashboard-page-stack">
+      <DashboardPageHeader
+        actions={
+          <Link href={ROUTE.admin.usersNew}>
+            <Button type="button">New user</Button>
+          </Link>
+        }
+        description="Manage operational users and account status."
+        title="Admin users"
+      />
 
       <div className="db-table-filters">
         <DashboardSearchField
@@ -176,7 +175,7 @@ export function AdminUsersTable() {
                   >
                     {adminUserListName(user)}
                   </td>
-                  <td className="db-table-cell-role">{user.role}</td>
+                  <td className="db-table-cell-role">{roleDisplayLabel(user.role)}</td>
                   <td className="db-table-status">
                     <AdminUserAccountStatusToggle
                       currentUserId={currentUserId}

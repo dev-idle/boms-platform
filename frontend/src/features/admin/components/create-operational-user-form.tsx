@@ -1,16 +1,20 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFormState } from "react-hook-form";
 import { toast } from "sonner";
 
-import { DashboardBreadcrumb } from "@/components/ui/dashboard-breadcrumb";
 import { Button } from "@/components/ui/button";
+import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { FieldControl } from "@/components/ui/field-control";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
+import {
+  ASSIGNABLE_OPERATIONAL_ROLES,
+  USER_ROLE,
+  roleDisplayLabel,
+} from "@/constants/roles";
 import { DashboardProfileSection } from "@/features/user";
 import { isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
@@ -28,12 +32,13 @@ export function CreateOperationalUserForm() {
     resolver: zodResolver(createOperationalSchema),
     defaultValues: {
       email: "",
-      role: "staff",
+      role: USER_ROLE.staff,
       full_name: "",
       phone: null,
       employee_code: "",
     },
   });
+  const { isDirty } = useFormState({ control: form.control });
 
   function onSubmit(values: CreateOperationalInput): void {
     createUser.mutate(values, {
@@ -63,14 +68,11 @@ export function CreateOperationalUserForm() {
   return (
     <>
       <div className="dashboard-page-stack dashboard-account-profile-page">
-        <header className="dashboard-page-header">
-          <DashboardBreadcrumb items={adminUsersNewBreadcrumbItems()} />
-          <h1 className="mt-2 text-page-title">New operational user</h1>
-          <p className="mt-2 text-sm text-ink-2">
-            Create staff, baker, or manager accounts. Platform admins are created
-            via dev seed only.
-          </p>
-        </header>
+        <DashboardPageHeader
+          breadcrumbItems={adminUsersNewBreadcrumbItems()}
+          description="Create staff, baker, or manager accounts. Platform admins are created via dev seed only."
+          title="New operational user"
+        />
 
         <div className="dashboard-profile-stack">
           <DashboardProfileSection id="admin-users-new" title="Account details">
@@ -102,7 +104,7 @@ export function CreateOperationalUserForm() {
                         <Select {...field}>
                           {ASSIGNABLE_OPERATIONAL_ROLES.map((role) => (
                             <option key={role} value={role}>
-                              {role}
+                              {roleDisplayLabel(role)}
                             </option>
                           ))}
                         </Select>
@@ -155,8 +157,11 @@ export function CreateOperationalUserForm() {
                   )}
                 />
 
-                <div className="dashboard-profile-form-actions dashboard-profile-form-actions--start">
-                  <Button disabled={createUser.isPending} type="submit">
+                <div className="dashboard-profile-form-actions">
+                  <Button
+                    disabled={createUser.isPending || !isDirty}
+                    type="submit"
+                  >
                     {createUser.isPending ? "Creating…" : "Create user"}
                   </Button>
                 </div>

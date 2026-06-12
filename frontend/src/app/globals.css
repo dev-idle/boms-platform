@@ -2113,22 +2113,101 @@
     gap: 2rem;
   }
 
-  .dashboard-account-profile-page .dashboard-page-header > p {
-    max-width: 36rem;
+  .dashboard-page-header {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .dashboard-page-header--toolbar {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    justify-content: space-between;
+  }
+
+  .dashboard-page-header-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .dashboard-page-header-actions {
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  @media (max-width: 640px) {
+    .dashboard-page-header--toolbar .dashboard-page-header-actions {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+
+  .dashboard-page-header:has(.dashboard-breadcrumb) > .text-page-title,
+  .dashboard-page-header
+    .dashboard-page-header-body:has(.dashboard-breadcrumb)
+    > .text-page-title {
+    margin-top: 0.625rem;
+  }
+
+  .dashboard-page-header > .text-page-title + .dashboard-page-lead,
+  .dashboard-page-header
+    .dashboard-page-header-body
+    > .text-page-title
+    + .dashboard-page-lead {
+    margin-top: 0.5rem;
+  }
+
+  .dashboard-page-header > .text-page-title + .admin-user-detail-meta-row {
+    margin-top: 0.5rem;
   }
 
   .dashboard-page-lead {
     color: var(--color-db-muted);
     font-size: 0.875rem;
     line-height: 1.55;
-    margin-top: 0.375rem;
+    margin: 0;
+    max-width: 36rem;
   }
 
   .dashboard-profile-stack {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.375rem;
     width: 100%;
+  }
+
+  .dashboard-profile-form-skeleton {
+    display: grid;
+    gap: 0.875rem;
+    max-width: var(--db-profile-form-max-width);
+    width: 100%;
+  }
+
+  .dashboard-profile-form-skeleton-field {
+    display: grid;
+    gap: 0.375rem;
+  }
+
+  .dashboard-profile-form-skeleton-label {
+    border-radius: 0.25rem;
+    height: 0.75rem;
+    width: 5rem;
+  }
+
+  .dashboard-profile-form-skeleton-input {
+    height: var(--field-control-height);
+    width: 100%;
+  }
+
+  .dashboard-profile-form-skeleton-button {
+    border-radius: var(--radius-input);
+    height: 2.5rem;
+    justify-self: end;
+    margin-top: 0.5rem;
+    width: 7.5rem;
   }
 
   .dashboard-profile-section {
@@ -2203,13 +2282,11 @@
 
   .dashboard-profile-form-actions {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
     justify-content: flex-end;
     margin-top: 0.5rem;
     padding-top: 0.125rem;
-  }
-
-  .dashboard-profile-form-actions--start {
-    justify-content: flex-start;
   }
 
   .dashboard-readonly-fields {
@@ -3015,7 +3092,7 @@
     flex-wrap: wrap;
     gap: 0.75rem 1rem;
     justify-content: space-between;
-    margin-top: 0.5rem;
+    margin-top: 0;
   }
 
   .admin-user-detail-lead {
@@ -3102,51 +3179,43 @@
   }
 
   .dashboard-breadcrumb {
-    margin-bottom: 0.125rem;
-    min-width: 0;
-  }
-
-  .dashboard-breadcrumb-list {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .dashboard-breadcrumb-item {
     align-items: center;
     display: inline-flex;
-    gap: 0.25rem;
+    flex-wrap: wrap;
+    gap: 0.375rem;
     max-width: 100%;
     min-width: 0;
   }
 
-  .dashboard-breadcrumb-sep {
-    color: color-mix(in srgb, var(--color-db-muted) 50%, transparent);
-    font-size: 0.8125rem;
-    line-height: 1;
-    user-select: none;
-  }
-
-  .dashboard-breadcrumb-link {
+  .dashboard-breadcrumb-back {
     color: var(--color-db-muted);
-    font-size: 0.875rem;
-    line-height: 1.45;
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+    line-height: 1.4;
     text-decoration: none;
     transition: color var(--duration-standard) var(--ease-luxury);
   }
 
-  .dashboard-breadcrumb-link:hover {
-    color: var(--color-db-ink);
+  .dashboard-breadcrumb-back:hover {
+    color: var(--color-db-accent);
+  }
+
+  .dashboard-breadcrumb-sep {
+    color: color-mix(in srgb, var(--color-db-muted) 52%, transparent);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1;
+    user-select: none;
   }
 
   .dashboard-breadcrumb-current {
-    color: var(--color-db-muted);
-    font-size: 0.875rem;
-    line-height: 1.45;
+    color: color-mix(in srgb, var(--color-db-ink) 72%, var(--color-db-muted));
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+    line-height: 1.4;
   }
 
   [data-theme="dashboard"] .skeleton {
@@ -3493,6 +3562,7 @@
 }
 
 .field-select-value {
+  cursor: inherit;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -3506,8 +3576,10 @@
 
 .field-select-chevron {
   color: var(--color-muted);
+  cursor: inherit;
   flex-shrink: 0;
   height: 1rem;
+  pointer-events: none;
   transition:
     color var(--duration-standard) var(--ease-luxury),
     transform var(--duration-standard) var(--ease-luxury);
@@ -3526,9 +3598,7 @@
 .field-select-content {
   background-color: var(--field-bg-focus);
   border: 1px solid var(--field-border-focus);
-  box-shadow:
-    0 0 0 1px var(--field-frame-focus),
-    0 10px 24px rgb(62 45 54 / 0.1);
+  box-shadow: var(--field-inset-highlight);
   overflow: hidden;
   transform-origin: var(--radix-select-content-transform-origin);
   width: var(--radix-select-trigger-width);
@@ -3556,26 +3626,29 @@
 }
 
 .field-select-viewport {
-  max-height: min(16rem, var(--radix-select-content-available-height));
-  padding: 0.25rem 0.3125rem 0.3125rem;
+  max-height: min(12rem, var(--radix-select-content-available-height));
+  padding: 0.25rem;
 }
 
-.field-select-content[data-side="top"] .field-select-viewport {
-  padding: 0.3125rem 0.3125rem 0.25rem;
+.field-select-tray {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
 }
 
 .field-select-item {
   align-items: center;
-  border-radius: calc(var(--radius-input) - 3px);
-  color: var(--color-ink);
-  cursor: default;
+  border-radius: 0.3125rem;
+  color: var(--color-ink-2);
+  cursor: pointer;
   display: flex;
   font-size: var(--field-control-font-size);
+  font-weight: 500;
   letter-spacing: 0.01em;
-  line-height: 1.35;
+  line-height: 1.25;
+  min-height: 2rem;
   outline: none;
-  padding: 0.5rem 2rem 0.5rem 0.625rem;
-  position: relative;
+  padding: 0.375rem 0.625rem;
   transition:
     background-color var(--duration-standard) var(--ease-luxury),
     color var(--duration-standard) var(--ease-luxury);
@@ -3589,31 +3662,14 @@
   pointer-events: none;
 }
 
-.field-select-item[data-highlighted] {
-  background-color: color-mix(in srgb, var(--color-blush) 58%, var(--color-surface));
+.field-select-item[data-highlighted]:not([data-state="checked"]) {
+  background-color: color-mix(in srgb, var(--color-blush) 42%, var(--field-bg-focus));
   color: var(--color-ink);
 }
 
 .field-select-item[data-state="checked"] {
-  background-color: color-mix(in srgb, var(--color-rose-200) 34%, var(--color-surface));
+  background-color: color-mix(in srgb, var(--color-rose-200) 22%, var(--field-bg-focus));
   color: var(--field-label-active);
-  font-weight: 500;
-}
-
-.field-select-item-indicator {
-  align-items: center;
-  color: var(--field-label-active);
-  display: inline-flex;
-  inset-block: 0;
-  justify-content: center;
-  position: absolute;
-  right: 0.5rem;
-  width: 1rem;
-}
-
-.field-select-item-check {
-  height: 0.875rem;
-  width: 0.875rem;
 }
 
 [data-theme="dashboard"] .field-select-content {
@@ -3621,18 +3677,24 @@
   border-color: var(--field-border-focus);
 }
 
-[data-theme="dashboard"] .field-select-item[data-highlighted] {
-  background-color: color-mix(in srgb, var(--color-blush) 48%, var(--color-db-surface));
+[data-theme="dashboard"] .field-select-item {
+  color: var(--color-db-muted);
+}
+
+[data-theme="dashboard"] .field-select-item[data-highlighted]:not([data-state="checked"]) {
+  background-color: color-mix(in srgb, var(--color-db-row) 72%, var(--color-db-surface));
+  color: var(--color-db-ink);
 }
 
 [data-theme="dashboard"] .field-select-item[data-state="checked"] {
-  background-color: color-mix(in srgb, var(--color-rose-200) 28%, var(--color-db-surface));
+  background-color: color-mix(in srgb, var(--color-rose-200) 18%, var(--color-db-surface));
+  color: var(--color-db-ink);
 }
 
 @keyframes field-select-reveal-down {
   from {
     opacity: 0;
-    transform: scaleY(0.94);
+    transform: scaleY(0.97);
   }
 
   to {
@@ -3644,7 +3706,7 @@
 @keyframes field-select-reveal-up {
   from {
     opacity: 0;
-    transform: scaleY(0.94);
+    transform: scaleY(0.97);
   }
 
   to {

@@ -70,23 +70,6 @@ function ChevronDownIcon({ className }: { className?: string }) {
   );
 }
 
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      viewBox="0 0 24 24"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
 /** Custom select — Radix listbox; keeps native `<option>` children for RHF compatibility. */
 export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
   (
@@ -189,25 +172,24 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               align="start"
               avoidCollisions
               className="field-select-content"
-              collisionPadding={12}
+              collisionPadding={8}
               position="popper"
               side="bottom"
               sideOffset={0}
             >
               <SelectPrimitive.Viewport className="field-select-viewport">
-                {selectableOptions.map((option) => (
-                  <SelectPrimitive.Item
-                    key={option.value}
-                    className="field-select-item"
-                    disabled={option.disabled}
-                    value={option.value}
-                  >
-                    <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
-                    <SelectPrimitive.ItemIndicator className="field-select-item-indicator">
-                      <CheckIcon className="field-select-item-check" />
-                    </SelectPrimitive.ItemIndicator>
-                  </SelectPrimitive.Item>
-                ))}
+                <div className="field-select-tray">
+                  {selectableOptions.map((option) => (
+                    <SelectPrimitive.Item
+                      key={option.value}
+                      className="field-select-item"
+                      disabled={option.disabled}
+                      value={option.value}
+                    >
+                      <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                    </SelectPrimitive.Item>
+                  ))}
+                </div>
               </SelectPrimitive.Viewport>
             </SelectPrimitive.Content>
           </SelectPrimitive.Portal>

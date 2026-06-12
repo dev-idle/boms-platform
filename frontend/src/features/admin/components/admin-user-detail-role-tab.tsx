@@ -2,10 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFormState } from "react-hook-form";
 import { toast } from "sonner";
 
-import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
+import { ASSIGNABLE_OPERATIONAL_ROLES, roleDisplayLabel } from "@/constants/roles";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
@@ -39,6 +39,7 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
     resolver: zodResolver(updateRoleSchema),
     defaultValues: adminUserToRoleFormValues(user),
   });
+  const { isDirty } = useFormState({ control: form.control });
 
   function requestRoleSubmit(values: UpdateRoleInput): void {
     setPendingRoleValues(values);
@@ -124,7 +125,7 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
                     <Select {...field}>
                       {ASSIGNABLE_OPERATIONAL_ROLES.map((role) => (
                         <option key={role} value={role}>
-                          {role}
+                          {roleDisplayLabel(role)}
                         </option>
                       ))}
                     </Select>
@@ -181,7 +182,7 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               )}
             />
 
-            <Button disabled={updateRole.isPending} type="submit">
+            <Button disabled={updateRole.isPending || !isDirty} type="submit">
               {updateRole.isPending ? "Updating…" : "Update role"}
             </Button>
           </form>

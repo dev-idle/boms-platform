@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFormState } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
       confirm_password: "",
     },
   });
+  const { isDirty } = useFormState({ control: form.control });
 
   function onSubmit(values: ChangePasswordFormInput): void {
     mutation.mutate(
@@ -116,7 +117,10 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
         />
 
         <div className="dashboard-profile-form-actions">
-          <Button disabled={mutation.isPending} type="submit">
+          <Button
+            disabled={mutation.isPending || !isDirty}
+            type="submit"
+          >
             {mutation.isPending ? "Changing…" : "Change password"}
           </Button>
         </div>

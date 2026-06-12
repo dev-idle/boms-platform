@@ -15,3 +15,8 @@ export const ASSIGNABLE_OPERATIONAL_ROLES: readonly UserRole[] = [
   USER_ROLE.baker,
   USER_ROLE.manager,
 ] as const;
+
+/** Title-case label for UI (API values stay lowercase). */
+export function roleDisplayLabel(role: UserRole): string {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}

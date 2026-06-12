@@ -9,6 +9,8 @@ import {
 import { useMe } from "../hooks";
 import type { Me } from "../types";
 
+import { DashboardProfileFormSkeleton } from "@/components/ui/dashboard-profile-form-skeleton";
+
 import { FullNamePhoneSelfProfileForm } from "./full-name-phone-self-profile-form";
 import { ReadonlyStaffProfileFields } from "./readonly-staff-profile-fields";
 
@@ -41,7 +43,7 @@ export function OperationalAccountProfileForm({
   const me = useMe();
 
   if (me.isPending) {
-    return <p className="text-sm text-muted">Loading profile…</p>;
+    return <DashboardProfileFormSkeleton />;
   }
 
   if (!me.data || !isOperationalMe(me.data, expectedRole)) {

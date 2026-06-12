@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { ROUTE } from "@/constants/routes";
@@ -52,20 +53,16 @@ export function ManagerProductsTable() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-page-title">
-            Products
-          </h1>
-          <p className="mt-2 text-sm text-ink-2">
-            Manage items shown on the customer storefront.
-          </p>
-        </div>
-        <Link href={ROUTE.manager.productsNew}>
-          <Button type="button">New product</Button>
-        </Link>
-      </div>
+    <div className="dashboard-page-stack">
+      <DashboardPageHeader
+        actions={
+          <Link href={ROUTE.manager.productsNew}>
+            <Button type="button">New product</Button>
+          </Link>
+        }
+        description="Manage items shown on the customer storefront."
+        title="Products"
+      />
 
       <DashboardSearchField
         onChange={setInput}
