@@ -3,8 +3,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ROUTE } from "@/constants/routes";
 import { STOREFRONT_HERO_IMAGE_URL } from "@/constants/storefront-imagery";
+import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { CUSTOM_CAKE_BROWSE_HREF } from "../lib/storefront-links";
+
+const HERO_STARTING_PRICE_CENTS = 450;
 
 export function HomeHero() {
   return (
@@ -14,7 +17,7 @@ export function HomeHero() {
           <p className="text-overline">Artisan patisserie · Pickup only</p>
           <div className="divider-gold mt-6" />
           <h1 className="text-display mt-8 text-balance lg:mt-10">
-            <span className="italic text-rose-500">Sweetly</span> baked,
+            <span className="italic text-matcha-500">Sweetly</span> baked,
             <br />
             ready when you are.
           </h1>
@@ -22,23 +25,28 @@ export function HomeHero() {
             Handcrafted pastries and celebration cakes — order online, pick up
             at your chosen time.
           </p>
-          <div className="mt-10 flex flex-wrap gap-2.5">
-            <Button asChild showArrow size="lg">
-              <Link href={ROUTE.products}>Shop pastries</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href={CUSTOM_CAKE_BROWSE_HREF}>Custom cake</Link>
-            </Button>
+          <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div className="flex flex-wrap gap-2.5">
+              <Button asChild showArrow size="lg">
+                <Link href={ROUTE.products}>Shop pastries</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href={CUSTOM_CAKE_BROWSE_HREF}>Custom cake</Link>
+              </Button>
+            </div>
+            <p className="font-display text-lg text-gold-700">
+              From {formatPriceCents(HERO_STARTING_PRICE_CENTS)}
+            </p>
           </div>
         </div>
 
         <div className="reveal reveal-delay-1 relative self-center lg:-mr-6 xl:-mr-12">
-          <div className="rounded-[28px] bg-blush p-2 shadow-hover">
+          <div className="rounded-[28px] bg-mint p-[10px] shadow-hover">
             <div className="overflow-hidden rounded-[22px]">
               {/* eslint-disable-next-line @next/next/no-img-element -- hero uses a curated external stock photo */}
               <img
-                alt="Berry and cream pastries in a patisserie display"
-                className="aspect-[4/5] max-h-[78vh] w-full object-cover sm:aspect-[5/4] lg:aspect-[4/5]"
+                alt="Matcha cream puffs with whipped cream on a speckled plate"
+                className="aspect-[4/5] max-h-[78vh] w-full object-cover object-[center_42%] sm:aspect-[5/4] lg:aspect-[4/5]"
                 src={STOREFRONT_HERO_IMAGE_URL}
               />
             </div>

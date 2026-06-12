@@ -7,7 +7,7 @@ import { CUSTOM_CAKE_BROWSE_HREF } from "../lib/storefront-links";
 
 export function HomeCta() {
   return (
-    <section className="storefront-section bg-blush">
+    <section className="storefront-section bg-mint">
       <div className="storefront-container">
         <div className="reveal rounded-card bg-surface px-8 py-14 text-center shadow-rest sm:px-12 sm:py-16">
           <h2 className="text-h2">

@@ -6,7 +6,7 @@ export function AuthBrandTitle() {
   return (
     <>
       Sweetly baked,{" "}
-      <span className="italic text-rose-500">ready</span> when you are.
+      <span className="italic text-matcha-500">ready</span> when you are.
     </>
   );
 }

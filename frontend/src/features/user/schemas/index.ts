@@ -15,12 +15,10 @@ export {
   staffProfileSchema,
 };
 
-const optionalNullablePhoneSchema = z
+const patchOptionalStringSchema = z
   .string()
   .trim()
-  .max(50, "Phone must be at most 50 characters")
-  .optional()
-  .nullable();
+  .max(50, "Phone must be at most 50 characters");
 
 export const updateSelfProfileSchema = z
   .object({
@@ -29,7 +27,7 @@ export const updateSelfProfileSchema = z
       .trim()
       .max(255, "Display name must be at most 255 characters")
       .optional(),
-    phone: optionalNullablePhoneSchema,
+    phone: patchOptionalStringSchema.optional(),
     full_name: z
       .string()
       .trim()

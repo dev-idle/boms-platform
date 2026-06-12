@@ -10,12 +10,12 @@ export function BrandWordmark({ className }: BrandWordmarkProps) {
     <span
       aria-label={BRAND.name}
       className={cn(
-        "brand-wordmark font-display text-rose-500 italic font-semibold",
+        "brand-wordmark font-display text-matcha-500 italic font-semibold",
         className,
       )}
     >
-      <span className="brand-wordmark-body">Ros</span>
-      <span className="brand-wordmark-accent">é</span>
+      <span className="brand-wordmark-body">Chou</span>
+      <span className="brand-wordmark-accent">x</span>
     </span>
   );
 }

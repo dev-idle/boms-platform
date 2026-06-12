@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ci": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build",
+    "check:design": "node scripts/check-design-tokens.mjs",
+    "ci": "pnpm run typecheck && pnpm run lint && pnpm run check:design && pnpm run test && pnpm run build",
     "audit:ci": "pnpm audit --audit-level=high"
   },
   "dependencies": {

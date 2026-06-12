@@ -7,7 +7,7 @@ const inputVariants = cva("field-chrome text-form-input w-full", {
   variants: {
     variant: {
       default: "",
-      /** Neutral chrome for toolbar / table filters (no blush fill). */
+      /** Neutral chrome for toolbar / table filters (no mint fill). */
       inline: "field-chrome--inline",
     },
   },

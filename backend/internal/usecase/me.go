@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -84,8 +85,8 @@ func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto
 	case *domainprofile.Customer:
 		params := port.UpsertCustomerProfileParams{
 			UserID:      userID,
-			DisplayName: coalesceStringPtr(req.DisplayName, p.DisplayName),
-			Phone:       coalesceStringPtr(req.Phone, p.Phone),
+			DisplayName: resolvePatchString(req.DisplayName, p.DisplayName),
+			Phone:       resolvePatchString(req.Phone, p.Phone),
 		}
 		profile, err = u.customers.UpdateByUserID(ctx, params)
 	case *domainprofile.Staff:
@@ -96,7 +97,7 @@ func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto
 		params := port.UpsertStaffProfileParams{
 			UserID:       userID,
 			FullName:     fullName,
-			Phone:        coalesceStringPtr(req.Phone, p.Phone),
+			Phone:        resolvePatchString(req.Phone, p.Phone),
 			EmployeeCode: p.EmployeeCode,
 		}
 		profile, err = u.staff.UpdateByUserID(ctx, params)
@@ -108,7 +109,7 @@ func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto
 		params := port.UpsertAdminProfileParams{
 			UserID:   userID,
 			FullName: fullName,
-			Phone:    coalesceStringPtr(req.Phone, p.Phone),
+			Phone:    resolvePatchString(req.Phone, p.Phone),
 		}
 		profile, err = u.admins.UpdateByUserID(ctx, params)
 	default:
@@ -174,11 +175,17 @@ func (u *MeUsecase) SoftDeleteSelf(ctx context.Context, userID uuid.UUID) error 
 	return nil
 }
 
-func coalesceStringPtr(incoming, fallback *string) *string {
-	if incoming != nil {
-		return incoming
+// resolvePatchString applies PATCH semantics for optional nullable profile strings.
+// Omitted field (nil pointer) keeps fallback; explicit empty string clears to nil.
+func resolvePatchString(incoming, fallback *string) *string {
+	if incoming == nil {
+		return fallback
 	}
-	return fallback
+	trimmed := strings.TrimSpace(*incoming)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
 
 func (u *MeUsecase) logAudit(ctx context.Context, action domainuser.AuditAction, actorID uuid.UUID, actorRole domainuser.Role, targetID *uuid.UUID, targetType string, before, after any) {

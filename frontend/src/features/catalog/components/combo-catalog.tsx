@@ -47,7 +47,7 @@ export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl space-y-6 bg-blush px-4 pb-12 pt-12 sm:px-6 lg:px-8">
+    <section className="mx-auto w-full max-w-7xl space-y-6 bg-mint px-4 pb-12 pt-12 sm:px-6 lg:px-8">
       <div>
         <h2 className="text-h2">Combo deals</h2>
         <p className="text-body mt-2">

@@ -6,10 +6,11 @@ import {
   type UserRole,
 } from "@/constants/roles";
 
-import { useMe } from "../hooks";
-import type { Me } from "../types";
-
 import { DashboardProfileFormSkeleton } from "@/components/ui/dashboard-profile-form-skeleton";
+
+import { useMe } from "../hooks";
+import { fullNamePhoneSnapshotFromProfile } from "../lib/profile-form-values";
+import type { Me } from "../types";
 
 import { FullNamePhoneSelfProfileForm } from "./full-name-phone-self-profile-form";
 import { ReadonlyStaffProfileFields } from "./readonly-staff-profile-fields";
@@ -57,8 +58,10 @@ export function OperationalAccountProfileForm({
   return (
     <FullNamePhoneSelfProfileForm
       key={`${me.data.id}-${expectedRole}`}
-      fullName={profile.full_name}
-      phone={profile.phone}
+      initialSnapshot={fullNamePhoneSnapshotFromProfile(
+        profile.full_name,
+        profile.phone,
+      )}
     >
       <ReadonlyStaffProfileFields profile={profile} />
     </FullNamePhoneSelfProfileForm>

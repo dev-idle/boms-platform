@@ -10,7 +10,6 @@ import { endLocalSession } from "@/lib/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
 import { changePassword, deleteAccount, updateProfile } from "../api";
-import { applySelfProfilePatch } from "../lib/apply-self-profile-patch";
 import { type ChangePasswordInput, type UpdateSelfProfileInput } from "../schemas/index";
 import { meQueryOptions, userQueryKeys } from "./query-options";
 
@@ -42,24 +41,6 @@ export function useUpdateProfile() {
 
   return useMutation({
     mutationFn: (input: UpdateSelfProfileInput) => updateProfile(input),
-    onMutate: async (input) => {
-      await queryClient.cancelQueries({ queryKey: userQueryKeys.me });
-
-      const previousUser = useAuthStore.getState().user;
-      if (previousUser) {
-        const optimistic = applySelfProfilePatch(previousUser, input);
-        updateUserStore(optimistic);
-        queryClient.setQueryData(userQueryKeys.me, optimistic);
-      }
-
-      return { previousUser };
-    },
-    onError: (_error, _input, context) => {
-      if (context?.previousUser) {
-        updateUserStore(context.previousUser);
-        queryClient.setQueryData(userQueryKeys.me, context.previousUser);
-      }
-    },
     onSuccess: (me) => {
       updateUserStore(me);
       queryClient.setQueryData(userQueryKeys.me, me);

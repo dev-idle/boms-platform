@@ -32,7 +32,7 @@ export function ProductCard({
       >
         <div
           className={cn(
-            "relative overflow-hidden bg-blush",
+            "relative overflow-hidden bg-mint",
             featured
               ? "aspect-square sm:aspect-auto sm:w-1/2"
               : "aspect-square",

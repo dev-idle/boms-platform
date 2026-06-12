@@ -6,7 +6,7 @@ import { ROUTE } from "@/constants/routes";
 
 export function StorefrontFooter() {
   return (
-    <footer className="relative overflow-hidden bg-blush">
+    <footer className="relative overflow-hidden bg-mint">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-8 bottom-0 select-none opacity-[0.04]"
@@ -29,7 +29,7 @@ export function StorefrontFooter() {
               <p>{BRAND.addressLine}</p>
               <p>
                 <a
-                  className="transition-colors duration-standard ease-default hover:text-rose-500"
+                  className="transition-colors duration-standard ease-default hover:text-matcha-500"
                   href={`mailto:${BRAND.contactEmail}`}
                 >
                   {BRAND.contactEmail}
@@ -37,7 +37,7 @@ export function StorefrontFooter() {
               </p>
               <p>
                 <a
-                  className="transition-colors duration-standard ease-default hover:text-rose-500"
+                  className="transition-colors duration-standard ease-default hover:text-matcha-500"
                   href={`tel:${BRAND.contactPhone.replace(/\D/g, "")}`}
                 >
                   {BRAND.contactPhone}
@@ -65,19 +65,19 @@ export function StorefrontFooter() {
             className="flex flex-wrap gap-x-6 gap-y-2 text-caption"
           >
             <Link
-              className="transition-colors duration-standard ease-default hover:text-rose-500"
+              className="transition-colors duration-standard ease-default hover:text-matcha-500"
               href={ROUTE.home}
             >
               Privacy
             </Link>
             <Link
-              className="transition-colors duration-standard ease-default hover:text-rose-500"
+              className="transition-colors duration-standard ease-default hover:text-matcha-500"
               href={ROUTE.home}
             >
               Terms
             </Link>
             <Link
-              className="transition-colors duration-standard ease-default hover:text-rose-500"
+              className="transition-colors duration-standard ease-default hover:text-matcha-500"
               href={ROUTE.home}
             >
               Pickup policy

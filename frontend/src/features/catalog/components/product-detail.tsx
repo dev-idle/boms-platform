@@ -76,7 +76,7 @@ export function ProductDetail({
       </Link>
 
       <article className="mt-8 grid gap-10 lg:grid-cols-2 lg:gap-16">
-        <div className="overflow-hidden rounded-card bg-blush shadow-rest">
+        <div className="overflow-hidden rounded-card bg-mint shadow-rest">
           {product.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are external manager-provided links
             <img

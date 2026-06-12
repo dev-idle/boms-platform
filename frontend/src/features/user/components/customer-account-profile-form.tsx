@@ -4,50 +4,58 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { USER_ROLE } from "@/constants/roles";
-import { Button } from "@/components/ui/button";
+import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
+import { DashboardProfileFormSkeleton } from "@/components/ui/dashboard-profile-form-skeleton";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useRemountingFormSnapshot } from "@/lib/hooks/use-remounting-form-snapshot";
+import { applyApiFormFieldErrors } from "@/lib/validation";
 
 import {
   customerSelfProfileFormSchema,
   type CustomerSelfProfileFormValues,
 } from "../schemas/index";
 import { useMe, useUpdateProfile } from "../hooks";
-import type { CustomerProfile } from "../types";
-
 import {
-  applyCustomerSelfProfileFormErrors,
-  customerProfileFormDefaults,
-  nullableString,
-} from "./helpers";
+  customerProfileFormValuesEqual,
+  customerProfileSnapshot,
+  normalizeCustomerProfileFormValues,
+} from "../lib/profile-form-values";
 
 type CustomerAccountProfileFormBodyProps = {
-  profile: CustomerProfile;
+  initialValues: CustomerSelfProfileFormValues;
+  onSaved: (values: CustomerSelfProfileFormValues) => void;
 };
 
 function CustomerAccountProfileFormBody({
-  profile,
+  initialValues,
+  onSaved,
 }: CustomerAccountProfileFormBodyProps) {
   const updateProfile = useUpdateProfile();
 
   const form = useForm<CustomerSelfProfileFormValues>({
     resolver: zodResolver(customerSelfProfileFormSchema),
-    defaultValues: customerProfileFormDefaults(profile),
+    defaultValues: initialValues,
   });
 
   function onSubmit(values: CustomerSelfProfileFormValues): void {
+    const payload = normalizeCustomerProfileFormValues(values);
+
     updateProfile.mutate(
       {
-        display_name: values.display_name?.trim() || undefined,
-        phone: nullableString(values.phone ?? ""),
+        display_name: payload.display_name,
+        phone: payload.phone,
       },
       {
         onError: (error) => {
-          applyCustomerSelfProfileFormErrors(form, error, [
-            "display_name",
-            "phone",
-          ]);
+          applyApiFormFieldErrors(form, error, ["display_name", "phone"], "Failed to update profile");
+        },
+        onSuccess: (me) => {
+          if (me.role !== USER_ROLE.customer) {
+            return;
+          }
+          onSaved(customerProfileSnapshot(me.profile));
         },
       },
     );
@@ -56,7 +64,7 @@ function CustomerAccountProfileFormBody({
   return (
     <Form {...form}>
       <form
-        className="space-y-4"
+        className="dashboard-profile-form"
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}
       >
@@ -66,7 +74,12 @@ function CustomerAccountProfileFormBody({
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Display name" optional>
-                <Input placeholder="Your display name" {...field} />
+                <Input
+                  autoComplete="nickname"
+                  placeholder="Your display name"
+                  {...field}
+                  value={field.value ?? ""}
+                />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -79,18 +92,51 @@ function CustomerAccountProfileFormBody({
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Phone" optional>
-                <Input placeholder="Phone number" {...field} />
+                <Input
+                  autoComplete="tel"
+                  inputMode="tel"
+                  placeholder="Phone number"
+                  type="tel"
+                  {...field}
+                  value={field.value ?? ""}
+                />
               </FieldControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <Button disabled={updateProfile.isPending} type="submit">
-          {updateProfile.isPending ? "Saving…" : "Save changes"}
-        </Button>
+        <div className="dashboard-profile-form-actions">
+          <DashboardFormSaveButton
+            areEqual={customerProfileFormValuesEqual}
+            baseline={initialValues}
+            form={form}
+            idleLabel="Save changes"
+            isPending={updateProfile.isPending}
+            pendingLabel="Saving…"
+          />
+        </div>
       </form>
     </Form>
+  );
+}
+
+type CustomerAccountProfileFormProps = {
+  initialSnapshot: CustomerSelfProfileFormValues;
+};
+
+function CustomerAccountProfileFormInner({
+  initialSnapshot,
+}: CustomerAccountProfileFormProps) {
+  const { commitSnapshot, formKey, snapshot } =
+    useRemountingFormSnapshot(initialSnapshot);
+
+  return (
+    <CustomerAccountProfileFormBody
+      key={formKey}
+      initialValues={snapshot}
+      onSaved={commitSnapshot}
+    />
   );
 }
 
@@ -98,7 +144,7 @@ export function CustomerAccountProfileForm() {
   const me = useMe();
 
   if (me.isPending) {
-    return <p className="text-sm text-muted">Loading profile…</p>;
+    return <DashboardProfileFormSkeleton />;
   }
 
   if (!me.data || me.data.role !== USER_ROLE.customer) {
@@ -106,9 +152,9 @@ export function CustomerAccountProfileForm() {
   }
 
   return (
-    <CustomerAccountProfileFormBody
+    <CustomerAccountProfileFormInner
       key={me.data.id}
-      profile={me.data.profile}
+      initialSnapshot={customerProfileSnapshot(me.data.profile)}
     />
   );
 }

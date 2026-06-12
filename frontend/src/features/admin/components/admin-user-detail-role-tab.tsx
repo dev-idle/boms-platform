@@ -2,33 +2,42 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm, useFormState } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { ASSIGNABLE_OPERATIONAL_ROLES, roleDisplayLabel } from "@/constants/roles";
-import { Button } from "@/components/ui/button";
+import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { FieldControl } from "@/components/ui/field-control";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
+import { useRemountingFormSnapshot } from "@/lib/hooks/use-remounting-form-snapshot";
+import { applyFormFieldErrors } from "@/lib/validation";
 
 import { useUpdateRole } from "../hooks";
-import { applyFormFieldErrors } from "../lib/apply-form-validation";
-import { adminUserToRoleFormValues } from "../lib/map-user-form-values";
+import {
+  adminUserToRoleFormValues,
+  updateRoleFormValuesEqual,
+} from "../lib/map-user-form-values";
 import {
   updateRoleSchema,
   type AdminUser,
   type UpdateRoleInput,
 } from "../schemas";
 
-type AdminUserDetailRoleFormProps = {
+type AdminUserDetailRoleFormBodyProps = {
   userId: string;
-  user: AdminUser;
+  initialValues: UpdateRoleInput;
+  onSaved: (values: UpdateRoleInput) => void;
 };
 
-function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps) {
+function AdminUserDetailRoleFormBody({
+  userId,
+  initialValues,
+  onSaved,
+}: AdminUserDetailRoleFormBodyProps) {
   const updateRole = useUpdateRole();
   const [confirmRole, setConfirmRole] = useState(false);
   const [pendingRoleValues, setPendingRoleValues] = useState<UpdateRoleInput | null>(
@@ -37,9 +46,8 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
 
   const form = useForm<UpdateRoleInput>({
     resolver: zodResolver(updateRoleSchema),
-    defaultValues: adminUserToRoleFormValues(user),
+    defaultValues: initialValues,
   });
-  const { isDirty } = useFormState({ control: form.control });
 
   function requestRoleSubmit(values: UpdateRoleInput): void {
     setPendingRoleValues(values);
@@ -67,7 +75,8 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (updatedUser) => {
+          onSaved(adminUserToRoleFormValues(updatedUser));
           setConfirmRole(false);
           setPendingRoleValues(null);
         },
@@ -141,7 +150,7 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               render={({ field }) => (
                 <FormItem>
                   <FieldControl label="Full name" optional>
-                    <Input {...field} />
+                    <Input autoComplete="name" {...field} value={field.value ?? ""} />
                   </FieldControl>
                   <FormMessage />
                 </FormItem>
@@ -155,6 +164,9 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
                 <FormItem>
                   <FieldControl label="Phone" optional>
                     <Input
+                      autoComplete="tel"
+                      inputMode="tel"
+                      type="tel"
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value || null)}
@@ -172,6 +184,7 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
                 <FormItem>
                   <FieldControl label="Employee code">
                     <Input
+                      autoComplete="off"
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value || null)}
@@ -182,9 +195,14 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
               )}
             />
 
-            <Button disabled={updateRole.isPending || !isDirty} type="submit">
-              {updateRole.isPending ? "Updating…" : "Update role"}
-            </Button>
+            <DashboardFormSaveButton
+              areEqual={updateRoleFormValuesEqual}
+              baseline={initialValues}
+              form={form}
+              idleLabel="Update role"
+              isPending={updateRole.isPending}
+              pendingLabel="Updating…"
+            />
           </form>
         </Form>
       </div>
@@ -205,17 +223,41 @@ function AdminUserDetailRoleForm({ userId, user }: AdminUserDetailRoleFormProps)
   );
 }
 
+type AdminUserDetailRoleFormProps = {
+  userId: string;
+  initialSnapshot: UpdateRoleInput;
+};
+
+function AdminUserDetailRoleForm({
+  userId,
+  initialSnapshot,
+}: AdminUserDetailRoleFormProps) {
+  const { commitSnapshot, formKey, snapshot } =
+    useRemountingFormSnapshot(initialSnapshot);
+
+  return (
+    <AdminUserDetailRoleFormBody
+      key={formKey}
+      initialValues={snapshot}
+      onSaved={commitSnapshot}
+      userId={userId}
+    />
+  );
+}
+
 type AdminUserDetailRoleTabProps = {
   userId: string;
   user: AdminUser;
 };
 
 export function AdminUserDetailRoleTab({ userId, user }: AdminUserDetailRoleTabProps) {
+  const initialSnapshot = adminUserToRoleFormValues(user);
+
   return (
     <AdminUserDetailRoleForm
       key={`${user.id}-${user.updated_at}`}
+      initialSnapshot={initialSnapshot}
       userId={userId}
-      user={user}
     />
   );
 }

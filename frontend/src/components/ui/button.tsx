@@ -9,7 +9,7 @@ export function ButtonArrowIcon({ className }: { className?: string }) {
   return (
     <svg
       aria-hidden
-      className={cn("btn-arrow size-[14px] shrink-0", className)}
+      className={cn("btn-arrow size-[15px] shrink-0", className)}
       fill="none"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
@@ -19,7 +19,7 @@ export function ButtonArrowIcon({ className }: { className?: string }) {
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth={1.75}
+        strokeWidth={1.8}
       />
     </svg>
   );

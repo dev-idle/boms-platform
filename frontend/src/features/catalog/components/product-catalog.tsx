@@ -5,6 +5,8 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { catalogProductFallbackImageUrl } from "@/constants/storefront-imagery";
+
 import { toCatalogProductsFilter } from "../lib/catalog-browse-params";
 import {
   useCatalogBrowseFilters,
@@ -21,8 +23,8 @@ function filterPillClass(active: boolean) {
   return cn(
     "min-h-11 rounded-full border px-4 py-2 text-sm font-medium transition-[background-color,color,box-shadow] duration-standard ease-default",
     active
-      ? "border-rose-200 bg-rose-100 text-rose-700"
-      : "border-border bg-surface text-ink-2 hover:bg-blush hover:text-rose-500",
+      ? "border-matcha-200 bg-matcha-100 text-matcha-700"
+      : "border-border bg-surface text-ink-2 hover:bg-mint hover:text-matcha-500",
   );
 }
 
@@ -112,8 +114,12 @@ export function ProductCatalog() {
             </p>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {products.map((product, index) => (
+                <ProductCard
+                  key={product.id}
+                  fallbackImageUrl={catalogProductFallbackImageUrl(index)}
+                  product={product}
+                />
               ))}
             </div>
           )}

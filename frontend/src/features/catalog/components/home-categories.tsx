@@ -16,7 +16,7 @@ export function HomeCategories({ categories }: HomeCategoriesProps) {
   return (
     <section
       aria-labelledby="home-categories-heading"
-      className="storefront-section bg-bg"
+      className="storefront-section bg-mint"
     >
       <div className="storefront-container">
         <div className="reveal flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -37,7 +37,7 @@ export function HomeCategories({ categories }: HomeCategoriesProps) {
           {categories.map((category) => (
             <li key={category.id} className="shrink-0">
               <Link
-                className="inline-flex min-h-11 items-center rounded-full border border-border bg-surface px-5 py-3 text-sm font-medium text-ink transition-[background-color,box-shadow,color] duration-standard ease-default hover:bg-blush hover:text-rose-500"
+                className="inline-flex min-h-11 items-center rounded-full border border-border bg-surface px-5 py-3 text-sm font-medium text-ink transition-[background-color,box-shadow,color] duration-standard ease-default hover:bg-mint hover:text-matcha-500"
                 href={buildCatalogBrowseHref({ category: category.id, page: 1 })}
               >
                 {category.name}

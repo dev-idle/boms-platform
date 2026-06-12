@@ -2,17 +2,18 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { ROUTE } from "@/constants/routes";
+import { STOREFRONT_BRAND_STORY_IMAGE_URL } from "@/constants/storefront-imagery";
 
 export function HomeBrandStory() {
   return (
     <section className="storefront-section bg-bg">
       <div className="storefront-container grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-20">
-        <div className="reveal relative aspect-[4/5] overflow-hidden rounded-card bg-blush shadow-rest sm:aspect-[5/4] lg:aspect-square">
+        <div className="reveal relative aspect-[4/5] overflow-hidden rounded-card bg-mint shadow-rest sm:aspect-[5/4] lg:aspect-square">
           {/* eslint-disable-next-line @next/next/no-img-element -- brand story imagery */}
           <img
-            alt="Pastry chef decorating a cake"
-            className="size-full object-cover"
-            src="https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=80"
+            alt="Vanilla eclair with white icing on a bright backdrop"
+            className="size-full object-cover object-center"
+            src={STOREFRONT_BRAND_STORY_IMAGE_URL}
           />
         </div>
         <div className="reveal reveal-delay-1">

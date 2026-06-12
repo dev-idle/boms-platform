@@ -58,7 +58,7 @@ export function AccountStatusPill({ disabled }: { disabled: boolean }) {
   return (
     <StatusPill
       label={disabled ? "Disabled" : "Active"}
-      variant={disabled ? "cancelled" : "completed"}
+      variant={disabled ? "cancelled" : "ready"}
     />
   );
 }

@@ -50,6 +50,9 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      - name: Design-token gate
+        run: pnpm run check:design
+
       - name: Unit tests
         run: pnpm run test
 

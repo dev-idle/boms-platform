@@ -1,14 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFormState } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
 import { isApiError } from "@/lib/errors";
+import { shallowFormValuesEqual } from "@/lib/form-values-equal";
+import { applyFormFieldErrors } from "@/lib/validation";
 
 import {
   changePasswordFormSchema,
@@ -18,7 +20,11 @@ import { useChangePassword } from "../hooks";
 
 import { cn } from "@/lib/utils";
 
-import { applyValidationDetails } from "./helpers";
+const EMPTY_PASSWORD_FORM: ChangePasswordFormInput = {
+  old_password: "",
+  new_password: "",
+  confirm_password: "",
+};
 
 type ChangePasswordFormProps = {
   formClassName?: string;
@@ -28,13 +34,8 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
   const mutation = useChangePassword();
   const form = useForm<ChangePasswordFormInput>({
     resolver: zodResolver(changePasswordFormSchema),
-    defaultValues: {
-      old_password: "",
-      new_password: "",
-      confirm_password: "",
-    },
+    defaultValues: EMPTY_PASSWORD_FORM,
   });
-  const { isDirty } = useFormState({ control: form.control });
 
   function onSubmit(values: ChangePasswordFormInput): void {
     mutation.mutate(
@@ -48,14 +49,12 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
             toast.error("Failed to change password");
             return;
           }
-          if (error.status === 422 && error.details) {
-            applyValidationDetails(error.details, (field, message) => {
-              if (field in values) {
-                form.setError(field as keyof ChangePasswordFormInput, {
-                  message,
-                });
-              }
-            });
+          if (error.hasValidationDetails()) {
+            applyFormFieldErrors(form, error.details!, [
+              "old_password",
+              "new_password",
+              "confirm_password",
+            ]);
             return;
           }
           if (error.isInvalidCredentials()) {
@@ -117,12 +116,14 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
         />
 
         <div className="dashboard-profile-form-actions">
-          <Button
-            disabled={mutation.isPending || !isDirty}
-            type="submit"
-          >
-            {mutation.isPending ? "Changing…" : "Change password"}
-          </Button>
+          <DashboardFormSaveButton
+            areEqual={shallowFormValuesEqual<ChangePasswordFormInput>}
+            baseline={EMPTY_PASSWORD_FORM}
+            form={form}
+            idleLabel="Change password"
+            isPending={mutation.isPending}
+            pendingLabel="Changing…"
+          />
         </div>
       </form>
     </Form>

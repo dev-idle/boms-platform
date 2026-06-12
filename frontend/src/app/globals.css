@@ -1,69 +1,66 @@
 @import "tailwindcss";
 
 /* =============================================================================
-   Rosé Quiet Luxury 2026 — design tokens (SSOT)
+   Choux Matcha v3 — Quiet Luxury design tokens (SSOT)
    ============================================================================= */
 
 :root {
-  /* Neutrals — porcelain */
+  /* Neutrals — porcelain + espresso ink */
   --color-bg: #fbfaf9;
   --color-surface: #ffffff;
-  --color-blush: #faf0f4;
-  --color-border: #efe9eb;
-  --color-ink: #3e2d36;
-  --color-ink-2: #675562;
-  --color-muted: #93818c;
+  --color-mint: #e9f1e7;
+  --color-border: #ece9e6;
+  --color-ink: #3a2e27;
+  --color-ink-2: #6b6056;
+  --color-muted: #8f857c;
 
-  /* Velvet rosé */
-  --color-rose-100: #fce8ef;
-  --color-rose-200: #efd2db;
-  --color-rose-300: #e2b3c3;
-  --color-rose-400: #cf6b8a;
-  --color-rose-500: #b9486e;
-  --color-rose-600: #a03a5c;
-  --color-rose-700: #86304d;
+  /* Matcha — primary (actions only) */
+  --color-matcha-100: #e9f1e7;
+  --color-matcha-200: #d5e0d1;
+  --color-matcha-300: #afc4a9;
+  --color-matcha-500: #4e7d5b;
+  --color-matcha-600: #426b4e;
+  --color-matcha-700: #375a42;
 
-  /* Accents */
-  --color-gold-100: #f3e9d8;
-  --color-gold-500: #c5a572;
-  --color-gold-700: #93753e;
-  --color-pista-100: #f0f3eb;
-  --color-pista-500: #8fa383;
-  --color-pista-700: #55673f;
+  /* Gold — value accent (brass, tuned to matcha) */
+  --color-gold-100: #f2eddc;
+  --color-gold-500: #b9a266;
+  --color-gold-700: #857440;
 
-  /* Dashboard — Rosé internal (staff / baker / manager / admin) */
+  /* Dashboard — single internal theme (staff / baker / manager / admin) */
   --color-db-bg: #faf9f8;
   --color-db-surface: #ffffff;
-  --color-db-border: #ece7e9;
-  --color-db-row: #f4f0f1;
-  --color-db-ink: #2f282c;
-  --color-db-muted: #746b70;
-  --color-db-accent: #a03a5c;
-  --color-db-accent-hover: #86304d;
-  --color-db-accent-soft: #f8edf1;
+  --color-db-border: #ece9e7;
+  --color-db-row: #f4f2f0;
+  --color-db-ink: #2e2722;
+  --color-db-muted: #756d66;
+  --color-db-accent: #3e5c47;
+  --color-db-accent-hover: #335040;
+  --color-db-accent-soft: #e9f0ea;
 
   /* Order status pills (semantic — dashboard only) */
-  --color-status-pending-bg: #f3e9d8;
-  --color-status-pending-fg: #93753e;
+  --color-status-pending-bg: #f2eddc;
+  --color-status-pending-fg: #857440;
   --color-status-confirmed-bg: #e8eef4;
   --color-status-confirmed-fg: #4a6584;
   --color-status-in-progress-bg: #f4ece3;
   --color-status-in-progress-fg: #85593a;
-  --color-status-ready-bg: #f0f3eb;
-  --color-status-ready-fg: #55673f;
-  --color-status-completed-bg: #e9efea;
-  --color-status-completed-fg: #3e6650;
-  --color-status-cancelled-bg: #f6e4e4;
-  --color-status-cancelled-fg: #9e4242;
+  --color-status-ready-bg: #e4f0eb;
+  --color-status-ready-fg: #2c6e5a;
+  --color-status-completed-bg: #efedeb;
+  --color-status-completed-fg: #5f5852;
+  --color-status-cancelled-bg: #f7e3e3;
+  --color-status-cancelled-fg: #a03939;
 
-  /* Semantic — desaturated */
-  --color-success: #4a7d63;
-  --color-success-bg: #edf4ef;
+  /* Semantic — danger split from primary, success hue offset from matcha */
+  --color-success: #2c6e5a;
+  --color-success-bg: #e4f0eb;
   --color-warning: #ad7b40;
   --color-warning-bg: #f8f0e6;
-  --color-danger: #b45353;
-  --color-danger-bg: #f9eded;
-  --color-info: #5c7a9e;
+  --color-danger: #c44545;
+  --color-danger-bg: #f7e3e3;
+  --color-danger-text: #a03939;
+  --color-info: #4a6584;
   --color-info-bg: #edf1f6;
 
   /* Shape */
@@ -72,29 +69,34 @@
   --radius-input: 12px;
   --radius-button: 12px;
 
-  /* Button — refined rosé (crisp hairline + clear hierarchy) */
-  --btn-rose-fill: var(--color-surface);
-  --btn-rose-fill-hover: var(--color-blush);
-  --btn-rose-line: var(--color-rose-200);
-  --btn-rose-line-hover: var(--color-rose-300);
-  --btn-rose-text: var(--color-rose-600);
-  --btn-rose-text-active: var(--color-rose-500);
+  /* Button — matcha hairline secondary + satin primary (storefront only) */
+  --btn-accent-fill: var(--color-surface);
+  --btn-accent-fill-hover: var(--color-matcha-100);
+  --btn-accent-line: var(--color-matcha-200);
+  --btn-accent-line-hover: var(--color-matcha-300);
+  --btn-accent-text: var(--color-matcha-600);
+  --btn-accent-text-active: var(--color-matcha-500);
+  --btn-satin-gradient: linear-gradient(
+    180deg,
+    #5a8a66 0%,
+    #4e7d5b 38%,
+    #44704f 100%
+  );
+  --btn-satin-active-bg: #375a42;
   --btn-shadow-primary:
-    inset 0 1px 0 rgb(255 255 255 / 0.14),
-    0 1px 2px rgb(62 45 54 / 0.05),
-    0 4px 14px rgb(185 72 110 / 0.14);
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    0 6px 16px rgb(78 125 91 / 0.22);
   --btn-shadow-primary-hover:
-    inset 0 1px 0 rgb(255 255 255 / 0.18),
-    0 2px 4px rgb(62 45 54 / 0.05),
-    0 6px 18px rgb(185 72 110 / 0.18);
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    0 8px 20px rgb(78 125 91 / 0.3);
 
-  /* Depth — ink tint */
-  --shadow-rest: 0 1px 3px rgb(62 45 54 / 0.05);
-  --shadow-hover: 0 8px 24px rgb(62 45 54 / 0.07);
+  /* Depth — espresso tint */
+  --shadow-rest: 0 1px 3px rgb(58 46 39 / 0.05);
+  --shadow-hover: 0 8px 24px rgb(58 46 39 / 0.07);
   --shadow-modal:
-    0 1px 2px rgb(62 45 54 / 0.03),
-    0 8px 24px rgb(62 45 54 / 0.08),
-    0 24px 48px rgb(62 45 54 / 0.1);
+    0 1px 2px rgb(58 46 39 / 0.03),
+    0 8px 24px rgb(58 46 39 / 0.08),
+    0 24px 48px rgb(58 46 39 / 0.1);
   /* Motion */
   --ease-luxury: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-micro: 150ms;
@@ -105,16 +107,16 @@
   --storefront-header-height: 4.5rem;
 
   /* Field chrome — porcelain inputs (SSOT) */
-  --field-bg: color-mix(in srgb, var(--color-surface) 88%, var(--color-blush));
-  --field-bg-focus: color-mix(in srgb, var(--color-surface) 94%, var(--color-blush));
-  --field-bg-disabled: color-mix(in srgb, var(--color-blush) 32%, var(--color-surface));
-  --field-border: color-mix(in srgb, var(--color-rose-200) 40%, var(--color-border));
-  --field-border-hover: color-mix(in srgb, var(--color-rose-300) 55%, var(--color-border));
-  --field-border-focus: var(--color-rose-400);
-  --field-frame-focus: color-mix(in srgb, var(--color-rose-300) 38%, transparent);
+  --field-bg: color-mix(in srgb, var(--color-surface) 88%, var(--color-mint));
+  --field-bg-focus: color-mix(in srgb, var(--color-surface) 94%, var(--color-mint));
+  --field-bg-disabled: color-mix(in srgb, var(--color-mint) 32%, var(--color-surface));
+  --field-border: color-mix(in srgb, var(--color-matcha-200) 40%, var(--color-border));
+  --field-border-hover: color-mix(in srgb, var(--color-matcha-300) 55%, var(--color-border));
+  --field-border-focus: var(--color-matcha-500);
+  --field-frame-focus: color-mix(in srgb, var(--color-matcha-300) 38%, transparent);
   --field-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.72);
-  --field-label-active: var(--color-rose-600);
-  --field-caret: var(--color-rose-500);
+  --field-label-active: var(--color-matcha-600);
+  --field-caret: var(--color-matcha-500);
   --field-placeholder: color-mix(in srgb, var(--color-muted) 62%, transparent);
 
   /* Control scale — customer default; dashboard overrides in [data-theme="dashboard"] */
@@ -144,15 +146,15 @@
 [data-theme="storefront"] {
   --theme-bg: var(--color-bg);
   --theme-surface: var(--color-surface);
-  --theme-surface-alt: var(--color-blush);
+  --theme-surface-alt: var(--color-mint);
   --theme-border: var(--color-border);
   --theme-ink: var(--color-ink);
   --theme-ink-2: var(--color-ink-2);
   --theme-muted: var(--color-muted);
-  --theme-primary: var(--color-rose-500);
-  --theme-primary-hover: var(--color-rose-600);
-  --theme-primary-active: var(--color-rose-700);
-  --theme-primary-subtle: var(--color-rose-100);
+  --theme-primary: var(--color-matcha-500);
+  --theme-primary-hover: var(--color-matcha-600);
+  --theme-primary-active: var(--color-matcha-700);
+  --theme-primary-subtle: var(--color-matcha-100);
   --theme-on-primary: var(--color-surface);
   --theme-accent: var(--color-gold-500);
   --theme-accent-soft: var(--color-gold-100);
@@ -178,12 +180,12 @@
   --theme-accent: var(--color-db-accent);
   --theme-accent-soft: var(--color-db-accent-soft);
 
-  /* Same porcelain field + rosé button chrome as storefront; slightly denser scale. */
-  --field-bg: color-mix(in srgb, var(--color-db-surface) 88%, var(--color-blush));
-  --field-bg-focus: color-mix(in srgb, var(--color-db-surface) 94%, var(--color-blush));
-  --field-bg-disabled: color-mix(in srgb, var(--color-blush) 32%, var(--color-db-surface));
-  --field-border: color-mix(in srgb, var(--color-rose-200) 40%, var(--color-db-border));
-  --field-border-hover: color-mix(in srgb, var(--color-rose-300) 55%, var(--color-db-border));
+  /* Same porcelain field chrome as storefront; slightly denser scale. */
+  --field-bg: color-mix(in srgb, var(--color-db-surface) 88%, var(--color-mint));
+  --field-bg-focus: color-mix(in srgb, var(--color-db-surface) 94%, var(--color-mint));
+  --field-bg-disabled: color-mix(in srgb, var(--color-mint) 32%, var(--color-db-surface));
+  --field-border: color-mix(in srgb, var(--color-matcha-200) 40%, var(--color-db-border));
+  --field-border-hover: color-mix(in srgb, var(--color-matcha-300) 55%, var(--color-db-border));
   --field-control-height: 2.5rem;
   --field-control-font-size: 0.875rem;
   --field-control-padding-inline: 0.75rem;
@@ -199,7 +201,7 @@
   --radius-button: 10px;
 
   /* Dashboard data table — readable density without oversized chrome */
-  --db-table-row-height: 3.25rem;
+  --db-table-row-height: 2.75rem;
   --db-table-header-size: 0.75rem;
   --db-table-action-hit: 2.25rem;
   --db-table-action-icon: 1.0625rem;
@@ -242,27 +244,22 @@
 @theme inline {
   --color-bg: var(--theme-bg);
   --color-surface: var(--theme-surface);
-  --color-blush: var(--color-blush);
+  --color-mint: var(--color-mint);
   --color-border: var(--theme-border);
   --color-ink: var(--theme-ink);
   --color-ink-2: var(--theme-ink-2);
   --color-muted: var(--theme-muted);
 
-  --color-rose-100: var(--color-rose-100);
-  --color-rose-200: var(--color-rose-200);
-  --color-rose-300: var(--color-rose-300);
-  --color-rose-400: var(--color-rose-400);
-  --color-rose-500: var(--color-rose-500);
-  --color-rose-600: var(--color-rose-600);
-  --color-rose-700: var(--color-rose-700);
+  --color-matcha-100: var(--color-matcha-100);
+  --color-matcha-200: var(--color-matcha-200);
+  --color-matcha-300: var(--color-matcha-300);
+  --color-matcha-500: var(--color-matcha-500);
+  --color-matcha-600: var(--color-matcha-600);
+  --color-matcha-700: var(--color-matcha-700);
 
   --color-gold-100: var(--color-gold-100);
   --color-gold-500: var(--color-gold-500);
   --color-gold-700: var(--color-gold-700);
-
-  --color-pista-100: var(--color-pista-100);
-  --color-pista-500: var(--color-pista-500);
-  --color-pista-700: var(--color-pista-700);
 
   --color-db-bg: var(--color-db-bg);
   --color-db-surface: var(--color-db-surface);
@@ -307,6 +304,9 @@
   --color-success-bg: var(--color-success-bg);
   --color-warning: var(--color-warning);
   --color-warning-bg: var(--color-warning-bg);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-bg);
+  --color-danger-text: var(--color-danger-text);
   --color-error: var(--color-danger);
   --color-error-bg: var(--color-danger-bg);
   --color-info: var(--color-info);
@@ -405,7 +405,11 @@
 
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px var(--color-rose-200);
+    box-shadow: 0 0 0 3px var(--color-matcha-200);
+  }
+
+  [data-theme="dashboard"] :focus-visible {
+    box-shadow: 0 0 0 3px var(--color-db-accent-soft);
   }
 }
 
@@ -615,7 +619,7 @@
     border-color: color-mix(in srgb, var(--color-db-border) 72%, transparent);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.55),
-      0 12px 40px rgb(47 40 44 / 0.1);
+      0 12px 40px rgb(46 39 34 / 0.1);
   }
 
   [data-theme="dashboard"] .app-dialog-footer-actions .btn-variant-outline {
@@ -766,7 +770,7 @@
   .app-dialog-footer-actions .btn-variant-outline {
     background-color: color-mix(
       in srgb,
-      var(--color-surface-alt, var(--color-blush)) 38%,
+      var(--color-surface-alt, var(--color-mint)) 38%,
       var(--color-surface)
     );
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 82%, transparent);
@@ -776,7 +780,7 @@
   .app-dialog-footer-actions .btn-variant-outline:hover:not(:disabled) {
     background-color: color-mix(
       in srgb,
-      var(--color-surface-alt, var(--color-blush)) 58%,
+      var(--color-surface-alt, var(--color-mint)) 58%,
       var(--color-surface)
     );
     color: var(--color-ink);
@@ -786,7 +790,7 @@
     background-color: var(--color-danger);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.14),
-      0 1px 2px rgb(62 45 54 / 0.06);
+      0 1px 2px rgb(58 46 39 / 0.06);
     color: var(--color-surface);
   }
 
@@ -794,12 +798,12 @@
     background-color: color-mix(in srgb, var(--color-danger) 92%, var(--color-ink));
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.16),
-      0 2px 6px rgb(62 45 54 / 0.08);
+      0 2px 6px rgb(58 46 39 / 0.08);
     color: var(--color-surface);
   }
 
   .app-dialog-code {
-    background-color: var(--color-surface-alt, var(--color-blush));
+    background-color: var(--color-surface-alt, var(--color-mint));
     border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
     border-radius: var(--radius-input);
     color: var(--color-ink);
@@ -890,7 +894,7 @@
   }
 
   .btn-chrome:focus-visible {
-    outline: 2px solid var(--color-rose-300);
+    outline: 2px solid var(--color-matcha-300);
     outline-offset: 2px;
   }
 
@@ -899,29 +903,37 @@
     pointer-events: none;
   }
 
-  /* Primary — decisive rosé, satin edge, soft lift */
+  /* Primary — satin matcha (storefront only; dashboard override below is flat) */
   .btn-primary {
-    background-color: var(--color-rose-500);
+    background: var(--btn-satin-gradient);
     box-shadow: var(--btn-shadow-primary);
     color: #fff;
+    transition:
+      background-color var(--duration-standard) var(--ease-luxury),
+      box-shadow var(--duration-standard) var(--ease-luxury),
+      color var(--duration-standard) var(--ease-luxury),
+      transform var(--duration-standard) var(--ease-luxury);
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-rose-600);
     box-shadow: var(--btn-shadow-primary-hover);
     color: #fff;
+    transform: translateY(-1px);
   }
 
   .btn-primary:active:not(:disabled) {
-    background-color: var(--color-rose-700);
-    box-shadow: inset 0 1px 2px rgb(62 45 54 / 0.12);
+    background: var(--btn-satin-active-bg);
+    box-shadow: inset 0 1px 2px rgb(58 46 39 / 0.12);
     color: #fff;
+    transform: scale(0.985);
   }
 
   .btn-primary:disabled {
-    background-color: var(--color-rose-200);
+    background: var(--color-matcha-200);
     box-shadow: none;
-    color: #fff;
+    color: var(--color-muted);
+    cursor: not-allowed;
+    opacity: 1;
   }
 
   .btn-primary .btn-arrow {
@@ -934,22 +946,22 @@
     transform: translateX(3px);
   }
 
-  /* Secondary — white + crisp rosé hairline */
+  /* Secondary — white + crisp matcha hairline */
   .btn-variant-outline {
-    background-color: var(--btn-rose-fill);
-    box-shadow: inset 0 0 0 1px var(--btn-rose-line);
-    color: var(--btn-rose-text);
+    background-color: var(--btn-accent-fill);
+    box-shadow: inset 0 0 0 1px var(--btn-accent-line);
+    color: var(--btn-accent-text);
   }
 
   .btn-variant-outline:hover:not(:disabled) {
-    background-color: var(--btn-rose-fill-hover);
-    box-shadow: inset 0 0 0 1px var(--btn-rose-line-hover);
-    color: var(--btn-rose-text-active);
+    background-color: var(--btn-accent-fill-hover);
+    box-shadow: inset 0 0 0 1px var(--btn-accent-line-hover);
+    color: var(--btn-accent-text-active);
   }
 
   .btn-variant-outline:active:not(:disabled) {
-    background-color: color-mix(in srgb, var(--color-blush) 82%, var(--color-rose-100));
-    box-shadow: inset 0 0 0 1px var(--color-rose-400);
+    background-color: color-mix(in srgb, var(--color-mint) 82%, var(--color-matcha-100));
+    box-shadow: inset 0 0 0 1px var(--color-matcha-500);
   }
 
   .btn-variant-outline:disabled {
@@ -977,16 +989,16 @@
     color: var(--color-muted);
   }
 
-  /* Tertiary — rosé text + hairline sweep */
+  /* Tertiary — matcha text + hairline sweep */
   .btn-variant-ghost {
     background: transparent;
     box-shadow: none;
-    color: var(--btn-rose-text);
+    color: var(--btn-accent-text);
     position: relative;
   }
 
   .btn-variant-ghost::after {
-    background-color: var(--color-rose-300);
+    background-color: var(--color-matcha-300);
     bottom: 0.5rem;
     content: "";
     height: 1px;
@@ -998,7 +1010,7 @@
 
   .btn-variant-ghost:hover:not(:disabled) {
     background: transparent;
-    color: var(--btn-rose-text-active);
+    color: var(--btn-accent-text-active);
   }
 
   .btn-variant-ghost:hover:not(:disabled)::after {
@@ -1034,13 +1046,13 @@
   }
 
   .divider-gold {
-    border-top: 1px solid var(--color-gold-500);
-    width: 3rem;
+    border-top: 1.5px solid var(--color-gold-500);
+    width: 3.5rem;
   }
 
   .brand-wordmark {
     align-items: baseline;
-    color: var(--color-rose-500);
+    color: var(--color-matcha-500);
     display: inline-flex;
     font-family: var(--font-display);
     font-optical-sizing: auto;
@@ -1073,13 +1085,13 @@
   }
 
   .brand-logo:hover .brand-wordmark-body {
-    color: var(--color-rose-600);
+    color: var(--color-matcha-600);
     letter-spacing: 0.065em;
     transform: translateY(-1px);
   }
 
   .brand-logo:hover .brand-wordmark-accent {
-    color: var(--color-rose-500);
+    color: var(--color-matcha-500);
     transform: scale(1.12) translateY(-2px);
   }
 
@@ -1087,38 +1099,25 @@
     overflow: visible;
   }
 
-  .brand-mark-petal {
+  .brand-mark-part {
     transform-box: fill-box;
     transform-origin: center;
-    transition:
-      transform 0.5s var(--ease-luxury),
-      filter 0.5s var(--ease-luxury);
+    transition: transform 0.5s var(--ease-luxury);
   }
 
-  .brand-logo:hover .brand-mark-petal-outer {
-    transform: scale(1.035) rotate(-1.25deg);
+  .brand-logo:hover .brand-mark-body {
+    transform: scale(1.03);
     transition-delay: 0ms;
   }
 
-  .brand-logo:hover .brand-mark-petal-mid {
-    transform: scale(1.045);
-    transition-delay: 45ms;
+  .brand-logo:hover .brand-mark-cream {
+    transform: translateY(-0.5px) scale(1.05);
+    transition-delay: 60ms;
   }
 
-  .brand-logo:hover .brand-mark-petal-inner {
-    transform: scale(1.055);
-    transition-delay: 90ms;
-  }
-
-  .brand-logo:hover .brand-mark-petal-highlight {
-    filter: brightness(1.12);
-    transform: scale(1.07);
+  .brand-logo:hover .brand-mark-dot {
+    transform: scale(1.25);
     transition-delay: 110ms;
-  }
-
-  .brand-logo:hover .brand-mark-petal-deep {
-    transform: scale(1.025);
-    transition-delay: 130ms;
   }
 
   .storefront-eyebrow {
@@ -1225,18 +1224,18 @@
   }
 
   .storefront-header-icon:hover {
-    color: var(--color-rose-500);
+    color: var(--color-matcha-500);
   }
 
   .storefront-header-icon-pressed {
-    color: var(--color-rose-600);
+    color: var(--color-matcha-600);
   }
 
   .storefront-header-search {
     animation: storefront-search-reveal 0.4s var(--ease-luxury) both;
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--color-blush) 55%, var(--color-bg)) 0%,
+      color-mix(in srgb, var(--color-mint) 55%, var(--color-bg)) 0%,
       var(--color-bg) 100%
     );
     border-top: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
@@ -1344,7 +1343,7 @@
   }
 
   .storefront-header-search-dismiss:hover {
-    background-color: color-mix(in srgb, var(--color-blush) 80%, transparent);
+    background-color: color-mix(in srgb, var(--color-mint) 80%, transparent);
     color: var(--field-label-active);
   }
 
@@ -1414,10 +1413,10 @@
   .auth-page-brand-scrim {
     background: linear-gradient(
       180deg,
-      rgb(46 30 36 / 0.52) 0%,
-      rgb(70 49 57 / 0.12) 28%,
-      rgb(70 49 57 / 0.28) 48%,
-      rgb(46 30 36 / 0.82) 100%
+      rgb(42 34 28 / 0.52) 0%,
+      rgb(58 46 39 / 0.12) 28%,
+      rgb(58 46 39 / 0.28) 48%,
+      rgb(42 34 28 / 0.82) 100%
     );
     inset: 0;
     position: absolute;
@@ -1456,7 +1455,7 @@
   }
 
   .auth-brand-logo .brand-wordmark-accent {
-    color: color-mix(in srgb, var(--color-rose-300) 90%, var(--color-surface));
+    color: color-mix(in srgb, var(--color-matcha-300) 90%, var(--color-surface));
   }
 
   .auth-brand-logo:hover .brand-wordmark-body,
@@ -1521,7 +1520,7 @@
 
   .auth-page-brand-title .font-display.italic,
   .auth-page-brand-title span {
-    color: color-mix(in srgb, var(--color-rose-300) 88%, var(--color-surface));
+    color: color-mix(in srgb, var(--color-matcha-300) 88%, var(--color-surface));
   }
 
   .auth-page-brand-description {
@@ -1538,7 +1537,7 @@
     background:
       radial-gradient(
         ellipse 90% 70% at 100% 0%,
-        color-mix(in srgb, var(--color-blush) 38%, transparent) 0%,
+        color-mix(in srgb, var(--color-mint) 38%, transparent) 0%,
         transparent 62%
       ),
       radial-gradient(
@@ -1640,7 +1639,7 @@
 
   .auth-page-exit-link:hover,
   .auth-inline-link:hover {
-    color: var(--color-rose-600);
+    color: var(--color-matcha-600);
     text-decoration: none;
   }
 
@@ -1659,7 +1658,7 @@
   }
 
   .auth-page-exit-icon {
-    color: var(--color-rose-500);
+    color: var(--color-matcha-500);
     font-size: 1.0625rem;
     line-height: 1;
     transition: transform var(--duration-standard) var(--ease-luxury);
@@ -1842,7 +1841,7 @@
   }
 
   .dashboard-sidebar-logo .brand-wordmark {
-    color: var(--color-rose-500);
+    color: var(--color-matcha-500);
     font-size: 1.125rem;
     min-width: 0;
     overflow: visible;
@@ -2332,6 +2331,8 @@
   }
 
   .dashboard-page {
+    margin-inline: auto;
+    max-width: 77.5rem;
     width: 100%;
   }
 
@@ -2878,7 +2879,8 @@
     color: var(--color-status-confirmed-fg);
   }
 
-  .status-pill--in-progress {
+  .status-pill--in-progress,
+  .status-pill--in_progress {
     background-color: var(--color-status-in-progress-bg);
     color: var(--color-status-in-progress-fg);
   }
@@ -3232,9 +3234,9 @@
     animation: skeleton-shimmer 1.8s ease-in-out infinite;
     background: linear-gradient(
       90deg,
-      var(--color-blush) 0%,
-      var(--color-rose-100) 50%,
-      var(--color-blush) 100%
+      var(--color-mint) 0%,
+      color-mix(in srgb, var(--color-matcha-200) 55%, var(--color-mint)) 50%,
+      var(--color-mint) 100%
     );
     background-size: 200% 100%;
     border-radius: var(--radius-input);
@@ -3504,8 +3506,8 @@
 }
 
 .field-chrome--select {
-  --field-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23675562' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --field-chevron-active: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a03a5c' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --field-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6056' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --field-chevron-active: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234E7D5B' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   appearance: none;
   background-image: var(--field-chevron);
   background-position: right 0.75rem center;
@@ -3663,12 +3665,12 @@
 }
 
 .field-select-item[data-highlighted]:not([data-state="checked"]) {
-  background-color: color-mix(in srgb, var(--color-blush) 42%, var(--field-bg-focus));
+  background-color: color-mix(in srgb, var(--color-mint) 42%, var(--field-bg-focus));
   color: var(--color-ink);
 }
 
 .field-select-item[data-state="checked"] {
-  background-color: color-mix(in srgb, var(--color-rose-200) 22%, var(--field-bg-focus));
+  background-color: color-mix(in srgb, var(--color-matcha-200) 22%, var(--field-bg-focus));
   color: var(--field-label-active);
 }
 
@@ -3687,7 +3689,7 @@
 }
 
 [data-theme="dashboard"] .field-select-item[data-state="checked"] {
-  background-color: color-mix(in srgb, var(--color-rose-200) 18%, var(--color-db-surface));
+  background-color: color-mix(in srgb, var(--color-matcha-200) 18%, var(--color-db-surface));
   color: var(--color-db-ink);
 }
 
@@ -3722,6 +3724,46 @@
   min-height: var(--btn-control-min-height);
   min-width: var(--btn-control-min-width);
   padding-inline: var(--btn-control-padding-inline);
+}
+
+/* Dashboard primary — flat accent (no satin, no gradient, no lift) */
+[data-theme="dashboard"] .btn-primary {
+  background: var(--color-db-accent);
+  box-shadow: none;
+}
+
+[data-theme="dashboard"] .btn-primary:hover:not(:disabled) {
+  background: var(--color-db-accent-hover);
+  box-shadow: none;
+  transform: none;
+}
+
+[data-theme="dashboard"] .btn-primary:active:not(:disabled) {
+  background: var(--color-db-accent-hover);
+  box-shadow: none;
+  transform: none;
+}
+
+[data-theme="dashboard"] .btn-primary:disabled {
+  background: var(--color-db-row);
+  color: var(--color-db-muted);
+}
+
+/* Dashboard secondary — neutral hairline (accent reserved for primary) */
+[data-theme="dashboard"] .btn-variant-outline {
+  box-shadow: inset 0 0 0 1px var(--color-db-border);
+  color: var(--color-db-muted);
+}
+
+[data-theme="dashboard"] .btn-variant-outline:hover:not(:disabled) {
+  background-color: var(--color-db-row);
+  box-shadow: inset 0 0 0 1px var(--color-db-border);
+  color: var(--color-db-ink);
+}
+
+[data-theme="dashboard"] .btn-variant-outline:active:not(:disabled) {
+  background-color: var(--color-db-row);
+  box-shadow: inset 0 0 0 1px var(--color-db-border);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -2,9 +2,10 @@
 
 import { USER_ROLE } from "@/constants/roles";
 
-import { useMe } from "../hooks";
-
 import { DashboardProfileFormSkeleton } from "@/components/ui/dashboard-profile-form-skeleton";
+
+import { useMe } from "../hooks";
+import { fullNamePhoneSnapshotFromProfile } from "../lib/profile-form-values";
 
 import { FullNamePhoneSelfProfileForm } from "./full-name-phone-self-profile-form";
 
@@ -22,8 +23,10 @@ export function AdminAccountProfileForm() {
   return (
     <FullNamePhoneSelfProfileForm
       key={me.data.id}
-      fullName={me.data.profile.full_name}
-      phone={me.data.profile.phone}
+      initialSnapshot={fullNamePhoneSnapshotFromProfile(
+        me.data.profile.full_name,
+        me.data.profile.phone,
+      )}
     />
   );
 }
