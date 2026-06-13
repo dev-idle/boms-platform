@@ -9,7 +9,6 @@ import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
 import { isApiError } from "@/lib/errors";
-import { shallowFormValuesEqual } from "@/lib/form-values-equal";
 import { applyFormFieldErrors } from "@/lib/validation";
 
 import {
@@ -117,9 +116,6 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
 
         <div className="dashboard-profile-form-actions">
           <DashboardFormSaveButton
-            areEqual={shallowFormValuesEqual<ChangePasswordFormInput>}
-            baseline={EMPTY_PASSWORD_FORM}
-            form={form}
             idleLabel="Change password"
             isPending={mutation.isPending}
             pendingLabel="Changing…"

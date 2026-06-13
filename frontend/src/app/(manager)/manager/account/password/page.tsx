@@ -1,18 +1,8 @@
-import {
-  ChangePasswordForm,
-  DashboardAccountProfileLayout,
-  DashboardProfileSection,
-} from "@/features/user";
+import { redirect } from "next/navigation";
+
+import { USER_ROLE } from "@/constants/roles";
+import { passwordRouteForRole } from "@/lib/routing/role-routes";
 
 export default function ManagerAccountPasswordPage() {
-  return (
-    <DashboardAccountProfileLayout
-      description="You will be signed out after updating your password."
-      title="Change password"
-    >
-      <DashboardProfileSection id="manager-password" title="New password">
-        <ChangePasswordForm />
-      </DashboardProfileSection>
-    </DashboardAccountProfileLayout>
-  );
+  redirect(passwordRouteForRole(USER_ROLE.manager));
 }

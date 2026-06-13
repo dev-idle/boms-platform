@@ -12,7 +12,6 @@ import {
   createOperationalResponseSchema,
   createOperationalSchema,
   listFilterSchema,
-  updateOperationalProfileSchema,
   updateRoleSchema,
   adminUserActivityLogSchema,
   type AdminUser,
@@ -21,7 +20,6 @@ import {
   type AdminResetPasswordResponse,
   type CreateOperationalResponse,
   type ListFilterInput,
-  type UpdateOperationalProfileInput,
   type UpdateRoleInput,
   type UserActivityFilterInput,
   type UserActivityListResult,
@@ -112,6 +110,7 @@ export async function listUsers(input: ListFilterInput): Promise<UsersListResult
 
 export async function getUserById(id: string): Promise<AdminUser> {
   const parsedId = z.string().uuid().parse(id);
+
   return browserRequest<AdminUser>(`/api/v1/admin/users/${parsedId}`, {
     method: "GET",
     schema: adminUserSchema,
@@ -126,19 +125,6 @@ export async function createOperational(
     method: "POST",
     json: body,
     schema: createOperationalResponseSchema,
-  });
-}
-
-export async function updateUserProfile(
-  id: string,
-  input: UpdateOperationalProfileInput,
-): Promise<AdminUser> {
-  const parsedId = z.string().uuid().parse(id);
-  const body = updateOperationalProfileSchema.parse(input);
-  return browserRequest<AdminUser>(`/api/v1/admin/users/${parsedId}`, {
-    method: "PATCH",
-    json: body,
-    schema: adminUserSchema,
   });
 }
 

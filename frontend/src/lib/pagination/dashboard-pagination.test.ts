@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildPaginationWindow,
   formatPaginationRange,
+  paginatedPlaceholderCount,
+  paginatedPlaceholderCountFromMeta,
   paginationRange,
 } from "./dashboard-pagination";
 
@@ -21,6 +23,29 @@ describe("formatPaginationRange", () => {
     expect(
       formatPaginationRange({ start: 11, end: 20 }, 127, "users"),
     ).toBe("Showing 11–20 of 127 users");
+  });
+});
+
+describe("paginatedPlaceholderCount", () => {
+  it("pads only partial pages when pagination spans multiple pages", () => {
+    expect(paginatedPlaceholderCount(7, 10, 2)).toBe(3);
+    expect(paginatedPlaceholderCount(3, 10, 1)).toBe(0);
+    expect(paginatedPlaceholderCount(3, 10, 2)).toBe(7);
+    expect(paginatedPlaceholderCount(10, 10, 2)).toBe(0);
+    expect(paginatedPlaceholderCount(0, 10, 2)).toBe(0);
+  });
+});
+
+describe("paginatedPlaceholderCountFromMeta", () => {
+  it("uses pagination meta with a fallback page size", () => {
+    expect(
+      paginatedPlaceholderCountFromMeta(
+        7,
+        { page_size: 10, total_pages: 2 },
+        20,
+      ),
+    ).toBe(3);
+    expect(paginatedPlaceholderCountFromMeta(3, undefined, 10)).toBe(0);
   });
 });
 

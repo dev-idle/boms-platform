@@ -31,12 +31,12 @@ describe("resolvePostAuthDestination", () => {
         next: "/staff/account/profile",
         mustChangePassword: true,
       }),
-    ).toBe(ROUTE.staff.account.password);
+    ).toBe(`${ROUTE.staff.account.profile}#staff-password`);
     expect(
       resolvePostAuthDestination(USER_ROLE.admin, {
         next: "/admin/users",
         mustChangePassword: true,
       }),
-    ).toBe(ROUTE.admin.account.profile);
+    ).toBe(`${ROUTE.admin.account.profile}#admin-profile-password`);
   });
 });

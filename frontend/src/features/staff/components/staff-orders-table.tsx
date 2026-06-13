@@ -1,17 +1,24 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
+import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
+import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import { DashboardTableRowActions } from "@/components/ui/dashboard-table-actions";
 import {
   formatOrderStatusLabel,
   orderStatusToPillVariant,
   StatusPill,
 } from "@/components/ui/status-pill";
 import { ROUTE } from "@/constants/routes";
+import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
+import {
+  isInitialQueryLoad,
+  isQueryRefetching,
+} from "@/lib/react-query/query-surface";
+import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -36,20 +43,22 @@ export function StaffOrdersTable() {
     [page, status],
   );
   const ordersQuery = useStaffOrders(filter);
-
-  if (ordersQuery.isPending) {
-    return <p className="text-sm text-muted">Loading orders…</p>;
-  }
-
-  if (ordersQuery.isError) {
-    return <p className="text-sm text-error">Failed to load orders.</p>;
-  }
-
   const orders = ordersQuery.data?.orders ?? [];
   const pagination = ordersQuery.data?.pagination;
+  const initialLoad = isInitialQueryLoad(ordersQuery.isPending, ordersQuery.data);
+  const refetching = isQueryRefetching(
+    ordersQuery.isFetching,
+    ordersQuery.isPending,
+    ordersQuery.data,
+  );
+  const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
+    orders.length,
+    pagination,
+    PAGE_SIZE,
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="dashboard-page-body">
       <div className="db-filter-row">
         <span className="db-filter-label">Status</span>
         <DashboardFilterGroup
@@ -63,41 +72,57 @@ export function StaffOrdersTable() {
         />
       </div>
 
-      {orders.length === 0 ? (
-        <p className="text-sm text-muted">No orders match this filter.</p>
-      ) : (
-        <div className="db-table-wrap">
-          <table className="db-table">
-            <thead>
+      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <table className="db-table db-table--relaxed">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Placed</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {initialLoad ? (
               <tr>
-                <th>Order</th>
-                <th>Customer</th>
-                <th>Placed</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <td className="db-table-empty-cell" colSpan={6}>
+                  Loading orders…
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
+            ) : ordersQuery.isError ? (
+              <tr>
+                <td className="db-table-empty-cell text-error" colSpan={6}>
+                  Failed to load orders.
+                </td>
+              </tr>
+            ) : orders.length === 0 ? (
+              <tr>
+                <td className="db-table-empty-cell" colSpan={6}>
+                  No orders match this filter.
+                </td>
+              </tr>
+            ) : (
+              orders.map((order) => (
                 <tr key={order.id}>
                   <td>
                     <span className="text-order-code">{order.id.slice(0, 8)}</span>
                   </td>
                   <td>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-ink">
+                    <div className="db-table-stacked-cell min-w-0">
+                      <span className="db-table-cell-primary truncate">
                         {order.customer.display_name ?? order.customer.email}
-                      </p>
+                      </span>
                       {order.customer.display_name ? (
-                        <p className="truncate text-caption-dashboard">
+                        <span className="truncate text-caption-dashboard text-ink-2">
                           {order.customer.email}
-                        </p>
+                        </span>
                       ) : null}
                     </div>
                   </td>
                   <td className="text-ink-2">{formatDateTime(order.created_at)}</td>
-                  <td className="text-tabular font-medium">
+                  <td className="db-table-cell-primary text-tabular">
                     {formatPriceCents(order.total_cents)}
                   </td>
                   <td>
@@ -107,28 +132,33 @@ export function StaffOrdersTable() {
                     />
                   </td>
                   <td>
-                    <Link href={ROUTE.staff.orderDetail(order.id)}>
-                      <Button size="sm" type="button" variant="outline">
-                        View
-                      </Button>
-                    </Link>
+                    <DashboardTableRowActions>
+                      <DashboardTableActionLink
+                        href={ROUTE.staff.orderDetail(order.id)}
+                        label={`View order ${order.id}`}
+                      />
+                    </DashboardTableRowActions>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {pagination ? (
-            <DashboardTablePagination
-              disabled={ordersQuery.isFetching}
-              onPageChange={setPage}
-              page={pagination.page}
-              pageSize={pagination.page_size}
-              totalItems={pagination.total}
-              totalPages={pagination.total_pages}
+              ))
+            )}
+            <DashboardTablePagePlaceholders
+              columnCount={6}
+              count={pagePlaceholderCount}
             />
-          ) : null}
-        </div>
-      )}
+          </tbody>
+        </table>
+        {pagination ? (
+          <DashboardTablePagination
+            disabled={ordersQuery.isFetching}
+            onPageChange={setPage}
+            page={pagination.page}
+            pageSize={pagination.page_size}
+            totalItems={pagination.total}
+            totalPages={pagination.total_pages}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

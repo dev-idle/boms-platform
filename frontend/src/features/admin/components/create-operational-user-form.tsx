@@ -13,13 +13,13 @@ import { Select } from "@/components/ui/select";
 import { ASSIGNABLE_OPERATIONAL_ROLES, roleDisplayLabel } from "@/constants/roles";
 import { DashboardProfileSection } from "@/features/user";
 import { isApiError } from "@/lib/errors";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { applyFormFieldErrors } from "@/lib/validation";
 
 import { useCreateOperational } from "../hooks";
 import { adminUsersNewBreadcrumbItems } from "../lib/admin-breadcrumbs";
 import {
   CREATE_OPERATIONAL_INITIAL,
-  createOperationalFormValuesEqual,
 } from "../lib/create-operational-form-values";
 import { createOperationalSchema, type CreateOperationalInput } from "../schemas";
 
@@ -61,14 +61,14 @@ export function CreateOperationalUserForm() {
 
   return (
     <>
-      <div className="dashboard-page-stack dashboard-account-profile-page">
+      <div className="dashboard-page-stack">
         <DashboardPageHeader
           breadcrumbItems={adminUsersNewBreadcrumbItems()}
           description="Create staff, baker, or manager accounts. Platform admins are created via dev seed only."
-          title="New operational user"
+          title={PAGE_TITLES.newUser}
         />
 
-        <div className="dashboard-profile-stack">
+        <div className="dashboard-page-body">
           <DashboardProfileSection id="admin-users-new" title="Account details">
             <Form {...form}>
               <form
@@ -156,9 +156,6 @@ export function CreateOperationalUserForm() {
 
                 <div className="dashboard-profile-form-actions">
                   <DashboardFormSaveButton
-                    areEqual={createOperationalFormValuesEqual}
-                    baseline={CREATE_OPERATIONAL_INITIAL}
-                    form={form}
                     idleLabel="Create user"
                     isPending={createUser.isPending}
                     pendingLabel="Creating…"

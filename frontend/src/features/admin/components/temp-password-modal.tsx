@@ -72,7 +72,7 @@ function TempPasswordModalContent({
       <div className="app-dialog-code">{tempPassword}</div>
 
       <div className="app-dialog-inline-actions">
-        <Button onClick={() => void handleCopy()} type="button" variant="outline">
+        <Button onClick={() => void handleCopy()} type="button">
           {copied ? "Copied" : "Copy password"}
         </Button>
         <label className="app-dialog-checkbox">

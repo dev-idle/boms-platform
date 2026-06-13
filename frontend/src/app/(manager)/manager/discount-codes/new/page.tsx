@@ -2,23 +2,28 @@
 
 import { useRouter } from "next/navigation";
 
-import { ROUTE } from "@/constants/routes";
+import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
 import { DiscountCodeForm } from "@/features/manager";
+import { managerDiscountCodesBreadcrumb } from "@/features/manager/lib/manager-breadcrumbs";
+import { ROUTE } from "@/constants/routes";
+import { DashboardProfileSection } from "@/features/user";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 export default function ManagerNewDiscountCodePage() {
   const router = useRouter();
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-page-title">
-          New discount code
-        </h1>
-      </div>
-      <DiscountCodeForm
-        mode="create"
-        onSuccess={() => router.push(ROUTE.manager.discountCodes)}
-      />
-    </div>
+    <DashboardFormPage
+      breadcrumbItems={managerDiscountCodesBreadcrumb(PAGE_TITLES.newDiscountCode)}
+      description="Create a promotion code validated at checkout."
+      title={PAGE_TITLES.newDiscountCode}
+    >
+      <DashboardProfileSection id="manager-discount-code-form" title="Code details">
+        <DiscountCodeForm
+          mode="create"
+          onSuccess={() => router.push(ROUTE.manager.discountCodes)}
+        />
+      </DashboardProfileSection>
+    </DashboardFormPage>
   );
 }

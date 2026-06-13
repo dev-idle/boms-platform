@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 
-import { CloseIcon } from "@/components/icons/storefront-icons";
+import { DashboardCloseIcon } from "@/components/icons/dashboard-ui-icons";
 import { cn } from "@/lib/utils";
 
 type DashboardSearchFieldProps = {
@@ -23,7 +23,7 @@ function SearchGlyph({ className }: { className?: string }) {
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.5}
+      strokeWidth={1.75}
       viewBox="0 0 24 24"
     >
       <circle cx="11" cy="11" r="7" />
@@ -67,7 +67,7 @@ export function DashboardSearchField({
           tabIndex={value ? 0 : -1}
           type="button"
         >
-          <CloseIcon className="size-3.5" />
+          <DashboardCloseIcon className="size-3.5" />
         </button>
       </div>
     </div>

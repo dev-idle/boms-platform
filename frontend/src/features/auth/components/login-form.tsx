@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
 import { useLogin } from "../hooks";
@@ -86,7 +87,7 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
           <AuthInlineLink href={ROUTE.register}>Create an account</AuthInlineLink>
         </p>
       }
-      title="Sign in"
+      title={PAGE_TITLES.signIn}
     >
       <Form {...form}>
         <form

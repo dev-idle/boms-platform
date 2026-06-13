@@ -12,12 +12,6 @@ const STAFF_NAV_ITEMS: readonly DashboardNavItem[] = [
     label: "Profile",
     match: "prefix",
   },
-  {
-    href: ROUTE.staff.account.password,
-    icon: "password",
-    label: "Password",
-    match: "prefix",
-  },
 ] as const;
 
 type StaffShellProps = {

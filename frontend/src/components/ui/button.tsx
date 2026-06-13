@@ -38,6 +38,7 @@ const buttonVariants = cva(
         gold: "btn-variant-gold",
         ghost: "btn-variant-ghost",
         destructive: "btn-variant-destructive",
+        warning: "btn-variant-warning",
       },
       size: {
         default: "",

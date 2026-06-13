@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import {
   Form,
@@ -35,14 +35,16 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory(category?.id ?? "");
 
+  const defaultValues: CategoryFormInput = {
+    name: category?.name ?? "",
+    slug: category?.slug ?? "",
+    sort_order: category?.sort_order ?? 0,
+    is_active: category?.is_active ?? true,
+  };
+
   const form = useForm<CategoryFormInput>({
     resolver: zodResolver(categoryFormSchema),
-    defaultValues: {
-      name: category?.name ?? "",
-      slug: category?.slug ?? "",
-      sort_order: category?.sort_order ?? 0,
-      is_active: category?.is_active ?? true,
-    },
+    defaultValues,
   });
 
   function onSubmit(values: CategoryFormInput): void {
@@ -76,7 +78,11 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
 
   return (
     <Form {...form}>
-      <form className="space-y-4" noValidate onSubmit={form.handleSubmit(onSubmit)}>
+      <form
+        className="dashboard-profile-form"
+        noValidate
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
         <FormField
           control={form.control}
           name="name"
@@ -131,9 +137,13 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
             </FormItem>
           )}
         />
-        <Button disabled={isPending} type="submit">
-          {mode === "create" ? "Create category" : "Save changes"}
-        </Button>
+        <div className="dashboard-profile-form-actions">
+          <DashboardFormSaveButton
+            idleLabel={mode === "create" ? "Create category" : "Save changes"}
+            isPending={isPending}
+            pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
+          />
+        </div>
       </form>
     </Form>
   );

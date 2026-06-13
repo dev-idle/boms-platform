@@ -1,22 +1,9 @@
 import { USER_ROLE } from "@/constants/roles";
-import {
-  DashboardAccountProfileLayout,
-  DashboardProfileSection,
-  OperationalAccountProfileForm,
-} from "@/features/user";
+import { OperationalAccountProfileView } from "@/features/user";
+import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
+
+export const metadata = pageTitle(PAGE_TITLES.profile);
 
 export default function BakerAccountProfilePage() {
-  return (
-    <DashboardAccountProfileLayout
-      description="Update your contact details. Production assignments are managed by an admin."
-      title="Baker profile"
-    >
-      <DashboardProfileSection id="baker-profile-details" title="Account details">
-        <OperationalAccountProfileForm
-          expectedRole={USER_ROLE.baker}
-          roleLabel="Baker"
-        />
-      </DashboardProfileSection>
-    </DashboardAccountProfileLayout>
-  );
+  return <OperationalAccountProfileView role={USER_ROLE.baker} />;
 }

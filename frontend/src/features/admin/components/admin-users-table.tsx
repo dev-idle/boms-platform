@@ -10,11 +10,14 @@ import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
+import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
 import { Button } from "@/components/ui/button";
 import { USER_ROLE, roleDisplayLabel } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
+import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import {
   isInitialQueryLoad,
   isQueryRefetching,
@@ -65,15 +68,18 @@ export function AdminUsersTable() {
     [page, role, search],
   );
   const usersQuery = useUsers(filter);
-  const filterPending =
-    usersQuery.isFetching && usersQuery.isPlaceholderData;
-  const users = filterPending ? [] : (usersQuery.data?.users ?? []);
-  const pagination = filterPending ? undefined : usersQuery.data?.pagination;
+  const users = usersQuery.data?.users ?? [];
+  const pagination = usersQuery.data?.pagination;
   const initialLoad = isInitialQueryLoad(usersQuery.isPending, usersQuery.data);
   const refetching = isQueryRefetching(
     usersQuery.isFetching,
     usersQuery.isPending,
     usersQuery.data,
+  );
+  const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
+    users.length,
+    pagination,
+    PAGE_SIZE,
   );
 
   function clearPendingAction(): void {
@@ -94,13 +100,14 @@ export function AdminUsersTable() {
       <DashboardPageHeader
         actions={
           <Link href={ROUTE.admin.usersNew}>
-            <Button type="button">New user</Button>
+            <Button type="button">New User</Button>
           </Link>
         }
         description="Manage operational users and account status."
-        title="Admin users"
+        title={PAGE_TITLES.users}
       />
 
+      <div className="dashboard-page-body">
       <div className="db-table-filters">
         <DashboardSearchField
           onChange={setInput}
@@ -120,7 +127,7 @@ export function AdminUsersTable() {
       </div>
 
       <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table db-table--admin-users">
+        <table className="db-table db-table--admin-users db-table--comfortable">
           <colgroup>
             <col className="db-table-col-email" />
             <col className="db-table-col-name" />
@@ -140,28 +147,30 @@ export function AdminUsersTable() {
             </tr>
           </thead>
           <tbody>
-            {initialLoad || filterPending ? (
+            {initialLoad ? (
               <tr>
-                <td className="text-muted" colSpan={6}>
+                <td className="db-table-empty-cell" colSpan={6}>
                   Loading users…
                 </td>
               </tr>
             ) : usersQuery.isError ? (
               <tr>
-                <td className="text-error" colSpan={6}>
+                <td className="db-table-empty-cell text-error" colSpan={6}>
                   Failed to load users.
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td className="text-muted" colSpan={6}>
+                <td className="db-table-empty-cell" colSpan={6}>
                   {search || role
                     ? "No users match your filters."
                     : "No users found."}
                 </td>
               </tr>
             ) : (
-              users.map((user) => (
+              users.map((user) => {
+                const listName = adminUserListName(user);
+                return (
                 <tr key={user.id}>
                   <td
                     className="db-table-cell-email db-table-cell-primary db-table-cell-truncate"
@@ -170,10 +179,15 @@ export function AdminUsersTable() {
                     {user.email}
                   </td>
                   <td
-                    className="db-table-cell-name db-table-cell-truncate text-ink-2"
-                    title={adminUserListName(user)}
+                    className={cn(
+                      "db-table-cell-name db-table-cell-truncate",
+                      listName === "—"
+                        ? "db-table-cell-placeholder"
+                        : "text-ink-2",
+                    )}
+                    title={listName === "—" ? undefined : listName}
                   >
-                    {adminUserListName(user)}
+                    {listName}
                   </td>
                   <td className="db-table-cell-role">{roleDisplayLabel(user.role)}</td>
                   <td className="db-table-status">
@@ -203,8 +217,13 @@ export function AdminUsersTable() {
                     />
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
+            <DashboardTablePagePlaceholders
+              columnCount={6}
+              count={pagePlaceholderCount}
+            />
           </tbody>
         </table>
         <DashboardTablePagination
@@ -217,10 +236,11 @@ export function AdminUsersTable() {
           totalPages={pagination?.total_pages ?? 1}
         />
       </div>
+      </div>
 
       <ConfirmDialog
         confirmLabel="Revoke sessions"
-        confirmVariant="destructive"
+        confirmVariant="warning"
         description="All active sessions for this user will be revoked."
         isPending={revokeSessions.isPending}
         onCancel={clearPendingAction}

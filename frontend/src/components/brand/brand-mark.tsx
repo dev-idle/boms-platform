@@ -1,5 +1,11 @@
 import { cva, type VariantProps } from "class-variance-authority";
 
+import {
+  BRAND_MARK_PATH_PARTS,
+  BRAND_MARK_PATHS,
+  BRAND_MARK_STROKE_WIDTH,
+  BRAND_MARK_VIEW_BOX,
+} from "@/constants/brand-mark";
 import { cn } from "@/lib/utils";
 
 const brandMarkVariants = cva("shrink-0", {
@@ -21,7 +27,7 @@ type BrandMarkProps = VariantProps<typeof brandMarkVariants> & {
   className?: string;
 };
 
-/** Minimal choux puff — body circle + piped cream cap (1.5 stroke) + one gold dot. */
+/** Matcha tree line-art (Choux Matcha v3). Geometry: `constants/brand-mark.ts`. */
 export function BrandMark({ className, size }: BrandMarkProps) {
   return (
     <svg
@@ -29,34 +35,22 @@ export function BrandMark({ className, size }: BrandMarkProps) {
       className={cn(brandMarkVariants({ size }), "brand-mark", className)}
       fill="none"
       shapeRendering="geometricPrecision"
-      viewBox="0 0 32 32"
+      viewBox={`0 0 ${BRAND_MARK_VIEW_BOX} ${BRAND_MARK_VIEW_BOX}`}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <circle
-        className="brand-mark-part brand-mark-body stroke-matcha-500"
-        cx="16"
-        cy="19"
-        r="8.25"
-        strokeWidth="1.5"
-      />
-      <path
-        className="brand-mark-part brand-mark-cream stroke-matcha-500"
-        d="M9.4 14.6C10.2 10.8 12.8 8.6 16 8.6C19.2 8.6 21.8 10.8 22.6 14.6"
-        strokeLinecap="round"
-        strokeWidth="1.5"
-      />
-      <path
-        className="brand-mark-part brand-mark-cream stroke-matcha-500"
-        d="M16 8.6C15.2 7.4 15.4 6.2 16.4 5.3"
-        strokeLinecap="round"
-        strokeWidth="1.5"
-      />
-      <circle
-        className="brand-mark-part brand-mark-dot fill-gold-500"
-        cx="21.8"
-        cy="6.6"
-        r="1.5"
-      />
+      {BRAND_MARK_PATHS.map((path, index) => (
+        <path
+          key={BRAND_MARK_PATH_PARTS[index]}
+          className={cn(
+            "brand-mark-part stroke-matcha-500",
+            `brand-mark-${BRAND_MARK_PATH_PARTS[index]}`,
+          )}
+          d={path}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={BRAND_MARK_STROKE_WIDTH}
+        />
+      ))}
     </svg>
   );
 }

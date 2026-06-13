@@ -70,14 +70,13 @@ export function passwordRouteForRole(role: UserRole): string {
     case USER_ROLE.customer:
       return ROUTE.customer.account.password;
     case USER_ROLE.staff:
-      return ROUTE.staff.account.password;
+      return `${ROUTE.staff.account.profile}#staff-password`;
     case USER_ROLE.baker:
-      return ROUTE.baker.account.password;
+      return `${ROUTE.baker.account.profile}#baker-password`;
     case USER_ROLE.manager:
-      return ROUTE.manager.account.password;
+      return `${ROUTE.manager.account.profile}#manager-password`;
     case USER_ROLE.admin:
-      // Admin change-password UI lives on the profile page (no `/admin/account/password`).
-      return ROUTE.admin.account.profile;
+      return `${ROUTE.admin.account.profile}#admin-profile-password`;
     default:
       return assertNeverRole(role);
   }

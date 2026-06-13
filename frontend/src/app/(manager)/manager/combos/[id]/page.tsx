@@ -3,8 +3,12 @@
 import { useRouter } from "next/navigation";
 import { use } from "react";
 
-import { ROUTE } from "@/constants/routes";
+import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
 import { ComboForm, useCombo } from "@/features/manager";
+import { managerCombosBreadcrumb } from "@/features/manager/lib/manager-breadcrumbs";
+import { ROUTE } from "@/constants/routes";
+import { DashboardProfileSection } from "@/features/user";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -28,17 +32,18 @@ export default function ManagerEditComboPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-page-title">
-          Edit combo
-        </h1>
-      </div>
-      <ComboForm
-        combo={comboQuery.data}
-        mode="edit"
-        onSuccess={() => router.push(ROUTE.manager.combos)}
-      />
-    </div>
+    <DashboardFormPage
+      breadcrumbItems={managerCombosBreadcrumb(PAGE_TITLES.editCombo)}
+      description="Update bundle items, pricing, and availability window."
+      title={PAGE_TITLES.editCombo}
+    >
+      <DashboardProfileSection id="manager-combo-form" title="Combo details">
+        <ComboForm
+          combo={comboQuery.data}
+          mode="edit"
+          onSuccess={() => router.push(ROUTE.manager.combos)}
+        />
+      </DashboardProfileSection>
+    </DashboardFormPage>
   );
 }

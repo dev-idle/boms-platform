@@ -42,15 +42,6 @@ export function normalizeFullNamePhoneFormValues(
   };
 }
 
-export function fullNamePhoneFormValuesEqual(
-  current: FullNamePhoneSelfProfileFormValues,
-  baseline: FullNamePhoneSelfProfileFormValues,
-): boolean {
-  const left = normalizeFullNamePhoneFormValues(current);
-  const right = normalizeFullNamePhoneFormValues(baseline);
-  return left.full_name === right.full_name && left.phone === right.phone;
-}
-
 export function customerProfileFormDefaults(
   profile: Pick<CustomerProfile, "display_name" | "phone">,
 ): CustomerSelfProfileFormValues {
@@ -73,15 +64,6 @@ export function normalizeCustomerProfileFormValues(
     display_name: patchOptionalString(values.display_name ?? ""),
     phone: patchOptionalString(values.phone ?? ""),
   };
-}
-
-export function customerProfileFormValuesEqual(
-  current: CustomerSelfProfileFormValues,
-  baseline: CustomerSelfProfileFormValues,
-): boolean {
-  const left = normalizeCustomerProfileFormValues(current);
-  const right = normalizeCustomerProfileFormValues(baseline);
-  return left.display_name === right.display_name && left.phone === right.phone;
 }
 
 type FullNamePhoneMe = Exclude<Me, { role: typeof USER_ROLE.customer }>;

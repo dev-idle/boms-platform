@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
 import { useRegister } from "../hooks";
@@ -69,7 +70,7 @@ export function RegisterForm() {
           <AuthInlineLink href={ROUTE.login}>Sign in</AuthInlineLink>
         </p>
       }
-      title="Create account"
+      title={PAGE_TITLES.createAccount}
     >
       <Form {...form}>
         <form

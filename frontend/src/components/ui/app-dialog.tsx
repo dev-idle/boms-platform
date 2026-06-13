@@ -10,6 +10,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { cn } from "@/lib/utils";
+import { useAppTheme } from "@/components/theme/theme-provider";
 
 export type AppDialogSize = "sm" | "md" | "lg";
 
@@ -71,6 +72,7 @@ export function AppDialog({
 }: AppDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
+  const theme = useAppTheme();
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const mounted = useSyncExternalStore(
@@ -188,6 +190,7 @@ export function AppDialog({
   return createPortal(
     <div
       className={cn("app-dialog-overlay", className)}
+      data-theme={theme}
       onClick={handleBackdropClick}
     >
       <div
@@ -216,12 +219,7 @@ export function AppDialog({
 
         {children ? <div className="app-dialog-body">{children}</div> : null}
 
-        {footer ? (
-          <footer className="app-dialog-footer">
-            <div aria-hidden className="app-dialog-separator" />
-            {footer}
-          </footer>
-        ) : null}
+        {footer ? <footer className="app-dialog-footer">{footer}</footer> : null}
       </div>
     </div>,
     document.body,

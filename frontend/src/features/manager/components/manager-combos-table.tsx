@@ -9,9 +9,18 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
+import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import {
+  DashboardTableDeleteButton,
+  DashboardTableEditLink,
+  DashboardTableRowActions,
+} from "@/components/ui/dashboard-table-actions";
+import { EntityActivePill } from "@/components/ui/status-pill";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import {
   isInitialQueryLoad,
   isQueryRefetching,
@@ -52,6 +61,11 @@ export function ManagerCombosTable() {
     query.isPending,
     query.data,
   );
+  const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
+    combos.length,
+    pagination,
+    PAGE_SIZE,
+  );
 
   return (
     <div className="dashboard-page-stack">
@@ -62,9 +76,10 @@ export function ManagerCombosTable() {
           </Link>
         }
         description="Bundle products with promotional pricing and time windows."
-        title="Combos"
+        title={PAGE_TITLES.combos}
       />
 
+      <div className="dashboard-page-body">
       <DashboardSearchField
         onChange={setInput}
         onClear={clear}
@@ -73,7 +88,7 @@ export function ManagerCombosTable() {
       />
 
       <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table">
+        <table className="db-table db-table--comfortable">
           <thead>
             <tr>
               <th>Name</th>
@@ -87,26 +102,26 @@ export function ManagerCombosTable() {
           <tbody>
             {initialLoad ? (
               <tr>
-                <td className="text-muted" colSpan={6}>
+                <td className="db-table-empty-cell" colSpan={6}>
                   Loading combos…
                 </td>
               </tr>
             ) : query.isError ? (
               <tr>
-                <td className="text-error" colSpan={6}>
+                <td className="db-table-empty-cell text-error" colSpan={6}>
                   Failed to load combos.
                 </td>
               </tr>
             ) : combos.length === 0 ? (
               <tr>
-                <td className="text-muted" colSpan={6}>
+                <td className="db-table-empty-cell" colSpan={6}>
                   No combos found.
                 </td>
               </tr>
             ) : (
               combos.map((combo) => (
                 <tr key={combo.id}>
-                  <td className="font-medium">{combo.name}</td>
+                  <td className="db-table-cell-primary">{combo.name}</td>
                   <td className="text-tabular">
                     {formatPriceCents(combo.price_cents)}
                   </td>
@@ -114,29 +129,30 @@ export function ManagerCombosTable() {
                     {formatDateTime(combo.starts_at)} – {formatDateTime(combo.ends_at)}
                   </td>
                   <td className="text-tabular">{combo.items.length}</td>
-                  <td>{combo.is_active ? "Active" : "Inactive"}</td>
                   <td>
-                    <div className="flex flex-wrap gap-2">
-                      <Link href={ROUTE.manager.comboDetail(combo.id)}>
-                        <Button size="sm" type="button" variant="outline">
-                          Edit
-                        </Button>
-                      </Link>
-                      <Button
+                    <EntityActivePill active={combo.is_active} />
+                  </td>
+                  <td>
+                    <DashboardTableRowActions>
+                      <DashboardTableEditLink
+                        href={ROUTE.manager.comboDetail(combo.id)}
+                        label={`Edit ${combo.name}`}
+                      />
+                      <DashboardTableDeleteButton
+                        label={`Delete ${combo.name}`}
                         onClick={() =>
                           setDeleteTarget({ id: combo.id, name: combo.name })
                         }
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                      />
+                    </DashboardTableRowActions>
                   </td>
                 </tr>
               ))
             )}
+            <DashboardTablePagePlaceholders
+              columnCount={6}
+              count={pagePlaceholderCount}
+            />
           </tbody>
         </table>
         {pagination ? (
@@ -149,6 +165,7 @@ export function ManagerCombosTable() {
             totalPages={pagination.total_pages}
           />
         ) : null}
+      </div>
       </div>
 
       <ConfirmDialog

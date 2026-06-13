@@ -63,3 +63,23 @@ export function AccountStatusPill({ disabled }: { disabled: boolean }) {
   );
 }
 
+/** Catalog availability — ready = on, completed = off (neutral). */
+export function CatalogAvailabilityPill({ available }: { available: boolean }) {
+  return (
+    <StatusPill
+      label={available ? "Available" : "Unavailable"}
+      variant={available ? "ready" : "completed"}
+    />
+  );
+}
+
+/** Generic active/inactive entity state for manager catalog tables. */
+export function EntityActivePill({ active }: { active: boolean }) {
+  return (
+    <StatusPill
+      label={active ? "Active" : "Inactive"}
+      variant={active ? "ready" : "completed"}
+    />
+  );
+}
+

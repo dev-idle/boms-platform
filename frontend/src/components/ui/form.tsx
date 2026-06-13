@@ -131,7 +131,7 @@ function FormMessage({
   return (
     <p
       id={formMessageId}
-      className={cn("text-caption text-error", className)}
+      className={cn("form-field-message text-error", className)}
       {...props}
     >
       {body}

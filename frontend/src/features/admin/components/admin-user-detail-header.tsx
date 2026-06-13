@@ -11,29 +11,44 @@ type AdminUserDetailHeaderProps = {
   user: AdminUser;
 };
 
+function AdminUserDetailLead({
+  showEmail,
+  user,
+}: {
+  showEmail: boolean;
+  user: AdminUser;
+}) {
+  const role = roleDisplayLabel(user.role);
+
+  if (!showEmail) {
+    return <span>{role}</span>;
+  }
+
+  return (
+    <>
+      <span>{user.email}</span>
+      <span aria-hidden className="dashboard-meta-sep">
+        |
+      </span>
+      <span>{role}</span>
+    </>
+  );
+}
+
 export function AdminUserDetailHeader({ actions, user }: AdminUserDetailHeaderProps) {
   const displayName = adminUserDisplayName(user);
-  const showEmailInMeta = displayName.trim().toLowerCase() !== user.email.trim().toLowerCase();
+  const showEmailInLead =
+    displayName.trim().toLowerCase() !== user.email.trim().toLowerCase();
 
   return (
     <DashboardPageHeader
       breadcrumbItems={adminUserDetailBreadcrumbItems()}
       meta={
-        <div className="admin-user-detail-meta-row">
+        <div className="admin-user-detail-lead-row">
           <p className="dashboard-page-lead admin-user-detail-lead">
-            {showEmailInMeta ? (
-              <>
-                <span>{user.email}</span>
-                <span aria-hidden className="admin-user-detail-lead-sep">
-                  |
-                </span>
-              </>
-            ) : null}
-            <span>{roleDisplayLabel(user.role)}</span>
+            <AdminUserDetailLead showEmail={showEmailInLead} user={user} />
           </p>
-          {actions ? (
-            <div className="admin-user-detail-header-actions">{actions}</div>
-          ) : null}
+          {actions}
         </div>
       }
       title={displayName}

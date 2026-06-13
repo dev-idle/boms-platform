@@ -7,7 +7,7 @@ import { AppDialog, AppDialogFooterActions } from "./app-dialog";
 type ConfirmDialogProps = {
   cancelLabel?: string;
   confirmLabel?: string;
-  confirmVariant?: "default" | "destructive";
+  confirmVariant?: "default" | "destructive" | "warning";
   description: string;
   isPending?: boolean;
   onCancel: () => void;
@@ -31,7 +31,7 @@ export function ConfirmDialog({
     <AppDialog
       description={description}
       footer={
-        <AppDialogFooterActions className="app-dialog-footer-actions--split">
+        <AppDialogFooterActions>
           <Button
             disabled={isPending}
             onClick={onCancel}

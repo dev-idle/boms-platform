@@ -1,14 +1,11 @@
-import type { Metadata } from "next";
-
 import { Button } from "@/components/ui/button";
 import { BRAND } from "@/constants/brand";
 import { ROUTE } from "@/constants/routes";
 import { AuthFormShell } from "@/features/auth/components/auth-form-shell";
 import { AuthInlineLink } from "@/features/auth/components/auth-inline-link";
+import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 
-export const metadata: Metadata = {
-  title: "Forgot password",
-};
+export const metadata = pageTitle(PAGE_TITLES.forgotPassword);
 
 export default function ForgotPasswordPage() {
   return (
@@ -20,7 +17,7 @@ export default function ForgotPasswordPage() {
           <AuthInlineLink href={ROUTE.login}>Sign in</AuthInlineLink>
         </p>
       }
-      title="Forgot password"
+      title={PAGE_TITLES.forgotPassword}
     >
       <div className="auth-forgot-actions">
         <Button asChild className="w-full" variant="outline">

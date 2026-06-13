@@ -18,7 +18,6 @@ import {
 } from "../schemas/index";
 import { useMe, useUpdateProfile } from "../hooks";
 import {
-  customerProfileFormValuesEqual,
   customerProfileSnapshot,
   normalizeCustomerProfileFormValues,
 } from "../lib/profile-form-values";
@@ -108,9 +107,6 @@ function CustomerAccountProfileFormBody({
 
         <div className="dashboard-profile-form-actions">
           <DashboardFormSaveButton
-            areEqual={customerProfileFormValuesEqual}
-            baseline={initialValues}
-            form={form}
             idleLabel="Save changes"
             isPending={updateProfile.isPending}
             pendingLabel="Saving…"

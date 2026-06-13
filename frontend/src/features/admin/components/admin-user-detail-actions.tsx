@@ -1,50 +1,121 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
+import { cn } from "@/lib/utils";
 
 import type { AdminUser } from "../schemas";
 
 type AdminUserDetailActionsProps = {
-  isPending?: boolean;
+  accountPending?: boolean;
   onDisable: () => void;
   onEnable: () => void;
+  onResetPassword: () => void;
   onRevokeSessions: () => void;
+  resetPending?: boolean;
   user: AdminUser;
 };
 
+function canResetPassword(user: AdminUser): boolean {
+  return ASSIGNABLE_OPERATIONAL_ROLES.includes(user.role);
+}
+
+type InlineActionProps = {
+  children: string;
+  disabled?: boolean;
+  onClick: () => void;
+  pendingLabel?: string;
+  title?: string;
+  tone: "accent" | "danger" | "warning";
+};
+
+function InlineAction({
+  children,
+  disabled = false,
+  onClick,
+  pendingLabel,
+  title,
+  tone,
+}: InlineActionProps) {
+  return (
+    <button
+      className={cn("dashboard-inline-action", `dashboard-inline-action--${tone}`)}
+      disabled={disabled}
+      onClick={onClick}
+      title={title}
+      type="button"
+    >
+      {pendingLabel ?? children}
+    </button>
+  );
+}
+
+function ActionSep() {
+  return (
+    <span aria-hidden className="dashboard-meta-sep">
+      |
+    </span>
+  );
+}
+
 export function AdminUserDetailActions({
-  isPending = false,
+  accountPending = false,
   onDisable,
   onEnable,
   onRevokeSessions,
+  onResetPassword,
+  resetPending = false,
   user,
 }: AdminUserDetailActionsProps) {
+  const actionsPending = accountPending || resetPending;
+  const showReset = canResetPassword(user);
+
   return (
-    <div className="admin-user-detail-actions">
+    <div className="dashboard-inline-actions">
       {user.disabled ? (
-        <Button disabled={isPending} onClick={onEnable} size="sm" type="button">
-          {isPending ? "Enabling…" : "Enable account"}
-        </Button>
-      ) : (
-        <Button
-          disabled={isPending}
-          onClick={onDisable}
-          size="sm"
-          type="button"
-          variant="destructive"
+        <InlineAction
+          disabled={actionsPending}
+          onClick={onEnable}
+          pendingLabel={accountPending ? "Enabling…" : undefined}
+          tone="accent"
         >
-          {isPending ? "Disabling…" : "Disable account"}
-        </Button>
+          Enable account
+        </InlineAction>
+      ) : (
+        <InlineAction
+          disabled={actionsPending}
+          onClick={onDisable}
+          pendingLabel={accountPending ? "Disabling…" : undefined}
+          tone="danger"
+        >
+          Disable account
+        </InlineAction>
       )}
-      <Button
-        disabled={isPending}
+      {showReset ? (
+        <>
+          <ActionSep />
+          <InlineAction
+            disabled={actionsPending || user.disabled}
+            onClick={onResetPassword}
+            pendingLabel={resetPending ? "Generating…" : undefined}
+            title={
+              user.disabled
+                ? "Enable this account before resetting the password."
+                : undefined
+            }
+            tone="accent"
+          >
+            Reset password
+          </InlineAction>
+        </>
+      ) : null}
+      <ActionSep />
+      <InlineAction
+        disabled={actionsPending}
         onClick={onRevokeSessions}
-        size="sm"
-        type="button"
-        variant="outline"
+        tone="warning"
       >
         Revoke all sessions
-      </Button>
+      </InlineAction>
     </div>
   );
 }

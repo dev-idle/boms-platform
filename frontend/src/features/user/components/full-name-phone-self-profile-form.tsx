@@ -18,7 +18,6 @@ import {
 } from "../schemas/index";
 import { useUpdateProfile } from "../hooks";
 import {
-  fullNamePhoneFormValuesEqual,
   fullNamePhoneSnapshotFromMe,
   normalizeFullNamePhoneFormValues,
 } from "../lib/profile-form-values";
@@ -80,6 +79,10 @@ function FullNamePhoneSelfProfileFormBody({
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}
       >
+        {children ? (
+          <div className="dashboard-profile-form-span">{children}</div>
+        ) : null}
+
         <FormField
           control={form.control}
           name="full_name"
@@ -118,15 +121,8 @@ function FullNamePhoneSelfProfileFormBody({
           )}
         />
 
-        {children ? (
-          <div className="dashboard-profile-form-span">{children}</div>
-        ) : null}
-
         <div className="dashboard-profile-form-actions dashboard-profile-form-span">
           <DashboardFormSaveButton
-            areEqual={fullNamePhoneFormValuesEqual}
-            baseline={initialValues}
-            form={form}
             idleLabel="Save changes"
             isPending={updateProfile.isPending}
             pendingLabel="Saving…"

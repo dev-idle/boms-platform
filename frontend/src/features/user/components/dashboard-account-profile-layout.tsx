@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
+import { cn } from "@/lib/utils";
 
 type DashboardAccountProfileLayoutProps = {
   children: ReactNode;
@@ -15,9 +16,9 @@ export function DashboardAccountProfileLayout({
   title,
 }: DashboardAccountProfileLayoutProps) {
   return (
-    <div className="dashboard-page-stack dashboard-account-profile-page">
+    <div className="dashboard-page-stack">
       <DashboardPageHeader description={description} title={title} />
-      <div className="dashboard-profile-stack">{children}</div>
+      <div className="dashboard-page-body">{children}</div>
     </div>
   );
 }
@@ -27,6 +28,7 @@ type DashboardProfileSectionProps = {
   description?: string;
   id: string;
   title: string;
+  variant?: "default" | "flush-table";
 };
 
 export function DashboardProfileSection({
@@ -34,9 +36,16 @@ export function DashboardProfileSection({
   description,
   id,
   title,
+  variant = "default",
 }: DashboardProfileSectionProps) {
   return (
-    <section aria-labelledby={id} className="dashboard-profile-section">
+    <section
+      aria-labelledby={id}
+      className={cn(
+        "dashboard-profile-section",
+        variant === "flush-table" && "dashboard-profile-section--flush-table",
+      )}
+    >
       <header className="dashboard-profile-section-header">
         <h2 className="dashboard-profile-section-title" id={id}>
           {title}

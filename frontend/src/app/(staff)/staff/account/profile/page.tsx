@@ -1,22 +1,9 @@
 import { USER_ROLE } from "@/constants/roles";
-import {
-  DashboardAccountProfileLayout,
-  DashboardProfileSection,
-  OperationalAccountProfileForm,
-} from "@/features/user";
+import { OperationalAccountProfileView } from "@/features/user";
+import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
+
+export const metadata = pageTitle(PAGE_TITLES.profile);
 
 export default function StaffAccountProfilePage() {
-  return (
-    <DashboardAccountProfileLayout
-      description="Update your contact details. Operational fields are managed by an admin."
-      title="Staff profile"
-    >
-      <DashboardProfileSection id="staff-profile-details" title="Account details">
-        <OperationalAccountProfileForm
-          expectedRole={USER_ROLE.staff}
-          roleLabel="Staff"
-        />
-      </DashboardProfileSection>
-    </DashboardAccountProfileLayout>
-  );
+  return <OperationalAccountProfileView role={USER_ROLE.staff} />;
 }

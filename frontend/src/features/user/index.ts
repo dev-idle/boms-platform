@@ -7,14 +7,13 @@
 export { changePassword, deleteAccount, getMe, updateProfile } from "./api";
 export { primeMeQueryCache } from "./lib/prime-me-cache";
 export {
-  AdminAccountProfileForm,
   AdminAccountProfileView,
   ChangePasswordForm,
   CustomerAccountProfileForm,
   DashboardAccountProfileLayout,
   DashboardProfileSection,
   DeleteAccountCard,
-  OperationalAccountProfileForm,
+  OperationalAccountProfileView,
 } from "./components";
 export {
   meQueryOptions,

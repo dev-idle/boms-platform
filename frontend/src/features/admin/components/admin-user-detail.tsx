@@ -56,15 +56,17 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       ) : !user ? (
         <p className="text-sm text-muted">Unable to load this user.</p>
       ) : (
-        <div className="dashboard-page-stack max-w-4xl">
+        <div className="dashboard-page-stack">
           <AdminUserDetailHeader
             actions={
               currentUserId !== user.id ? (
                 <AdminUserDetailActions
-                  isPending={accountPending}
+                  accountPending={accountPending}
                   onDisable={() => setPendingAction("disable")}
                   onEnable={() => setPendingAction("enable")}
+                  onResetPassword={() => setPendingAction("reset")}
                   onRevokeSessions={() => setPendingAction("revoke")}
+                  resetPending={resetPassword.isPending}
                   user={user}
                 />
               ) : undefined
@@ -72,15 +74,10 @@ export function AdminUserDetail({ userId }: { userId: string }) {
             user={user}
           />
 
-          <div className="dashboard-profile-stack">
+          <div className="dashboard-page-body">
             <AdminUserAccountStatus user={user} />
 
-            <AdminUserDetailManagement
-              onResetPassword={() => setPendingAction("reset")}
-              resetPending={resetPassword.isPending}
-              user={user}
-              userId={userId}
-            />
+            <AdminUserDetailManagement user={user} userId={userId} />
 
             <AdminUserActivityLog userId={userId} />
           </div>
@@ -132,7 +129,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
 
       <ConfirmDialog
         confirmLabel="Revoke sessions"
-        confirmVariant="destructive"
+        confirmVariant="warning"
         description="All active sessions for this user will be revoked."
         isPending={revokeSessions.isPending}
         onCancel={clearPendingAction}

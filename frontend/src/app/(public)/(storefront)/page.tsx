@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { BRAND } from "@/constants/brand";
@@ -7,11 +6,12 @@ import {
   dalListCatalogCategories,
   dalListCatalogProducts,
 } from "@/lib/dal/catalog";
+import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 
-export const metadata: Metadata = {
-  title: "Home",
-  description: `Order online for pickup at ${BRAND.name}. ${BRAND.tagline}`,
-};
+export const metadata = pageTitle(
+  PAGE_TITLES.home,
+  `Order online for pickup at ${BRAND.name}. ${BRAND.tagline}`,
+);
 
 export default async function HomePage() {
   await connection();

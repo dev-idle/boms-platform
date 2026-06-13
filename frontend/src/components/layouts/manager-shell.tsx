@@ -21,19 +21,13 @@ const MANAGER_NAV_ITEMS: readonly DashboardNavItem[] = [
   {
     href: ROUTE.manager.discountCodes,
     icon: "discounts",
-    label: "Discount codes",
+    label: "Discount Codes",
     match: "prefix",
   },
   {
     href: ROUTE.manager.account.profile,
     icon: "profile",
     label: "Profile",
-    match: "prefix",
-  },
-  {
-    href: ROUTE.manager.account.password,
-    icon: "password",
-    label: "Password",
     match: "prefix",
   },
 ] as const;

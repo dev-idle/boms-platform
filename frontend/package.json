@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:design": "node scripts/check-design-tokens.mjs",
+    "generate:brand-icons": "node scripts/generate-brand-icons.mjs",
     "ci": "pnpm run typecheck && pnpm run lint && pnpm run check:design && pnpm run test && pnpm run build",
     "audit:ci": "pnpm audit --audit-level=high"
   },

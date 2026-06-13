@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import {
   Form,
@@ -42,17 +42,19 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
   });
   const categories = categoriesQuery.data?.categories ?? [];
 
+  const defaultValues: ProductFormInput = {
+    category_id: product?.category_id ?? "",
+    name: product?.name ?? "",
+    slug: product?.slug ?? "",
+    description: product?.description ?? null,
+    price_cents: product?.price_cents ?? 0,
+    is_available: product?.is_available ?? true,
+    image_url: product?.image_url ?? null,
+  };
+
   const form = useForm<ProductFormInput>({
     resolver: zodResolver(productFormSchema),
-    defaultValues: {
-      category_id: product?.category_id ?? "",
-      name: product?.name ?? "",
-      slug: product?.slug ?? "",
-      description: product?.description ?? null,
-      price_cents: product?.price_cents ?? 0,
-      is_available: product?.is_available ?? true,
-      image_url: product?.image_url ?? null,
-    },
+    defaultValues,
   });
 
   function onSubmit(values: ProductFormInput): void {
@@ -86,7 +88,11 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
 
   return (
     <Form {...form}>
-      <form className="space-y-4" noValidate onSubmit={form.handleSubmit(onSubmit)}>
+      <form
+        className="dashboard-profile-form"
+        noValidate
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
         <FormField
           control={form.control}
           name="category_id"
@@ -196,9 +202,13 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
             </FormItem>
           )}
         />
-        <Button disabled={isPending} type="submit">
-          {mode === "create" ? "Create product" : "Save changes"}
-        </Button>
+        <div className="dashboard-profile-form-actions">
+          <DashboardFormSaveButton
+            idleLabel={mode === "create" ? "Create product" : "Save changes"}
+            isPending={isPending}
+            pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
+          />
+        </div>
       </form>
     </Form>
   );

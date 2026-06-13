@@ -1,10 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import {
   Form,
   FormControl,
@@ -53,9 +54,8 @@ export function DiscountCodeForm({
   const createDiscountCode = useCreateDiscountCode();
   const updateDiscountCode = useUpdateDiscountCode(discountCode?.id ?? "");
 
-  const form = useForm<DiscountCodeFormInput>({
-    resolver: zodResolver(discountCodeFormSchema),
-    defaultValues: {
+  const defaultValues = useMemo(
+    (): DiscountCodeFormInput => ({
       code: discountCode?.code ?? "",
       discount_type: discountCode?.discount_type ?? DISCOUNT_TYPE.percent,
       value: discountCode?.value ?? 10,
@@ -64,7 +64,13 @@ export function DiscountCodeForm({
       starts_at: discountCode?.starts_at ?? defaultStartsAt(),
       ends_at: discountCode?.ends_at ?? defaultEndsAt(),
       is_active: discountCode?.is_active ?? true,
-    },
+    }),
+    [discountCode],
+  );
+
+  const form = useForm<DiscountCodeFormInput>({
+    resolver: zodResolver(discountCodeFormSchema),
+    defaultValues,
   });
 
   const discountType = useWatch({
@@ -98,9 +104,15 @@ export function DiscountCodeForm({
     });
   }
 
+  const isPending = createDiscountCode.isPending || updateDiscountCode.isPending;
+
   return (
     <Form {...form}>
-      <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+      <form
+        className="dashboard-profile-form"
+        noValidate
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
         <FormField
           control={form.control}
           name="code"
@@ -257,12 +269,13 @@ export function DiscountCodeForm({
           </p>
         ) : null}
 
-        <Button
-          disabled={createDiscountCode.isPending || updateDiscountCode.isPending}
-          type="submit"
-        >
-          {mode === "create" ? "Create discount code" : "Save changes"}
-        </Button>
+        <div className="dashboard-profile-form-actions">
+          <DashboardFormSaveButton
+            idleLabel={mode === "create" ? "Create discount code" : "Save changes"}
+            isPending={isPending}
+            pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
+          />
+        </div>
       </form>
     </Form>
   );

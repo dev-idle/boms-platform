@@ -38,6 +38,37 @@ export function formatPaginationRange(
   return `Showing ${range.start}–${range.end} of ${totalItems} ${itemLabel}`;
 }
 
+/** Pad only a partial page in a multi-page list so height matches page 1. */
+export function paginatedPlaceholderCount(
+  itemCount: number,
+  pageSize: number,
+  totalPages: number,
+): number {
+  if (totalPages <= 1 || itemCount <= 0 || itemCount >= pageSize) {
+    return 0;
+  }
+
+  return pageSize - itemCount;
+}
+
+type PaginatedPlaceholderMeta = {
+  page_size: number;
+  total_pages: number;
+};
+
+/** Resolve placeholder count from API pagination meta and a fallback page size. */
+export function paginatedPlaceholderCountFromMeta(
+  itemCount: number,
+  pagination: PaginatedPlaceholderMeta | undefined,
+  fallbackPageSize: number,
+): number {
+  return paginatedPlaceholderCount(
+    itemCount,
+    pagination?.page_size ?? fallbackPageSize,
+    pagination?.total_pages ?? 1,
+  );
+}
+
 const PAGINATION_EDGE_BLOCK = 6;
 const PAGINATION_EDGE_SIBLINGS = 2;
 

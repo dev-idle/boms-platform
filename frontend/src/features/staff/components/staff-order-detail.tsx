@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { z } from "zod";
-
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -11,10 +9,10 @@ import {
   orderStatusToPillVariant,
   StatusPill,
 } from "@/components/ui/status-pill";
-import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
+import { DashboardProfileSection } from "@/features/user";
 
 import { usePatchStaffOrderStatus, useStaffOrder } from "../hooks";
 import type { OrderStatus, PatchStaffOrderStatusInput } from "../schemas";
@@ -72,97 +70,92 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
   const actions = nextStatusActions(order.status);
 
   return (
-    <div className="space-y-6">
-      <Link href={ROUTE.staff.orders}>
-        <Button type="button" variant="outline">
-          Back to orders
-        </Button>
-      </Link>
-
-      <div className="db-card space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm text-muted">
-            Placed {formatDateTime(order.created_at)}
-          </p>
-          <StatusPill
-            label={formatOrderStatusLabel(order.status)}
-            variant={orderStatusToPillVariant(order.status)}
-          />
-        </div>
-        <p className="text-order-code">{order.id}</p>
-        <p className="mt-1 text-sm text-ink-2">
-          Customer:{" "}
-          {order.customer.display_name
-            ? `${order.customer.display_name} · `
-            : ""}
-          {order.customer.email}
-        </p>
-        {order.discount_code_snapshot ? (
-          <p className="mt-1 text-sm text-ink-2">
-            Discount code: {order.discount_code_snapshot}
-          </p>
-        ) : null}
-
-        <ul className="mt-6 space-y-3">
-          {order.items.map((item) => (
-            <li
-              key={item.id}
-              className="flex items-start justify-between gap-4 text-sm"
-            >
-              <div>
-                <p className="font-medium text-ink">
-                  {item.quantity}× {item.name}
-                </p>
-                <p className="text-muted">
-                  {formatPriceCents(item.unit_price_cents)} each
-                </p>
-              </div>
-              <p className="font-medium">
-                {formatPriceCents(item.line_total_cents)}
-              </p>
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
-          <div className="flex justify-between">
-            <span className="text-ink-2">Subtotal</span>
-            <span>{formatPriceCents(order.subtotal_cents)}</span>
+    <>
+      <DashboardProfileSection id="staff-order-summary" title="Order summary">
+        <div className="dashboard-order-summary">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-muted">
+              Placed {formatDateTime(order.created_at)}
+            </p>
+            <StatusPill
+              label={formatOrderStatusLabel(order.status)}
+              variant={orderStatusToPillVariant(order.status)}
+            />
           </div>
-          {order.discount_cents > 0 ? (
-            <div className="flex justify-between text-ink-2">
-              <span>Discount</span>
-              <span>-{formatPriceCents(order.discount_cents)}</span>
+          <p className="text-order-code">{order.id}</p>
+          <p className="text-sm text-ink-2">
+            Customer:{" "}
+            {order.customer.display_name
+              ? `${order.customer.display_name} | ${order.customer.email}`
+              : order.customer.email}
+          </p>
+          {order.discount_code_snapshot ? (
+            <p className="text-sm text-ink-2">
+              Discount code: {order.discount_code_snapshot}
+            </p>
+          ) : null}
+
+          <ul className="dashboard-order-line-items">
+            {order.items.map((item) => (
+              <li
+                key={item.id}
+                className="dashboard-order-line-item"
+              >
+                <div>
+                  <p className="font-medium text-ink">
+                    {item.quantity}× {item.name}
+                  </p>
+                  <p className="text-muted">
+                    {formatPriceCents(item.unit_price_cents)} each
+                  </p>
+                </div>
+                <p className="font-medium text-tabular">
+                  {formatPriceCents(item.line_total_cents)}
+                </p>
+              </li>
+            ))}
+          </ul>
+
+          <div className="dashboard-order-totals">
+            <div className="dashboard-order-totals-row">
+              <span className="text-ink-2">Subtotal</span>
+              <span className="text-tabular">{formatPriceCents(order.subtotal_cents)}</span>
+            </div>
+            {order.discount_cents > 0 ? (
+              <div className="dashboard-order-totals-row text-ink-2">
+                <span>Discount</span>
+                <span className="text-tabular">-{formatPriceCents(order.discount_cents)}</span>
+              </div>
+            ) : null}
+            <div className="dashboard-order-totals-row dashboard-order-totals-row--total">
+              <span>Total</span>
+              <span className="text-tabular">{formatPriceCents(order.total_cents)}</span>
+            </div>
+          </div>
+
+          {actions.length > 0 ? (
+            <div className="dashboard-profile-form-actions">
+              {actions.map((action) => (
+                <Button
+                  key={action.status}
+                  disabled={patchStatus.isPending}
+                  type="button"
+                  variant={action.status === "cancelled" ? "outline" : "default"}
+                  onClick={() => {
+                    if (action.status === "cancelled") {
+                      setCancelOpen(true);
+                      return;
+                    }
+                    patchStatus.mutate({ status: action.status });
+                  }}
+                >
+                  {patchStatus.isPending ? "Updating…" : action.label}
+                </Button>
+              ))}
             </div>
           ) : null}
-          <div className="flex justify-between text-base font-medium">
-            <span>Total</span>
-            <span>{formatPriceCents(order.total_cents)}</span>
-          </div>
         </div>
-
-        {actions.length > 0 ? (
-          <div className="mt-6 flex flex-wrap gap-2">
-            {actions.map((action) => (
-              <Button
-                key={action.status}
-                disabled={patchStatus.isPending}
-                type="button"
-                variant={action.status === "cancelled" ? "outline" : "default"}
-                onClick={() => {
-                  if (action.status === "cancelled") {
-                    setCancelOpen(true);
-                    return;
-                  }
-                  patchStatus.mutate({ status: action.status });
-                }}
-              >
-                {patchStatus.isPending ? "Updating…" : action.label}
-              </Button>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      </DashboardProfileSection>
 
       <ConfirmDialog
         cancelLabel="Keep order"
@@ -180,6 +173,6 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
         open={cancelOpen}
         title="Cancel this order?"
       />
-    </div>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { BRAND } from "@/constants/brand";
 import { dalGetCatalogProduct } from "@/lib/dal/catalog";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { isApiError } from "@/lib/errors";
 import type { CatalogProduct } from "@/lib/schemas/catalog";
 
@@ -31,7 +32,7 @@ export async function generateMetadata({
   await connection();
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) {
-    return { title: "Product" };
+    return { title: PAGE_TITLES.product };
   }
 
   try {
@@ -43,7 +44,7 @@ export async function generateMetadata({
         `Order ${product.name} for pickup at ${BRAND.name}.`,
     };
   } catch {
-    return { title: "Product" };
+    return { title: PAGE_TITLES.product };
   }
 }
 

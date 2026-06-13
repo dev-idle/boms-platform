@@ -1,11 +1,8 @@
-import type { Metadata } from "next";
-
 import { LoginForm } from "@/features/auth";
+import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 import { validateNext } from "@/lib/validate-next";
 
-export const metadata: Metadata = {
-  title: "Sign in",
-};
+export const metadata = pageTitle(PAGE_TITLES.signIn);
 
 type LoginPageProps = {
   searchParams: Promise<{

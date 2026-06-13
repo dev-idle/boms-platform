@@ -3,8 +3,12 @@
 import { useRouter } from "next/navigation";
 import { use } from "react";
 
-import { ROUTE } from "@/constants/routes";
+import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
 import { ProductForm, useProduct } from "@/features/manager";
+import { managerProductsBreadcrumb } from "@/features/manager/lib/manager-breadcrumbs";
+import { ROUTE } from "@/constants/routes";
+import { DashboardProfileSection } from "@/features/user";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -28,17 +32,18 @@ export default function ManagerEditProductPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-page-title">
-          Edit product
-        </h1>
-      </div>
-      <ProductForm
-        mode="edit"
-        product={productQuery.data}
-        onSuccess={() => router.push(ROUTE.manager.products)}
-      />
-    </div>
+    <DashboardFormPage
+      breadcrumbItems={managerProductsBreadcrumb(PAGE_TITLES.editProduct)}
+      description="Update catalog fields shown on the storefront."
+      title={PAGE_TITLES.editProduct}
+    >
+      <DashboardProfileSection id="manager-product-form" title="Product details">
+        <ProductForm
+          mode="edit"
+          product={productQuery.data}
+          onSuccess={() => router.push(ROUTE.manager.products)}
+        />
+      </DashboardProfileSection>
+    </DashboardFormPage>
   );
 }

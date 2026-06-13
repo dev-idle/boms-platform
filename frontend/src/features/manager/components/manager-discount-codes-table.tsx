@@ -9,9 +9,18 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
+import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import {
+  DashboardTableDeleteButton,
+  DashboardTableEditLink,
+  DashboardTableRowActions,
+} from "@/components/ui/dashboard-table-actions";
+import { EntityActivePill } from "@/components/ui/status-pill";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import {
   isInitialQueryLoad,
   isQueryRefetching,
@@ -63,6 +72,11 @@ export function ManagerDiscountCodesTable() {
     query.isPending,
     query.data,
   );
+  const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
+    discountCodes.length,
+    pagination,
+    PAGE_SIZE,
+  );
 
   return (
     <div className="dashboard-page-stack">
@@ -73,9 +87,10 @@ export function ManagerDiscountCodesTable() {
           </Link>
         }
         description="Create promotion codes for checkout (validated server-side at cart)."
-        title="Discount codes"
+        title={PAGE_TITLES.discountCodes}
       />
 
+      <div className="dashboard-page-body">
       <DashboardSearchField
         onChange={setInput}
         onClear={clear}
@@ -84,7 +99,7 @@ export function ManagerDiscountCodesTable() {
       />
 
       <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table">
+        <table className="db-table db-table--comfortable">
           <thead>
             <tr>
               <th>Code</th>
@@ -98,26 +113,26 @@ export function ManagerDiscountCodesTable() {
           <tbody>
             {initialLoad ? (
               <tr>
-                <td className="text-muted" colSpan={6}>
+                <td className="db-table-empty-cell" colSpan={6}>
                   Loading discount codes…
                 </td>
               </tr>
             ) : query.isError ? (
               <tr>
-                <td className="text-error" colSpan={6}>
+                <td className="db-table-empty-cell text-error" colSpan={6}>
                   Failed to load discount codes.
                 </td>
               </tr>
             ) : discountCodes.length === 0 ? (
               <tr>
-                <td className="text-muted" colSpan={6}>
+                <td className="db-table-empty-cell" colSpan={6}>
                   No discount codes found.
                 </td>
               </tr>
             ) : (
               discountCodes.map((discountCode) => (
                 <tr key={discountCode.id}>
-                  <td className="text-order-code font-medium">
+                  <td className="db-table-cell-primary text-order-code">
                     {discountCode.code}
                   </td>
                   <td className="text-tabular">
@@ -136,32 +151,33 @@ export function ManagerDiscountCodesTable() {
                     {formatDateTime(discountCode.starts_at)} –{" "}
                     {formatDateTime(discountCode.ends_at)}
                   </td>
-                  <td>{discountCode.is_active ? "Active" : "Inactive"}</td>
                   <td>
-                    <div className="flex flex-wrap gap-2">
-                      <Link href={ROUTE.manager.discountCodeDetail(discountCode.id)}>
-                        <Button size="sm" type="button" variant="outline">
-                          Edit
-                        </Button>
-                      </Link>
-                      <Button
+                    <EntityActivePill active={discountCode.is_active} />
+                  </td>
+                  <td>
+                    <DashboardTableRowActions>
+                      <DashboardTableEditLink
+                        href={ROUTE.manager.discountCodeDetail(discountCode.id)}
+                        label={`Edit ${discountCode.code}`}
+                      />
+                      <DashboardTableDeleteButton
+                        label={`Delete ${discountCode.code}`}
                         onClick={() =>
                           setDeleteTarget({
                             id: discountCode.id,
                             code: discountCode.code,
                           })
                         }
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                      />
+                    </DashboardTableRowActions>
                   </td>
                 </tr>
               ))
             )}
+            <DashboardTablePagePlaceholders
+              columnCount={6}
+              count={pagePlaceholderCount}
+            />
           </tbody>
         </table>
         {pagination ? (
@@ -174,6 +190,7 @@ export function ManagerDiscountCodesTable() {
             totalPages={pagination.total_pages}
           />
         ) : null}
+      </div>
       </div>
 
       <ConfirmDialog

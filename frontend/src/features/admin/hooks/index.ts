@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -186,5 +187,6 @@ export function useUserActivity(userId: string, input: UserActivityFilterInput) 
     queryKey: adminQueryKeys.userActivity(userId, filter),
     queryFn: () => listUserActivity(userId, filter),
     enabled: Boolean(userId),
+    placeholderData: keepPreviousData,
   });
 }

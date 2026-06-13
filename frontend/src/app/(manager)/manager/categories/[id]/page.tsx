@@ -3,8 +3,12 @@
 import { useRouter } from "next/navigation";
 import { use } from "react";
 
-import { ROUTE } from "@/constants/routes";
+import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
 import { CategoryForm, useCategory } from "@/features/manager";
+import { managerCategoriesBreadcrumb } from "@/features/manager/lib/manager-breadcrumbs";
+import { ROUTE } from "@/constants/routes";
+import { DashboardProfileSection } from "@/features/user";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -28,17 +32,18 @@ export default function ManagerEditCategoryPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-page-title">
-          Edit category
-        </h1>
-      </div>
-      <CategoryForm
-        category={categoryQuery.data}
-        mode="edit"
-        onSuccess={() => router.push(ROUTE.manager.categories)}
-      />
-    </div>
+    <DashboardFormPage
+      breadcrumbItems={managerCategoriesBreadcrumb(PAGE_TITLES.editCategory)}
+      description="Update how this category appears in the catalog."
+      title={PAGE_TITLES.editCategory}
+    >
+      <DashboardProfileSection id="manager-category-form" title="Category details">
+        <CategoryForm
+          category={categoryQuery.data}
+          mode="edit"
+          onSuccess={() => router.push(ROUTE.manager.categories)}
+        />
+      </DashboardProfileSection>
+    </DashboardFormPage>
   );
 }

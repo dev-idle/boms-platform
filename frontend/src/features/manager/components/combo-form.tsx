@@ -6,6 +6,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { FieldControl } from "@/components/ui/field-control";
 import {
@@ -79,9 +80,8 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
     );
   }, [combo, productsQuery.data?.products]);
 
-  const form = useForm<ComboFormInput>({
-    resolver: zodResolver(comboFormSchema),
-    defaultValues: {
+  const defaultValues = useMemo(
+    (): ComboFormInput => ({
       name: combo?.name ?? "",
       slug: combo?.slug ?? "",
       price_cents: combo?.price_cents ?? 0,
@@ -92,7 +92,13 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
         product_id: item.product_id,
         quantity: item.quantity,
       })) ?? [{ product_id: "", quantity: 1 }],
-    },
+    }),
+    [combo],
+  );
+
+  const form = useForm<ComboFormInput>({
+    resolver: zodResolver(comboFormSchema),
+    defaultValues,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -126,9 +132,16 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
     });
   }
 
+  const isPending =
+    createCombo.isPending || updateCombo.isPending || productsQuery.isPending;
+
   return (
     <Form {...form}>
-      <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+      <form
+        className="dashboard-profile-form"
+        noValidate
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
         <FormField
           control={form.control}
           name="name"
@@ -305,16 +318,13 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           ))}
         </div>
 
-        <Button
-          disabled={
-            createCombo.isPending ||
-            updateCombo.isPending ||
-            productsQuery.isPending
-          }
-          type="submit"
-        >
-          {mode === "create" ? "Create combo" : "Save changes"}
-        </Button>
+        <div className="dashboard-profile-form-actions">
+          <DashboardFormSaveButton
+            idleLabel={mode === "create" ? "Create combo" : "Save changes"}
+            isPending={isPending}
+            pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
+          />
+        </div>
       </form>
     </Form>
   );

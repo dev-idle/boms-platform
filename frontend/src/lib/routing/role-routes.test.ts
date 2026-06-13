@@ -70,12 +70,15 @@ describe("isPathAllowedForRole", () => {
 });
 
 describe("passwordRouteForRole", () => {
-  it("returns role-scoped password routes", () => {
+  it("returns profile password anchors for internal roles", () => {
     expect(passwordRouteForRole(USER_ROLE.manager)).toBe(
-      ROUTE.manager.account.password,
+      `${ROUTE.manager.account.profile}#manager-password`,
     );
     expect(passwordRouteForRole(USER_ROLE.admin)).toBe(
-      ROUTE.admin.account.profile,
+      `${ROUTE.admin.account.profile}#admin-profile-password`,
+    );
+    expect(passwordRouteForRole(USER_ROLE.customer)).toBe(
+      ROUTE.customer.account.password,
     );
   });
 });

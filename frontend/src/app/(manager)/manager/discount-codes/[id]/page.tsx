@@ -3,8 +3,12 @@
 import { useRouter } from "next/navigation";
 import { use } from "react";
 
-import { ROUTE } from "@/constants/routes";
+import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
 import { DiscountCodeForm, useDiscountCode } from "@/features/manager";
+import { managerDiscountCodesBreadcrumb } from "@/features/manager/lib/manager-breadcrumbs";
+import { ROUTE } from "@/constants/routes";
+import { DashboardProfileSection } from "@/features/user";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -28,17 +32,18 @@ export default function ManagerEditDiscountCodePage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-page-title">
-          Edit discount code
-        </h1>
-      </div>
-      <DiscountCodeForm
-        discountCode={discountCodeQuery.data}
-        mode="edit"
-        onSuccess={() => router.push(ROUTE.manager.discountCodes)}
-      />
-    </div>
+    <DashboardFormPage
+      breadcrumbItems={managerDiscountCodesBreadcrumb(PAGE_TITLES.editDiscountCode)}
+      description="Update promotion rules and active window."
+      title={PAGE_TITLES.editDiscountCode}
+    >
+      <DashboardProfileSection id="manager-discount-code-form" title="Code details">
+        <DiscountCodeForm
+          discountCode={discountCodeQuery.data}
+          mode="edit"
+          onSuccess={() => router.push(ROUTE.manager.discountCodes)}
+        />
+      </DashboardProfileSection>
+    </DashboardFormPage>
   );
 }

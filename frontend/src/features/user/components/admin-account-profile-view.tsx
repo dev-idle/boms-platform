@@ -4,13 +4,14 @@ import {
   DashboardProfileSection,
 } from "./dashboard-account-profile-layout";
 import { ChangePasswordForm } from "./change-password-form";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 /** Admin self-service profile + password (used by `/admin/account/profile`). */
 export function AdminAccountProfileView() {
   return (
     <DashboardAccountProfileLayout
       description="Your admin account details and password."
-      title="Profile"
+      title={PAGE_TITLES.profile}
     >
       <DashboardProfileSection id="admin-profile-details" title="Account details">
         <AdminAccountProfileForm />

@@ -9,9 +9,18 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
+import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import {
+  DashboardTableDeleteButton,
+  DashboardTableEditLink,
+  DashboardTableRowActions,
+} from "@/components/ui/dashboard-table-actions";
+import { EntityActivePill } from "@/components/ui/status-pill";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import {
   isInitialQueryLoad,
   isQueryRefetching,
@@ -50,6 +59,11 @@ export function ManagerCategoriesTable() {
     query.isPending,
     query.data,
   );
+  const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
+    categories.length,
+    pagination,
+    PAGE_SIZE,
+  );
 
   return (
     <div className="dashboard-page-stack">
@@ -60,9 +74,10 @@ export function ManagerCategoriesTable() {
           </Link>
         }
         description="Organize the product catalog for customers."
-        title="Categories"
+        title={PAGE_TITLES.categories}
       />
 
+      <div className="dashboard-page-body">
       <DashboardSearchField
         onChange={setInput}
         onClear={clear}
@@ -71,7 +86,7 @@ export function ManagerCategoriesTable() {
       />
 
       <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table">
+        <table className="db-table db-table--comfortable">
           <thead>
             <tr>
               <th>Name</th>
@@ -84,48 +99,55 @@ export function ManagerCategoriesTable() {
           <tbody>
             {initialLoad ? (
               <tr>
-                <td className="text-muted" colSpan={5}>
+                <td className="db-table-empty-cell" colSpan={5}>
                   Loading categories…
+                </td>
+              </tr>
+            ) : query.isError ? (
+              <tr>
+                <td className="db-table-empty-cell text-error" colSpan={5}>
+                  Failed to load categories.
                 </td>
               </tr>
             ) : categories.length === 0 ? (
               <tr>
-                <td className="text-muted" colSpan={5}>
+                <td className="db-table-empty-cell" colSpan={5}>
                   No categories found.
                 </td>
               </tr>
             ) : (
               categories.map((category) => (
                 <tr key={category.id}>
-                  <td className="font-medium">{category.name}</td>
+                  <td className="db-table-cell-primary">{category.name}</td>
                   <td className="text-ink-2">{category.slug}</td>
                   <td className="text-tabular">{category.sort_order}</td>
-                  <td>{category.is_active ? "Active" : "Inactive"}</td>
                   <td>
-                    <div className="flex gap-2">
-                      <Link href={ROUTE.manager.categoryDetail(category.id)}>
-                        <Button size="sm" type="button" variant="outline">
-                          Edit
-                        </Button>
-                      </Link>
-                      <Button
+                    <EntityActivePill active={category.is_active} />
+                  </td>
+                  <td>
+                    <DashboardTableRowActions>
+                      <DashboardTableEditLink
+                        href={ROUTE.manager.categoryDetail(category.id)}
+                        label={`Edit ${category.name}`}
+                      />
+                      <DashboardTableDeleteButton
+                        label={`Delete ${category.name}`}
                         onClick={() =>
                           setDeleteTarget({
                             id: category.id,
                             name: category.name,
                           })
                         }
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                      />
+                    </DashboardTableRowActions>
                   </td>
                 </tr>
               ))
             )}
+            <DashboardTablePagePlaceholders
+              columnCount={5}
+              count={pagePlaceholderCount}
+            />
           </tbody>
         </table>
         {pagination ? (
@@ -138,6 +160,7 @@ export function ManagerCategoriesTable() {
             totalPages={pagination.total_pages}
           />
         ) : null}
+      </div>
       </div>
 
       <ConfirmDialog

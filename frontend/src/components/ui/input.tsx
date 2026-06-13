@@ -20,11 +20,16 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> &
   VariantProps<typeof inputVariants>;
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, variant, ...props }, ref) => {
+  ({ className, type, variant, readOnly, ...props }, ref) => {
     return (
       <input
         type={type}
-        className={cn(inputVariants({ variant }), className)}
+        className={cn(
+          inputVariants({ variant }),
+          readOnly && "field-chrome--readonly",
+          className,
+        )}
+        readOnly={readOnly}
         ref={ref}
         {...props}
       />

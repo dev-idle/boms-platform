@@ -8,7 +8,7 @@
  *   - Baker:    /baker/account/*
  *   - Manager:  /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/account/*
- *   - Admin:    /admin, /admin/users, /admin/account/profile (password on profile page)
+ *   - Admin:    /admin, /admin/users, /admin/account/*
  */
 export const ROUTE = {
   home: "/",
@@ -65,8 +65,8 @@ export const ROUTE = {
     usersNew: "/admin/users/new",
     userDetail: (id: string) => `/admin/users/${id}`,
     account: {
-      /** Self-service profile + password change (no separate password URL). */
       profile: "/admin/account/profile",
+      password: "/admin/account/password",
     },
   },
 } as const;

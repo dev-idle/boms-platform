@@ -19,7 +19,6 @@ import { applyFormFieldErrors } from "@/lib/validation";
 import { useUpdateRole } from "../hooks";
 import {
   adminUserToRoleFormValues,
-  updateRoleFormValuesEqual,
 } from "../lib/map-user-form-values";
 import {
   updateRoleSchema,
@@ -118,13 +117,12 @@ function AdminUserDetailRoleFormBody({
 
   return (
     <>
-      <div className="max-w-2xl space-y-4">
-        <Form {...form}>
-          <form
-            className="space-y-4"
-            noValidate
-            onSubmit={form.handleSubmit(requestRoleSubmit)}
-          >
+      <Form {...form}>
+        <form
+          className="dashboard-profile-form"
+          noValidate
+          onSubmit={form.handleSubmit(requestRoleSubmit)}
+        >
             <FormField
               control={form.control}
               name="role"
@@ -195,17 +193,15 @@ function AdminUserDetailRoleFormBody({
               )}
             />
 
-            <DashboardFormSaveButton
-              areEqual={updateRoleFormValuesEqual}
-              baseline={initialValues}
-              form={form}
-              idleLabel="Update role"
-              isPending={updateRole.isPending}
-              pendingLabel="Updating…"
-            />
+            <div className="dashboard-profile-form-actions">
+              <DashboardFormSaveButton
+                idleLabel="Update role"
+                isPending={updateRole.isPending}
+                pendingLabel="Updating…"
+              />
+            </div>
           </form>
         </Form>
-      </div>
 
       <ConfirmDialog
         confirmLabel="Apply role change"

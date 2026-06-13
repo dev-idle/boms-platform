@@ -61,19 +61,6 @@ export const adminResetPasswordResponseSchema = z.object({
   temp_password: z.string().min(1),
 });
 
-export const updateOperationalProfileSchema = z.object({
-  full_name: z.string().trim().min(1, "Full name is required").max(255),
-  phone: optionalNullableTrimmedString(50, "Phone"),
-  employee_code: z.string().trim().max(64).optional().nullable(),
-});
-
-/** Admin user detail profile tab — string fields for controlled inputs. */
-export const adminUserProfileFormSchema = z.object({
-  full_name: z.string().trim().min(1, "Full name is required").max(255),
-  phone: z.string().trim().max(50).optional(),
-  employee_code: z.string().trim().max(64).optional(),
-});
-
 const updateRoleBaseSchema = z.object({
   role: z.enum([
     USER_ROLE.staff,
@@ -166,10 +153,6 @@ export type AdminResetPasswordResponse = z.infer<
   typeof adminResetPasswordResponseSchema
 >;
 export type AdminTempPasswordPayload = CreateOperationalResponse | AdminResetPasswordResponse;
-export type UpdateOperationalProfileInput = z.infer<
-  typeof updateOperationalProfileSchema
->;
-export type AdminUserProfileFormValues = z.infer<typeof adminUserProfileFormSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type AdminUserRoleFilter = z.infer<typeof adminUserRoleFilterSchema>;
 export type ListFilterInput = z.infer<typeof listFilterSchema>;

@@ -11,12 +11,6 @@ const BAKER_NAV_ITEMS: readonly DashboardNavItem[] = [
     label: "Profile",
     match: "prefix",
   },
-  {
-    href: ROUTE.baker.account.password,
-    icon: "password",
-    label: "Password",
-    match: "prefix",
-  },
 ] as const;
 
 type BakerShellProps = {
