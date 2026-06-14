@@ -31,11 +31,16 @@ const FormFieldContext = React.createContext<FormFieldContextValue>(
 function FormField<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
->({ ...props }: ControllerProps<TFieldValues, TName>) {
+>({ render, ...props }: ControllerProps<TFieldValues, TName>) {
   return (
-    <FormFieldContext.Provider value={{ name: props.name }}>
-      <Controller {...props} />
-    </FormFieldContext.Provider>
+    <Controller
+      {...props}
+      render={(controllerProps) => (
+        <FormFieldContext.Provider value={{ name: props.name }}>
+          {render(controllerProps)}
+        </FormFieldContext.Provider>
+      )}
+    />
   );
 }
 
@@ -99,17 +104,12 @@ function FormLabel({
 }
 
 function FormControl({ ...props }: React.ComponentPropsWithoutRef<typeof Slot>) {
-  const { error, formItemId, formDescriptionId, formMessageId } =
-    useFormField();
+  const { error, formItemId, formMessageId } = useFormField();
 
   return (
     <Slot
       id={formItemId}
-      aria-describedby={
-        error
-          ? `${formDescriptionId} ${formMessageId}`
-          : formDescriptionId
-      }
+      aria-describedby={error ? formMessageId : undefined}
       aria-invalid={Boolean(error)}
       {...props}
     />

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { FieldControl } from "@/components/ui/field-control";
+import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -21,11 +22,11 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { applyFormFieldErrors } from "@/lib/validation";
 import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
 } from "@/lib/validation/datetime";
-import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
 import {
   useCreateCombo,
@@ -43,6 +44,16 @@ type ComboFormProps = {
   combo?: ManagerCombo;
   onSuccess?: () => void;
 };
+
+const COMBO_FORM_FIELDS = [
+  "name",
+  "slug",
+  "price_cents",
+  "starts_at",
+  "ends_at",
+  "is_active",
+  "items",
+] as const;
 
 const defaultStartsAt = (): string =>
   new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -120,11 +131,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           return;
         }
         if (error.hasValidationDetails()) {
-          for (const item of mapValidationDetailsToFormErrors(error.details!)) {
-            form.setError(item.field as keyof ComboFormInput, {
-              message: item.message,
-            });
-          }
+          applyFormFieldErrors(form, error.details!, COMBO_FORM_FIELDS);
           return;
         }
         toast.error(error.message);
@@ -132,8 +139,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
     });
   }
 
-  const isPending =
-    createCombo.isPending || updateCombo.isPending || productsQuery.isPending;
+  const isSavePending = createCombo.isPending || updateCombo.isPending;
 
   return (
     <Form {...form}>
@@ -241,7 +247,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
         <div className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-[16rem] flex-1 space-y-2">
-              <FormLabel>Products in combo</FormLabel>
+              <Label className="text-form-label">Products in combo</Label>
               <DashboardSearchField
                 onChange={setProductSearchInput}
                 onClear={() => setProductSearchInput("")}
@@ -321,7 +327,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
         <div className="dashboard-profile-form-actions">
           <DashboardFormSaveButton
             idleLabel={mode === "create" ? "Create combo" : "Save changes"}
-            isPending={isPending}
+            isPending={isSavePending}
             pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
           />
         </div>

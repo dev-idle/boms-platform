@@ -1,8 +1,11 @@
+"use client";
+
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { FormControl, FormLabel } from "./form";
+import { FormControl, useFormField } from "./form";
+import { Label } from "./label";
 
 type FieldControlProps = {
   children: ReactNode;
@@ -12,19 +15,26 @@ type FieldControlProps = {
   optional?: boolean;
 };
 
-/** Label + control group — hover/focus highlights label and field border. */
+/** Label + control group — must be used inside `FormField` + `FormItem`. */
 export function FieldControl({
   label,
   children,
   className,
   optional = false,
 }: FieldControlProps) {
+  const { error, formItemId } = useFormField();
+
   return (
     <div className={cn("field-control", className)}>
-      <FormLabel>
+      <Label
+        className={cn(error && "text-error")}
+        htmlFor={formItemId}
+      >
         {label}
-        {optional ? <span className="field-label-optional">(optional)</span> : null}
-      </FormLabel>
+        {optional ? (
+          <span className="field-label-optional">(optional)</span>
+        ) : null}
+      </Label>
       <FormControl>{children}</FormControl>
     </div>
   );

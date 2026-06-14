@@ -1,5 +1,7 @@
 import { ChangePasswordForm } from "@/features/user";
-import { PAGE_TITLES } from "@/lib/metadata/page-title";
+import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
+
+export const metadata = pageTitle(PAGE_TITLES.changePassword);
 
 export default function CustomerAccountPasswordPage() {
   return (

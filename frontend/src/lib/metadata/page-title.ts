@@ -12,7 +12,6 @@ export const PAGE_TITLES = {
   orders: "Orders",
   orderDetail: "Order Detail",
   profile: "Profile",
-  myProfile: "My Profile",
   changePassword: "Change Password",
   deleteAccount: "Delete Account",
   dashboard: "Dashboard",
@@ -35,11 +34,9 @@ export const PAGE_TITLES = {
   breadcrumbNew: "New",
 } as const;
 
-export type PageTitleKey = keyof typeof PAGE_TITLES;
-
 /** Page title segment — root `metadata.title.template` appends ` | Choux`. */
 export function pageTitle(
-  title: (typeof PAGE_TITLES)[PageTitleKey] | string,
+  title: (typeof PAGE_TITLES)[keyof typeof PAGE_TITLES] | string,
   description?: string,
 ): Metadata {
   return description ? { title, description } : { title };

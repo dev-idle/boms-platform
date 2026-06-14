@@ -54,16 +54,6 @@ export function formatOrderStatusLabel(status: string): string {
 }
 
 /** Active / disabled account state — same pill system as order status. */
-export function AccountStatusPill({ disabled }: { disabled: boolean }) {
-  return (
-    <StatusPill
-      label={disabled ? "Disabled" : "Active"}
-      variant={disabled ? "cancelled" : "ready"}
-    />
-  );
-}
-
-/** Catalog availability — ready = on, completed = off (neutral). */
 export function CatalogAvailabilityPill({ available }: { available: boolean }) {
   return (
     <StatusPill

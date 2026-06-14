@@ -18,11 +18,11 @@ import { FieldControl } from "@/components/ui/field-control";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
+import { applyFormFieldErrors } from "@/lib/validation";
 import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
 } from "@/lib/validation/datetime";
-import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
 import {
   useCreateDiscountCode,
@@ -45,6 +45,17 @@ const defaultStartsAt = (): string =>
   new Date(Date.now() + 60 * 60 * 1000).toISOString();
 const defaultEndsAt = (): string =>
   new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+const DISCOUNT_CODE_FORM_FIELDS = [
+  "code",
+  "discount_type",
+  "value",
+  "min_order_cents",
+  "max_uses",
+  "starts_at",
+  "ends_at",
+  "is_active",
+] as const;
 
 export function DiscountCodeForm({
   mode,
@@ -92,11 +103,7 @@ export function DiscountCodeForm({
           return;
         }
         if (error.hasValidationDetails()) {
-          for (const item of mapValidationDetailsToFormErrors(error.details!)) {
-            form.setError(item.field as keyof DiscountCodeFormInput, {
-              message: item.message,
-            });
-          }
+          applyFormFieldErrors(form, error.details!, DISCOUNT_CODE_FORM_FIELDS);
           return;
         }
         toast.error(error.message);
