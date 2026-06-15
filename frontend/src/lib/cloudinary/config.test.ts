@@ -42,6 +42,14 @@ describe("isCloudinaryDeliveryUrlInFolder", () => {
       false,
     );
   });
+
+  it("rejects path traversal outside the product upload folder", () => {
+    const url =
+      "https://res.cloudinary.com/demo/image/upload/v1/boms/products/../other/loaf.jpg";
+    expect(isCloudinaryDeliveryUrlInFolder(url, "boms/products", "demo")).toBe(
+      false,
+    );
+  });
 });
 
 describe("catalogProductImageUrl", () => {
@@ -49,7 +57,15 @@ describe("catalogProductImageUrl", () => {
     const url =
       "https://res.cloudinary.com/demo/image/upload/v1/boms/products/loaf.jpg";
     expect(catalogProductImageUrl(url, 640)).toBe(
-      "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_640/v1/boms/products/loaf.jpg",
+      "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_640/boms/products/loaf.jpg",
+    );
+  });
+
+  it("replaces existing transforms instead of nesting them", () => {
+    const url =
+      "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_640/v1/boms/products/loaf.jpg";
+    expect(catalogProductImageUrl(url, 960)).toBe(
+      "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_960/boms/products/loaf.jpg",
     );
   });
 

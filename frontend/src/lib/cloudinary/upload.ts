@@ -4,11 +4,31 @@ import { getCloudinaryCloudName, isCloudinaryDeliveryUrlInFolder } from "./confi
 import { CLOUDINARY_UPLOAD_COPY, cloudinaryImageTooLargeMessage } from "./messages";
 import type { CloudinaryUploadSignature } from "./signature";
 
+const cloudinaryUploadErrorSchema = z.object({
+  error: z.object({
+    message: z.string().min(1),
+  }),
+});
+
 function cloudinaryUploadResultSchema(maxBytes: number) {
-  return z.object({
-    bytes: z.number().int().positive().max(maxBytes),
-    secure_url: z.string().url(),
-  });
+  return z
+    .object({
+      bytes: z.coerce.number().int().positive().optional(),
+      secure_url: z.string().url(),
+    })
+    .superRefine((value, ctx) => {
+      if (value.bytes != null && value.bytes > maxBytes) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: cloudinaryImageTooLargeMessage(maxBytes),
+        });
+      }
+    });
+}
+
+function cloudinaryUploadErrorMessage(payload: unknown): string | undefined {
+  const parsed = cloudinaryUploadErrorSchema.safeParse(payload);
+  return parsed.success ? parsed.data.error.message : undefined;
 }
 
 export async function uploadImageToCloudinary(
@@ -27,18 +47,20 @@ export async function uploadImageToCloudinary(
   formData.append("folder", signature.folder);
   formData.append("allowed_formats", signature.allowed_formats);
   formData.append("unique_filename", signature.unique_filename);
-  formData.append("max_file_size", String(signature.max_bytes));
 
   const response = await fetch(signature.upload_url, {
     method: "POST",
     body: formData,
   });
 
+  const payload: unknown = await response.json().catch(() => null);
+
   if (!response.ok) {
-    throw new Error(CLOUDINARY_UPLOAD_COPY.uploadFailedRemote);
+    throw new Error(
+      cloudinaryUploadErrorMessage(payload) ?? CLOUDINARY_UPLOAD_COPY.uploadFailedRemote,
+    );
   }
 
-  const payload: unknown = await response.json();
   const parsed = cloudinaryUploadResultSchema(signature.max_bytes).safeParse(payload);
   if (!parsed.success) {
     throw new Error(CLOUDINARY_UPLOAD_COPY.uploadInvalidResponse);

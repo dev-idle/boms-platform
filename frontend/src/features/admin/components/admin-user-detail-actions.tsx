@@ -49,14 +49,6 @@ function InlineAction({
   );
 }
 
-function ActionSep() {
-  return (
-    <span aria-hidden className="dashboard-meta-sep">
-      |
-    </span>
-  );
-}
-
 export function AdminUserDetailActions({
   accountPending = false,
   onDisable,
@@ -90,25 +82,6 @@ export function AdminUserDetailActions({
           Disable account
         </InlineAction>
       )}
-      {showReset ? (
-        <>
-          <ActionSep />
-          <InlineAction
-            disabled={actionsPending || user.disabled}
-            onClick={onResetPassword}
-            pendingLabel={resetPending ? "Generating…" : undefined}
-            title={
-              user.disabled
-                ? "Enable this account before resetting the password."
-                : undefined
-            }
-            tone="accent"
-          >
-            Reset password
-          </InlineAction>
-        </>
-      ) : null}
-      <ActionSep />
       <InlineAction
         disabled={actionsPending}
         onClick={onRevokeSessions}
@@ -116,6 +89,21 @@ export function AdminUserDetailActions({
       >
         Revoke all sessions
       </InlineAction>
+      {showReset ? (
+        <InlineAction
+          disabled={actionsPending || user.disabled}
+          onClick={onResetPassword}
+          pendingLabel={resetPending ? "Generating…" : undefined}
+          title={
+            user.disabled
+              ? "Enable this account before resetting the password."
+              : undefined
+          }
+          tone="accent"
+        >
+          Reset password
+        </InlineAction>
+      ) : null}
     </div>
   );
 }

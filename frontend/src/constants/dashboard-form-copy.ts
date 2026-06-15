@@ -12,7 +12,8 @@ export const FORM_FIELD_HINT = {
   catalogSlugCreate: "Auto-filled from name.",
   catalogSortOrder: "Lower values appear first.",
   operationalEmployeeCode: "Permanent staff ID. Assigned at creation.",
-  productImageUrlFallback: "Add up to 5 HTTPS image URLs when Cloudinary is not configured.",
+  productImageUrlFallback:
+    "First image is the storefront cover; list order matches the customer gallery. Add up to 5 HTTPS image URLs when Cloudinary is not configured.",
 } as const;
 
 export const FORM_SWITCH_LABEL = {
@@ -30,15 +31,26 @@ export const FORM_SWITCH_HINT = {
 /** Catalog image upload — control copy; formats/size hint from `cloudinaryProductImageFieldHint()`. */
 export const CATALOG_IMAGE_FIELD_COPY = {
   actionsAriaLabel: "Product image actions",
-  addImage: "Add image",
+  addImage: "Add images",
   addImageUrl: "Add image URL",
   chooseFile: "Choose file",
   imageCount: (current: number, max: number) => `${current} of ${max} images`,
   imageListAriaLabel: "Product images",
+  imagePosition: (position: number, total: number) => `Gallery image ${position} of ${total}`,
+  primaryImage: "Primary",
+  setPrimary: "Set as primary",
+  setPrimaryImage: (name: string) => `Set ${name} as primary image`,
   noFile: "No file chosen",
-  noImages: "No images added",
-  uploadAriaLabel: "Choose a product image file",
+  noImages: "No images added yet",
+  uploadAriaLabel: "Choose product image files",
+  uploadProgress: "Uploading images…",
   uploading: "Uploading…",
   replace: "Replace",
   remove: "Remove",
+  view: "View",
+  viewImage: (name: string) => `View ${name}`,
+  viewImageDialogTitle: "Image preview",
+  closePreview: "Close",
+  previewLoadError: "Failed to load image preview.",
+  previewLoading: "Loading image…",
 } as const;

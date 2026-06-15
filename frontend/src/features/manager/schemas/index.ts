@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
-import { productImageUrlsSchema } from "@/lib/validation/cloudinary";
+import { productImageUrlsResponseSchema, productImageUrlsSchema } from "@/lib/validation/cloudinary";
 
 export const managerCategorySchema = z.object({
   id: z.string().uuid(),
@@ -35,7 +35,7 @@ export const managerProductSchema = z.object({
   description: z.string().nullable().optional(),
   price_cents: z.number().int().min(0),
   is_available: z.boolean(),
-  image_urls: productImageUrlsSchema.optional(),
+  image_urls: productImageUrlsResponseSchema,
   created_at: z.string(),
   updated_at: z.string(),
 });

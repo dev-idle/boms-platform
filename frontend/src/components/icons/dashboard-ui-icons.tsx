@@ -81,3 +81,40 @@ export function DashboardOpenDetailIcon({ className }: DashboardUiIconProps) {
     </svg>
   );
 }
+
+/** Star outline — mark catalog gallery image as primary (first in list). */
+export function DashboardPrimaryIcon({ className }: DashboardUiIconProps) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={DASHBOARD_ICON_STROKE}
+      viewBox="0 0 24 24"
+    >
+      <path d="m12 3 2.35 4.76 5.25.77-3.8 3.7.9 5.23L12 15.77l-4.7 2.47.9-5.23-3.8-3.7 5.25-.77L12 3Z" />
+    </svg>
+  );
+}
+
+/** Eye icon — preview / view affordance in dashboard forms and tables. */
+export function DashboardViewIcon({ className }: DashboardUiIconProps) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={DASHBOARD_ICON_STROKE}
+      viewBox="0 0 24 24"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}

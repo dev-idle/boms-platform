@@ -28,7 +28,31 @@ const productImageItemSchema = z
     }
   });
 
-/** Product gallery URLs — Cloudinary folder rules apply when configured (max 5). */
+const productImageUrlResponseItemSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .url()
+  .refine(
+    (value) => value.startsWith("http://") || value.startsWith("https://"),
+    "URL must use HTTP or HTTPS",
+  );
+
+/** Lenient gallery URLs for API responses — backend already sanitizes on write. */
+export const productImageUrlsResponseSchema = z
+  .union([
+    z
+      .array(productImageUrlResponseItemSchema)
+      .max(
+        CLOUDINARY_MAX_PRODUCT_IMAGES,
+        `Maximum ${CLOUDINARY_MAX_PRODUCT_IMAGES} images allowed`,
+      ),
+    z.null(),
+    z.undefined(),
+  ])
+  .transform((urls) => urls ?? []);
+
+/** Product gallery URLs for forms — Cloudinary folder rules apply when configured (max 5). */
 export const productImageUrlsSchema = z
   .array(productImageItemSchema)
   .max(

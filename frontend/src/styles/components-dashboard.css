@@ -623,12 +623,19 @@
 
   .dashboard-inline-actions {
     align-items: center;
+    column-gap: 0;
     display: flex;
     flex: 0 0 auto;
     flex-wrap: wrap;
-    gap: 0;
     justify-content: flex-end;
-    row-gap: var(--db-space-1);
+    row-gap: var(--db-space-2);
+  }
+
+  .dashboard-inline-action + .dashboard-inline-action {
+    border-inline-start: 1px solid
+      color-mix(in srgb, var(--color-db-muted) 32%, var(--color-db-border));
+    margin-inline-start: var(--db-space-3);
+    padding-inline-start: var(--db-space-3);
   }
 
   .dashboard-inline-action {
@@ -1772,8 +1779,17 @@
     }
 
     .dashboard-inline-actions {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: var(--db-space-2);
       justify-content: flex-start;
       width: 100%;
+    }
+
+    .dashboard-inline-action + .dashboard-inline-action {
+      border-inline-start: none;
+      margin-inline-start: 0;
+      padding-inline-start: 0;
     }
   }
 

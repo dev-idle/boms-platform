@@ -48,6 +48,28 @@ function isCloudinaryTransformSegment(segment: string): boolean {
   return segment.includes(",") || segment.includes("_");
 }
 
+function normalizeCloudinaryPublicPath(publicPath: string): string | null {
+  if (!publicPath || publicPath.includes("..")) {
+    return null;
+  }
+
+  const segments = publicPath.split("/").filter((segment) => segment && segment !== ".");
+  for (const segment of segments) {
+    if (segment === "..") {
+      return null;
+    }
+  }
+  return segments.join("/");
+}
+
+function isPublicPathUnderFolder(publicPath: string, folder: string): boolean {
+  const cleaned = normalizeCloudinaryPublicPath(publicPath);
+  if (!cleaned) {
+    return false;
+  }
+  return cleaned === folder || cleaned.startsWith(`${folder}/`);
+}
+
 function cloudinaryPublicIdPath(afterUpload: string): string {
   const segments = afterUpload.replace(/^\/+|\/+$/g, "").split("/");
   let start = 0;
@@ -106,10 +128,7 @@ export function isCloudinaryDeliveryUrlInFolder(
       return false;
     }
     const publicPath = cloudinaryPublicIdPath(parsed.pathname.slice(prefix.length));
-    if (!publicPath) {
-      return false;
-    }
-    return publicPath.startsWith(`${normalizedFolder}/`) || publicPath === normalizedFolder;
+    return isPublicPathUnderFolder(publicPath, normalizedFolder);
   } catch {
     return false;
   }
@@ -146,8 +165,12 @@ export function catalogProductImageUrl(
     return url;
   }
   const prefix = url.slice(0, index + marker.length);
-  const suffix = url.slice(index + marker.length);
-  return `${prefix}f_auto,q_auto,w_${width}/${suffix}`;
+  const afterUpload = url.slice(index + marker.length);
+  const publicIdPath = cloudinaryPublicIdPath(afterUpload);
+  if (!publicIdPath) {
+    return url;
+  }
+  return `${prefix}f_auto,q_auto,w_${width}/${publicIdPath}`;
 }
 
 export function primaryCatalogProductImageUrl(

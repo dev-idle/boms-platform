@@ -20,3 +20,30 @@ export function cloudinaryDeliveryFileLabel(url: string): string {
   }
   return "Product image";
 }
+
+export function normalizeCatalogFileLabel(label: string): string {
+  return label.trim().toLowerCase();
+}
+
+export function catalogFileLabelForUrl(
+  url: string,
+  labelsByUrl: Record<string, string>,
+): string {
+  return labelsByUrl[url] ?? cloudinaryDeliveryFileLabel(url);
+}
+
+export function isDuplicateCatalogFileLabel(
+  fileLabel: string,
+  urls: string[],
+  labelsByUrl: Record<string, string>,
+): boolean {
+  const normalized = normalizeCatalogFileLabel(fileLabel);
+  if (!normalized) {
+    return false;
+  }
+  return urls.some(
+    (url) =>
+      normalizeCatalogFileLabel(catalogFileLabelForUrl(url, labelsByUrl)) ===
+      normalized,
+  );
+}

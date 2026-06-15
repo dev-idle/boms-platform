@@ -120,7 +120,7 @@ export function ProductDetail({
                       "overflow-hidden rounded-input border-2 bg-mint",
                       index === heroIndex ? "border-accent" : "border-transparent",
                     )}
-                    key={url}
+                    key={`${url}-${index}`}
                     onClick={() => setActiveImageIndex(index)}
                     role="listitem"
                     type="button"

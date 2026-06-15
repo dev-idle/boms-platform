@@ -46,4 +46,16 @@ describe("validateCloudinarySignatureEnv", () => {
       CLOUDINARY_UPLOAD_COPY.folderMismatch,
     );
   });
+
+  it("rejects upload URLs outside the Cloudinary API", () => {
+    vi.stubEnv("NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME", "demo");
+    vi.stubEnv("NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER", "boms/products");
+
+    expect(() =>
+      validateCloudinarySignatureEnv({
+        ...baseSignature,
+        upload_url: "https://evil.example/upload",
+      }),
+    ).toThrow(CLOUDINARY_UPLOAD_COPY.uploadFailedRemote);
+  });
 });
