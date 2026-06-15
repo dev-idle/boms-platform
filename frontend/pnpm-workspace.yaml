@@ -5,6 +5,7 @@ packages:
 overrides:
   eslint: ~9.39.4
   esbuild: ">=0.28.1"
+  vite: "^7.3.5"
 
 # pnpm 11+: lifecycle scripts only for listed deps (supply-chain default).
 allowBuilds:
