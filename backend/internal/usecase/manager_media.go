@@ -25,11 +25,9 @@ func (u *ManagerMediaUsecase) CloudinaryUploadSignature() (*dto.CloudinaryUpload
 
 	timestamp := time.Now().Unix()
 	folder := u.cloudinary.ResolvedUploadFolder()
-	maxFileSize := strconv.FormatInt(cloudinarysvc.MaxProductImageBytes, 10)
 	params := map[string]string{
 		"allowed_formats": cloudinarysvc.AllowedImageFormats,
 		"folder":          folder,
-		cloudinarysvc.MaxFileSizeParam: maxFileSize,
 		"timestamp":       strconv.FormatInt(timestamp, 10),
 		"unique_filename": cloudinarysvc.UniqueFilenameTrue,
 	}

@@ -43,7 +43,7 @@ type UpdateProductRequest struct {
 	Description *string `json:"description,omitempty" validate:"omitempty,max=2000"`
 	PriceCents  int64   `json:"price_cents" validate:"min=0"`
 	IsAvailable bool    `json:"is_available"`
-	ImageURLs   []string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
+	ImageURLs   *[]string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
 }
 
 type ProductResponse struct {

@@ -45,6 +45,7 @@ func TestIsCloudinaryDeliveryURLInFolder(t *testing.T) {
 		"https://res.cloudinary.com/demo/image/upload/v1/boms/other/loaf.jpg",
 		"https://res.cloudinary.com/demo/image/upload/v1/evil/boms/products/loaf.jpg",
 		"https://res.cloudinary.com/other/image/upload/v1/boms/products/loaf.jpg",
+		"https://res.cloudinary.com/demo/image/upload/v1/boms/products/../other/loaf.jpg",
 	}
 	for _, raw := range invalid {
 		if IsCloudinaryDeliveryURLInFolder(cloud, folder, raw) {

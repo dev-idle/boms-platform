@@ -44,14 +44,14 @@ func TestManagerMediaUsecase_CloudinaryUploadSignature(t *testing.T) {
 			t.Fatalf("expected sha1 hex signature, got %q", out.Signature)
 		}
 
-		withoutSize := cloudinarysvc.SignUpload(map[string]string{
+		expected := cloudinarysvc.SignUpload(map[string]string{
 			"allowed_formats": out.AllowedFormats,
 			"folder":          out.Folder,
 			"timestamp":       strconv.FormatInt(out.Timestamp, 10),
 			"unique_filename": out.UniqueFilename,
 		}, "secret")
-		if withoutSize == out.Signature {
-			t.Fatal("expected signature to include max_file_size")
+		if expected != out.Signature {
+			t.Fatalf("signature mismatch: got %q want %q", out.Signature, expected)
 		}
 	})
 }

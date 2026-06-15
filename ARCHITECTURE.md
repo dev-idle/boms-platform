@@ -254,8 +254,8 @@ Signed upload keeps `CLOUDINARY_API_SECRET` on the API only.
 
 | Layer | Rule |
 |-------|------|
-| Signed params | `folder`, `allowed_formats`, `unique_filename`, `max_file_size`, `timestamp` |
-| Size cap | API returns `max_bytes` (5 MiB); signed `max_file_size` enforced by Cloudinary; FE validates `file.size` + response `bytes` |
+| Signed params | `folder`, `allowed_formats`, `unique_filename`, `timestamp` |
+| Size cap | API returns `max_bytes` (5 MiB) for client-side checks; FE validates `file.size` before upload and response `bytes` when present |
 | Persist | BE `IsCloudinaryDeliveryURLInFolder` on create/update when Cloudinary is enabled |
 | FE submit | Zod `productImageUrlsSchema` (max 5) mirrors folder + cloud rules |
 

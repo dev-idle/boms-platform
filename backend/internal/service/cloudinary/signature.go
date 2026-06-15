@@ -13,8 +13,6 @@ const (
 	AllowedImageFormats = "jpg,png,webp,avif"
 	// UniqueFilenameTrue is the Cloudinary upload flag value for unique filenames.
 	UniqueFilenameTrue = "true"
-	// MaxFileSizeParam is the Cloudinary signed upload parameter for server-side size cap.
-	MaxFileSizeParam = "max_file_size"
 	// MaxProductImageBytes caps manager catalog image uploads (5 MiB).
 	MaxProductImageBytes int64 = 5 * 1024 * 1024
 )

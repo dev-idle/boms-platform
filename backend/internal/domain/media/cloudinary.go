@@ -2,6 +2,7 @@ package media
 
 import (
 	"net/url"
+	"path"
 	"strings"
 	"unicode"
 )
@@ -56,11 +57,20 @@ func IsCloudinaryDeliveryURLInFolder(cloudName, folder, raw string) bool {
 	}
 
 	publicPath := cloudinaryPublicIDPath(strings.TrimPrefix(path, prefix))
-	if publicPath == "" {
+	return isPublicPathUnderFolder(publicPath, folder)
+}
+
+func isPublicPathUnderFolder(publicPath, folder string) bool {
+	if publicPath == "" || strings.Contains(publicPath, "..") {
 		return false
 	}
 
-	return strings.HasPrefix(publicPath, folder+"/") || publicPath == folder
+	cleaned := strings.TrimPrefix(path.Clean("/"+strings.Trim(publicPath, "/")), "/")
+	if cleaned == "" || cleaned == "." {
+		return false
+	}
+
+	return cleaned == folder || strings.HasPrefix(cleaned, folder+"/")
 }
 
 func cloudinaryPublicIDPath(afterUpload string) string {

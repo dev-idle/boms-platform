@@ -193,9 +193,13 @@ func (u *ManagerProductUsecase) Update(
 	if err != nil {
 		return nil, err
 	}
-	imageURLs, err := sanitizeManagerProductImageURLs(u.cloudinary, req.ImageURLs)
-	if err != nil {
-		return nil, err
+	var imageURLs []string
+	replaceImages := req.ImageURLs != nil
+	if replaceImages {
+		imageURLs, err = sanitizeManagerProductImageURLs(u.cloudinary, *req.ImageURLs)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
@@ -217,8 +221,16 @@ func (u *ManagerProductUsecase) Update(
 			}
 			return updateErr
 		}
+		if !replaceImages {
+			return nil
+		}
 		return u.products.ReplaceProductImages(txCtx, id, imageURLs)
 	}); err != nil {
+		return nil, err
+	}
+
+	resp, err := u.managerProductResponse(ctx, id)
+	if err != nil {
 		return nil, err
 	}
 
@@ -230,9 +242,9 @@ func (u *ManagerProductUsecase) Update(
 		&id,
 		"product",
 		toProductAudit(before, beforeImages),
-		toProductAudit(before, imageURLs),
+		toProductAuditFromResponse(resp),
 	)
-	return u.managerProductResponse(ctx, id)
+	return resp, nil
 }
 
 func (u *ManagerProductUsecase) Delete(
