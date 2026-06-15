@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -25,6 +26,7 @@ func TestManagerMediaHandler_GetCloudinaryUploadSignature(t *testing.T) {
 		app.Get("/", handler.GetCloudinaryUploadSignature)
 
 		resp := requestManagerMediaHandler(t, app)
+		defer func() { _ = resp.Body.Close() }()
 		assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 	})
 
@@ -40,11 +42,11 @@ func TestManagerMediaHandler_GetCloudinaryUploadSignature(t *testing.T) {
 		app.Get("/", handler.GetCloudinaryUploadSignature)
 
 		resp := requestManagerMediaHandler(t, app)
+		defer func() { _ = resp.Body.Close() }()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		_ = resp.Body.Close()
 
 		var envelope struct {
 			Data struct {
@@ -64,7 +66,7 @@ func TestManagerMediaHandler_GetCloudinaryUploadSignature(t *testing.T) {
 
 func requestManagerMediaHandler(t *testing.T, app *fiber.App) *http.Response {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	return resp

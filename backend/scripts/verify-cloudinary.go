@@ -66,6 +66,7 @@ func main() {
 	_ = w.WriteField("folder", sig.Folder)
 	_ = w.WriteField("allowed_formats", sig.AllowedFormats)
 	_ = w.WriteField("unique_filename", sig.UniqueFilename)
+	_ = w.WriteField("max_file_size", fmt.Sprintf("%d", sig.MaxBytes))
 	part, _ := w.CreateFormFile("file", "probe.png")
 	_, _ = part.Write(png)
 	_ = w.Close()

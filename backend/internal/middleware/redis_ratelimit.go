@@ -121,7 +121,7 @@ func ManagerMediaRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig)
 			return "rl:user:" + uid.String() + ":manager_media"
 		}
 		return "rl:ip:" + c.IP() + ":manager_media"
-	}, cfg.AdminWriteMax, cfg.AdminWriteWindow, true)
+	}, cfg.ManagerMediaMax, cfg.ManagerMediaWindow, true)
 }
 
 // ManagerWriteRateLimit limits manager catalog write operations per user.

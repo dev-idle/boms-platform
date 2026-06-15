@@ -1,9 +1,11 @@
 package usecase
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/boms/backend/internal/config"
+	cloudinarysvc "github.com/boms/backend/internal/service/cloudinary"
 )
 
 func TestManagerMediaUsecase_CloudinaryUploadSignature(t *testing.T) {
@@ -40,6 +42,16 @@ func TestManagerMediaUsecase_CloudinaryUploadSignature(t *testing.T) {
 		}
 		if len(out.Signature) != 40 {
 			t.Fatalf("expected sha1 hex signature, got %q", out.Signature)
+		}
+
+		withoutSize := cloudinarysvc.SignUpload(map[string]string{
+			"allowed_formats": out.AllowedFormats,
+			"folder":          out.Folder,
+			"timestamp":       strconv.FormatInt(out.Timestamp, 10),
+			"unique_filename": out.UniqueFilename,
+		}, "secret")
+		if withoutSize == out.Signature {
+			t.Fatal("expected signature to include max_file_size")
 		}
 	})
 }

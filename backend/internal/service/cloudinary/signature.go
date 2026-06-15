@@ -1,7 +1,7 @@
 package cloudinary
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // G505: Cloudinary upload API requires SHA-1
 	"encoding/hex"
 	"fmt"
 	"sort"
@@ -13,6 +13,8 @@ const (
 	AllowedImageFormats = "jpg,png,webp,avif"
 	// UniqueFilenameTrue is the Cloudinary upload flag value for unique filenames.
 	UniqueFilenameTrue = "true"
+	// MaxFileSizeParam is the Cloudinary signed upload parameter for server-side size cap.
+	MaxFileSizeParam = "max_file_size"
 	// MaxProductImageBytes caps manager catalog image uploads (5 MiB).
 	MaxProductImageBytes int64 = 5 * 1024 * 1024
 )
@@ -32,7 +34,7 @@ func SignUpload(params map[string]string, apiSecret string) string {
 	}
 
 	toSign := strings.Join(parts, "&") + strings.TrimSpace(apiSecret)
-	sum := sha1.Sum([]byte(toSign))
+	sum := sha1.Sum([]byte(toSign)) //nolint:gosec // G401: Cloudinary signed upload requires SHA-1
 	return hex.EncodeToString(sum[:])
 }
 

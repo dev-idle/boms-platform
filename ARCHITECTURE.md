@@ -232,7 +232,7 @@ features/<slice>/
 | Password attack | Argon2id (params from config); timing-safe dummy hash on login |
 | Replay | request-id propagation; refresh rotation |
 | CSRF | SameSite=Lax cookie, internal proxy secret on inbound headers, sanitize `X-User-Role`, `X-Request-ID`, `X-Auth-Hint` |
-| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min) |
+| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) |
 | RBAC | `RequireRole(Admin)` on `/admin/*`; admin can't modify self; staff self-update only fills `full_name`, `phone` |
 | Forced password change | `must_change_password` flag → `RequirePasswordChanged` middleware blocks all routes except `/me` GET and `/me/password` PATCH |
 | Audit | All admin mutations write to `audit_logs` with actor/target/before/after |
@@ -254,8 +254,8 @@ Signed upload keeps `CLOUDINARY_API_SECRET` on the API only.
 
 | Layer | Rule |
 |-------|------|
-| Signed params | `folder`, `allowed_formats`, `unique_filename`, `timestamp` |
-| Size cap | API returns `max_bytes` (5 MiB); FE validates file size pre-upload and `bytes` in Cloudinary response |
+| Signed params | `folder`, `allowed_formats`, `unique_filename`, `max_file_size`, `timestamp` |
+| Size cap | API returns `max_bytes` (5 MiB); signed `max_file_size` enforced by Cloudinary; FE validates `file.size` + response `bytes` |
 | Persist | BE `IsCloudinaryDeliveryURLInFolder` on create/update when Cloudinary is enabled |
 | FE submit | Zod `productImageUrlSchema` mirrors folder + cloud rules |
 

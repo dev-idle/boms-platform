@@ -70,6 +70,8 @@ type RateLimitRedisConfig struct {
 	AuthLogoutWindow      time.Duration
 	AdminWriteMax         int
 	AdminWriteWindow      time.Duration
+	ManagerMediaMax       int
+	ManagerMediaWindow    time.Duration
 	AuthUserMax           int
 	AuthUserWindow        time.Duration
 }
@@ -240,6 +242,8 @@ func Load() (*Config, error) {
 			AuthLogoutWindow:  v.GetDuration("rate_limit.redis.auth_logout_window"),
 			AdminWriteMax:     v.GetInt("rate_limit.redis.admin_write_max"),
 			AdminWriteWindow:  v.GetDuration("rate_limit.redis.admin_write_window"),
+			ManagerMediaMax:   v.GetInt("rate_limit.redis.manager_media_max"),
+			ManagerMediaWindow: v.GetDuration("rate_limit.redis.manager_media_window"),
 			AuthUserMax:       v.GetInt("rate_limit.redis.auth_user_max"),
 			AuthUserWindow:    v.GetDuration("rate_limit.redis.auth_user_window"),
 		},
@@ -343,6 +347,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.redis.auth_logout_window", time.Minute)
 	v.SetDefault("rate_limit.redis.admin_write_max", 30)
 	v.SetDefault("rate_limit.redis.admin_write_window", time.Minute)
+	v.SetDefault("rate_limit.redis.manager_media_max", 20)
+	v.SetDefault("rate_limit.redis.manager_media_window", time.Minute)
 	v.SetDefault("rate_limit.redis.auth_user_max", 60)
 	v.SetDefault("rate_limit.redis.auth_user_window", time.Minute)
 
@@ -527,6 +533,7 @@ func (c RateLimitRedisConfig) validate() error {
 		{"rate_limit.redis.auth_refresh", c.AuthRefreshMax, c.AuthRefreshWindow},
 		{"rate_limit.redis.auth_logout", c.AuthLogoutMax, c.AuthLogoutWindow},
 		{"rate_limit.redis.admin_write", c.AdminWriteMax, c.AdminWriteWindow},
+		{"rate_limit.redis.manager_media", c.ManagerMediaMax, c.ManagerMediaWindow},
 		{"rate_limit.redis.auth_user", c.AuthUserMax, c.AuthUserWindow},
 	}
 	for _, chk := range checks {
