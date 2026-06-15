@@ -9,13 +9,17 @@ import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-but
 import { FieldControl } from "@/components/ui/field-control";
 import {
   Form,
-  FormControl,
   FormField,
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
-import { FormPublishToggle } from "@/components/ui/form-publish-toggle";
+import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
 import { Input } from "@/components/ui/input";
+import {
+  FORM_FIELD_HINT,
+  FORM_SWITCH_HINT,
+  FORM_SWITCH_LABEL,
+} from "@/constants/dashboard-form-copy";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
@@ -99,7 +103,11 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
           name="sort_order"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Sort order">
+              <FieldControl
+                hint={FORM_FIELD_HINT.catalogSortOrder}
+                hintId="category-sort-order-hint"
+                label="Sort order"
+              >
                 <Input min={0} type="number" {...field} />
               </FieldControl>
               <FormMessage />
@@ -112,15 +120,17 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
           name="is_active"
           render={({ field }) => (
             <FormItem>
-              <FormControl>
-                <FormPublishToggle
+              <FieldControl
+                hint={FORM_SWITCH_HINT.storefrontVisible}
+                hintId="category-storefront-visible-hint"
+                label={FORM_SWITCH_LABEL.storefrontVisible}
+                variant="switch"
+              >
+                <FormPublishSwitch
                   checked={field.value}
-                  description="When on, customers can browse products in this category."
-                  id="category-is-active"
-                  label="Active"
                   onCheckedChange={field.onChange}
                 />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}

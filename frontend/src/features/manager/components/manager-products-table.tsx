@@ -16,6 +16,7 @@ import {
   DashboardTableRowActions,
 } from "@/components/ui/dashboard-table-actions";
 import { CatalogAvailabilityPill } from "@/components/ui/status-pill";
+import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -30,7 +31,7 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useDeleteProduct, useProducts } from "../hooks";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 
 export function ManagerProductsTable() {
   const {
@@ -79,22 +80,24 @@ export function ManagerProductsTable() {
       />
 
       <div className="dashboard-page-body">
-      <DashboardSearchField
-        onChange={setInput}
-        onClear={clear}
-        placeholder="Search name or slug"
-        value={input}
-      />
+        <div className="db-table-filters">
+          <DashboardSearchField
+            onChange={setInput}
+            onClear={clear}
+            placeholder="Search name or slug"
+            value={input}
+          />
+        </div>
 
-      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <div className={cn("db-table-wrap", refetching && "is-refetching")}>
         <table className="db-table db-table--comfortable">
           <thead>
             <tr>
               <th>Name</th>
               <th>Category</th>
               <th>Price</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="db-table-status">Status</th>
+              <th className="db-table-detail">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -113,7 +116,9 @@ export function ManagerProductsTable() {
             ) : products.length === 0 ? (
               <tr>
                 <td className="db-table-empty-cell" colSpan={5}>
-                  No products found.
+                  {search
+                    ? "No products match your search."
+                    : "No products found."}
                 </td>
               </tr>
             ) : (
@@ -128,10 +133,10 @@ export function ManagerProductsTable() {
                   <td className="text-tabular">
                     {formatPriceCents(product.price_cents)}
                   </td>
-                  <td>
+                  <td className="db-table-status">
                     <CatalogAvailabilityPill available={product.is_available} />
                   </td>
-                  <td>
+                  <td className="db-table-detail">
                     <DashboardTableRowActions>
                       <DashboardTableEditLink
                         href={ROUTE.manager.productDetail(product.id)}
@@ -157,16 +162,15 @@ export function ManagerProductsTable() {
             />
           </tbody>
         </table>
-        {pagination ? (
-          <DashboardTablePagination
-            disabled={query.isFetching}
-            onPageChange={setPage}
-            page={pagination.page}
-            pageSize={pagination.page_size}
-            totalItems={pagination.total}
-            totalPages={pagination.total_pages}
-          />
-        ) : null}
+        <DashboardTablePagination
+          disabled={query.isFetching}
+          itemLabel="products"
+          onPageChange={setPage}
+          page={pagination?.page ?? page}
+          pageSize={pagination?.page_size ?? PAGE_SIZE}
+          totalItems={pagination?.total ?? products.length}
+          totalPages={pagination?.total_pages ?? 1}
+        />
       </div>
       </div>
 

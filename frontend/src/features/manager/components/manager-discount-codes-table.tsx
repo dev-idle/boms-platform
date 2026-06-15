@@ -16,6 +16,7 @@ import {
   DashboardTableRowActions,
 } from "@/components/ui/dashboard-table-actions";
 import { EntityActivePill } from "@/components/ui/status-pill";
+import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -32,7 +33,7 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 import { useDeleteDiscountCode, useDiscountCodes } from "../hooks";
 import { DISCOUNT_TYPE } from "../schemas";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 
 function formatDiscountValue(
   discountType: string,
@@ -91,14 +92,16 @@ export function ManagerDiscountCodesTable() {
       />
 
       <div className="dashboard-page-body">
-      <DashboardSearchField
-        onChange={setInput}
-        onClear={clear}
-        placeholder="Search code"
-        value={input}
-      />
+        <div className="db-table-filters">
+          <DashboardSearchField
+            onChange={setInput}
+            onClear={clear}
+            placeholder="Search code"
+            value={input}
+          />
+        </div>
 
-      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <div className={cn("db-table-wrap", refetching && "is-refetching")}>
         <table className="db-table db-table--comfortable">
           <thead>
             <tr>
@@ -106,8 +109,8 @@ export function ManagerDiscountCodesTable() {
               <th>Value</th>
               <th>Uses</th>
               <th>Window</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="db-table-status">Status</th>
+              <th className="db-table-detail">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -126,7 +129,9 @@ export function ManagerDiscountCodesTable() {
             ) : discountCodes.length === 0 ? (
               <tr>
                 <td className="db-table-empty-cell" colSpan={6}>
-                  No discount codes found.
+                  {search
+                    ? "No discount codes match your search."
+                    : "No discount codes found."}
                 </td>
               </tr>
             ) : (
@@ -151,10 +156,10 @@ export function ManagerDiscountCodesTable() {
                     {formatDateTime(discountCode.starts_at)} –{" "}
                     {formatDateTime(discountCode.ends_at)}
                   </td>
-                  <td>
+                  <td className="db-table-status">
                     <EntityActivePill active={discountCode.is_active} />
                   </td>
-                  <td>
+                  <td className="db-table-detail">
                     <DashboardTableRowActions>
                       <DashboardTableEditLink
                         href={ROUTE.manager.discountCodeDetail(discountCode.id)}
@@ -180,16 +185,15 @@ export function ManagerDiscountCodesTable() {
             />
           </tbody>
         </table>
-        {pagination ? (
-          <DashboardTablePagination
-            disabled={query.isFetching}
-            onPageChange={setPage}
-            page={pagination.page}
-            pageSize={pagination.page_size}
-            totalItems={pagination.total}
-            totalPages={pagination.total_pages}
-          />
-        ) : null}
+        <DashboardTablePagination
+          disabled={query.isFetching}
+          itemLabel="discount codes"
+          onPageChange={setPage}
+          page={pagination?.page ?? page}
+          pageSize={pagination?.page_size ?? PAGE_SIZE}
+          totalItems={pagination?.total ?? discountCodes.length}
+          totalPages={pagination?.total_pages ?? 1}
+        />
       </div>
       </div>
 

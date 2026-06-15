@@ -9,13 +9,16 @@ import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-but
 import { FieldControl } from "@/components/ui/field-control";
 import {
   Form,
-  FormControl,
   FormField,
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
-import { FormPublishToggle } from "@/components/ui/form-publish-toggle";
+import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
 import { Input } from "@/components/ui/input";
+import {
+  FORM_SWITCH_HINT,
+  FORM_SWITCH_LABEL,
+} from "@/constants/dashboard-form-copy";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
@@ -178,15 +181,17 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="is_available"
           render={({ field }) => (
             <FormItem>
-              <FormControl>
-                <FormPublishToggle
+              <FieldControl
+                hint={FORM_SWITCH_HINT.availableToOrder}
+                hintId="product-available-to-order-hint"
+                label={FORM_SWITCH_LABEL.availableToOrder}
+                variant="switch"
+              >
+                <FormPublishSwitch
                   checked={field.value}
-                  description="When on, customers can add this product to their cart."
-                  id="product-is-available"
-                  label="Available"
                   onCheckedChange={field.onChange}
                 />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}

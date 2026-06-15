@@ -1,0 +1,138 @@
+/* Choux Matcha v3 — primitive design tokens (SSOT). */
+
+:root {
+  /* Neutrals — porcelain + espresso ink */
+  --color-bg: #fbfaf9;
+  --color-surface: #ffffff;
+  --color-mint: #e9f1e7;
+  --color-border: #ece9e6;
+  --color-ink: #3a2e27;
+  --color-ink-2: #6b6056;
+  --color-muted: #8f857c;
+
+  /* Matcha — primary (actions only) */
+  --color-matcha-100: #e9f1e7;
+  --color-matcha-200: #d5e0d1;
+  --color-matcha-300: #afc4a9;
+  --color-matcha-500: #4e7d5b;
+  --color-matcha-600: #426b4e;
+  --color-matcha-700: #375a42;
+
+  /* Gold — value accent (brass, tuned to matcha) */
+  --color-gold-100: #f2eddc;
+  --color-gold-500: #b9a266;
+  --color-gold-700: #857440;
+
+  /* Dashboard — single internal theme (staff / baker / manager / admin) */
+  --color-db-bg: #faf9f8;
+  --color-db-surface: #ffffff;
+  --color-db-border: #ece9e7;
+  --color-db-row: #f4f2f0;
+  --color-db-ink: #2e2722;
+  --color-db-muted: #756d66;
+  --color-db-accent: #3e5c47;
+  --color-db-accent-hover: #335040;
+  --color-db-accent-soft: #e9f0ea;
+
+  /* Order status pills (semantic — dashboard only) */
+  --color-status-pending-bg: #f2eddc;
+  --color-status-pending-fg: #857440;
+  --color-status-confirmed-bg: #e8eef4;
+  --color-status-confirmed-fg: #4a6584;
+  --color-status-in-progress-bg: #f4ece3;
+  --color-status-in-progress-fg: #85593a;
+  --color-status-ready-bg: #e4f0eb;
+  --color-status-ready-fg: #2c6e5a;
+  --color-status-completed-bg: #efedeb;
+  --color-status-completed-fg: #5f5852;
+  --color-status-cancelled-bg: #f7e3e3;
+  --color-status-cancelled-fg: #a03939;
+
+  /* Semantic — danger split from primary, success hue offset from matcha */
+  --color-success: #2c6e5a;
+  --color-success-bg: #e4f0eb;
+  --color-warning: #ad7b40;
+  --color-warning-bg: #f8f0e6;
+  --color-danger: #c44545;
+  --color-danger-bg: #f7e3e3;
+  --color-danger-text: #a03939;
+  --color-info: #4a6584;
+  --color-info-bg: #edf1f6;
+
+  /* Shape */
+  --radius-card: 16px;
+  --radius-modal: 20px;
+  --radius-input: 12px;
+  --radius-button: 12px;
+
+  /* Button — matcha hairline secondary + satin primary (storefront only) */
+  --btn-accent-fill: var(--color-surface);
+  --btn-accent-fill-hover: var(--color-matcha-100);
+  --btn-accent-line: var(--color-matcha-200);
+  --btn-accent-line-hover: var(--color-matcha-300);
+  --btn-accent-text: var(--color-matcha-600);
+  --btn-accent-text-active: var(--color-matcha-500);
+  --btn-satin-gradient: linear-gradient(
+    180deg,
+    #5a8a66 0%,
+    #4e7d5b 38%,
+    #44704f 100%
+  );
+  --btn-satin-active-bg: #375a42;
+  --btn-shadow-primary:
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    0 6px 16px rgb(78 125 91 / 0.22);
+  --btn-shadow-primary-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    0 8px 20px rgb(78 125 91 / 0.3);
+
+  /* Depth — espresso tint */
+  --shadow-rest: 0 1px 3px rgb(58 46 39 / 0.05);
+  --shadow-hover: 0 8px 24px rgb(58 46 39 / 0.07);
+  --shadow-modal:
+    0 1px 2px rgb(58 46 39 / 0.03),
+    0 8px 24px rgb(58 46 39 / 0.08),
+    0 24px 48px rgb(58 46 39 / 0.1);
+  /* Motion */
+  --ease-luxury: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-micro: 150ms;
+  --duration-standard: 200ms;
+  --duration-page: 300ms;
+
+  /* Layout — keep storefront + auth header heights in sync */
+  --storefront-header-height: 4.5rem;
+
+  /* Field chrome — porcelain inputs (SSOT) */
+  --field-bg: color-mix(in srgb, var(--color-surface) 88%, var(--color-mint));
+  --field-bg-focus: color-mix(in srgb, var(--color-surface) 94%, var(--color-mint));
+  --field-bg-disabled: color-mix(in srgb, var(--color-mint) 32%, var(--color-surface));
+  --field-bg-readonly: color-mix(in srgb, var(--color-mint) 18%, var(--color-surface));
+  --field-border-readonly: color-mix(in srgb, var(--color-border) 82%, transparent);
+  --field-text-readonly: color-mix(in srgb, var(--color-muted) 90%, var(--color-ink));
+  --field-border: color-mix(in srgb, var(--color-matcha-200) 40%, var(--color-border));
+  --field-border-hover: color-mix(in srgb, var(--color-matcha-300) 55%, var(--color-border));
+  --field-border-focus: var(--color-matcha-500);
+  --field-frame-focus: color-mix(in srgb, var(--color-matcha-300) 38%, transparent);
+  --field-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.72);
+  --field-label-active: var(--color-matcha-600);
+  --field-caret: var(--color-matcha-500);
+  --field-placeholder: color-mix(in srgb, var(--color-muted) 62%, transparent);
+
+  /* Control scale — customer default; dashboard overrides in [data-theme="dashboard"] */
+  --field-control-height: 2.75rem;
+  --field-control-font-size: 0.9375rem;
+  --field-control-padding-inline: 0.875rem;
+  --password-field-toggle-affordance: 1.875rem;
+  --password-field-toggle-hit: 2.25rem;
+  --password-field-toggle-icon: 1.125rem;
+  --btn-control-min-height: 2.75rem;
+  --btn-control-min-width: 2.75rem;
+  --btn-control-font-size: 0.875rem;
+  --btn-control-padding-inline: 1.25rem;
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --storefront-header-height: 4.75rem;
+  }
+}

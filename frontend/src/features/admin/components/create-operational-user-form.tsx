@@ -10,6 +10,7 @@ import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ASSIGNABLE_OPERATIONAL_ROLES, roleDisplayLabel } from "@/constants/roles";
+import { FORM_FIELD_HINT } from "@/constants/dashboard-form-copy";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
@@ -147,17 +148,17 @@ export function CreateOperationalUserForm() {
             name="employee_code"
             render={({ field }) => (
               <FormItem>
-                <FieldControl label="Employee code">
+                <FieldControl
+                  hint={FORM_FIELD_HINT.operationalEmployeeCode}
+                  hintId="create-operational-employee-code-hint"
+                  label="Employee code"
+                >
                   <Input
                     autoComplete="off"
                     placeholder="EMP-001"
                     {...field}
                   />
                 </FieldControl>
-                <p className="form-field-hint">
-                  Unique identifier shown on operational profile pages. Cannot
-                  be changed by the user.
-                </p>
                 <FormMessage />
               </FormItem>
             )}

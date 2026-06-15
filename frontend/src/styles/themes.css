@@ -1,0 +1,132 @@
+/* Theme scopes — storefront + dashboard semantic aliases. */
+
+:root,
+[data-theme="storefront"] {
+  --theme-bg: var(--color-bg);
+  --theme-surface: var(--color-surface);
+  --theme-surface-alt: var(--color-mint);
+  --theme-border: var(--color-border);
+  --theme-ink: var(--color-ink);
+  --theme-ink-2: var(--color-ink-2);
+  --theme-muted: var(--color-muted);
+  --theme-primary: var(--color-matcha-500);
+  --theme-primary-hover: var(--color-matcha-600);
+  --theme-primary-active: var(--color-matcha-700);
+  --theme-primary-subtle: var(--color-matcha-100);
+  --theme-on-primary: var(--color-surface);
+  --theme-accent: var(--color-gold-500);
+  --theme-accent-soft: var(--color-gold-100);
+}
+
+/* =============================================================================
+   Theme: Dashboard (operational)
+   ============================================================================= */
+
+[data-theme="dashboard"] {
+  --theme-bg: var(--color-db-bg);
+  --theme-surface: var(--color-db-surface);
+  --theme-surface-alt: var(--color-db-bg);
+  --theme-border: var(--color-db-border);
+  --theme-ink: var(--color-db-ink);
+  --theme-ink-2: var(--color-db-muted);
+  --theme-muted: var(--color-db-muted);
+  --theme-primary: var(--color-db-accent);
+  --theme-primary-hover: var(--color-db-accent-hover);
+  --theme-primary-active: var(--color-db-accent-hover);
+  --theme-primary-subtle: var(--color-db-accent-soft);
+  --theme-on-primary: var(--color-db-surface);
+  --theme-accent: var(--color-db-accent);
+  --theme-accent-soft: var(--color-db-accent-soft);
+
+  /* Same porcelain field chrome as storefront; slightly denser scale. */
+  --field-bg: color-mix(in srgb, var(--color-db-surface) 88%, var(--color-mint));
+  --field-bg-focus: color-mix(in srgb, var(--color-db-surface) 94%, var(--color-mint));
+  --field-bg-disabled: color-mix(in srgb, var(--color-mint) 32%, var(--color-db-surface));
+  --field-bg-readonly: var(--color-db-bg);
+  --field-border-readonly: color-mix(in srgb, var(--color-db-border) 72%, transparent);
+  --field-text-readonly: color-mix(in srgb, var(--color-db-muted) 94%, var(--color-db-ink));
+  --field-border: color-mix(in srgb, var(--color-matcha-200) 40%, var(--color-db-border));
+  --field-border-hover: color-mix(in srgb, var(--color-matcha-300) 55%, var(--color-db-border));
+  --field-control-height: 2.5rem;
+  --field-control-font-size: 0.875rem;
+  --field-control-padding-inline: 0.75rem;
+  --password-field-toggle-affordance: 1.75rem;
+  --password-field-toggle-hit: 2.125rem;
+  --password-field-toggle-icon: 1.0625rem;
+  --btn-control-min-height: 2.5rem;
+  --btn-control-min-width: 2.5rem;
+  --btn-control-font-size: 0.8125rem;
+  --btn-control-padding-inline: 1rem;
+  --radius-card: 12px;
+  --radius-input: 10px;
+  --radius-button: 10px;
+
+  /* Dashboard data table — readable density without oversized chrome */
+  --db-table-row-height: 2.75rem;
+  --db-table-row-height-comfortable: 2.875rem;
+  --db-table-row-height-relaxed: 2.9375rem;
+  --db-table-header-size: 0.75rem;
+  --db-table-action-hit: 2.25rem;
+  --db-table-action-icon: 1.0625rem;
+  --db-table-action-radius: 0.5rem;
+  --db-table-col-icon: 4.875rem;
+  --db-table-col-revoke: 10.25rem;
+  --db-table-col-role: 8.5rem;
+  --db-table-admin-fixed-cols: calc(
+    var(--db-table-col-role) + var(--db-table-col-icon) * 2 + var(--db-table-col-revoke)
+  );
+  --db-table-admin-email-share: 0.58;
+  --db-table-admin-name-share: 0.42;
+  --db-filter-chip-font: 0.8125rem;
+  --db-filter-chip-height: 2rem;
+  --db-pagination-font: 0.875rem;
+  --db-pagination-hit: 2.25rem;
+  --db-pagination-icon: 0.9375rem;
+  --db-pagination-page-min: 2.25rem;
+  --db-pagination-step-width: 5rem;
+
+  /* Dashboard sidebar — primary nav + account footer */
+  --db-sidebar-eyebrow-size: 0.75rem;
+  --db-sidebar-nav-hit: 2.5rem;
+  --db-sidebar-nav-icon: 1.125rem;
+  --db-sidebar-nav-font: 0.875rem;
+  --db-sidebar-avatar-size: 2rem;
+  --db-sidebar-width: 15.5rem;
+  --db-sidebar-logo-mark-size: 2.0625rem;
+  --db-sidebar-logo-wordmark-size: 1.625rem;
+  --db-sidebar-meta-name: 0.875rem;
+  --db-sidebar-meta-email: 0.75rem;
+
+  /* Dashboard profile / settings — page shell caps width; fields fill the card */
+  /* Dashboard spacing — 4px grid + semantic rhythm (SSOT) */
+  --db-space-1: 0.25rem;
+  --db-space-2: 0.5rem;
+  --db-space-3: 0.75rem;
+  --db-space-4: 1rem;
+  --db-space-5: 1.25rem;
+  --db-space-6: 1.5rem;
+  --db-space-8: 2rem;
+
+  --db-main-padding-block-start: var(--db-space-6);
+  --db-main-padding-block-end: var(--db-space-8);
+  --db-main-padding-inline: clamp(var(--db-space-6), 3vw, var(--db-space-8));
+
+  --db-page-gap: var(--db-space-6);
+  --db-block-gap: var(--db-space-5);
+
+  --db-card-padding: var(--db-space-6);
+  --db-card-header-gap: var(--db-space-2);
+  --db-card-header-divider-pad: var(--db-space-3);
+  --db-card-header-body-gap: var(--db-space-5);
+
+  --db-form-gap: var(--db-space-4);
+  --db-form-actions-gap: var(--db-space-4);
+
+  --db-field-grid-row-gap: var(--db-space-4);
+  --db-field-grid-col-gap: var(--db-space-6);
+
+  --db-profile-form-max-width: 100%;
+  --db-page-title-size: clamp(1.125rem, 0.35vw + 1.05rem, 1.375rem);
+  --db-page-stack-gap: var(--db-page-gap);
+  --db-page-stack-gap-data: var(--db-block-gap);
+}

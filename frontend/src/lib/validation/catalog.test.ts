@@ -8,7 +8,7 @@ describe("slugifyCatalogName", () => {
   });
 
   it("strips diacritics to match backend SlugFromName", () => {
-    expect(slugifyCatalogName("Café")).toBe("cafe");
+    expect(slugifyCatalogName("Caf\u00e9")).toBe("cafe");
   });
 
   it("strips invalid characters", () => {
@@ -21,6 +21,13 @@ describe("slugifyCatalogName", () => {
 
   it("returns empty for names with no slug characters", () => {
     expect(slugifyCatalogName("!!!")).toBe("");
+  });
+
+  it("trims trailing hyphens after 128-char truncation", () => {
+    const longName = `${"a".repeat(127)}-extra`;
+    const slug = slugifyCatalogName(longName);
+    expect(slug.length).toBeLessThanOrEqual(128);
+    expect(slug.endsWith("-")).toBe(false);
   });
 
   it("output passes catalogSlugSchema when non-empty", () => {

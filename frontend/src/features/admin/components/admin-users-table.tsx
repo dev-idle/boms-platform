@@ -12,6 +12,7 @@ import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
 import { Button } from "@/components/ui/button";
+import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { USER_ROLE, roleDisplayLabel } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
@@ -33,7 +34,7 @@ import { AdminUserSessionAction } from "./admin-user-session-action";
 
 type PendingAction = "revoke" | "toggle";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 
 const ROLE_FILTERS: Array<{ value: AdminUserRoleFilter | undefined; label: string }> = [
   { value: undefined, label: "All roles" },

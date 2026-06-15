@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import type { Control, FieldPath, FieldValues, UseFormSetValue } from "react-hook-form";
 
 import { FieldControl } from "@/components/ui/field-control";
@@ -9,6 +10,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { FORM_FIELD_HINT } from "@/constants/dashboard-form-copy";
 import { useCatalogSlugSync } from "@/lib/hooks/use-catalog-slug-sync";
 
 type CatalogNameSlugValues = {
@@ -31,6 +33,7 @@ export function CatalogNameSlugFields<T extends FieldValues & CatalogNameSlugVal
   setValue,
   slugPlaceholder = "url-slug",
 }: CatalogNameSlugFieldsProps<T>) {
+  const slugHintId = useId();
   const { handleNameChange, handleSlugChange } = useCatalogSlugSync(
     mode,
     setValue,
@@ -62,7 +65,11 @@ export function CatalogNameSlugFields<T extends FieldValues & CatalogNameSlugVal
         name={"slug" as FieldPath<T>}
         render={({ field }) => (
           <FormItem>
-            <FieldControl label="Slug">
+            <FieldControl
+              hint={mode === "create" ? FORM_FIELD_HINT.catalogSlugCreate : undefined}
+              hintId={slugHintId}
+              label="Slug"
+            >
               <Input
                 placeholder={slugPlaceholder}
                 {...field}
@@ -71,11 +78,6 @@ export function CatalogNameSlugFields<T extends FieldValues & CatalogNameSlugVal
                 }
               />
             </FieldControl>
-            {mode === "create" ? (
-              <p className="form-field-hint">
-                Auto-generated from name. Edit to customize.
-              </p>
-            ) : null}
             <FormMessage />
           </FormItem>
         )}

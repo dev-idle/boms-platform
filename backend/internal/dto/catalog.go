@@ -4,7 +4,7 @@ import "time"
 
 type CreateCategoryRequest struct {
 	Name      string `json:"name" validate:"required,max=255"`
-	Slug      string `json:"slug" validate:"required,max=128"`
+	Slug      string `json:"slug" validate:"omitempty,max=128"`
 	SortOrder int32  `json:"sort_order" validate:"min=0"`
 	IsActive  bool   `json:"is_active"`
 }
@@ -29,7 +29,7 @@ type CategoryResponse struct {
 type CreateProductRequest struct {
 	CategoryID  string  `json:"category_id" validate:"required,uuid"`
 	Name        string  `json:"name" validate:"required,max=255"`
-	Slug        string  `json:"slug" validate:"required,max=128"`
+	Slug        string  `json:"slug" validate:"omitempty,max=128"`
 	Description *string `json:"description,omitempty" validate:"omitempty,max=2000"`
 	PriceCents  int64   `json:"price_cents" validate:"min=0"`
 	IsAvailable bool    `json:"is_available"`
@@ -86,7 +86,7 @@ type ComboItemInput struct {
 
 type CreateComboRequest struct {
 	Name       string           `json:"name" validate:"required,max=255"`
-	Slug       string           `json:"slug" validate:"required,max=128"`
+	Slug       string           `json:"slug" validate:"omitempty,max=128"`
 	PriceCents int64            `json:"price_cents" validate:"min=0"`
 	StartsAt   time.Time        `json:"starts_at" validate:"required"`
 	EndsAt     time.Time        `json:"ends_at" validate:"required"`

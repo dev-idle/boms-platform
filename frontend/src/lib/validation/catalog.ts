@@ -15,15 +15,18 @@ export const catalogSlugSchema = z
  * Keep in sync with backend catalog.SlugFromName (NFD diacritic fold).
  */
 export function slugifyCatalogName(name: string): string {
-  const normalized = name
+  let normalized = name
     .trim()
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 128);
+    .replace(/^-|-$/g, "");
+
+  if (normalized.length > 128) {
+    normalized = normalized.slice(0, 128).replace(/-+$/g, "");
+  }
 
   return normalized;
 }

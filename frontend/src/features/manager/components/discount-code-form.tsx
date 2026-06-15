@@ -6,10 +6,13 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
-import { FormPublishToggle } from "@/components/ui/form-publish-toggle";
+import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
+import {
+  FORM_SWITCH_HINT,
+  FORM_SWITCH_LABEL,
+} from "@/constants/dashboard-form-copy";
 import {
   Form,
-  FormControl,
   FormField,
   FormItem,
   FormMessage,
@@ -256,15 +259,17 @@ export function DiscountCodeForm({
           name="is_active"
           render={({ field }) => (
             <FormItem>
-              <FormControl>
-                <FormPublishToggle
+              <FieldControl
+                hint={FORM_SWITCH_HINT.checkoutActive}
+                hintId="discount-checkout-active-hint"
+                label={FORM_SWITCH_LABEL.checkoutActive}
+                variant="switch"
+              >
+                <FormPublishSwitch
                   checked={field.value}
-                  description="When on, customers can apply this code at checkout."
-                  id="discount-code-is-active"
-                  label="Active"
                   onCheckedChange={field.onChange}
                 />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}

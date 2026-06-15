@@ -24,6 +24,7 @@ export function DashboardCloseIcon({ className }: DashboardUiIconProps) {
   );
 }
 
+/** Lucide-style pencil-on-line — canonical edit affordance at dashboard action size. */
 export function DashboardEditIcon({ className }: DashboardUiIconProps) {
   return (
     <svg

@@ -11,7 +11,11 @@ import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-but
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { FieldControl } from "@/components/ui/field-control";
 import { Label } from "@/components/ui/label";
-import { FormPublishToggle } from "@/components/ui/form-publish-toggle";
+import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
+import {
+  FORM_SWITCH_HINT,
+  FORM_SWITCH_LABEL,
+} from "@/constants/dashboard-form-copy";
 import {
   Form,
   FormControl,
@@ -215,15 +219,17 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           name="is_active"
           render={({ field }) => (
             <FormItem>
-              <FormControl>
-                <FormPublishToggle
+              <FieldControl
+                hint={FORM_SWITCH_HINT.storefrontVisible}
+                hintId="combo-storefront-visible-hint"
+                label={FORM_SWITCH_LABEL.storefrontVisible}
+                variant="switch"
+              >
+                <FormPublishSwitch
                   checked={field.value}
-                  description="When on, customers can see and order this combo."
-                  id="combo-is-active"
-                  label="Active"
                   onCheckedChange={field.onChange}
                 />
-              </FormControl>
+              </FieldControl>
               <FormMessage />
             </FormItem>
           )}

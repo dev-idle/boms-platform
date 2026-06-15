@@ -16,6 +16,7 @@ import {
   DashboardTableRowActions,
 } from "@/components/ui/dashboard-table-actions";
 import { EntityActivePill } from "@/components/ui/status-pill";
+import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -29,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 import { useCategories, useDeleteCategory } from "../hooks";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 
 export function ManagerCategoriesTable() {
   const {
@@ -78,89 +79,104 @@ export function ManagerCategoriesTable() {
       />
 
       <div className="dashboard-page-body">
-      <DashboardSearchField
-        onChange={setInput}
-        onClear={clear}
-        placeholder="Search name or slug"
-        value={input}
-      />
+        <div className="db-table-filters">
+          <DashboardSearchField
+            onChange={setInput}
+            onClear={clear}
+            placeholder="Search name or slug"
+            value={input}
+          />
+        </div>
 
-      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table db-table--comfortable">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Slug</th>
-              <th>Order</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {initialLoad ? (
+        <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+          <table className="db-table db-table--categories db-table--comfortable">
+            <colgroup>
+              <col className="db-table-col-name" />
+              <col className="db-table-col-slug" />
+              <col className="db-table-col-order" />
+              <col className="db-table-col-status" />
+              <col className="db-table-col-actions" />
+            </colgroup>
+            <thead>
               <tr>
-                <td className="db-table-empty-cell" colSpan={5}>
-                  Loading categories…
-                </td>
+                <th>Name</th>
+                <th>Slug</th>
+                <th className="db-table-cell-order">Order</th>
+                <th className="db-table-status">Status</th>
+                <th className="db-table-detail">Actions</th>
               </tr>
-            ) : query.isError ? (
-              <tr>
-                <td className="db-table-empty-cell text-error" colSpan={5}>
-                  Failed to load categories.
-                </td>
-              </tr>
-            ) : categories.length === 0 ? (
-              <tr>
-                <td className="db-table-empty-cell" colSpan={5}>
-                  No categories found.
-                </td>
-              </tr>
-            ) : (
-              categories.map((category) => (
-                <tr key={category.id}>
-                  <td className="db-table-cell-primary">{category.name}</td>
-                  <td className="text-muted">{category.slug}</td>
-                  <td className="text-tabular">{category.sort_order}</td>
-                  <td>
-                    <EntityActivePill active={category.is_active} />
-                  </td>
-                  <td>
-                    <DashboardTableRowActions>
-                      <DashboardTableEditLink
-                        href={ROUTE.manager.categoryDetail(category.id)}
-                        label={`Edit ${category.name}`}
-                      />
-                      <DashboardTableDeleteButton
-                        label={`Delete ${category.name}`}
-                        onClick={() =>
-                          setDeleteTarget({
-                            id: category.id,
-                            name: category.name,
-                          })
-                        }
-                      />
-                    </DashboardTableRowActions>
+            </thead>
+            <tbody>
+              {initialLoad ? (
+                <tr>
+                  <td className="db-table-empty-cell" colSpan={5}>
+                    Loading categories…
                   </td>
                 </tr>
-              ))
-            )}
-            <DashboardTablePagePlaceholders
-              columnCount={5}
-              count={pagePlaceholderCount}
-            />
-          </tbody>
-        </table>
-        {pagination ? (
+              ) : query.isError ? (
+                <tr>
+                  <td className="db-table-empty-cell text-error" colSpan={5}>
+                    Failed to load categories.
+                  </td>
+                </tr>
+              ) : categories.length === 0 ? (
+                <tr>
+                  <td className="db-table-empty-cell" colSpan={5}>
+                    {search
+                      ? "No categories match your search."
+                      : "No categories found."}
+                  </td>
+                </tr>
+              ) : (
+                categories.map((category) => (
+                  <tr key={category.id}>
+                    <td className="db-table-cell-primary">{category.name}</td>
+                    <td
+                      className="db-table-cell-truncate text-muted"
+                      title={category.slug}
+                    >
+                      {category.slug}
+                    </td>
+                    <td className="db-table-cell-order">{category.sort_order}</td>
+                    <td className="db-table-status">
+                      <EntityActivePill active={category.is_active} />
+                    </td>
+                    <td className="db-table-detail">
+                      <DashboardTableRowActions>
+                        <DashboardTableEditLink
+                          href={ROUTE.manager.categoryDetail(category.id)}
+                          label={`Edit ${category.name}`}
+                        />
+                        <DashboardTableDeleteButton
+                          label={`Delete ${category.name}`}
+                          onClick={() =>
+                            setDeleteTarget({
+                              id: category.id,
+                              name: category.name,
+                            })
+                          }
+                        />
+                      </DashboardTableRowActions>
+                    </td>
+                  </tr>
+                ))
+              )}
+              <DashboardTablePagePlaceholders
+                columnCount={5}
+                count={pagePlaceholderCount}
+              />
+            </tbody>
+          </table>
           <DashboardTablePagination
             disabled={query.isFetching}
+            itemLabel="categories"
             onPageChange={setPage}
-            page={pagination.page}
-            pageSize={pagination.page_size}
-            totalItems={pagination.total}
-            totalPages={pagination.total_pages}
+            page={pagination?.page ?? page}
+            pageSize={pagination?.page_size ?? PAGE_SIZE}
+            totalItems={pagination?.total ?? categories.length}
+            totalPages={pagination?.total_pages ?? 1}
           />
-        ) : null}
-      </div>
+        </div>
       </div>
 
       <ConfirmDialog

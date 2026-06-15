@@ -1,0 +1,95 @@
+/* Tailwind v4 @theme bridge — do not duplicate in tailwind.config.ts. */
+
+@theme inline {
+  --color-bg: var(--theme-bg);
+  --color-surface: var(--theme-surface);
+  --color-mint: var(--color-mint);
+  --color-border: var(--theme-border);
+  --color-ink: var(--theme-ink);
+  --color-ink-2: var(--theme-ink-2);
+  --color-muted: var(--theme-muted);
+
+  --color-matcha-100: var(--color-matcha-100);
+  --color-matcha-200: var(--color-matcha-200);
+  --color-matcha-300: var(--color-matcha-300);
+  --color-matcha-500: var(--color-matcha-500);
+  --color-matcha-600: var(--color-matcha-600);
+  --color-matcha-700: var(--color-matcha-700);
+
+  --color-gold-100: var(--color-gold-100);
+  --color-gold-500: var(--color-gold-500);
+  --color-gold-700: var(--color-gold-700);
+
+  --color-db-bg: var(--color-db-bg);
+  --color-db-surface: var(--color-db-surface);
+  --color-db-border: var(--color-db-border);
+  --color-db-row: var(--color-db-row);
+  --color-db-ink: var(--color-db-ink);
+  --color-db-muted: var(--color-db-muted);
+  --color-db-accent: var(--color-db-accent);
+  --color-db-accent-hover: var(--color-db-accent-hover);
+  --color-db-accent-soft: var(--color-db-accent-soft);
+
+  --color-status-pending-bg: var(--color-status-pending-bg);
+  --color-status-pending-fg: var(--color-status-pending-fg);
+  --color-status-confirmed-bg: var(--color-status-confirmed-bg);
+  --color-status-confirmed-fg: var(--color-status-confirmed-fg);
+  --color-status-in-progress-bg: var(--color-status-in-progress-bg);
+  --color-status-in-progress-fg: var(--color-status-in-progress-fg);
+  --color-status-ready-bg: var(--color-status-ready-bg);
+  --color-status-ready-fg: var(--color-status-ready-fg);
+  --color-status-completed-bg: var(--color-status-completed-bg);
+  --color-status-completed-fg: var(--color-status-completed-fg);
+  --color-status-cancelled-bg: var(--color-status-cancelled-bg);
+  --color-status-cancelled-fg: var(--color-status-cancelled-fg);
+
+  /* Semantic aliases (components use these) */
+  --color-foreground: var(--theme-ink);
+  --color-subtle: var(--theme-muted);
+  --color-surface-alt: var(--theme-surface-alt);
+  --color-border-strong: var(--theme-border);
+
+  --color-primary: var(--theme-primary);
+  --color-primary-hover: var(--theme-primary-hover);
+  --color-primary-active: var(--theme-primary-active);
+  --color-primary-foreground: var(--theme-on-primary);
+  --color-primary-subtle: var(--theme-primary-subtle);
+  --color-on-primary: var(--theme-on-primary);
+
+  --color-accent: var(--theme-accent);
+  --color-accent-soft: var(--theme-accent-soft);
+
+  --color-success: var(--color-success);
+  --color-success-bg: var(--color-success-bg);
+  --color-warning: var(--color-warning);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-bg);
+  --color-danger-text: var(--color-danger-text);
+  --color-error: var(--color-danger);
+  --color-error-bg: var(--color-danger-bg);
+  --color-info: var(--color-info);
+  --color-info-bg: var(--color-info-bg);
+
+  --radius-card: var(--radius-card);
+  --radius-modal: var(--radius-modal);
+  --radius-input: var(--radius-input);
+  --radius-sm: var(--radius-input);
+  --radius-md: var(--radius-card);
+  --radius-lg: var(--radius-modal);
+  --radius-button: var(--radius-button);
+
+  --shadow-rest: var(--shadow-rest);
+  --shadow-hover: var(--shadow-hover);
+
+  --ease-default: var(--ease-luxury);
+  --default-transition-duration: var(--duration-standard);
+  --duration-micro: var(--duration-micro);
+  --duration-standard: var(--duration-standard);
+  --duration-page: var(--duration-page);
+
+  --font-display: var(--font-display), Georgia, serif;
+  --font-body: var(--font-body), system-ui, sans-serif;
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+}

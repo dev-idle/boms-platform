@@ -16,6 +16,7 @@ import {
   DashboardTableRowActions,
 } from "@/components/ui/dashboard-table-actions";
 import { EntityActivePill } from "@/components/ui/status-pill";
+import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -31,7 +32,7 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useCombos, useDeleteCombo } from "../hooks";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 
 export function ManagerCombosTable() {
   const {
@@ -80,14 +81,16 @@ export function ManagerCombosTable() {
       />
 
       <div className="dashboard-page-body">
-      <DashboardSearchField
-        onChange={setInput}
-        onClear={clear}
-        placeholder="Search name or slug"
-        value={input}
-      />
+        <div className="db-table-filters">
+          <DashboardSearchField
+            onChange={setInput}
+            onClear={clear}
+            placeholder="Search name or slug"
+            value={input}
+          />
+        </div>
 
-      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <div className={cn("db-table-wrap", refetching && "is-refetching")}>
         <table className="db-table db-table--comfortable">
           <thead>
             <tr>
@@ -95,8 +98,8 @@ export function ManagerCombosTable() {
               <th>Price</th>
               <th>Window</th>
               <th>Items</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="db-table-status">Status</th>
+              <th className="db-table-detail">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -115,7 +118,7 @@ export function ManagerCombosTable() {
             ) : combos.length === 0 ? (
               <tr>
                 <td className="db-table-empty-cell" colSpan={6}>
-                  No combos found.
+                  {search ? "No combos match your search." : "No combos found."}
                 </td>
               </tr>
             ) : (
@@ -129,10 +132,10 @@ export function ManagerCombosTable() {
                     {formatDateTime(combo.starts_at)} – {formatDateTime(combo.ends_at)}
                   </td>
                   <td className="text-tabular">{combo.items.length}</td>
-                  <td>
+                  <td className="db-table-status">
                     <EntityActivePill active={combo.is_active} />
                   </td>
-                  <td>
+                  <td className="db-table-detail">
                     <DashboardTableRowActions>
                       <DashboardTableEditLink
                         href={ROUTE.manager.comboDetail(combo.id)}
@@ -155,16 +158,15 @@ export function ManagerCombosTable() {
             />
           </tbody>
         </table>
-        {pagination ? (
-          <DashboardTablePagination
-            disabled={query.isFetching}
-            onPageChange={setPage}
-            page={pagination.page}
-            pageSize={pagination.page_size}
-            totalItems={pagination.total}
-            totalPages={pagination.total_pages}
-          />
-        ) : null}
+        <DashboardTablePagination
+          disabled={query.isFetching}
+          itemLabel="combos"
+          onPageChange={setPage}
+          page={pagination?.page ?? page}
+          pageSize={pagination?.page_size ?? PAGE_SIZE}
+          totalItems={pagination?.total ?? combos.length}
+          totalPages={pagination?.total_pages ?? 1}
+        />
       </div>
       </div>
 
