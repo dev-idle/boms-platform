@@ -7,11 +7,13 @@ import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
 import { DashboardTableRowActions } from "@/components/ui/dashboard-table-actions";
+import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import {
   formatOrderStatusLabel,
   orderStatusToPillVariant,
   StatusPill,
 } from "@/components/ui/status-pill";
+import { DASHBOARD_STAFF_ORDERS_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import {
@@ -25,7 +27,7 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 import { useStaffOrders } from "../hooks";
 import type { OrderStatus } from "../schemas";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DASHBOARD_STAFF_ORDERS_PAGE_SIZE;
 
 const STATUS_FILTERS: Array<{ value: OrderStatus | undefined; label: string }> = [
   { value: undefined, label: "All" },
@@ -59,8 +61,7 @@ export function StaffOrdersTable() {
 
   return (
     <div className="dashboard-page-body">
-      <div className="db-filter-row">
-        <span className="db-filter-label">Status</span>
+      <div className="db-table-filters">
         <DashboardFilterGroup
           aria-label="Filter by status"
           onChange={(next) => {
@@ -73,91 +74,81 @@ export function StaffOrdersTable() {
       </div>
 
       <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table db-table--relaxed">
+        <table className="db-table db-table--catalog db-table--relaxed">
           <thead>
             <tr>
               <th>Order</th>
               <th>Customer</th>
               <th>Placed</th>
               <th>Total</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="db-table-status">Status</th>
+              <th className="db-table-detail">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {initialLoad ? (
-              <tr>
-                <td className="db-table-empty-cell" colSpan={6}>
-                  Loading orders…
-                </td>
-              </tr>
-            ) : ordersQuery.isError ? (
-              <tr>
-                <td className="db-table-empty-cell text-error" colSpan={6}>
-                  Failed to load orders.
-                </td>
-              </tr>
-            ) : orders.length === 0 ? (
-              <tr>
-                <td className="db-table-empty-cell" colSpan={6}>
-                  No orders match this filter.
-                </td>
-              </tr>
-            ) : (
-              orders.map((order) => (
-                <tr key={order.id}>
-                  <td>
-                    <span className="text-order-code">{order.id.slice(0, 8)}</span>
-                  </td>
-                  <td>
-                    <div className="db-table-stacked-cell min-w-0">
-                      <span className="db-table-cell-primary truncate">
-                        {order.customer.display_name ?? order.customer.email}
-                      </span>
-                      {order.customer.display_name ? (
-                        <span className="truncate text-caption-dashboard text-muted">
-                          {order.customer.email}
+            <DashboardTableStateRows
+              columnCount={6}
+              emptyFilteredMessage="No orders match this filter."
+              entityLabel="orders"
+              hasActiveFilter={status !== undefined}
+              isEmpty={orders.length === 0}
+              isError={ordersQuery.isError}
+              isInitialLoad={initialLoad}
+            />
+            {!initialLoad && !ordersQuery.isError && orders.length > 0
+              ? orders.map((order) => (
+                  <tr key={order.id}>
+                    <td>
+                      <span className="text-order-code">{order.id.slice(0, 8)}</span>
+                    </td>
+                    <td>
+                      <div className="db-table-stacked-cell min-w-0">
+                        <span className="db-table-cell-primary truncate">
+                          {order.customer.display_name ?? order.customer.email}
                         </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="text-muted">{formatDateTime(order.created_at)}</td>
-                  <td className="db-table-cell-primary text-tabular">
-                    {formatPriceCents(order.total_cents)}
-                  </td>
-                  <td>
-                    <StatusPill
-                      label={formatOrderStatusLabel(order.status)}
-                      variant={orderStatusToPillVariant(order.status)}
-                    />
-                  </td>
-                  <td>
-                    <DashboardTableRowActions>
-                      <DashboardTableActionLink
-                        href={ROUTE.staff.orderDetail(order.id)}
-                        label={`View order ${order.id}`}
+                        {order.customer.display_name ? (
+                          <span className="truncate text-caption-dashboard text-muted">
+                            {order.customer.email}
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="text-muted">{formatDateTime(order.created_at)}</td>
+                    <td className="db-table-cell-primary text-tabular">
+                      {formatPriceCents(order.total_cents)}
+                    </td>
+                    <td className="db-table-status">
+                      <StatusPill
+                        label={formatOrderStatusLabel(order.status)}
+                        variant={orderStatusToPillVariant(order.status)}
                       />
-                    </DashboardTableRowActions>
-                  </td>
-                </tr>
-              ))
-            )}
+                    </td>
+                    <td className="db-table-detail">
+                      <DashboardTableRowActions>
+                        <DashboardTableActionLink
+                          href={ROUTE.staff.orderDetail(order.id)}
+                          label={`View order ${order.id}`}
+                        />
+                      </DashboardTableRowActions>
+                    </td>
+                  </tr>
+                ))
+              : null}
             <DashboardTablePagePlaceholders
               columnCount={6}
               count={pagePlaceholderCount}
             />
           </tbody>
         </table>
-        {pagination ? (
-          <DashboardTablePagination
-            disabled={ordersQuery.isFetching}
-            onPageChange={setPage}
-            page={pagination.page}
-            pageSize={pagination.page_size}
-            totalItems={pagination.total}
-            totalPages={pagination.total_pages}
-          />
-        ) : null}
+        <DashboardTablePagination
+          disabled={ordersQuery.isFetching}
+          itemLabel="orders"
+          onPageChange={setPage}
+          page={pagination?.page ?? page}
+          pageSize={pagination?.page_size ?? PAGE_SIZE}
+          totalItems={pagination?.total ?? orders.length}
+          totalPages={pagination?.total_pages ?? 1}
+        />
       </div>
     </div>
   );

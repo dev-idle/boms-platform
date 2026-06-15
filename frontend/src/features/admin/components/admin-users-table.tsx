@@ -11,8 +11,12 @@ import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import { Button } from "@/components/ui/button";
-import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
+import {
+  DASHBOARD_TABLE_PAGE_SIZE,
+  dashboardTableEmptyFiltersMessage,
+} from "@/constants/dashboard-table";
 import { USER_ROLE, roleDisplayLabel } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
@@ -101,7 +105,7 @@ export function AdminUsersTable() {
       <DashboardPageHeader
         actions={
           <Link href={ROUTE.admin.usersNew}>
-            <Button type="button">New User</Button>
+            <Button type="button">New user</Button>
           </Link>
         }
         description="Manage operational users and account status."
@@ -109,25 +113,25 @@ export function AdminUsersTable() {
       />
 
       <div className="dashboard-page-body">
-      <div className="db-table-filters">
-        <DashboardSearchField
-          onChange={setInput}
-          onClear={clear}
-          placeholder="Search email, name, employee code"
-          value={input}
-        />
-        <DashboardFilterGroup
-          aria-label="Filter by role"
-          onChange={(next) => {
-            setRole(next);
-            setPage(1);
-          }}
-          options={ROLE_FILTERS}
-          value={role}
-        />
-      </div>
+        <div className="db-table-filters">
+          <DashboardSearchField
+            onChange={setInput}
+            onClear={clear}
+            placeholder="Search email, name, employee code"
+            value={input}
+          />
+          <DashboardFilterGroup
+            aria-label="Filter by role"
+            onChange={(next) => {
+              setRole(next);
+              setPage(1);
+            }}
+            options={ROLE_FILTERS}
+            value={role}
+          />
+        </div>
 
-      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <div className={cn("db-table-wrap", refetching && "is-refetching")}>
         <table className="db-table db-table--admin-users db-table--comfortable">
           <colgroup>
             <col className="db-table-col-email" />
@@ -148,28 +152,17 @@ export function AdminUsersTable() {
             </tr>
           </thead>
           <tbody>
-            {initialLoad ? (
-              <tr>
-                <td className="db-table-empty-cell" colSpan={6}>
-                  Loading users…
-                </td>
-              </tr>
-            ) : usersQuery.isError ? (
-              <tr>
-                <td className="db-table-empty-cell text-error" colSpan={6}>
-                  Failed to load users.
-                </td>
-              </tr>
-            ) : users.length === 0 ? (
-              <tr>
-                <td className="db-table-empty-cell" colSpan={6}>
-                  {search || role
-                    ? "No users match your filters."
-                    : "No users found."}
-                </td>
-              </tr>
-            ) : (
-              users.map((user) => {
+            <DashboardTableStateRows
+              columnCount={6}
+              emptyFilteredMessage={dashboardTableEmptyFiltersMessage("users")}
+              entityLabel="users"
+              hasActiveFilter={Boolean(search || role)}
+              isEmpty={users.length === 0}
+              isError={usersQuery.isError}
+              isInitialLoad={initialLoad}
+            />
+            {!initialLoad && !usersQuery.isError && users.length > 0
+              ? users.map((user) => {
                 const listName = adminUserListName(user);
                 return (
                 <tr key={user.id}>
@@ -220,7 +213,7 @@ export function AdminUsersTable() {
                 </tr>
                 );
               })
-            )}
+              : null}
             <DashboardTablePagePlaceholders
               columnCount={6}
               count={pagePlaceholderCount}
@@ -236,7 +229,7 @@ export function AdminUsersTable() {
           totalItems={pagination?.total ?? users.length}
           totalPages={pagination?.total_pages ?? 1}
         />
-      </div>
+        </div>
       </div>
 
       <ConfirmDialog

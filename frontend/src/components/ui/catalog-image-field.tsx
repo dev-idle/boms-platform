@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { DashboardImageUploadIcon } from "@/components/icons/dashboard-ui-icons";
 import { CATALOG_IMAGE_FIELD_COPY } from "@/constants/dashboard-form-copy";
 import { isApiError } from "@/lib/errors";
 import {
@@ -12,6 +11,11 @@ import {
   CLOUDINARY_MAX_IMAGE_BYTES,
   isCloudinaryConfigured,
 } from "@/lib/cloudinary/config";
+import { cloudinaryDeliveryFileLabel } from "@/lib/cloudinary/format";
+import {
+  CLOUDINARY_UPLOAD_COPY,
+  cloudinaryImageTooLargeMessage,
+} from "@/lib/cloudinary/messages";
 import { fetchCloudinaryUploadSignature } from "@/lib/cloudinary/signature";
 import { uploadImageToCloudinary } from "@/lib/cloudinary/upload";
 import { cn } from "@/lib/utils";
@@ -29,10 +33,16 @@ export function CatalogImageField({
 }: CatalogImageFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   if (!isCloudinaryConfigured()) {
     return null;
   }
+
+  const displayFileName = value
+    ? (uploadedFileName ?? cloudinaryDeliveryFileLabel(value))
+    : null;
+  const isDisabled = disabled || isUploading;
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -41,11 +51,11 @@ export function CatalogImageField({
       return;
     }
     if (!CLOUDINARY_ALLOWED_IMAGE_TYPES.includes(file.type as (typeof CLOUDINARY_ALLOWED_IMAGE_TYPES)[number])) {
-      toast.error("Use JPG, PNG, WebP, or AVIF");
+      toast.error(CLOUDINARY_UPLOAD_COPY.allowedFormats);
       return;
     }
     if (file.size > CLOUDINARY_MAX_IMAGE_BYTES) {
-      toast.error("Image must be 5 MB or smaller");
+      toast.error(cloudinaryImageTooLargeMessage(CLOUDINARY_MAX_IMAGE_BYTES));
       return;
     }
 
@@ -53,83 +63,105 @@ export function CatalogImageField({
     try {
       const signature = await fetchCloudinaryUploadSignature();
       const secureUrl = await uploadImageToCloudinary(file, signature);
+      setUploadedFileName(file.name);
       onChange(secureUrl);
-      toast.success("Image uploaded");
+      toast.success(CLOUDINARY_UPLOAD_COPY.uploadSuccess);
     } catch (error) {
-      if (isApiError(error)) {
-        toast.error(error.message);
-      } else if (error instanceof Error && error.message) {
-        toast.error(error.message);
-      } else {
-        toast.error("Failed to upload image");
-      }
+      const message = isApiError(error)
+        ? error.message
+        : error instanceof Error && error.message
+          ? error.message
+          : CLOUDINARY_UPLOAD_COPY.uploadFailed;
+      toast.error(message);
     } finally {
       setIsUploading(false);
     }
   }
 
+  function handleRemove(): void {
+    setUploadedFileName(null);
+    onChange(null);
+  }
+
+  function openFilePicker(): void {
+    inputRef.current?.click();
+  }
+
   return (
-    <div className="catalog-image-field">
+    <div
+      className={cn(
+        "catalog-image-field",
+        isUploading && "catalog-image-field--uploading",
+        isDisabled && "catalog-image-field--disabled",
+      )}
+    >
       <input
         accept={CLOUDINARY_ALLOWED_IMAGE_TYPES.join(",")}
+        aria-label={CATALOG_IMAGE_FIELD_COPY.uploadAriaLabel}
         className="sr-only"
-        disabled={disabled || isUploading}
+        disabled={isDisabled}
         onChange={handleFileChange}
         ref={inputRef}
         type="file"
       />
-      {value ? (
-        <div className="catalog-image-field-preview">
-          {/* eslint-disable-next-line @next/next/no-img-element -- manager preview of external delivery URL */}
-          <img
-            alt="Product preview"
-            className="catalog-image-field-preview-img"
-            src={value}
-          />
-          <div className="catalog-image-field-actions">
+      <div className="catalog-image-field-row">
+        {displayFileName ? (
+          <>
+            <div
+              aria-label={CATALOG_IMAGE_FIELD_COPY.actionsAriaLabel}
+              className="catalog-image-field-actions"
+              role="toolbar"
+            >
+              <Button
+                disabled={isDisabled}
+                onClick={openFilePicker}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {isUploading
+                  ? CATALOG_IMAGE_FIELD_COPY.uploading
+                  : CATALOG_IMAGE_FIELD_COPY.replace}
+              </Button>
+              <Button
+                disabled={isDisabled}
+                onClick={handleRemove}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                {CATALOG_IMAGE_FIELD_COPY.remove}
+              </Button>
+            </div>
+            <span
+              className="catalog-image-field-name"
+              role="status"
+              title={displayFileName}
+            >
+              {displayFileName}
+            </span>
+          </>
+        ) : (
+          <>
             <Button
-              disabled={disabled || isUploading}
-              onClick={() => inputRef.current?.click()}
+              disabled={isDisabled}
+              onClick={openFilePicker}
+              size="sm"
               type="button"
               variant="outline"
             >
               {isUploading
                 ? CATALOG_IMAGE_FIELD_COPY.uploading
-                : CATALOG_IMAGE_FIELD_COPY.replace}
+                : CATALOG_IMAGE_FIELD_COPY.chooseFile}
             </Button>
-            <Button
-              disabled={disabled || isUploading}
-              onClick={() => onChange(null)}
-              type="button"
-              variant="ghost"
-            >
-              {CATALOG_IMAGE_FIELD_COPY.remove}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <button
-          aria-busy={isUploading}
-          aria-label={CATALOG_IMAGE_FIELD_COPY.uploadAriaLabel}
-          className={cn(
-            "catalog-image-field-dropzone",
-            isUploading && "catalog-image-field-dropzone--uploading",
-            (disabled || isUploading) && "catalog-image-field-dropzone--disabled",
-          )}
-          disabled={disabled || isUploading}
-          onClick={() => inputRef.current?.click()}
-          type="button"
-        >
-          <span className="catalog-image-field-dropzone-inner">
-            <DashboardImageUploadIcon className="catalog-image-field-dropzone-icon" />
-            <span className="catalog-image-field-dropzone-label">
+            <span className="catalog-image-field-status">
               {isUploading
                 ? CATALOG_IMAGE_FIELD_COPY.uploading
-                : CATALOG_IMAGE_FIELD_COPY.uploadPrompt}
+                : CATALOG_IMAGE_FIELD_COPY.noFile}
             </span>
-          </span>
-        </button>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

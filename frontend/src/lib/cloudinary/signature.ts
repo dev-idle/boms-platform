@@ -2,6 +2,12 @@ import { z } from "zod";
 
 import { browserRequest } from "@/lib/browser-api-client";
 
+import {
+  getCloudinaryCloudName,
+  getCloudinaryUploadFolder,
+} from "./config";
+import { CLOUDINARY_UPLOAD_COPY } from "./messages";
+
 export const cloudinaryUploadSignatureSchema = z.object({
   allowed_formats: z.string().min(1),
   api_key: z.string().min(1),
@@ -18,12 +24,29 @@ export type CloudinaryUploadSignature = z.infer<
   typeof cloudinaryUploadSignatureSchema
 >;
 
-export function fetchCloudinaryUploadSignature(): Promise<CloudinaryUploadSignature> {
-  return browserRequest<CloudinaryUploadSignature>(
+/** Ensures API signature targets match NEXT_PUBLIC_CLOUDINARY_* (fail-fast on env drift). */
+export function validateCloudinarySignatureEnv(
+  signature: CloudinaryUploadSignature,
+): void {
+  const cloudName = getCloudinaryCloudName();
+  if (cloudName && signature.cloud_name !== cloudName) {
+    throw new Error(CLOUDINARY_UPLOAD_COPY.cloudNameMismatch);
+  }
+
+  const folder = getCloudinaryUploadFolder();
+  if (signature.folder !== folder) {
+    throw new Error(CLOUDINARY_UPLOAD_COPY.folderMismatch);
+  }
+}
+
+export async function fetchCloudinaryUploadSignature(): Promise<CloudinaryUploadSignature> {
+  const signature = await browserRequest<CloudinaryUploadSignature>(
     "/api/v1/manager/media/cloudinary-signature",
     {
       method: "GET",
       schema: cloudinaryUploadSignatureSchema,
     },
   );
+  validateCloudinarySignatureEnv(signature);
+  return signature;
 }

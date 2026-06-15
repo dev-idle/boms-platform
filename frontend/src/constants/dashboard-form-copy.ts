@@ -12,7 +12,6 @@ export const FORM_FIELD_HINT = {
   catalogSlugCreate: "Auto-filled from name.",
   catalogSortOrder: "Lower values appear first.",
   operationalEmployeeCode: "Permanent staff ID. Assigned at creation.",
-  productImageCloudinary: "JPG, PNG, WebP, or AVIF up to 5 MB.",
   productImageUrlFallback: "Paste an HTTPS image URL when Cloudinary is not configured.",
 } as const;
 
@@ -28,11 +27,13 @@ export const FORM_SWITCH_HINT = {
   checkoutActive: "When off, cannot be applied at checkout.",
 } as const;
 
-/** Catalog image upload affordance — inside the dropzone, not FieldControl hints. */
+/** Catalog image upload — control copy; formats/size hint from `cloudinaryProductImageFieldHint()`. */
 export const CATALOG_IMAGE_FIELD_COPY = {
-  uploadAriaLabel: "Choose a product image to upload",
-  uploadPrompt: "Choose a product image",
-  uploading: "Uploading image…",
-  replace: "Replace image",
+  actionsAriaLabel: "Product image actions",
+  chooseFile: "Choose file",
+  noFile: "No file chosen",
+  uploadAriaLabel: "Choose a product image file",
+  uploading: "Uploading…",
+  replace: "Replace",
   remove: "Remove",
 } as const;

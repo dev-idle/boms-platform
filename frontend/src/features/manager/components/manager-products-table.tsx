@@ -10,6 +10,7 @@ import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import {
   DashboardTableDeleteButton,
   DashboardTableEditLink,
@@ -90,39 +91,27 @@ export function ManagerProductsTable() {
         </div>
 
         <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table db-table--comfortable">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Category</th>
-              <th>Price</th>
-              <th className="db-table-status">Status</th>
-              <th className="db-table-detail">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {initialLoad ? (
+          <table className="db-table db-table--catalog db-table--comfortable">
+            <thead>
               <tr>
-                <td className="db-table-empty-cell" colSpan={5}>
-                  Loading products…
-                </td>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th className="db-table-status">Status</th>
+                <th className="db-table-detail">Actions</th>
               </tr>
-            ) : query.isError ? (
-              <tr>
-                <td className="db-table-empty-cell text-error" colSpan={5}>
-                  Failed to load products.
-                </td>
-              </tr>
-            ) : products.length === 0 ? (
-              <tr>
-                <td className="db-table-empty-cell" colSpan={5}>
-                  {search
-                    ? "No products match your search."
-                    : "No products found."}
-                </td>
-              </tr>
-            ) : (
-              products.map((product) => (
+            </thead>
+            <tbody>
+              <DashboardTableStateRows
+                columnCount={5}
+                entityLabel="products"
+                hasActiveFilter={Boolean(search)}
+                isEmpty={products.length === 0}
+                isError={query.isError}
+                isInitialLoad={initialLoad}
+              />
+              {!initialLoad && !query.isError && products.length > 0
+                ? products.map((product) => (
                 <tr key={product.id}>
                   <td className="db-table-cell-primary">{product.name}</td>
                   <td className="text-muted">
@@ -155,23 +144,23 @@ export function ManagerProductsTable() {
                   </td>
                 </tr>
               ))
-            )}
-            <DashboardTablePagePlaceholders
-              columnCount={5}
-              count={pagePlaceholderCount}
-            />
-          </tbody>
-        </table>
-        <DashboardTablePagination
-          disabled={query.isFetching}
-          itemLabel="products"
-          onPageChange={setPage}
-          page={pagination?.page ?? page}
-          pageSize={pagination?.page_size ?? PAGE_SIZE}
-          totalItems={pagination?.total ?? products.length}
-          totalPages={pagination?.total_pages ?? 1}
-        />
-      </div>
+                : null}
+              <DashboardTablePagePlaceholders
+                columnCount={5}
+                count={pagePlaceholderCount}
+              />
+            </tbody>
+          </table>
+          <DashboardTablePagination
+            disabled={query.isFetching}
+            itemLabel="products"
+            onPageChange={setPage}
+            page={pagination?.page ?? page}
+            pageSize={pagination?.page_size ?? PAGE_SIZE}
+            totalItems={pagination?.total ?? products.length}
+            totalPages={pagination?.total_pages ?? 1}
+          />
+        </div>
       </div>
 
       <ConfirmDialog

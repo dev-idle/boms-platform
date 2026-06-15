@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -25,6 +24,7 @@ import {
 } from "@/constants/dashboard-form-copy";
 import { Select } from "@/components/ui/select";
 import { isCloudinaryConfigured } from "@/lib/cloudinary/config";
+import { cloudinaryProductImageFieldHint } from "@/lib/cloudinary/messages";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
@@ -63,6 +63,44 @@ const PRODUCT_FORM_FIELDS = [
 
 export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
   const pathname = usePathname();
+  const formKey = mode === "create" ? pathname : (product?.id ?? "edit");
+  const defaultValues =
+    mode === "create"
+      ? CREATE_PRODUCT_EMPTY_VALUES
+      : {
+          category_id: product?.category_id ?? "",
+          name: product?.name ?? "",
+          slug: product?.slug ?? "",
+          description: product?.description ?? null,
+          price_cents: product?.price_cents ?? 0,
+          is_available: product?.is_available ?? true,
+          image_url: product?.image_url ?? null,
+        };
+
+  return (
+    <ProductFormFields
+      key={formKey}
+      defaultValues={defaultValues}
+      mode={mode}
+      onSuccess={onSuccess}
+      product={product}
+    />
+  );
+}
+
+type ProductFormFieldsProps = {
+  defaultValues: ProductFormInput;
+  mode: "create" | "edit";
+  product?: ManagerProduct;
+  onSuccess?: () => void;
+};
+
+function ProductFormFields({
+  defaultValues,
+  mode,
+  product,
+  onSuccess,
+}: ProductFormFieldsProps) {
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct(product?.id ?? "");
   const categoriesQuery = useCategories({
@@ -72,27 +110,10 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
   });
   const categories = categoriesQuery.data?.categories ?? [];
 
-  const defaultValues: ProductFormInput = {
-    category_id: product?.category_id ?? "",
-    name: product?.name ?? "",
-    slug: product?.slug ?? "",
-    description: product?.description ?? null,
-    price_cents: product?.price_cents ?? 0,
-    is_available: product?.is_available ?? true,
-    image_url: product?.image_url ?? null,
-  };
-
   const form = useForm<ProductFormInput>({
     resolver: zodResolver(productFormSchema),
     defaultValues,
   });
-  const resetForm = form.reset;
-
-  useEffect(() => {
-    if (mode === "create") {
-      resetForm(CREATE_PRODUCT_EMPTY_VALUES);
-    }
-  }, [mode, pathname, resetForm]);
 
   function onSubmit(values: ProductFormInput): void {
     const mutation = mode === "create" ? createProduct : updateProduct;
@@ -150,7 +171,6 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           )}
         />
         <CatalogNameSlugFields
-          key={mode === "create" ? pathname : product?.id}
           control={form.control}
           mode={mode}
           namePlaceholder="Sourdough loaf"
@@ -198,7 +218,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
               <FieldControl
                 hint={
                   isCloudinaryConfigured()
-                    ? FORM_FIELD_HINT.productImageCloudinary
+                    ? cloudinaryProductImageFieldHint()
                     : FORM_FIELD_HINT.productImageUrlFallback
                 }
                 label="Product image"

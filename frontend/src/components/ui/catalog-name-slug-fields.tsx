@@ -49,10 +49,11 @@ export function CatalogNameSlugFields<T extends FieldValues & CatalogNameSlugVal
             <FieldControl label="Name">
               <Input
                 placeholder={namePlaceholder}
-                {...field}
-                onChange={(event) =>
-                  handleNameChange(event.target.value, field.onChange)
-                }
+                value={field.value ?? ""}
+                onBlur={field.onBlur}
+                name={field.name}
+                ref={field.ref}
+                onChange={(event) => handleNameChange(event.target.value)}
               />
             </FieldControl>
             <FormMessage />
@@ -72,10 +73,11 @@ export function CatalogNameSlugFields<T extends FieldValues & CatalogNameSlugVal
             >
               <Input
                 placeholder={slugPlaceholder}
-                {...field}
-                onChange={(event) =>
-                  handleSlugChange(event.target.value, field.onChange)
-                }
+                value={field.value ?? ""}
+                onBlur={field.onBlur}
+                name={field.name}
+                ref={field.ref}
+                onChange={(event) => handleSlugChange(event.target.value)}
               />
             </FieldControl>
             <FormMessage />

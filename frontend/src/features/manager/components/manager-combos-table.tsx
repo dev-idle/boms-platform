@@ -10,6 +10,7 @@ import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import {
   DashboardTableDeleteButton,
   DashboardTableEditLink,
@@ -91,38 +92,28 @@ export function ManagerCombosTable() {
         </div>
 
         <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table db-table--comfortable">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Price</th>
-              <th>Window</th>
-              <th>Items</th>
-              <th className="db-table-status">Status</th>
-              <th className="db-table-detail">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {initialLoad ? (
+          <table className="db-table db-table--catalog db-table--comfortable">
+            <thead>
               <tr>
-                <td className="db-table-empty-cell" colSpan={6}>
-                  Loading combos…
-                </td>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Window</th>
+                <th>Items</th>
+                <th className="db-table-status">Status</th>
+                <th className="db-table-detail">Actions</th>
               </tr>
-            ) : query.isError ? (
-              <tr>
-                <td className="db-table-empty-cell text-error" colSpan={6}>
-                  Failed to load combos.
-                </td>
-              </tr>
-            ) : combos.length === 0 ? (
-              <tr>
-                <td className="db-table-empty-cell" colSpan={6}>
-                  {search ? "No combos match your search." : "No combos found."}
-                </td>
-              </tr>
-            ) : (
-              combos.map((combo) => (
+            </thead>
+            <tbody>
+              <DashboardTableStateRows
+                columnCount={6}
+                entityLabel="combos"
+                hasActiveFilter={Boolean(search)}
+                isEmpty={combos.length === 0}
+                isError={query.isError}
+                isInitialLoad={initialLoad}
+              />
+              {!initialLoad && !query.isError && combos.length > 0
+                ? combos.map((combo) => (
                 <tr key={combo.id}>
                   <td className="db-table-cell-primary">{combo.name}</td>
                   <td className="text-tabular">
@@ -151,23 +142,23 @@ export function ManagerCombosTable() {
                   </td>
                 </tr>
               ))
-            )}
-            <DashboardTablePagePlaceholders
-              columnCount={6}
-              count={pagePlaceholderCount}
-            />
-          </tbody>
-        </table>
-        <DashboardTablePagination
-          disabled={query.isFetching}
-          itemLabel="combos"
-          onPageChange={setPage}
-          page={pagination?.page ?? page}
-          pageSize={pagination?.page_size ?? PAGE_SIZE}
-          totalItems={pagination?.total ?? combos.length}
-          totalPages={pagination?.total_pages ?? 1}
-        />
-      </div>
+                : null}
+              <DashboardTablePagePlaceholders
+                columnCount={6}
+                count={pagePlaceholderCount}
+              />
+            </tbody>
+          </table>
+          <DashboardTablePagination
+            disabled={query.isFetching}
+            itemLabel="combos"
+            onPageChange={setPage}
+            page={pagination?.page ?? page}
+            pageSize={pagination?.page_size ?? PAGE_SIZE}
+            totalItems={pagination?.total ?? combos.length}
+            totalPages={pagination?.total_pages ?? 1}
+          />
+        </div>
       </div>
 
       <ConfirmDialog

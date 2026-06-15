@@ -10,6 +10,7 @@ import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import {
   DashboardTableDeleteButton,
   DashboardTableEditLink,
@@ -102,40 +103,28 @@ export function ManagerDiscountCodesTable() {
         </div>
 
         <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-        <table className="db-table db-table--comfortable">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Value</th>
-              <th>Uses</th>
-              <th>Window</th>
-              <th className="db-table-status">Status</th>
-              <th className="db-table-detail">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {initialLoad ? (
+          <table className="db-table db-table--catalog db-table--comfortable">
+            <thead>
               <tr>
-                <td className="db-table-empty-cell" colSpan={6}>
-                  Loading discount codes…
-                </td>
+                <th>Code</th>
+                <th>Value</th>
+                <th>Uses</th>
+                <th>Window</th>
+                <th className="db-table-status">Status</th>
+                <th className="db-table-detail">Actions</th>
               </tr>
-            ) : query.isError ? (
-              <tr>
-                <td className="db-table-empty-cell text-error" colSpan={6}>
-                  Failed to load discount codes.
-                </td>
-              </tr>
-            ) : discountCodes.length === 0 ? (
-              <tr>
-                <td className="db-table-empty-cell" colSpan={6}>
-                  {search
-                    ? "No discount codes match your search."
-                    : "No discount codes found."}
-                </td>
-              </tr>
-            ) : (
-              discountCodes.map((discountCode) => (
+            </thead>
+            <tbody>
+              <DashboardTableStateRows
+                columnCount={6}
+                entityLabel="discount codes"
+                hasActiveFilter={Boolean(search)}
+                isEmpty={discountCodes.length === 0}
+                isError={query.isError}
+                isInitialLoad={initialLoad}
+              />
+              {!initialLoad && !query.isError && discountCodes.length > 0
+                ? discountCodes.map((discountCode) => (
                 <tr key={discountCode.id}>
                   <td className="db-table-cell-primary text-order-code">
                     {discountCode.code}
@@ -178,23 +167,23 @@ export function ManagerDiscountCodesTable() {
                   </td>
                 </tr>
               ))
-            )}
-            <DashboardTablePagePlaceholders
-              columnCount={6}
-              count={pagePlaceholderCount}
-            />
-          </tbody>
-        </table>
-        <DashboardTablePagination
-          disabled={query.isFetching}
-          itemLabel="discount codes"
-          onPageChange={setPage}
-          page={pagination?.page ?? page}
-          pageSize={pagination?.page_size ?? PAGE_SIZE}
-          totalItems={pagination?.total ?? discountCodes.length}
-          totalPages={pagination?.total_pages ?? 1}
-        />
-      </div>
+                : null}
+              <DashboardTablePagePlaceholders
+                columnCount={6}
+                count={pagePlaceholderCount}
+              />
+            </tbody>
+          </table>
+          <DashboardTablePagination
+            disabled={query.isFetching}
+            itemLabel="discount codes"
+            onPageChange={setPage}
+            page={pagination?.page ?? page}
+            pageSize={pagination?.page_size ?? PAGE_SIZE}
+            totalItems={pagination?.total ?? discountCodes.length}
+            totalPages={pagination?.total_pages ?? 1}
+          />
+        </div>
       </div>
 
       <ConfirmDialog

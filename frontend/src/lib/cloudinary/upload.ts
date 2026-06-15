@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getCloudinaryCloudName, isCloudinaryDeliveryUrlInFolder } from "./config";
+import { CLOUDINARY_UPLOAD_COPY, cloudinaryImageTooLargeMessage } from "./messages";
 import type { CloudinaryUploadSignature } from "./signature";
 
 function cloudinaryUploadResultSchema(maxBytes: number) {
@@ -15,7 +16,7 @@ export async function uploadImageToCloudinary(
   signature: CloudinaryUploadSignature,
 ): Promise<string> {
   if (file.size > signature.max_bytes) {
-    throw new Error("Image must be 5 MB or smaller");
+    throw new Error(cloudinaryImageTooLargeMessage(signature.max_bytes));
   }
 
   const formData = new FormData();
@@ -26,6 +27,7 @@ export async function uploadImageToCloudinary(
   formData.append("folder", signature.folder);
   formData.append("allowed_formats", signature.allowed_formats);
   formData.append("unique_filename", signature.unique_filename);
+  formData.append("max_file_size", String(signature.max_bytes));
 
   const response = await fetch(signature.upload_url, {
     method: "POST",
@@ -33,13 +35,13 @@ export async function uploadImageToCloudinary(
   });
 
   if (!response.ok) {
-    throw new Error("Image upload failed");
+    throw new Error(CLOUDINARY_UPLOAD_COPY.uploadFailedRemote);
   }
 
   const payload: unknown = await response.json();
   const parsed = cloudinaryUploadResultSchema(signature.max_bytes).safeParse(payload);
   if (!parsed.success) {
-    throw new Error("Image upload returned an invalid response");
+    throw new Error(CLOUDINARY_UPLOAD_COPY.uploadInvalidResponse);
   }
 
   const cloudName = getCloudinaryCloudName();
@@ -47,7 +49,7 @@ export async function uploadImageToCloudinary(
     cloudName &&
     !isCloudinaryDeliveryUrlInFolder(parsed.data.secure_url, signature.folder, cloudName)
   ) {
-    throw new Error("Uploaded image URL is not allowed");
+    throw new Error(CLOUDINARY_UPLOAD_COPY.uploadUrlNotAllowed);
   }
 
   return parsed.data.secure_url;

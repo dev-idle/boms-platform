@@ -20,29 +20,23 @@ export function useCatalogSlugSync<T extends FieldValues & CatalogSlugFormValues
 ) {
   const slugManualRef = useRef(mode === "edit");
 
-  function handleNameChange(
-    value: string,
-    fieldOnChange: (next: string) => void,
-  ): void {
-    fieldOnChange(value);
+  function writeField(name: FieldPath<T>, value: string): void {
+    setValue(name, value as T[FieldPath<T>], {
+      shouldDirty: true,
+      shouldValidate: false,
+    });
+  }
+
+  function handleNameChange(value: string): void {
+    writeField("name" as FieldPath<T>, value);
     if (!slugManualRef.current) {
-      setValue(
-        "slug" as FieldPath<T>,
-        slugifyCatalogName(value) as T[FieldPath<T>],
-        {
-          shouldDirty: true,
-          shouldValidate: true,
-        },
-      );
+      writeField("slug" as FieldPath<T>, slugifyCatalogName(value));
     }
   }
 
-  function handleSlugChange(
-    value: string,
-    fieldOnChange: (next: string) => void,
-  ): void {
+  function handleSlugChange(value: string): void {
     slugManualRef.current = true;
-    fieldOnChange(value);
+    writeField("slug" as FieldPath<T>, value);
   }
 
   return { handleNameChange, handleSlugChange };

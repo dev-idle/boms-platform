@@ -10,6 +10,7 @@ import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import {
   DashboardTableDeleteButton,
   DashboardTableEditLink,
@@ -89,7 +90,7 @@ export function ManagerCategoriesTable() {
         </div>
 
         <div className={cn("db-table-wrap", refetching && "is-refetching")}>
-          <table className="db-table db-table--categories db-table--comfortable">
+          <table className="db-table db-table--catalog db-table--categories db-table--comfortable">
             <colgroup>
               <col className="db-table-col-name" />
               <col className="db-table-col-slug" />
@@ -107,28 +108,16 @@ export function ManagerCategoriesTable() {
               </tr>
             </thead>
             <tbody>
-              {initialLoad ? (
-                <tr>
-                  <td className="db-table-empty-cell" colSpan={5}>
-                    Loading categories…
-                  </td>
-                </tr>
-              ) : query.isError ? (
-                <tr>
-                  <td className="db-table-empty-cell text-error" colSpan={5}>
-                    Failed to load categories.
-                  </td>
-                </tr>
-              ) : categories.length === 0 ? (
-                <tr>
-                  <td className="db-table-empty-cell" colSpan={5}>
-                    {search
-                      ? "No categories match your search."
-                      : "No categories found."}
-                  </td>
-                </tr>
-              ) : (
-                categories.map((category) => (
+              <DashboardTableStateRows
+                columnCount={5}
+                entityLabel="categories"
+                hasActiveFilter={Boolean(search)}
+                isEmpty={categories.length === 0}
+                isError={query.isError}
+                isInitialLoad={initialLoad}
+              />
+              {!initialLoad && !query.isError && categories.length > 0
+                ? categories.map((category) => (
                   <tr key={category.id}>
                     <td className="db-table-cell-primary">{category.name}</td>
                     <td
@@ -160,7 +149,7 @@ export function ManagerCategoriesTable() {
                     </td>
                   </tr>
                 ))
-              )}
+                : null}
               <DashboardTablePagePlaceholders
                 columnCount={5}
                 count={pagePlaceholderCount}

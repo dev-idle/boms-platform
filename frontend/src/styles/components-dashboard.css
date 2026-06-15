@@ -1180,10 +1180,34 @@
     width: var(--db-table-col-revoke);
   }
 
-  .db-table--categories {
-    --db-table-col-order: 5.5rem;
+  .db-table--catalog {
     --db-table-col-status-pill: 9rem;
     --db-table-col-actions-pair: 8.25rem;
+  }
+
+  .db-table--catalog .db-table-status,
+  .db-table--catalog .db-table-detail,
+  .db-table--catalog thead .db-table-status,
+  .db-table--catalog thead .db-table-detail {
+    padding-inline: 1.5rem;
+  }
+
+  .db-table--catalog .db-table-status {
+    width: var(--db-table-col-status-pill);
+  }
+
+  .db-table--catalog .db-table-detail {
+    width: var(--db-table-col-actions-pair);
+  }
+
+  .db-table--catalog .db-table-row-actions {
+    flex-wrap: nowrap;
+    gap: var(--db-space-2);
+    justify-content: center;
+  }
+
+  .db-table--categories {
+    --db-table-col-order: 5.5rem;
     --db-table-categories-fixed-cols: calc(
       var(--db-table-col-order) + var(--db-table-col-status-pill) + var(--db-table-col-actions-pair)
     );
@@ -1221,19 +1245,6 @@
     padding-inline: 1.125rem 1.5rem;
     text-align: center;
     white-space: nowrap;
-  }
-
-  .db-table--categories .db-table-status,
-  .db-table--categories .db-table-detail,
-  .db-table--categories thead .db-table-status,
-  .db-table--categories thead .db-table-detail {
-    padding-inline: 1.5rem;
-  }
-
-  .db-table--categories .db-table-row-actions {
-    flex-wrap: nowrap;
-    gap: var(--db-space-2);
-    justify-content: center;
   }
 
   .db-table--admin-users .db-table-cell-email,
@@ -1353,7 +1364,6 @@
 
   .db-table .text-tabular {
     font-variant-numeric: tabular-nums;
-    text-align: right;
   }
 
   .text-order-code {
