@@ -14,7 +14,6 @@ type CreateProductParams struct {
 	Description *string
 	PriceCents  int64
 	IsAvailable bool
-	ImageURL    *string
 }
 
 type UpdateProductParams struct {
@@ -25,7 +24,6 @@ type UpdateProductParams struct {
 	Description *string
 	PriceCents  int64
 	IsAvailable bool
-	ImageURL    *string
 }
 
 type ManagerListProductsParams struct {
@@ -54,7 +52,6 @@ type CatalogListProduct struct {
 	Slug         string
 	Description  *string
 	PriceCents   int64
-	ImageURL     *string
 	CategoryName string
 	CategorySlug string
 }
@@ -71,4 +68,7 @@ type ProductRepository interface {
 	CatalogListCount(ctx context.Context, categoryID *uuid.UUID, search *string) (int64, error)
 	CatalogGetByID(ctx context.Context, id uuid.UUID) (*CatalogListProduct, error)
 	CatalogGetByIDs(ctx context.Context, ids []uuid.UUID) ([]CatalogListProduct, error)
+	ReplaceProductImages(ctx context.Context, productID uuid.UUID, imageURLs []string) error
+	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]string, error)
+	ListProductImagesByProductIDs(ctx context.Context, productIDs []uuid.UUID) (map[uuid.UUID][]string, error)
 }

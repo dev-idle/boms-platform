@@ -296,10 +296,18 @@ type Product struct {
 	Description sql.NullString `db:"description" json:"description"`
 	PriceCents  int64          `db:"price_cents" json:"priceCents"`
 	IsAvailable bool           `db:"is_available" json:"isAvailable"`
-	ImageUrl    sql.NullString `db:"image_url" json:"imageUrl"`
 	CreatedAt   time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updatedAt"`
 	DeletedAt   sql.NullTime   `db:"deleted_at" json:"deletedAt"`
+}
+
+type ProductImage struct {
+	ID        uuid.UUID `db:"id" json:"id"`
+	ProductID uuid.UUID `db:"product_id" json:"productId"`
+	SortOrder int16     `db:"sort_order" json:"sortOrder"`
+	ImageUrl  string    `db:"image_url" json:"imageUrl"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 type StaffProfile struct {

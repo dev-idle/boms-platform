@@ -23,7 +23,7 @@ describe("cloudinaryImageTooLargeMessage", () => {
 describe("cloudinaryProductImageFieldHint", () => {
   it("uses the configured max image size", () => {
     expect(cloudinaryProductImageFieldHint(5 * 1024 * 1024)).toBe(
-      "JPG, PNG, WebP, or AVIF up to 5 MB.",
+      "JPG, PNG, WebP, or AVIF up to 5 MB each (max 5 images).",
     );
   });
 });

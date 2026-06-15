@@ -89,7 +89,7 @@ func main() {
 	discountCodeRepo := postgresrepo.NewDiscountCodeRepository(pgPool)
 	managerCategoryUC := usecase.NewManagerCategoryUsecase(categoryRepo, auditLogger, zlog)
 	managerMediaUC := usecase.NewManagerMediaUsecase(cfg.Cloudinary)
-	managerProductUC := usecase.NewManagerProductUsecase(productRepo, categoryRepo, auditLogger, cfg.Cloudinary, zlog)
+	managerProductUC := usecase.NewManagerProductUsecase(productRepo, categoryRepo, pgPool, auditLogger, cfg.Cloudinary, zlog)
 	managerComboUC := usecase.NewManagerComboUsecase(comboRepo, pgPool, auditLogger, zlog)
 	managerDiscountCodeUC := usecase.NewManagerDiscountCodeUsecase(discountCodeRepo, auditLogger, zlog)
 	catalogUC := usecase.NewCatalogUsecase(categoryRepo, productRepo, comboRepo)

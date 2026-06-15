@@ -1,10 +1,10 @@
 -- name: CreateProduct :one
-INSERT INTO products (category_id, name, slug, description, price_cents, is_available, image_url)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at;
+INSERT INTO products (category_id, name, slug, description, price_cents, is_available)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at;
 
 -- name: GetProductByID :one
-SELECT id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+SELECT id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 FROM products
 WHERE id = $1
   AND deleted_at IS NULL;
@@ -18,7 +18,6 @@ SELECT
     p.description,
     p.price_cents,
     p.is_available,
-    p.image_url,
     p.created_at,
     p.updated_at,
     p.deleted_at,
@@ -36,11 +35,10 @@ SET category_id  = $2,
     description  = $5,
     price_cents  = $6,
     is_available = $7,
-    image_url    = $8,
     updated_at   = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at;
+RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at;
 
 -- name: SoftDeleteProduct :execrows
 UPDATE products
@@ -58,7 +56,6 @@ SELECT
     p.description,
     p.price_cents,
     p.is_available,
-    p.image_url,
     p.created_at,
     p.updated_at,
     p.deleted_at,
@@ -100,7 +97,6 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.image_url,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -143,7 +139,6 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.image_url,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -160,7 +155,6 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.image_url,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p

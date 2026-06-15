@@ -15,7 +15,6 @@ type Product struct {
 	Description *string
 	PriceCents  int64
 	IsAvailable bool
-	ImageURL    *string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   *time.Time

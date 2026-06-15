@@ -22,7 +22,6 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.image_url,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -39,7 +38,6 @@ type CatalogGetProductByIDRow struct {
 	Slug         string         `db:"slug" json:"slug"`
 	Description  sql.NullString `db:"description" json:"description"`
 	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	ImageUrl     sql.NullString `db:"image_url" json:"imageUrl"`
 	CategoryName string         `db:"category_name" json:"categoryName"`
 	CategorySlug string         `db:"category_slug" json:"categorySlug"`
 }
@@ -53,7 +51,6 @@ type CatalogGetProductByIDRow struct {
 //	    p.slug,
 //	    p.description,
 //	    p.price_cents,
-//	    p.image_url,
 //	    c.name AS category_name,
 //	    c.slug AS category_slug
 //	FROM products p
@@ -71,7 +68,6 @@ func (q *Queries) CatalogGetProductByID(ctx context.Context, id uuid.UUID) (Cata
 		&i.Slug,
 		&i.Description,
 		&i.PriceCents,
-		&i.ImageUrl,
 		&i.CategoryName,
 		&i.CategorySlug,
 	)
@@ -86,7 +82,6 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.image_url,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -103,7 +98,6 @@ type CatalogGetProductsByIDsRow struct {
 	Slug         string         `db:"slug" json:"slug"`
 	Description  sql.NullString `db:"description" json:"description"`
 	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	ImageUrl     sql.NullString `db:"image_url" json:"imageUrl"`
 	CategoryName string         `db:"category_name" json:"categoryName"`
 	CategorySlug string         `db:"category_slug" json:"categorySlug"`
 }
@@ -117,7 +111,6 @@ type CatalogGetProductsByIDsRow struct {
 //	    p.slug,
 //	    p.description,
 //	    p.price_cents,
-//	    p.image_url,
 //	    c.name AS category_name,
 //	    c.slug AS category_slug
 //	FROM products p
@@ -141,7 +134,6 @@ func (q *Queries) CatalogGetProductsByIDs(ctx context.Context, productIds []uuid
 			&i.Slug,
 			&i.Description,
 			&i.PriceCents,
-			&i.ImageUrl,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -166,7 +158,6 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.image_url,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -200,7 +191,6 @@ type CatalogListProductsRow struct {
 	Slug         string         `db:"slug" json:"slug"`
 	Description  sql.NullString `db:"description" json:"description"`
 	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	ImageUrl     sql.NullString `db:"image_url" json:"imageUrl"`
 	CategoryName string         `db:"category_name" json:"categoryName"`
 	CategorySlug string         `db:"category_slug" json:"categorySlug"`
 }
@@ -214,7 +204,6 @@ type CatalogListProductsRow struct {
 //	    p.slug,
 //	    p.description,
 //	    p.price_cents,
-//	    p.image_url,
 //	    c.name AS category_name,
 //	    c.slug AS category_slug
 //	FROM products p
@@ -253,7 +242,6 @@ func (q *Queries) CatalogListProducts(ctx context.Context, arg CatalogListProduc
 			&i.Slug,
 			&i.Description,
 			&i.PriceCents,
-			&i.ImageUrl,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -316,9 +304,9 @@ func (q *Queries) CatalogListProductsCount(ctx context.Context, arg CatalogListP
 }
 
 const createProduct = `-- name: CreateProduct :one
-INSERT INTO products (category_id, name, slug, description, price_cents, is_available, image_url)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+INSERT INTO products (category_id, name, slug, description, price_cents, is_available)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 `
 
 type CreateProductParams struct {
@@ -328,14 +316,13 @@ type CreateProductParams struct {
 	Description sql.NullString `db:"description" json:"description"`
 	PriceCents  int64          `db:"price_cents" json:"priceCents"`
 	IsAvailable bool           `db:"is_available" json:"isAvailable"`
-	ImageUrl    sql.NullString `db:"image_url" json:"imageUrl"`
 }
 
 // CreateProduct
 //
-//	INSERT INTO products (category_id, name, slug, description, price_cents, is_available, image_url)
-//	VALUES ($1, $2, $3, $4, $5, $6, $7)
-//	RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+//	INSERT INTO products (category_id, name, slug, description, price_cents, is_available)
+//	VALUES ($1, $2, $3, $4, $5, $6)
+//	RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
 	row := q.db.QueryRowContext(ctx, createProduct,
 		arg.CategoryID,
@@ -344,7 +331,6 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		arg.Description,
 		arg.PriceCents,
 		arg.IsAvailable,
-		arg.ImageUrl,
 	)
 	var i Product
 	err := row.Scan(
@@ -355,7 +341,6 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.Description,
 		&i.PriceCents,
 		&i.IsAvailable,
-		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -364,7 +349,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+SELECT id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 FROM products
 WHERE id = $1
   AND deleted_at IS NULL
@@ -372,7 +357,7 @@ WHERE id = $1
 
 // GetProductByID
 //
-//	SELECT id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+//	SELECT id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 //	FROM products
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -387,7 +372,6 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.Description,
 		&i.PriceCents,
 		&i.IsAvailable,
-		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -404,7 +388,6 @@ SELECT
     p.description,
     p.price_cents,
     p.is_available,
-    p.image_url,
     p.created_at,
     p.updated_at,
     p.deleted_at,
@@ -423,7 +406,6 @@ type ManagerGetProductByIDRow struct {
 	Description  sql.NullString `db:"description" json:"description"`
 	PriceCents   int64          `db:"price_cents" json:"priceCents"`
 	IsAvailable  bool           `db:"is_available" json:"isAvailable"`
-	ImageUrl     sql.NullString `db:"image_url" json:"imageUrl"`
 	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
 	DeletedAt    sql.NullTime   `db:"deleted_at" json:"deletedAt"`
@@ -440,7 +422,6 @@ type ManagerGetProductByIDRow struct {
 //	    p.description,
 //	    p.price_cents,
 //	    p.is_available,
-//	    p.image_url,
 //	    p.created_at,
 //	    p.updated_at,
 //	    p.deleted_at,
@@ -460,7 +441,6 @@ func (q *Queries) ManagerGetProductByID(ctx context.Context, id uuid.UUID) (Mana
 		&i.Description,
 		&i.PriceCents,
 		&i.IsAvailable,
-		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -478,7 +458,6 @@ SELECT
     p.description,
     p.price_cents,
     p.is_available,
-    p.image_url,
     p.created_at,
     p.updated_at,
     p.deleted_at,
@@ -514,7 +493,6 @@ type ManagerListProductsRow struct {
 	Description  sql.NullString `db:"description" json:"description"`
 	PriceCents   int64          `db:"price_cents" json:"priceCents"`
 	IsAvailable  bool           `db:"is_available" json:"isAvailable"`
-	ImageUrl     sql.NullString `db:"image_url" json:"imageUrl"`
 	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
 	DeletedAt    sql.NullTime   `db:"deleted_at" json:"deletedAt"`
@@ -531,7 +509,6 @@ type ManagerListProductsRow struct {
 //	    p.description,
 //	    p.price_cents,
 //	    p.is_available,
-//	    p.image_url,
 //	    p.created_at,
 //	    p.updated_at,
 //	    p.deleted_at,
@@ -572,7 +549,6 @@ func (q *Queries) ManagerListProducts(ctx context.Context, arg ManagerListProduc
 			&i.Description,
 			&i.PriceCents,
 			&i.IsAvailable,
-			&i.ImageUrl,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
@@ -663,11 +639,10 @@ SET category_id  = $2,
     description  = $5,
     price_cents  = $6,
     is_available = $7,
-    image_url    = $8,
     updated_at   = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 `
 
 type UpdateProductParams struct {
@@ -678,7 +653,6 @@ type UpdateProductParams struct {
 	Description sql.NullString `db:"description" json:"description"`
 	PriceCents  int64          `db:"price_cents" json:"priceCents"`
 	IsAvailable bool           `db:"is_available" json:"isAvailable"`
-	ImageUrl    sql.NullString `db:"image_url" json:"imageUrl"`
 }
 
 // UpdateProduct
@@ -690,11 +664,10 @@ type UpdateProductParams struct {
 //	    description  = $5,
 //	    price_cents  = $6,
 //	    is_available = $7,
-//	    image_url    = $8,
 //	    updated_at   = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
-//	RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+//	RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error) {
 	row := q.db.QueryRowContext(ctx, updateProduct,
 		arg.ID,
@@ -704,7 +677,6 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		arg.Description,
 		arg.PriceCents,
 		arg.IsAvailable,
-		arg.ImageUrl,
 	)
 	var i Product
 	err := row.Scan(
@@ -715,7 +687,6 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.Description,
 		&i.PriceCents,
 		&i.IsAvailable,
-		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,

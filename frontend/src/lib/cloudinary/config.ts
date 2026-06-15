@@ -6,6 +6,9 @@ export const CLOUDINARY_DEFAULT_PRODUCT_UPLOAD_FOLDER = "boms/products";
 
 export const CLOUDINARY_MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Keep in sync with backend cloudinary.MaxProductImageBytes
 
+/** Keep in sync with backend domain/product.MaxImagesPerProduct */
+export const CLOUDINARY_MAX_PRODUCT_IMAGES = 5;
+
 export const CLOUDINARY_ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -145,4 +148,11 @@ export function catalogProductImageUrl(
   const prefix = url.slice(0, index + marker.length);
   const suffix = url.slice(index + marker.length);
   return `${prefix}f_auto,q_auto,w_${width}/${suffix}`;
+}
+
+export function primaryCatalogProductImageUrl(
+  urls: string[] | null | undefined,
+  width = 800,
+): string | undefined {
+  return catalogProductImageUrl(urls?.[0], width);
 }

@@ -342,10 +342,6 @@ table "products" {
     null    = false
     default = true
   }
-  column "image_url" {
-    type = text
-    null = true
-  }
   column "created_at" {
     type    = timestamptz
     null    = false
@@ -379,6 +375,54 @@ table "products" {
   }
   check "products_price_cents_check" {
     expr = "price_cents >= 0"
+  }
+}
+
+table "product_images" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "product_id" {
+    type = uuid
+    null = false
+  }
+  column "sort_order" {
+    type = smallint
+    null = false
+  }
+  column "image_url" {
+    type = text
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "product_images_product_id_fkey" {
+    columns     = [column.product_id]
+    ref_columns = [table.products.column.id]
+    on_delete   = CASCADE
+  }
+  index "product_images_product_id_sort_idx" {
+    columns = [column.product_id, column.sort_order]
+  }
+  unique "product_images_product_sort_unique" {
+    columns = [column.product_id, column.sort_order]
+  }
+  check "product_images_sort_order_range" {
+    expr = "sort_order >= 0 AND sort_order < 5"
   }
 }
 

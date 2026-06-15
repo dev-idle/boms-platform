@@ -34,7 +34,6 @@ func (r *ProductRepository) Create(ctx context.Context, params port.CreateProduc
 		Description: optionalString(params.Description),
 		PriceCents:  params.PriceCents,
 		IsAvailable: params.IsAvailable,
-		ImageUrl:    optionalString(params.ImageURL),
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create product")
@@ -59,7 +58,6 @@ func (r *ProductRepository) Update(ctx context.Context, params port.UpdateProduc
 		Description: optionalString(params.Description),
 		PriceCents:  params.PriceCents,
 		IsAvailable: params.IsAvailable,
-		ImageUrl:    optionalString(params.ImageURL),
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update product")
@@ -76,6 +74,59 @@ func (r *ProductRepository) SoftDelete(ctx context.Context, id uuid.UUID) error 
 		return mapRepoError(sql.ErrNoRows, "soft delete product")
 	}
 	return nil
+}
+
+func (r *ProductRepository) ReplaceProductImages(
+	ctx context.Context,
+	productID uuid.UUID,
+	imageURLs []string,
+) error {
+	if err := r.q(ctx).DeleteProductImagesByProductID(ctx, productID); err != nil {
+		return mapRepoError(err, "delete product images")
+	}
+	for i, imageURL := range imageURLs {
+		if _, err := r.q(ctx).InsertProductImage(ctx, sqlcgen.InsertProductImageParams{
+			ProductID: productID,
+			SortOrder: int16(i),
+			ImageUrl:  imageURL,
+		}); err != nil {
+			return mapRepoError(err, "insert product image")
+		}
+	}
+	return nil
+}
+
+func (r *ProductRepository) ListProductImagesByProductID(
+	ctx context.Context,
+	productID uuid.UUID,
+) ([]string, error) {
+	rows, err := r.q(ctx).ListProductImagesByProductID(ctx, productID)
+	if err != nil {
+		return nil, mapRepoError(err, "list product images")
+	}
+	out := make([]string, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row.ImageUrl)
+	}
+	return out, nil
+}
+
+func (r *ProductRepository) ListProductImagesByProductIDs(
+	ctx context.Context,
+	productIDs []uuid.UUID,
+) (map[uuid.UUID][]string, error) {
+	if len(productIDs) == 0 {
+		return map[uuid.UUID][]string{}, nil
+	}
+	rows, err := r.q(ctx).ListProductImagesByProductIDs(ctx, productIDs)
+	if err != nil {
+		return nil, mapRepoError(err, "list product images by product ids")
+	}
+	out := make(map[uuid.UUID][]string, len(productIDs))
+	for _, row := range rows {
+		out[row.ProductID] = append(out[row.ProductID], row.ImageUrl)
+	}
+	return out, nil
 }
 
 func (r *ProductRepository) ManagerList(ctx context.Context, params port.ManagerListProductsParams) ([]port.ManagerListProduct, error) {
@@ -180,7 +231,6 @@ func mapManagerListProductsRow(row sqlcgen.ManagerListProductsRow) port.ManagerL
 		row.Description,
 		row.PriceCents,
 		row.IsAvailable,
-		row.ImageUrl,
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.DeletedAt,
@@ -197,7 +247,6 @@ func mapManagerGetProductRow(row sqlcgen.ManagerGetProductByIDRow) port.ManagerL
 		row.Description,
 		row.PriceCents,
 		row.IsAvailable,
-		row.ImageUrl,
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.DeletedAt,
@@ -213,7 +262,6 @@ func mapManagerJoinedProduct(
 	description sql.NullString,
 	priceCents int64,
 	isAvailable bool,
-	imageURL sql.NullString,
 	createdAt time.Time,
 	updatedAt time.Time,
 	deletedAt sql.NullTime,
@@ -232,10 +280,6 @@ func mapManagerJoinedProduct(
 	if description.Valid {
 		desc := description.String
 		p.Description = &desc
-	}
-	if imageURL.Valid {
-		url := imageURL.String
-		p.ImageURL = &url
 	}
 	if deletedAt.Valid {
 		t := deletedAt.Time
@@ -262,10 +306,6 @@ func mapProduct(row sqlcgen.Product) *domainproduct.Product {
 		desc := row.Description.String
 		p.Description = &desc
 	}
-	if row.ImageUrl.Valid {
-		url := row.ImageUrl.String
-		p.ImageURL = &url
-	}
 	if row.DeletedAt.Valid {
 		t := row.DeletedAt.Time
 		p.DeletedAt = &t
@@ -281,7 +321,6 @@ func mapCatalogListProductsRow(row sqlcgen.CatalogListProductsRow) port.CatalogL
 		row.Slug,
 		row.Description,
 		row.PriceCents,
-		row.ImageUrl,
 		row.CategoryName,
 		row.CategorySlug,
 	)
@@ -295,7 +334,6 @@ func mapCatalogGetProductRow(row sqlcgen.CatalogGetProductByIDRow) port.CatalogL
 		row.Slug,
 		row.Description,
 		row.PriceCents,
-		row.ImageUrl,
 		row.CategoryName,
 		row.CategorySlug,
 	)
@@ -309,7 +347,6 @@ func mapCatalogGetProductsByIDsRow(row sqlcgen.CatalogGetProductsByIDsRow) port.
 		row.Slug,
 		row.Description,
 		row.PriceCents,
-		row.ImageUrl,
 		row.CategoryName,
 		row.CategorySlug,
 	)
@@ -322,7 +359,6 @@ func mapCatalogProductFields(
 	slug string,
 	description sql.NullString,
 	priceCents int64,
-	imageURL sql.NullString,
 	categoryName string,
 	categorySlug string,
 ) port.CatalogListProduct {
@@ -338,10 +374,6 @@ func mapCatalogProductFields(
 	if description.Valid {
 		desc := description.String
 		out.Description = &desc
-	}
-	if imageURL.Valid {
-		url := imageURL.String
-		out.ImageURL = &url
 	}
 	return out
 }

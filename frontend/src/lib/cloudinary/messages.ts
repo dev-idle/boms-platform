@@ -1,4 +1,4 @@
-import { CLOUDINARY_MAX_IMAGE_BYTES } from "./config";
+import { CLOUDINARY_MAX_IMAGE_BYTES, CLOUDINARY_MAX_PRODUCT_IMAGES } from "./config";
 import { formatCloudinaryMaxImageSize } from "./format";
 
 /** User-facing Cloudinary upload copy (SSOT). */
@@ -23,6 +23,7 @@ export function cloudinaryImageTooLargeMessage(maxBytes: number): string {
 
 export function cloudinaryProductImageFieldHint(
   maxBytes = CLOUDINARY_MAX_IMAGE_BYTES,
+  maxImages = CLOUDINARY_MAX_PRODUCT_IMAGES,
 ): string {
-  return `JPG, PNG, WebP, or AVIF up to ${formatCloudinaryMaxImageSize(maxBytes)}.`;
+  return `JPG, PNG, WebP, or AVIF up to ${formatCloudinaryMaxImageSize(maxBytes)} each (max ${maxImages} images).`;
 }

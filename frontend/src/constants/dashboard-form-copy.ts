@@ -12,7 +12,7 @@ export const FORM_FIELD_HINT = {
   catalogSlugCreate: "Auto-filled from name.",
   catalogSortOrder: "Lower values appear first.",
   operationalEmployeeCode: "Permanent staff ID. Assigned at creation.",
-  productImageUrlFallback: "Paste an HTTPS image URL when Cloudinary is not configured.",
+  productImageUrlFallback: "Add up to 5 HTTPS image URLs when Cloudinary is not configured.",
 } as const;
 
 export const FORM_SWITCH_LABEL = {
@@ -30,8 +30,13 @@ export const FORM_SWITCH_HINT = {
 /** Catalog image upload — control copy; formats/size hint from `cloudinaryProductImageFieldHint()`. */
 export const CATALOG_IMAGE_FIELD_COPY = {
   actionsAriaLabel: "Product image actions",
+  addImage: "Add image",
+  addImageUrl: "Add image URL",
   chooseFile: "Choose file",
+  imageCount: (current: number, max: number) => `${current} of ${max} images`,
+  imageListAriaLabel: "Product images",
   noFile: "No file chosen",
+  noImages: "No images added",
   uploadAriaLabel: "Choose a product image file",
   uploading: "Uploading…",
   replace: "Replace",

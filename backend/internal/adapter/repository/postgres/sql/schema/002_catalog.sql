@@ -22,7 +22,6 @@ CREATE TABLE "products" (
   "description" text NULL,
   "price_cents" bigint NOT NULL,
   "is_available" boolean NOT NULL DEFAULT true,
-  "image_url" text NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now(),
   "deleted_at" timestamptz NULL,
@@ -32,3 +31,17 @@ CREATE TABLE "products" (
 );
 CREATE UNIQUE INDEX "products_slug_active_idx" ON "products" ("slug") WHERE (deleted_at IS NULL);
 CREATE INDEX "products_category_active_idx" ON "products" ("category_id") WHERE (deleted_at IS NULL);
+
+CREATE TABLE "product_images" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "product_id" uuid NOT NULL,
+  "sort_order" smallint NOT NULL,
+  "image_url" text NOT NULL,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("id"),
+  CONSTRAINT "product_images_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products" ("id") ON DELETE CASCADE,
+  CONSTRAINT "product_images_sort_order_range" CHECK (sort_order >= 0 AND sort_order < 5),
+  CONSTRAINT "product_images_product_sort_unique" UNIQUE ("product_id", "sort_order")
+);
+CREATE INDEX "product_images_product_id_sort_idx" ON "product_images" ("product_id", "sort_order");

@@ -94,8 +94,16 @@ func (u *CatalogUsecase) ListProducts(
 	}
 
 	out := make([]dto.CatalogProductResponse, 0, len(items))
+	productIDs := make([]uuid.UUID, 0, len(items))
 	for _, item := range items {
-		out = append(out, toCatalogProductResponse(item))
+		productIDs = append(productIDs, item.ID)
+	}
+	imagesByProduct, err := u.products.ListProductImagesByProductIDs(ctx, productIDs)
+	if err != nil {
+		return nil, 0, page, pageSize, err
+	}
+	for _, item := range items {
+		out = append(out, toCatalogProductResponse(item, imagesByProduct[item.ID]))
 	}
 	return out, total, page, pageSize, nil
 }
@@ -105,11 +113,15 @@ func (u *CatalogUsecase) GetProduct(ctx context.Context, id uuid.UUID) (*dto.Cat
 	if err != nil {
 		return nil, err
 	}
-	resp := toCatalogProductResponse(*item)
+	imageURLs, err := u.products.ListProductImagesByProductID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	resp := toCatalogProductResponse(*item, imageURLs)
 	return &resp, nil
 }
 
-func toCatalogProductResponse(item port.CatalogListProduct) dto.CatalogProductResponse {
+func toCatalogProductResponse(item port.CatalogListProduct, imageURLs []string) dto.CatalogProductResponse {
 	return dto.CatalogProductResponse{
 		ID:           item.ID.String(),
 		CategoryID:   item.CategoryID.String(),
@@ -119,7 +131,7 @@ func toCatalogProductResponse(item port.CatalogListProduct) dto.CatalogProductRe
 		Slug:         item.Slug,
 		Description:  item.Description,
 		PriceCents:   item.PriceCents,
-		ImageURL:     item.ImageURL,
+		ImageURLs:    imageURLs,
 	}
 }
 

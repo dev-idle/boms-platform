@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
-import { productImageUrlSchema } from "@/lib/validation/cloudinary";
+import { productImageUrlsSchema } from "@/lib/validation/cloudinary";
 
 export const managerCategorySchema = z.object({
   id: z.string().uuid(),
@@ -35,7 +35,7 @@ export const managerProductSchema = z.object({
   description: z.string().nullable().optional(),
   price_cents: z.number().int().min(0),
   is_available: z.boolean(),
-  image_url: z.string().nullable().optional(),
+  image_urls: productImageUrlsSchema.optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -52,7 +52,7 @@ export const productFormSchema = z.object({
     .nullable(),
   price_cents: z.coerce.number().int().min(0, "Price must be zero or greater"),
   is_available: z.boolean(),
-  image_url: productImageUrlSchema,
+  image_urls: productImageUrlsSchema,
 });
 
 export const productListFilterSchema = z.object({

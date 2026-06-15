@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { CatalogImageListField } from "@/components/ui/catalog-image-list-field";
 import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields";
-import { CatalogImageField } from "@/components/ui/catalog-image-field";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import {
@@ -42,7 +42,7 @@ const CREATE_PRODUCT_EMPTY_VALUES: ProductFormInput = {
   description: null,
   price_cents: 0,
   is_available: true,
-  image_url: null,
+  image_urls: [],
 };
 
 type ProductFormProps = {
@@ -58,7 +58,7 @@ const PRODUCT_FORM_FIELDS = [
   "description",
   "price_cents",
   "is_available",
-  "image_url",
+  "image_urls",
 ] as const;
 
 export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
@@ -74,7 +74,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           description: product?.description ?? null,
           price_cents: product?.price_cents ?? 0,
           is_available: product?.is_available ?? true,
-          image_url: product?.image_url ?? null,
+          image_urls: product?.image_urls ?? [],
         };
 
   return (
@@ -116,8 +116,12 @@ function ProductFormFields({
   });
 
   function onSubmit(values: ProductFormInput): void {
+    const payload: ProductFormInput = {
+      ...values,
+      image_urls: values.image_urls.filter((url) => url.trim() !== ""),
+    };
     const mutation = mode === "create" ? createProduct : updateProduct;
-    mutation.mutate(values, {
+    mutation.mutate(payload, {
       onSuccess: () => {
         if (mode === "create") {
           form.reset(CREATE_PRODUCT_EMPTY_VALUES);
@@ -212,7 +216,7 @@ function ProductFormFields({
         />
         <FormField
           control={form.control}
-          name="image_url"
+          name="image_urls"
           render={({ field }) => (
             <FormItem>
               <FieldControl
@@ -221,24 +225,14 @@ function ProductFormFields({
                     ? cloudinaryProductImageFieldHint()
                     : FORM_FIELD_HINT.productImageUrlFallback
                 }
-                label="Product image"
+                label="Product images"
                 optional
               >
-                {isCloudinaryConfigured() ? (
-                  <CatalogImageField
-                    disabled={isPending}
-                    onChange={field.onChange}
-                    value={field.value ?? null}
-                  />
-                ) : (
-                  <Input
-                    placeholder="https://example.com/image.jpg"
-                    value={field.value ?? ""}
-                    onChange={(event) =>
-                      field.onChange(event.target.value || null)
-                    }
-                  />
-                )}
+                <CatalogImageListField
+                  disabled={isPending}
+                  onChange={field.onChange}
+                  value={field.value ?? []}
+                />
               </FieldControl>
               <FormMessage />
             </FormItem>

@@ -247,8 +247,8 @@ Signed upload keeps `CLOUDINARY_API_SECRET` on the API only.
 |------|-------|
 | Manager requests signature | `GET /api/v1/manager/media/cloudinary-signature` (`manager` role, session, per-user rate limit) |
 | Browser uploads file | Direct `POST` to `https://api.cloudinary.com/v1_1/{cloud}/image/upload` |
-| Persist URL | `products.image_url` stores `secure_url` from Cloudinary |
-| Storefront delivery | `catalogProductImageUrl()` applies `f_auto,q_auto,w_*` transforms |
+| Persist URLs | `product_images` table (max 5 per product, `sort_order` 0–4) stores Cloudinary `secure_url` values |
+| Storefront delivery | `catalogProductImageUrl()` / gallery on detail; cards use first image |
 
 **Validation (defense in depth):**
 
@@ -257,7 +257,7 @@ Signed upload keeps `CLOUDINARY_API_SECRET` on the API only.
 | Signed params | `folder`, `allowed_formats`, `unique_filename`, `max_file_size`, `timestamp` |
 | Size cap | API returns `max_bytes` (5 MiB); signed `max_file_size` enforced by Cloudinary; FE validates `file.size` + response `bytes` |
 | Persist | BE `IsCloudinaryDeliveryURLInFolder` on create/update when Cloudinary is enabled |
-| FE submit | Zod `productImageUrlSchema` mirrors folder + cloud rules |
+| FE submit | Zod `productImageUrlsSchema` (max 5) mirrors folder + cloud rules |
 
 When Cloudinary env is set on both sides, product create/update rejects URLs outside the configured upload folder. When unset (development only), managers may use any HTTPS image URL.
 
@@ -292,7 +292,7 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Auth (login/register/logout) | `features/auth` (FE) + `usecase/auth` (BE) |
 | Admin user CRUD | `features/admin` (FE) + `usecase/admin_user` (BE) |
 | Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` + `manager_combo` + `manager_discount_code` (BE) |
-| Product images (Cloudinary) | `lib/cloudinary/*` + `components/ui/catalog-image-field` (FE) + `usecase/manager_media` + `service/cloudinary` (BE) |
+| Product images (Cloudinary) | `lib/cloudinary/*` + `components/ui/catalog-image-list-field` (FE) + `usecase/manager_media` + `service/cloudinary` (BE) |
 | Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
 | Customer cart & checkout | `features/customer` (FE) + `usecase/cart` + `usecase/order` (BE) — `/cart/*`, `/orders/*` (session + server pricing) |
 | Staff order queue | `features/staff` (FE) + `usecase/staff_order` (BE) — `/staff/orders/*` (list, detail, status transitions) |

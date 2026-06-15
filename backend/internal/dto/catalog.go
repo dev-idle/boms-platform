@@ -33,7 +33,7 @@ type CreateProductRequest struct {
 	Description *string `json:"description,omitempty" validate:"omitempty,max=2000"`
 	PriceCents  int64   `json:"price_cents" validate:"min=0"`
 	IsAvailable bool    `json:"is_available"`
-	ImageURL    *string `json:"image_url,omitempty" validate:"omitempty,max=2048,url"`
+	ImageURLs   []string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
 }
 
 type UpdateProductRequest struct {
@@ -43,7 +43,7 @@ type UpdateProductRequest struct {
 	Description *string `json:"description,omitempty" validate:"omitempty,max=2000"`
 	PriceCents  int64   `json:"price_cents" validate:"min=0"`
 	IsAvailable bool    `json:"is_available"`
-	ImageURL    *string `json:"image_url,omitempty" validate:"omitempty,max=2048,url"`
+	ImageURLs   []string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
 }
 
 type ProductResponse struct {
@@ -55,7 +55,7 @@ type ProductResponse struct {
 	Description  *string   `json:"description,omitempty"`
 	PriceCents   int64     `json:"price_cents"`
 	IsAvailable  bool      `json:"is_available"`
-	ImageURL     *string   `json:"image_url,omitempty"`
+	ImageURLs    []string  `json:"image_urls,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -76,7 +76,7 @@ type CatalogProductResponse struct {
 	Slug         string  `json:"slug"`
 	Description  *string `json:"description,omitempty"`
 	PriceCents   int64   `json:"price_cents"`
-	ImageURL     *string `json:"image_url,omitempty"`
+	ImageURLs    []string `json:"image_urls,omitempty"`
 }
 
 type ComboItemInput struct {

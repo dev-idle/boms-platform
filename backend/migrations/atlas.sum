@@ -1,4 +1,4 @@
-h1:XPAZEJZa8sLcheZxqzQFBqo3YPnP33AUhO2oh3UycfQ=
+h1:aLepgFar2hk+mJV2VlEySusEDsUW7VvqsyAEfYtRo/o=
 20260601120000_initial_schema.sql h1:vx8QGqY0rkf2G4RXT2pkUHzGYZgAAYS0y1lt5RuMUr0=
 20260604160000_drop_staff_profiles_shift.sql h1:N492sMxqfKxG3LHB7lV9Xw5nlSH8ieuFkmm6toOgDZs=
 20260604170000_drop_staff_profiles_hire_date.sql h1:6bey2uZ4xA9UGngC+fntES0AKWL5XyMj1I4DvuGILgw=
@@ -6,3 +6,4 @@ h1:XPAZEJZa8sLcheZxqzQFBqo3YPnP33AUhO2oh3UycfQ=
 20260606120000_combos_discount_codes.sql h1:PMoY4r77kJsUT4w8j+Oy09uzK7zmCNUUPiJVKNafptE=
 20260607120000_discount_codes_value_constraints.sql h1:nJsObvgKXLHrJne2Wcym3iLwxnHlgmCX7xNfwEMNGxY=
 20260608120000_carts_orders.sql h1:dgO8qjCgeyJ29KmKFMoVxCcRgfQL52b3yj30t/DjJzg=
+20260613120000_product_images.sql h1:h9fpieDiP/KAPFlzJoXygQ1xw95At+EYmv1Qp5LPUTE=

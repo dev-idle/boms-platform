@@ -126,7 +126,6 @@ type Querier interface {
 	//      p.slug,
 	//      p.description,
 	//      p.price_cents,
-	//      p.image_url,
 	//      c.name AS category_name,
 	//      c.slug AS category_slug
 	//  FROM products p
@@ -144,7 +143,6 @@ type Querier interface {
 	//      p.slug,
 	//      p.description,
 	//      p.price_cents,
-	//      p.image_url,
 	//      c.name AS category_name,
 	//      c.slug AS category_slug
 	//  FROM products p
@@ -212,7 +210,6 @@ type Querier interface {
 	//      p.slug,
 	//      p.description,
 	//      p.price_cents,
-	//      p.image_url,
 	//      c.name AS category_name,
 	//      c.slug AS category_slug
 	//  FROM products p
@@ -415,9 +412,9 @@ type Querier interface {
 	CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderItem, error)
 	//CreateProduct
 	//
-	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_available, image_url)
-	//  VALUES ($1, $2, $3, $4, $5, $6, $7)
-	//  RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_available)
+	//  VALUES ($1, $2, $3, $4, $5, $6)
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	//CreateStaffProfile
 	//
@@ -456,6 +453,11 @@ type Querier interface {
 	//  DELETE FROM customer_profiles
 	//  WHERE user_id = $1
 	DeleteCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	//DeleteProductImagesByProductID
+	//
+	//  DELETE FROM product_images
+	//  WHERE product_id = $1
+	DeleteProductImagesByProductID(ctx context.Context, productID uuid.UUID) error
 	//DeleteStaffProfileByUserID
 	//
 	//  DELETE FROM staff_profiles
@@ -569,7 +571,7 @@ type Querier interface {
 	GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error)
 	//GetProductByID
 	//
-	//  SELECT id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+	//  SELECT id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 	//  FROM products
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -630,6 +632,12 @@ type Querier interface {
 	//  INSERT INTO combo_items (combo_id, product_id, quantity)
 	//  VALUES ($1, $2, $3)
 	InsertComboItem(ctx context.Context, arg InsertComboItemParams) error
+	//InsertProductImage
+	//
+	//  INSERT INTO product_images (product_id, sort_order, image_url)
+	//  VALUES ($1, $2, $3)
+	//  RETURNING id, product_id, sort_order, image_url, created_at, updated_at
+	InsertProductImage(ctx context.Context, arg InsertProductImageParams) (ProductImage, error)
 	//ListAuditLogsByTargetID
 	//
 	//  SELECT
@@ -742,6 +750,20 @@ type Querier interface {
 	//  FROM orders
 	//  WHERE user_id = $1
 	ListOrdersByUserCount(ctx context.Context, userID uuid.UUID) (int64, error)
+	//ListProductImagesByProductID
+	//
+	//  SELECT image_url, sort_order
+	//  FROM product_images
+	//  WHERE product_id = $1
+	//  ORDER BY sort_order ASC
+	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]ListProductImagesByProductIDRow, error)
+	//ListProductImagesByProductIDs
+	//
+	//  SELECT product_id, image_url, sort_order
+	//  FROM product_images
+	//  WHERE product_id = ANY($1::uuid[])
+	//  ORDER BY product_id ASC, sort_order ASC
+	ListProductImagesByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ListProductImagesByProductIDsRow, error)
 	//ManagerGetProductByID
 	//
 	//  SELECT
@@ -752,7 +774,6 @@ type Querier interface {
 	//      p.description,
 	//      p.price_cents,
 	//      p.is_available,
-	//      p.image_url,
 	//      p.created_at,
 	//      p.updated_at,
 	//      p.deleted_at,
@@ -855,7 +876,6 @@ type Querier interface {
 	//      p.description,
 	//      p.price_cents,
 	//      p.is_available,
-	//      p.image_url,
 	//      p.created_at,
 	//      p.updated_at,
 	//      p.deleted_at,
@@ -1120,11 +1140,10 @@ type Querier interface {
 	//      description  = $5,
 	//      price_cents  = $6,
 	//      is_available = $7,
-	//      image_url    = $8,
 	//      updated_at   = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	//  RETURNING id, category_id, name, slug, description, price_cents, is_available, image_url, created_at, updated_at, deleted_at
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
 	//UpdateRole
 	//

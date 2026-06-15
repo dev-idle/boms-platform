@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
-import { optionalHttpUrlSchema } from "@/lib/validation/url";
+import { productImageUrlsSchema } from "@/lib/validation/cloudinary";
 
 export const catalogCategorySchema = z.object({
   id: z.string().uuid(),
@@ -19,7 +19,7 @@ export const catalogProductSchema = z.object({
   slug: catalogSlugSchema,
   description: z.string().nullable().optional(),
   price_cents: z.number().int().min(0),
-  image_url: optionalHttpUrlSchema,
+  image_urls: productImageUrlsSchema.default([]),
 });
 
 export const catalogCategoriesListFilterSchema = z.object({

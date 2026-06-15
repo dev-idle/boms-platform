@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { ROUTE } from "@/constants/routes";
-import { catalogProductImageUrl } from "@/lib/cloudinary/config";
+import { primaryCatalogProductImageUrl } from "@/lib/cloudinary/config";
 import { formatPriceCents } from "@/lib/validation/catalog";
 import { cn } from "@/lib/utils";
 
@@ -19,8 +19,14 @@ export function ProductCard({
   featured = false,
   fallbackImageUrl,
 }: ProductCardProps) {
-  const imageUrl = catalogProductImageUrl(
-    product.image_url ?? fallbackImageUrl,
+  const imageSources =
+    product.image_urls.length > 0
+      ? product.image_urls
+      : fallbackImageUrl
+        ? [fallbackImageUrl]
+        : [];
+  const imageUrl = primaryCatalogProductImageUrl(
+    imageSources,
     featured ? 960 : 640,
   );
   return (

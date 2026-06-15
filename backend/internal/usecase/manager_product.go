@@ -22,6 +22,7 @@ import (
 type ManagerProductUsecase struct {
 	products   port.ProductRepository
 	categories port.CategoryRepository
+	tx         port.TxManager
 	audit      *auditlogger.Service
 	cloudinary config.CloudinaryConfig
 	log        *zap.Logger
@@ -30,6 +31,7 @@ type ManagerProductUsecase struct {
 func NewManagerProductUsecase(
 	products port.ProductRepository,
 	categories port.CategoryRepository,
+	tx port.TxManager,
 	audit *auditlogger.Service,
 	cloudinary config.CloudinaryConfig,
 	log *zap.Logger,
@@ -37,6 +39,7 @@ func NewManagerProductUsecase(
 	return &ManagerProductUsecase{
 		products:   products,
 		categories: categories,
+		tx:         tx,
 		audit:      audit,
 		cloudinary: cloudinary,
 		log:        log,
@@ -65,29 +68,39 @@ func (u *ManagerProductUsecase) Create(
 	if err != nil {
 		return nil, err
 	}
-	imageURL, err := sanitizeManagerProductImageURL(u.cloudinary, req.ImageURL)
+	imageURLs, err := sanitizeManagerProductImageURLs(u.cloudinary, req.ImageURLs)
 	if err != nil {
 		return nil, err
 	}
 
-	created, err := u.products.Create(ctx, port.CreateProductParams{
-		CategoryID:  categoryID,
-		Name:        name,
-		Slug:        slug,
-		Description: req.Description,
-		PriceCents:  req.PriceCents,
-		IsAvailable: req.IsAvailable,
-		ImageURL:    imageURL,
-	})
-	if err != nil {
-		if errors.Is(err, apperrors.ErrConflict) {
-			return nil, domainproduct.ErrSlugExists
+	var createdID uuid.UUID
+	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		created, createErr := u.products.Create(txCtx, port.CreateProductParams{
+			CategoryID:  categoryID,
+			Name:        name,
+			Slug:        slug,
+			Description: req.Description,
+			PriceCents:  req.PriceCents,
+			IsAvailable: req.IsAvailable,
+		})
+		if createErr != nil {
+			if errors.Is(createErr, apperrors.ErrConflict) {
+				return domainproduct.ErrSlugExists
+			}
+			return createErr
 		}
+		createdID = created.ID
+		return u.products.ReplaceProductImages(txCtx, created.ID, imageURLs)
+	}); err != nil {
 		return nil, err
 	}
 
-	u.logAudit(ctx, domaincatalog.AuditActionManagerCreatedProduct, actorID, actorRole, &created.ID, "product", nil, toProductAudit(created))
-	return u.managerProductResponse(ctx, created.ID)
+	resp, err := u.managerProductResponse(ctx, createdID)
+	if err != nil {
+		return nil, err
+	}
+	u.logAudit(ctx, domaincatalog.AuditActionManagerCreatedProduct, actorID, actorRole, &createdID, "product", nil, toProductAuditFromResponse(resp))
+	return resp, nil
 }
 
 func (u *ManagerProductUsecase) Get(ctx context.Context, id uuid.UUID) (*dto.ProductResponse, error) {
@@ -129,9 +142,18 @@ func (u *ManagerProductUsecase) List(
 		return nil, 0, page, pageSize, err
 	}
 
+	productIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		productIDs = append(productIDs, item.Product.ID)
+	}
+	imagesByProduct, err := u.products.ListProductImagesByProductIDs(ctx, productIDs)
+	if err != nil {
+		return nil, 0, page, pageSize, err
+	}
+
 	out := make([]dto.ProductResponse, 0, len(items))
 	for _, item := range items {
-		out = append(out, *toProductResponse(&item.Product, item.CategoryName))
+		out = append(out, *toProductResponse(&item.Product, item.CategoryName, imagesByProduct[item.Product.ID]))
 	}
 	return out, total, page, pageSize, nil
 }
@@ -143,6 +165,10 @@ func (u *ManagerProductUsecase) Update(
 	id uuid.UUID,
 	req dto.UpdateProductRequest,
 ) (*dto.ProductResponse, error) {
+	beforeImages, err := u.products.ListProductImagesByProductID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	before, err := u.products.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
@@ -167,32 +193,45 @@ func (u *ManagerProductUsecase) Update(
 	if err != nil {
 		return nil, err
 	}
-	imageURL, err := sanitizeManagerProductImageURL(u.cloudinary, req.ImageURL)
+	imageURLs, err := sanitizeManagerProductImageURLs(u.cloudinary, req.ImageURLs)
 	if err != nil {
 		return nil, err
 	}
 
-	updated, err := u.products.Update(ctx, port.UpdateProductParams{
-		ID:          id,
-		CategoryID:  categoryID,
-		Name:        name,
-		Slug:        slug,
-		Description: req.Description,
-		PriceCents:  req.PriceCents,
-		IsAvailable: req.IsAvailable,
-		ImageURL:    imageURL,
-	})
-	if err != nil {
-		if errors.Is(err, apperrors.ErrConflict) {
-			return nil, domainproduct.ErrSlugExists
+	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		_, updateErr := u.products.Update(txCtx, port.UpdateProductParams{
+			ID:          id,
+			CategoryID:  categoryID,
+			Name:        name,
+			Slug:        slug,
+			Description: req.Description,
+			PriceCents:  req.PriceCents,
+			IsAvailable: req.IsAvailable,
+		})
+		if updateErr != nil {
+			if errors.Is(updateErr, apperrors.ErrConflict) {
+				return domainproduct.ErrSlugExists
+			}
+			if errors.Is(updateErr, apperrors.ErrNotFound) {
+				return domainproduct.ErrNotFound
+			}
+			return updateErr
 		}
-		if errors.Is(err, apperrors.ErrNotFound) {
-			return nil, domainproduct.ErrNotFound
-		}
+		return u.products.ReplaceProductImages(txCtx, id, imageURLs)
+	}); err != nil {
 		return nil, err
 	}
 
-	u.logAudit(ctx, domaincatalog.AuditActionManagerUpdatedProduct, actorID, actorRole, &id, "product", toProductAudit(before), toProductAudit(updated))
+	u.logAudit(
+		ctx,
+		domaincatalog.AuditActionManagerUpdatedProduct,
+		actorID,
+		actorRole,
+		&id,
+		"product",
+		toProductAudit(before, beforeImages),
+		toProductAudit(before, imageURLs),
+	)
 	return u.managerProductResponse(ctx, id)
 }
 
@@ -202,6 +241,10 @@ func (u *ManagerProductUsecase) Delete(
 	actorRole domainuser.Role,
 	id uuid.UUID,
 ) error {
+	beforeImages, err := u.products.ListProductImagesByProductID(ctx, id)
+	if err != nil {
+		return err
+	}
 	before, err := u.products.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
@@ -217,7 +260,7 @@ func (u *ManagerProductUsecase) Delete(
 		return err
 	}
 
-	u.logAudit(ctx, domaincatalog.AuditActionManagerDeletedProduct, actorID, actorRole, &id, "product", toProductAudit(before), nil)
+	u.logAudit(ctx, domaincatalog.AuditActionManagerDeletedProduct, actorID, actorRole, &id, "product", toProductAudit(before, beforeImages), nil)
 	return nil
 }
 
@@ -243,10 +286,14 @@ func (u *ManagerProductUsecase) managerProductResponse(ctx context.Context, id u
 		}
 		return nil, err
 	}
-	return toProductResponse(&item.Product, item.CategoryName), nil
+	imageURLs, err := u.products.ListProductImagesByProductID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return toProductResponse(&item.Product, item.CategoryName, imageURLs), nil
 }
 
-func toProductResponse(product *domainproduct.Product, categoryName string) *dto.ProductResponse {
+func toProductResponse(product *domainproduct.Product, categoryName string, imageURLs []string) *dto.ProductResponse {
 	return &dto.ProductResponse{
 		ID:           product.ID.String(),
 		CategoryID:   product.CategoryID.String(),
@@ -256,20 +303,35 @@ func toProductResponse(product *domainproduct.Product, categoryName string) *dto
 		Description:  product.Description,
 		PriceCents:   product.PriceCents,
 		IsAvailable:  product.IsAvailable,
-		ImageURL:     product.ImageURL,
+		ImageURLs:    imageURLs,
 		CreatedAt:    product.CreatedAt,
 		UpdatedAt:    product.UpdatedAt,
 	}
 }
 
-func toProductAudit(product *domainproduct.Product) map[string]any {
+func toProductAuditFromResponse(resp *dto.ProductResponse) map[string]any {
 	return map[string]any{
-		"category_id":  product.CategoryID.String(),
-		"name":         product.Name,
-		"slug":         product.Slug,
-		"price_cents":  product.PriceCents,
-		"is_available": product.IsAvailable,
+		"category_id":  resp.CategoryID,
+		"name":         resp.Name,
+		"slug":         resp.Slug,
+		"price_cents":  resp.PriceCents,
+		"is_available": resp.IsAvailable,
+		"image_urls":   resp.ImageURLs,
 	}
+}
+
+func toProductAudit(product *domainproduct.Product, imageURLs []string) map[string]any {
+	out := map[string]any{
+		"image_urls": imageURLs,
+	}
+	if product != nil {
+		out["category_id"] = product.CategoryID.String()
+		out["name"] = product.Name
+		out["slug"] = product.Slug
+		out["price_cents"] = product.PriceCents
+		out["is_available"] = product.IsAvailable
+	}
+	return out
 }
 
 func (u *ManagerProductUsecase) logAudit(
