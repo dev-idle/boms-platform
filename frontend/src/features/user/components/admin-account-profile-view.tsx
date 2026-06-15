@@ -2,7 +2,7 @@ import { AdminAccountProfileForm } from "./admin-account-profile-form";
 import {
   DashboardAccountProfileLayout,
   DashboardProfileSection,
-} from "./dashboard-account-profile-layout";
+} from "@/components/layouts/dashboard-profile-layout";
 import { ChangePasswordForm } from "./change-password-form";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 

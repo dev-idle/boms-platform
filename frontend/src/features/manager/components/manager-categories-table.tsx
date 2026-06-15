@@ -119,7 +119,7 @@ export function ManagerCategoriesTable() {
               categories.map((category) => (
                 <tr key={category.id}>
                   <td className="db-table-cell-primary">{category.name}</td>
-                  <td className="text-ink-2">{category.slug}</td>
+                  <td className="text-muted">{category.slug}</td>
                   <td className="text-tabular">{category.sort_order}</td>
                   <td>
                     <EntityActivePill active={category.is_active} />

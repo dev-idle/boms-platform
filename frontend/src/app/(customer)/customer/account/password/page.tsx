@@ -8,7 +8,7 @@ export default function CustomerAccountPasswordPage() {
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-page-title">{PAGE_TITLES.changePassword}</h1>
-        <p className="mt-2 text-sm text-ink-2">
+        <p className="mt-2 text-sm text-muted">
           After changing password, you will be signed out from all sessions.
         </p>
       </div>

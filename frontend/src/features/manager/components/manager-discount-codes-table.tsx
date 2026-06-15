@@ -147,7 +147,7 @@ export function ManagerDiscountCodesTable() {
                       ? ` / ${discountCode.max_uses}`
                       : ""}
                   </td>
-                  <td className="text-ink-2">
+                  <td className="text-muted">
                     {formatDateTime(discountCode.starts_at)} –{" "}
                     {formatDateTime(discountCode.ends_at)}
                   </td>

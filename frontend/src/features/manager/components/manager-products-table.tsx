@@ -120,7 +120,7 @@ export function ManagerProductsTable() {
               products.map((product) => (
                 <tr key={product.id}>
                   <td className="db-table-cell-primary">{product.name}</td>
-                  <td className="text-ink-2">
+                  <td className="text-muted">
                     {product.category_name ?? (
                       <span className="db-table-cell-placeholder">—</span>
                     )}

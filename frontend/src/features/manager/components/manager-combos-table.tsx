@@ -125,7 +125,7 @@ export function ManagerCombosTable() {
                   <td className="text-tabular">
                     {formatPriceCents(combo.price_cents)}
                   </td>
-                  <td className="text-ink-2">
+                  <td className="text-muted">
                     {formatDateTime(combo.starts_at)} – {formatDateTime(combo.ends_at)}
                   </td>
                   <td className="text-tabular">{combo.items.length}</td>

@@ -4,10 +4,9 @@ import { useRouter } from "next/navigation";
 import { use } from "react";
 
 import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
-import { ComboForm, useCombo } from "@/features/manager";
-import { managerCombosBreadcrumb } from "@/features/manager/lib/manager-breadcrumbs";
+import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
+import { ComboForm, managerCombosBreadcrumb, useCombo } from "@/features/manager";
 import { ROUTE } from "@/constants/routes";
-import { DashboardProfileSection } from "@/features/user";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 type PageProps = {

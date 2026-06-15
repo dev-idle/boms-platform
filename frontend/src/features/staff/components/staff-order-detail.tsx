@@ -12,7 +12,7 @@ import {
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
-import { DashboardProfileSection } from "@/features/user";
+import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 
 import { usePatchStaffOrderStatus, useStaffOrder } from "../hooks";
 import type { OrderStatus, PatchStaffOrderStatusInput } from "../schemas";
@@ -83,14 +83,14 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
             />
           </div>
           <p className="text-order-code">{order.id}</p>
-          <p className="text-sm text-ink-2">
+          <p className="text-sm text-muted">
             Customer:{" "}
             {order.customer.display_name
               ? `${order.customer.display_name} | ${order.customer.email}`
               : order.customer.email}
           </p>
           {order.discount_code_snapshot ? (
-            <p className="text-sm text-ink-2">
+            <p className="text-sm text-muted">
               Discount code: {order.discount_code_snapshot}
             </p>
           ) : null}
@@ -118,11 +118,11 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
 
           <div className="dashboard-order-totals">
             <div className="dashboard-order-totals-row">
-              <span className="text-ink-2">Subtotal</span>
+              <span className="text-muted">Subtotal</span>
               <span className="text-tabular">{formatPriceCents(order.subtotal_cents)}</span>
             </div>
             {order.discount_cents > 0 ? (
-              <div className="dashboard-order-totals-row text-ink-2">
+              <div className="dashboard-order-totals-row text-muted">
                 <span>Discount</span>
                 <span className="text-tabular">-{formatPriceCents(order.discount_cents)}</span>
               </div>

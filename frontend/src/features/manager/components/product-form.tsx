@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
-import { mapValidationDetailsToFormErrors } from "@/lib/validation";
+import { applyFormFieldErrors } from "@/lib/validation";
 
 import { useCategories, useCreateProduct, useUpdateProduct } from "../hooks";
 import {
@@ -31,6 +31,16 @@ type ProductFormProps = {
   product?: ManagerProduct;
   onSuccess?: () => void;
 };
+
+const PRODUCT_FORM_FIELDS = [
+  "category_id",
+  "name",
+  "slug",
+  "description",
+  "price_cents",
+  "is_available",
+  "image_url",
+] as const;
 
 export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
   const createProduct = useCreateProduct();
@@ -67,12 +77,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           return;
         }
         if (error.hasValidationDetails()) {
-          for (const item of mapValidationDetailsToFormErrors(error.details!)) {
-            const field = item.field as keyof ProductFormInput;
-            if (field in values) {
-              form.setError(field, { message: item.message });
-            }
-          }
+          applyFormFieldErrors(form, error.details!, PRODUCT_FORM_FIELDS);
           return;
         }
         if (error.code === "slug_exists") {

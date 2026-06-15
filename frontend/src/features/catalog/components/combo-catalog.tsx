@@ -65,7 +65,7 @@ export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
             <p className="text-caption mt-2">
               Valid until {formatDateTime(combo.ends_at)}
             </p>
-            <ul className="mt-4 space-y-1 text-sm text-ink-2">
+            <ul className="mt-4 space-y-1 text-sm text-muted">
               {combo.items.map((item) => (
                 <li key={`${combo.id}-${item.product_id}`}>
                   {item.quantity}× {item.product_name}

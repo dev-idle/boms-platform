@@ -102,7 +102,7 @@ export function ProductDetail({
             {formatPriceCents(product.price_cents)}
           </p>
           {product.description ? (
-            <p className="mt-6 text-base leading-relaxed text-ink-2">
+            <p className="mt-6 text-base leading-relaxed text-muted">
               {product.description}
             </p>
           ) : null}

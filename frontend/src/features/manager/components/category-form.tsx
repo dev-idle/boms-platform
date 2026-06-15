@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { isApiError } from "@/lib/errors";
-import { mapValidationDetailsToFormErrors } from "@/lib/validation";
+import { applyFormFieldErrors } from "@/lib/validation";
 
 import { useCreateCategory, useUpdateCategory } from "../hooks";
 import {
@@ -30,6 +30,13 @@ type CategoryFormProps = {
   category?: ManagerCategory;
   onSuccess?: () => void;
 };
+
+const CATEGORY_FORM_FIELDS = [
+  "name",
+  "slug",
+  "sort_order",
+  "is_active",
+] as const;
 
 export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
   const createCategory = useCreateCategory();
@@ -57,12 +64,7 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
           return;
         }
         if (error.hasValidationDetails()) {
-          for (const item of mapValidationDetailsToFormErrors(error.details!)) {
-            const field = item.field as keyof CategoryFormInput;
-            if (field in values) {
-              form.setError(field, { message: item.message });
-            }
-          }
+          applyFormFieldErrors(form, error.details!, CATEGORY_FORM_FIELDS);
           return;
         }
         if (error.code === "slug_exists") {

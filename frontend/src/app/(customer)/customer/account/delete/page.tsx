@@ -8,7 +8,7 @@ export default function CustomerAccountDeletePage() {
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-page-title">{PAGE_TITLES.deleteAccount}</h1>
-        <p className="mt-2 text-sm text-ink-2">
+        <p className="mt-2 text-sm text-muted">
           This is available for customers only.
         </p>
       </div>

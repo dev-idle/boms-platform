@@ -5,6 +5,9 @@ import type {
   ProductListFilterInput,
 } from "../schemas";
 
+/** List queries: align with global default; explicit for manager catalog tables. */
+export const MANAGER_LIST_STALE_TIME_MS = 30_000;
+
 export const managerQueryKeys = {
   all: ["manager"] as const,
   categoriesRoot: ["manager", "categories"] as const,

@@ -115,13 +115,13 @@ export function StaffOrdersTable() {
                         {order.customer.display_name ?? order.customer.email}
                       </span>
                       {order.customer.display_name ? (
-                        <span className="truncate text-caption-dashboard text-ink-2">
+                        <span className="truncate text-caption-dashboard text-muted">
                           {order.customer.email}
                         </span>
                       ) : null}
                     </div>
                   </td>
-                  <td className="text-ink-2">{formatDateTime(order.created_at)}</td>
+                  <td className="text-muted">{formatDateTime(order.created_at)}</td>
                   <td className="db-table-cell-primary text-tabular">
                     {formatPriceCents(order.total_cents)}
                   </td>

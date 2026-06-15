@@ -33,7 +33,7 @@ export function OrderList() {
 
   if (orders.length === 0) {
     return (
-      <p className="text-sm text-ink-2">
+      <p className="text-sm text-muted">
         You have not placed any orders yet.
       </p>
     );
@@ -72,7 +72,7 @@ export function OrderList() {
           >
             Previous
           </Button>
-          <span className="text-sm text-ink-2">
+          <span className="text-sm text-muted">
             Page {pagination.page} of {pagination.total_pages}
           </span>
           <Button

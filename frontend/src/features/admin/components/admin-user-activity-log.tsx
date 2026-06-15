@@ -5,7 +5,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardActivityFeedPagePlaceholders } from "@/components/ui/dashboard-activity-feed-page-placeholders";
 import { roleDisplayLabel } from "@/constants/roles";
-import { DashboardProfileSection } from "@/features/user";
+import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import {
   isInitialQueryLoad,
   isQueryRefetching,

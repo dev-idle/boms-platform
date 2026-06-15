@@ -13,7 +13,7 @@ export function HomeCta() {
           <h2 className="text-h2">
             Planning a celebration?
           </h2>
-          <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-ink-2 sm:text-base">
+          <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-muted sm:text-base">
             Custom cakes and party trays available for advance order. Start with
             our menu, then pick your pickup date and time.
           </p>

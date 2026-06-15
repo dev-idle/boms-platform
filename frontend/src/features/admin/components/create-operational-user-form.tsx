@@ -11,7 +11,7 @@ import { FieldControl } from "@/components/ui/field-control";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ASSIGNABLE_OPERATIONAL_ROLES, roleDisplayLabel } from "@/constants/roles";
-import { DashboardProfileSection } from "@/features/user";
+import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import { isApiError } from "@/lib/errors";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { applyFormFieldErrors } from "@/lib/validation";

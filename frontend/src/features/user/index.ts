@@ -10,8 +10,6 @@ export {
   AdminAccountProfileView,
   ChangePasswordForm,
   CustomerAccountProfileForm,
-  DashboardAccountProfileLayout,
-  DashboardProfileSection,
   DeleteAccountCard,
   OperationalAccountProfileView,
 } from "./components";

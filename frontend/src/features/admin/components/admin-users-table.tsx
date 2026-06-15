@@ -183,7 +183,7 @@ export function AdminUsersTable() {
                       "db-table-cell-name db-table-cell-truncate",
                       listName === "—"
                         ? "db-table-cell-placeholder"
-                        : "text-ink-2",
+                         : "text-muted",
                     )}
                     title={listName === "—" ? undefined : listName}
                   >

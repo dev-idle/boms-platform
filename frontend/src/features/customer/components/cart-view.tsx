@@ -106,7 +106,7 @@ export function CartView() {
     <div className="space-y-6">
       {cart.items.length === 0 ? (
         <div className="space-y-4">
-          <p className="text-sm text-ink-2">
+          <p className="text-sm text-muted">
             Your cart is empty.
           </p>
           <Link href={ROUTE.products}>
@@ -125,7 +125,7 @@ export function CartView() {
 
           <div className="space-y-3 rounded-lg border border-border p-4 rounded-card border bg-surface">
             <div className="flex justify-between text-sm">
-              <span className="text-ink-2">Subtotal</span>
+              <span className="text-muted">Subtotal</span>
               <span>{formatPriceCents(cart.subtotal_cents)}</span>
             </div>
             {cart.discount ? (

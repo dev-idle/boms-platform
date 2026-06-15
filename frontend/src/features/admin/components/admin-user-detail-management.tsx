@@ -1,7 +1,7 @@
 "use client";
 
 import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
-import { DashboardProfileSection } from "@/features/user";
+import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 
 import type { AdminUser } from "../schemas";
 

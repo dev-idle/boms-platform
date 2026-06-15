@@ -53,7 +53,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
           Placed {formatDateTime(order.created_at)} · Status: {order.status}
         </p>
         {order.discount_code_snapshot ? (
-          <p className="mt-1 text-sm text-ink-2">
+          <p className="mt-1 text-sm text-muted">
             Discount code: {order.discount_code_snapshot}
           </p>
         ) : null}
@@ -81,7 +81,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
 
         <div className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
           <div className="flex justify-between">
-            <span className="text-ink-2">Subtotal</span>
+            <span className="text-muted">Subtotal</span>
             <span>{formatPriceCents(order.subtotal_cents)}</span>
           </div>
           {order.discount_cents > 0 ? (

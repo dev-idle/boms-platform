@@ -3,10 +3,9 @@
 import { useRouter } from "next/navigation";
 
 import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
-import { CategoryForm } from "@/features/manager";
-import { managerCategoriesBreadcrumb } from "@/features/manager/lib/manager-breadcrumbs";
+import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
+import { CategoryForm, managerCategoriesBreadcrumb } from "@/features/manager";
 import { ROUTE } from "@/constants/routes";
-import { DashboardProfileSection } from "@/features/user";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 export default function ManagerNewCategoryPage() {

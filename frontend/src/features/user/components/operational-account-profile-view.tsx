@@ -5,7 +5,7 @@ import { ChangePasswordForm } from "./change-password-form";
 import {
   DashboardAccountProfileLayout,
   DashboardProfileSection,
-} from "./dashboard-account-profile-layout";
+} from "@/components/layouts/dashboard-profile-layout";
 import { OperationalAccountProfileForm } from "./operational-account-profile-form";
 
 type OperationalProfileRole =

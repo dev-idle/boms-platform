@@ -14,6 +14,12 @@ export {
   ProductForm,
 } from "./components";
 export {
+  managerCategoriesBreadcrumb,
+  managerCombosBreadcrumb,
+  managerDiscountCodesBreadcrumb,
+  managerProductsBreadcrumb,
+} from "./lib/manager-breadcrumbs";
+export {
   useCategories,
   useCategory,
   useCombo,

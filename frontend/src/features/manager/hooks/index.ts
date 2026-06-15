@@ -44,9 +44,9 @@ import {
   type ProductFormInput,
   type ProductListFilterInput,
 } from "../schemas";
-import { managerQueryKeys } from "./query-options";
+import { managerQueryKeys, MANAGER_LIST_STALE_TIME_MS } from "./query-options";
 
-export { managerQueryKeys } from "./query-options";
+export { managerQueryKeys, MANAGER_LIST_STALE_TIME_MS } from "./query-options";
 
 export function useCategories(input: CategoryListFilterInput) {
   const filter = categoryListFilterSchema.parse(input);
@@ -54,6 +54,7 @@ export function useCategories(input: CategoryListFilterInput) {
     queryKey: managerQueryKeys.categories(filter),
     queryFn: () => listCategories(filter),
     placeholderData: keepPreviousData,
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
   });
 }
 
@@ -105,6 +106,7 @@ export function useProducts(input: ProductListFilterInput) {
     queryKey: managerQueryKeys.products(filter),
     queryFn: () => listProducts(filter),
     placeholderData: keepPreviousData,
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
   });
 }
 
@@ -156,6 +158,7 @@ export function useCombos(input: ComboListFilterInput) {
     queryKey: managerQueryKeys.combos(filter),
     queryFn: () => listCombos(filter),
     placeholderData: keepPreviousData,
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
   });
 }
 
@@ -207,6 +210,7 @@ export function useDiscountCodes(input: DiscountCodeListFilterInput) {
     queryKey: managerQueryKeys.discountCodes(filter),
     queryFn: () => listDiscountCodes(filter),
     placeholderData: keepPreviousData,
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
   });
 }
 

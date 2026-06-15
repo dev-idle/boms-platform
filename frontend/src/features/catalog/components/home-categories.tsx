@@ -27,7 +27,7 @@ export function HomeCategories({ categories }: HomeCategoriesProps) {
             >
               Browse by category
             </h2>
-            <p className="mt-3 text-sm text-ink-2">
+            <p className="mt-3 text-sm text-muted">
               From morning viennoiserie to celebration cakes.
             </p>
           </div>

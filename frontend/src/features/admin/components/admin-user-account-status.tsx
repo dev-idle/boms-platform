@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { USER_ROLE } from "@/constants/roles";
-import { DashboardProfileSection } from "@/features/user";
+import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import { formatDateTime } from "@/lib/validation/datetime";
 
 import type { AdminUser } from "../schemas";

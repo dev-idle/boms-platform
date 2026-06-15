@@ -21,12 +21,12 @@ export function HomeBrandStory() {
           <h2 className="text-h2 mt-6">
             Baked with care, picked up on your schedule.
           </h2>
-          <p className="mt-5 text-base leading-relaxed text-ink-2">
+          <p className="mt-5 text-base leading-relaxed text-muted">
             Every loaf, tart, and tiered cake starts in our kitchen at dawn. We
             bake in small batches so what you take home is still warm with
             intention — never rushed, never mass-produced.
           </p>
-          <p className="mt-4 text-base leading-relaxed text-ink-2">
+          <p className="mt-4 text-base leading-relaxed text-muted">
             Order ahead, choose your pickup window, and we will have everything
             ready at the counter.
           </p>

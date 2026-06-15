@@ -31,6 +31,7 @@ type DashboardProfileSectionProps = {
   variant?: "default" | "flush-table";
 };
 
+/** Section card for dashboard forms, tables, and detail panels. */
 export function DashboardProfileSection({
   children,
   description,

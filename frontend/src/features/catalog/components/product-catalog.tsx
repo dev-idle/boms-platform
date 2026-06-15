@@ -24,7 +24,7 @@ function filterPillClass(active: boolean) {
     "min-h-11 rounded-full border px-4 py-2 text-sm font-medium transition-[background-color,color,box-shadow] duration-standard ease-default",
     active
       ? "border-matcha-200 bg-matcha-100 text-matcha-700"
-      : "border-border bg-surface text-ink-2 hover:bg-mint hover:text-matcha-500",
+      : "border-border bg-surface text-muted hover:bg-mint hover:text-matcha-500",
   );
 }
 
@@ -107,7 +107,7 @@ export function ProductCatalog() {
           ) : productsQuery.isError ? (
             <p className="text-sm text-error">Failed to load products.</p>
           ) : products.length === 0 ? (
-            <p className="text-sm text-ink-2">
+            <p className="text-sm text-muted">
               {hasActiveFilters
                 ? "No products match your filters."
                 : "No products available."}

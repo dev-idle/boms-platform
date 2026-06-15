@@ -32,7 +32,7 @@ export function HomeFeaturedProducts({ products }: HomeFeaturedProductsProps) {
             >
               Fresh from the oven
             </h2>
-            <p className="mt-3 text-sm text-ink-2">
+            <p className="mt-3 text-sm text-muted">
               Customer favorites and seasonal picks, made daily.
             </p>
           </div>
@@ -42,7 +42,7 @@ export function HomeFeaturedProducts({ products }: HomeFeaturedProductsProps) {
         </div>
 
         {products.length === 0 ? (
-          <p className="mt-10 text-sm text-ink-2">
+          <p className="mt-10 text-sm text-muted">
             Our shelves are being filled — check back soon or{" "}
             <Link
               className="font-medium text-matcha-500 underline-offset-4 hover:underline"
