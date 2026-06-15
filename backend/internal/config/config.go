@@ -28,6 +28,7 @@ type Config struct {
 	Cookie   CookieConfig
 	Argon2   Argon2Config
 	Seed     SeedConfig
+	Cloudinary CloudinaryConfig
 }
 
 type AppConfig struct {
@@ -139,6 +140,30 @@ type SeedConfig struct {
 	DevAdminPassword string
 	DevAdminFullName string
 	DevAdminPhone    string
+}
+
+// CloudinaryConfig holds signed-upload credentials (API secret stays server-side only).
+type CloudinaryConfig struct {
+	CloudName  string
+	APIKey     string
+	APISecret  string
+	UploadFolder string
+}
+
+// Enabled reports whether signed product uploads can be issued.
+func (c CloudinaryConfig) Enabled() bool {
+	return strings.TrimSpace(c.CloudName) != "" &&
+		strings.TrimSpace(c.APIKey) != "" &&
+		strings.TrimSpace(c.APISecret) != ""
+}
+
+// ResolvedUploadFolder returns the trimmed upload folder with a safe default.
+func (c CloudinaryConfig) ResolvedUploadFolder() string {
+	folder := strings.TrimSpace(c.UploadFolder)
+	if folder == "" {
+		return "boms/products"
+	}
+	return strings.Trim(folder, "/")
 }
 
 // Load reads configuration from environment variables (set defaults with Viper;
@@ -274,6 +299,12 @@ func Load() (*Config, error) {
 			DevAdminFullName: v.GetString("seed.dev_admin_full_name"),
 			DevAdminPhone:    v.GetString("seed.dev_admin_phone"),
 		},
+		Cloudinary: CloudinaryConfig{
+			CloudName:    v.GetString("cloudinary.cloud_name"),
+			APIKey:       v.GetString("cloudinary.api_key"),
+			APISecret:    v.GetString("cloudinary.api_secret"),
+			UploadFolder: v.GetString("cloudinary.upload_folder"),
+		},
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -361,6 +392,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("seed.dev_admin_password", "")
 	v.SetDefault("seed.dev_admin_full_name", "Development Admin")
 	v.SetDefault("seed.dev_admin_phone", "")
+
+	v.SetDefault("cloudinary.cloud_name", "")
+	v.SetDefault("cloudinary.api_key", "")
+	v.SetDefault("cloudinary.api_secret", "")
+	v.SetDefault("cloudinary.upload_folder", "boms/products")
 }
 
 // Validate enforces production-safe constraints. Call after Load.
@@ -472,6 +508,9 @@ func (c *Config) Validate() error {
 		}
 		if c.HTTP.HSTSMaxAge <= 0 {
 			return errors.New("http.hsts_max_age must be positive in non-development environments")
+		}
+		if !c.Cloudinary.Enabled() {
+			return fmt.Errorf("cloudinary.cloud_name, cloudinary.api_key, and cloudinary.api_secret are required when app.env is %q", c.App.Env)
 		}
 	}
 

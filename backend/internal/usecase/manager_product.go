@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/boms/backend/internal/config"
 	domaincatalog "github.com/boms/backend/internal/domain/catalog"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainproduct "github.com/boms/backend/internal/domain/product"
@@ -22,6 +23,7 @@ type ManagerProductUsecase struct {
 	products   port.ProductRepository
 	categories port.CategoryRepository
 	audit      *auditlogger.Service
+	cloudinary config.CloudinaryConfig
 	log        *zap.Logger
 }
 
@@ -29,9 +31,16 @@ func NewManagerProductUsecase(
 	products port.ProductRepository,
 	categories port.CategoryRepository,
 	audit *auditlogger.Service,
+	cloudinary config.CloudinaryConfig,
 	log *zap.Logger,
 ) *ManagerProductUsecase {
-	return &ManagerProductUsecase{products: products, categories: categories, audit: audit, log: log}
+	return &ManagerProductUsecase{
+		products:   products,
+		categories: categories,
+		audit:      audit,
+		cloudinary: cloudinary,
+		log:        log,
+	}
 }
 
 func (u *ManagerProductUsecase) Create(
@@ -56,6 +65,10 @@ func (u *ManagerProductUsecase) Create(
 	if err != nil {
 		return nil, err
 	}
+	imageURL, err := sanitizeManagerProductImageURL(u.cloudinary, req.ImageURL)
+	if err != nil {
+		return nil, err
+	}
 
 	created, err := u.products.Create(ctx, port.CreateProductParams{
 		CategoryID:  categoryID,
@@ -64,7 +77,7 @@ func (u *ManagerProductUsecase) Create(
 		Description: req.Description,
 		PriceCents:  req.PriceCents,
 		IsAvailable: req.IsAvailable,
-		ImageURL:    req.ImageURL,
+		ImageURL:    imageURL,
 	})
 	if err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
@@ -154,6 +167,10 @@ func (u *ManagerProductUsecase) Update(
 	if err != nil {
 		return nil, err
 	}
+	imageURL, err := sanitizeManagerProductImageURL(u.cloudinary, req.ImageURL)
+	if err != nil {
+		return nil, err
+	}
 
 	updated, err := u.products.Update(ctx, port.UpdateProductParams{
 		ID:          id,
@@ -163,7 +180,7 @@ func (u *ManagerProductUsecase) Update(
 		Description: req.Description,
 		PriceCents:  req.PriceCents,
 		IsAvailable: req.IsAvailable,
-		ImageURL:    req.ImageURL,
+		ImageURL:    imageURL,
 	})
 	if err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {

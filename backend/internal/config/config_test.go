@@ -86,6 +86,22 @@ func TestValidate_HSTSBounds(t *testing.T) {
 	}
 }
 
+func TestValidate_ProductionRequiresCloudinary(t *testing.T) {
+	t.Parallel()
+	cfg := minimalProductionConfig()
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "cloudinary") {
+		t.Fatalf("expected cloudinary validation error, got: %v", err)
+	}
+	cfg.Cloudinary = config.CloudinaryConfig{
+		CloudName: "demo",
+		APIKey:    "key",
+		APISecret: "secret",
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected valid production config with cloudinary: %v", err)
+	}
+}
+
 func defaultRateRedis() config.RateLimitRedisConfig {
 	return config.RateLimitRedisConfig{
 		AuthAttemptMax: 5, AuthAttemptWindow: time.Minute,
@@ -94,6 +110,20 @@ func defaultRateRedis() config.RateLimitRedisConfig {
 		AdminWriteMax: 30, AdminWriteWindow: time.Minute,
 		AuthUserMax: 60, AuthUserWindow: time.Minute,
 	}
+}
+
+func minimalProductionConfig() *config.Config {
+	cfg := minimalDevConfig()
+	cfg.App.Env = "production"
+	cfg.CORS = config.CORSConfig{AllowOrigins: []string{"https://app.example.com"}}
+	cfg.HTTP.InternalSecret = strings.Repeat("a", 32)
+	cfg.HTTP.HSTSMaxAge = 31536000
+	cfg.Cookie.Secure = true
+	cfg.JWT.Ed25519PrivateKey = base64Seed()
+	cfg.JWT.Issuer = "boms-api"
+	cfg.JWT.Audience = "boms"
+	cfg.Postgres.URL = "postgres://host/db?sslmode=require"
+	return cfg
 }
 
 func minimalDevConfig() *config.Config {

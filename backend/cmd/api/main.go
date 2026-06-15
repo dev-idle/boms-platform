@@ -88,7 +88,8 @@ func main() {
 	comboRepo := postgresrepo.NewComboRepository(pgPool)
 	discountCodeRepo := postgresrepo.NewDiscountCodeRepository(pgPool)
 	managerCategoryUC := usecase.NewManagerCategoryUsecase(categoryRepo, auditLogger, zlog)
-	managerProductUC := usecase.NewManagerProductUsecase(productRepo, categoryRepo, auditLogger, zlog)
+	managerMediaUC := usecase.NewManagerMediaUsecase(cfg.Cloudinary)
+	managerProductUC := usecase.NewManagerProductUsecase(productRepo, categoryRepo, auditLogger, cfg.Cloudinary, zlog)
 	managerComboUC := usecase.NewManagerComboUsecase(comboRepo, pgPool, auditLogger, zlog)
 	managerDiscountCodeUC := usecase.NewManagerDiscountCodeUsecase(discountCodeRepo, auditLogger, zlog)
 	catalogUC := usecase.NewCatalogUsecase(categoryRepo, productRepo, comboRepo)
@@ -109,6 +110,7 @@ func main() {
 	managerProductHandler := v1.NewManagerProductHandler(managerProductUC)
 	managerComboHandler := v1.NewManagerComboHandler(managerComboUC)
 	managerDiscountCodeHandler := v1.NewManagerDiscountCodeHandler(managerDiscountCodeUC)
+	managerMediaHandler := v1.NewManagerMediaHandler(managerMediaUC)
 	catalogHandler := v1.NewCatalogHandler(catalogUC)
 	cartHandler := v1.NewCartHandler(cartUC)
 	orderHandler := v1.NewOrderHandler(orderUC)
@@ -213,6 +215,11 @@ func main() {
 	managerRead.Get("/combos/:id", managerComboHandler.Get)
 	managerRead.Get("/discount-codes", managerDiscountCodeHandler.List)
 	managerRead.Get("/discount-codes/:id", managerDiscountCodeHandler.Get)
+	managerRead.Get(
+		"/media/cloudinary-signature",
+		middleware.ManagerMediaRateLimit(rdb, cfg.RateRedis),
+		managerMediaHandler.GetCloudinaryUploadSignature,
+	)
 
 	managerWrite := apiV1.Group(
 		"/manager",

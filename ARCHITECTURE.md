@@ -239,6 +239,39 @@ features/<slice>/
 | Soft delete | `users.deleted_at` (no hard delete from app) |
 | Inbound | Strip `x-internal-secret`, `x-user-role`, `x-auth-hint` from client requests in proxy |
 
+### Product images (Cloudinary)
+
+Signed upload keeps `CLOUDINARY_API_SECRET` on the API only.
+
+| Step | Owner |
+|------|-------|
+| Manager requests signature | `GET /api/v1/manager/media/cloudinary-signature` (`manager` role, session, per-user rate limit) |
+| Browser uploads file | Direct `POST` to `https://api.cloudinary.com/v1_1/{cloud}/image/upload` |
+| Persist URL | `products.image_url` stores `secure_url` from Cloudinary |
+| Storefront delivery | `catalogProductImageUrl()` applies `f_auto,q_auto,w_*` transforms |
+
+**Validation (defense in depth):**
+
+| Layer | Rule |
+|-------|------|
+| Signed params | `folder`, `allowed_formats`, `unique_filename`, `timestamp` |
+| Size cap | API returns `max_bytes` (5 MiB); FE validates file size pre-upload and `bytes` in Cloudinary response |
+| Persist | BE `IsCloudinaryDeliveryURLInFolder` on create/update when Cloudinary is enabled |
+| FE submit | Zod `productImageUrlSchema` mirrors folder + cloud rules |
+
+When Cloudinary env is set on both sides, product create/update rejects URLs outside the configured upload folder. When unset (development only), managers may use any HTTPS image URL.
+
+**Production:** `cloudinary.cloud_name`, `api_key`, and `api_secret` are required when `app.env` is `staging` or `production`.
+
+Env (must match):
+
+| Backend | Frontend |
+|---------|----------|
+| `CLOUDINARY_CLOUD_NAME` | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` |
+| `CLOUDINARY_UPLOAD_FOLDER` (default `boms/products`) | `NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER` when overriding |
+
+URL path parsing for folder checks is duplicated in `backend/internal/domain/media` and `frontend/src/lib/cloudinary/config` — keep tests in sync when changing either.
+
 ---
 
 ## 5. Performance principles
@@ -259,6 +292,7 @@ features/<slice>/
 | Auth (login/register/logout) | `features/auth` (FE) + `usecase/auth` (BE) |
 | Admin user CRUD | `features/admin` (FE) + `usecase/admin_user` (BE) |
 | Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` + `manager_combo` + `manager_discount_code` (BE) |
+| Product images (Cloudinary) | `lib/cloudinary/*` + `components/ui/catalog-image-field` (FE) + `usecase/manager_media` + `service/cloudinary` (BE) |
 | Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
 | Customer cart & checkout | `features/customer` (FE) + `usecase/cart` + `usecase/order` (BE) — `/cart/*`, `/orders/*` (session + server pricing) |
 | Staff order queue | `features/staff` (FE) + `usecase/staff_order` (BE) — `/staff/orders/*` (list, detail, status transitions) |

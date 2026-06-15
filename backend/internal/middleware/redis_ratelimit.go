@@ -114,6 +114,16 @@ func AdminWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) f
 	}, cfg.AdminWriteMax, cfg.AdminWriteWindow, true)
 }
 
+// ManagerMediaRateLimit limits Cloudinary signature issuance per manager (separate from catalog writes).
+func ManagerMediaRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":manager_media"
+		}
+		return "rl:ip:" + c.IP() + ":manager_media"
+	}, cfg.AdminWriteMax, cfg.AdminWriteWindow, true)
+}
+
 // ManagerWriteRateLimit limits manager catalog write operations per user.
 func ManagerWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
