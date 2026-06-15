@@ -67,7 +67,7 @@ export function CatalogImageListField({
       const signature = await fetchCloudinaryUploadSignature();
       const secureUrl = await uploadImageToCloudinary(file, signature);
       if (value.includes(secureUrl)) {
-        toast.error("This image is already in the list");
+        toast.error(CLOUDINARY_UPLOAD_COPY.duplicateImage);
         return;
       }
       setUploadedLabels((current) => ({ ...current, [secureUrl]: file.name }));

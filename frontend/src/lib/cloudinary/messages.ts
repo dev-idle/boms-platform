@@ -8,6 +8,7 @@ export const CLOUDINARY_UPLOAD_COPY = {
     "Cloudinary cloud name does not match this environment. Check NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.",
   folderMismatch:
     "Cloudinary folder does not match this environment. Check NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER.",
+  duplicateImage: "This image is already in the list",
   productImageValidation:
     "Upload a product image or use a URL from the configured Cloudinary folder",
   uploadFailed: "Failed to upload image",

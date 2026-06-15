@@ -39,6 +39,3 @@ export const productImageUrlsSchema = z
     (urls) => new Set(urls).size === urls.length,
     "Duplicate image URLs are not allowed",
   );
-
-/** @deprecated Use productImageUrlsSchema — single URL helper for tests only. */
-export const productImageUrlSchema = productImageItemSchema.optional().nullable();
