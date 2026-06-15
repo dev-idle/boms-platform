@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import {
@@ -11,9 +12,9 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { FormPublishToggle } from "@/components/ui/form-publish-toggle";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
@@ -81,7 +82,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           return;
         }
         if (error.code === "slug_exists") {
-          toast.error("That slug is already in use.");
+          form.setError("slug", { message: "This slug is already in use" });
           return;
         }
         toast.error(error.message);
@@ -117,29 +118,12 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
             </FormItem>
           )}
         />
-        <FormField
+        <CatalogNameSlugFields
           control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FieldControl label="Name">
-                <Input placeholder="Sourdough loaf" {...field} />
-              </FieldControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="slug"
-          render={({ field }) => (
-            <FormItem>
-              <FieldControl label="Slug">
-                <Input placeholder="sourdough-loaf" {...field} />
-              </FieldControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          mode={mode}
+          namePlaceholder="Sourdough loaf"
+          setValue={form.setValue}
+          slugPlaceholder="sourdough-loaf"
         />
         <FormField
           control={form.control}
@@ -193,16 +177,16 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           control={form.control}
           name="is_available"
           render={({ field }) => (
-            <FormItem className="flex items-center gap-2">
+            <FormItem>
               <FormControl>
-                <input
+                <FormPublishToggle
                   checked={field.value}
-                  className="h-4 w-4 rounded border-border"
-                  onChange={(event) => field.onChange(event.target.checked)}
-                  type="checkbox"
+                  description="When on, customers can add this product to their cart."
+                  id="product-is-available"
+                  label="Available"
+                  onCheckedChange={field.onChange}
                 />
               </FormControl>
-              <FormLabel className="!mt-0">Available</FormLabel>
               <FormMessage />
             </FormItem>
           )}

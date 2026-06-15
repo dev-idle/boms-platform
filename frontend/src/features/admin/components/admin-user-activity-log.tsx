@@ -73,6 +73,7 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
       description="Administrative and account events for this user."
       id="admin-user-activity"
       title="Activity log"
+      variant="flush-feed"
     >
       <div
         className={cn(

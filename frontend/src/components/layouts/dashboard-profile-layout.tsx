@@ -28,7 +28,7 @@ type DashboardProfileSectionProps = {
   description?: string;
   id: string;
   title: string;
-  variant?: "default" | "flush-table";
+  variant?: "default" | "flush-feed" | "flush-table";
 };
 
 /** Section card for dashboard forms, tables, and detail panels. */
@@ -45,6 +45,7 @@ export function DashboardProfileSection({
       className={cn(
         "dashboard-profile-section",
         variant === "flush-table" && "dashboard-profile-section--flush-table",
+        variant === "flush-feed" && "dashboard-profile-section--flush-feed",
       )}
     >
       <header className="dashboard-profile-section-header">

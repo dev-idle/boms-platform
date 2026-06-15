@@ -5,11 +5,13 @@ import { useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields";
 import { Button } from "@/components/ui/button";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { FieldControl } from "@/components/ui/field-control";
 import { Label } from "@/components/ui/label";
+import { FormPublishToggle } from "@/components/ui/form-publish-toggle";
 import {
   Form,
   FormControl,
@@ -148,30 +150,12 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}
       >
-        <FormField
+        <CatalogNameSlugFields
           control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FieldControl label="Name">
-                <Input {...field} />
-              </FieldControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="slug"
-          render={({ field }) => (
-            <FormItem>
-              <FieldControl label="Slug">
-                <Input {...field} />
-              </FieldControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          mode={mode}
+          namePlaceholder="Weekend pastry box"
+          setValue={form.setValue}
+          slugPlaceholder="weekend-pastry-box"
         />
 
         <FormField
@@ -230,16 +214,17 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           control={form.control}
           name="is_active"
           render={({ field }) => (
-            <FormItem className="flex items-center gap-2">
+            <FormItem>
               <FormControl>
-                <input
+                <FormPublishToggle
                   checked={field.value}
-                  className="size-4 rounded border-border"
-                  onChange={(event) => field.onChange(event.target.checked)}
-                  type="checkbox"
+                  description="When on, customers can see and order this combo."
+                  id="combo-is-active"
+                  label="Active"
+                  onCheckedChange={field.onChange}
                 />
               </FormControl>
-              <FormLabel className="!mt-0">Active</FormLabel>
+              <FormMessage />
             </FormItem>
           )}
         />

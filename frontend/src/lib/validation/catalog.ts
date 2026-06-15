@@ -10,6 +10,24 @@ export const catalogSlugSchema = z
     "Slug must be lowercase letters, numbers, and hyphens",
   );
 
+/**
+ * Derive a URL-safe catalog slug from a display name (create-mode default).
+ * Keep in sync with backend catalog.SlugFromName (NFD diacritic fold).
+ */
+export function slugifyCatalogName(name: string): string {
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 128);
+
+  return normalized;
+}
+
 export function formatPriceCents(cents: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

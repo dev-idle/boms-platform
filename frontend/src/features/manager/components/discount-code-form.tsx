@@ -6,12 +6,12 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
+import { FormPublishToggle } from "@/components/ui/form-publish-toggle";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { FieldControl } from "@/components/ui/field-control";
@@ -255,16 +255,17 @@ export function DiscountCodeForm({
           control={form.control}
           name="is_active"
           render={({ field }) => (
-            <FormItem className="flex items-center gap-2">
+            <FormItem>
               <FormControl>
-                <input
+                <FormPublishToggle
                   checked={field.value}
-                  className="size-4 rounded border-border"
-                  onChange={(event) => field.onChange(event.target.checked)}
-                  type="checkbox"
+                  description="When on, customers can apply this code at checkout."
+                  id="discount-code-is-active"
+                  label="Active"
+                  onCheckedChange={field.onChange}
                 />
               </FormControl>
-              <FormLabel className="!mt-0">Active</FormLabel>
+              <FormMessage />
             </FormItem>
           )}
         />

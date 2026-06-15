@@ -48,13 +48,13 @@ func (u *ManagerProductUsecase) Create(
 		return nil, err
 	}
 
-	slug, err := normalizeManagerCatalogSlug(req.Slug)
-	if err != nil {
-		return nil, err
-	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		return nil, apperrors.ErrValidation.WithDetail("name", "required")
+	}
+	slug, err := resolveManagerCatalogSlug(name, req.Slug, true)
+	if err != nil {
+		return nil, err
 	}
 
 	created, err := u.products.Create(ctx, port.CreateProductParams{
@@ -146,13 +146,13 @@ func (u *ManagerProductUsecase) Update(
 		return nil, err
 	}
 
-	slug, err := normalizeManagerCatalogSlug(req.Slug)
-	if err != nil {
-		return nil, err
-	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		return nil, apperrors.ErrValidation.WithDetail("name", "required")
+	}
+	slug, err := resolveManagerCatalogSlug(name, req.Slug, false)
+	if err != nil {
+		return nil, err
 	}
 
 	updated, err := u.products.Update(ctx, port.UpdateProductParams{

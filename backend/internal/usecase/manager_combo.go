@@ -41,7 +41,7 @@ func (u *ManagerComboUsecase) Create(
 	actorRole domainuser.Role,
 	req dto.CreateComboRequest,
 ) (*dto.ComboResponse, error) {
-	parsed, err := parseComboRequest(req.Name, req.Slug, req.PriceCents, req.StartsAt, req.EndsAt, req.IsActive, req.Items)
+	parsed, err := parseComboRequest(req.Name, req.Slug, req.PriceCents, req.StartsAt, req.EndsAt, req.IsActive, req.Items, true)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (u *ManagerComboUsecase) Update(
 		return nil, err
 	}
 
-	parsed, parseErr := parseComboRequest(req.Name, req.Slug, req.PriceCents, req.StartsAt, req.EndsAt, req.IsActive, req.Items)
+	parsed, parseErr := parseComboRequest(req.Name, req.Slug, req.PriceCents, req.StartsAt, req.EndsAt, req.IsActive, req.Items, false)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -209,14 +209,15 @@ func parseComboRequest(
 	startsAt, endsAt time.Time,
 	isActive bool,
 	items []dto.ComboItemInput,
+	deriveSlugFromName bool,
 ) (parsedComboRequest, error) {
-	slug, err := normalizeManagerCatalogSlug(slugRaw)
-	if err != nil {
-		return parsedComboRequest{}, err
-	}
 	name := strings.TrimSpace(nameRaw)
 	if name == "" {
 		return parsedComboRequest{}, apperrors.ErrValidation.WithDetail("name", "required")
+	}
+	slug, err := resolveManagerCatalogSlug(name, slugRaw, deriveSlugFromName)
+	if err != nil {
+		return parsedComboRequest{}, err
 	}
 	if !endsAt.After(startsAt) {
 		return parsedComboRequest{}, apperrors.ErrValidation.WithDetail("ends_at", "must be after starts_at")

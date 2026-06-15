@@ -33,13 +33,13 @@ func (u *ManagerCategoryUsecase) Create(
 	actorRole domainuser.Role,
 	req dto.CreateCategoryRequest,
 ) (*dto.CategoryResponse, error) {
-	slug, err := normalizeManagerCatalogSlug(req.Slug)
-	if err != nil {
-		return nil, err
-	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		return nil, apperrors.ErrValidation.WithDetail("name", "required")
+	}
+	slug, err := resolveManagerCatalogSlug(name, req.Slug, true)
+	if err != nil {
+		return nil, err
 	}
 
 	created, err := u.categories.Create(ctx, port.CreateCategoryParams{
@@ -115,13 +115,13 @@ func (u *ManagerCategoryUsecase) Update(
 		return nil, err
 	}
 
-	slug, err := normalizeManagerCatalogSlug(req.Slug)
-	if err != nil {
-		return nil, err
-	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		return nil, apperrors.ErrValidation.WithDetail("name", "required")
+	}
+	slug, err := resolveManagerCatalogSlug(name, req.Slug, false)
+	if err != nil {
+		return nil, err
 	}
 
 	updated, err := u.categories.Update(ctx, port.UpdateCategoryParams{
@@ -208,12 +208,4 @@ func (u *ManagerCategoryUsecase) logAudit(
 	before, after any,
 ) {
 	recordAudit(u.log, u.audit, ctx, action, actorID, actorRole, targetID, targetType, before, after)
-}
-
-func normalizeManagerCatalogSlug(slug string) (string, error) {
-	normalized, err := domaincatalog.NormalizeSlug(slug)
-	if err != nil {
-		return "", apperrors.ErrValidation.WithDetail("slug", "must be lowercase letters, numbers, and hyphens")
-	}
-	return normalized, nil
 }

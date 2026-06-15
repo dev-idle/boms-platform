@@ -8,3 +8,4 @@ export {
   AdminUsersTable,
   CreateOperationalUserForm,
 } from "./components";
+export { adminUsersBreadcrumb } from "./lib/admin-breadcrumbs";

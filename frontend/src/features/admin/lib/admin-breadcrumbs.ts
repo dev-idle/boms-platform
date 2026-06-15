@@ -4,16 +4,15 @@ import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 /** Admin namespace — Users section trails (sidebar "Users" is the section root). */
 
-export function adminUserDetailBreadcrumbItems(): DashboardBreadcrumbItem[] {
+export function adminUsersBreadcrumb(
+  leaf: string,
+): DashboardBreadcrumbItem[] {
   return [
     { label: PAGE_TITLES.users, href: ROUTE.admin.users },
-    { label: PAGE_TITLES.breadcrumbDetail },
+    { label: leaf },
   ];
 }
 
-export function adminUsersNewBreadcrumbItems(): DashboardBreadcrumbItem[] {
-  return [
-    { label: PAGE_TITLES.users, href: ROUTE.admin.users },
-    { label: PAGE_TITLES.breadcrumbNew },
-  ];
+export function adminUserDetailBreadcrumbItems(): DashboardBreadcrumbItem[] {
+  return adminUsersBreadcrumb(PAGE_TITLES.breadcrumbDetail);
 }
