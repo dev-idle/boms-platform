@@ -12,11 +12,18 @@
     -moz-osx-font-smoothing: grayscale;
     color-scheme: light;
     font-optical-sizing: auto;
-    /* Reserve scrollbar width so route changes (e.g. home → login) do not shift layout. */
     scrollbar-gutter: stable;
   }
 
+  /* Radix RemoveScroll padding stacks on scrollbar-gutter and shifts layout horizontally. */
+  html[data-scroll-locked],
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
+
   body {
+    scrollbar-gutter: stable;
     background-color: var(--color-bg);
     color: var(--color-ink-2);
     font-family: var(--font-body);

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { ROUTE } from "@/constants/routes";
+import { catalogProductImageUrl } from "@/lib/cloudinary/config";
 import { isApiError } from "@/lib/errors";
 import type { CatalogProduct } from "@/lib/schemas/catalog";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -82,7 +83,7 @@ export function ProductDetail({
             <img
               alt={product.name}
               className="aspect-square w-full object-cover"
-              src={product.image_url}
+              src={catalogProductImageUrl(product.image_url, 960)}
             />
           ) : (
             <div className="flex aspect-square items-center justify-center text-caption">

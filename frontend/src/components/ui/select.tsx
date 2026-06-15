@@ -13,6 +13,9 @@ type ParsedSelectOption = {
 
 type SelectMenuSide = "top" | "bottom";
 
+/** Internal Radix value when the native select value is empty — keeps the listbox controlled. */
+const SELECT_EMPTY_VALUE = "__boms_select_empty__";
+
 export type SelectProps = Omit<
   React.SelectHTMLAttributes<HTMLSelectElement>,
   "children" | "onChange"
@@ -51,6 +54,42 @@ function parseSelectOptions(children: React.ReactNode): ParsedSelectOption[] {
 function readMenuSide(node: HTMLElement | null): SelectMenuSide {
   const side = node?.getAttribute("data-side");
   return side === "top" ? "top" : "bottom";
+}
+
+/** Radix scroll-lock adds body padding and hides the scrollbar — shifts layout with scrollbar-gutter. */
+function useReleaseSelectScrollLock(open: boolean): void {
+  React.useLayoutEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function releaseScrollLock(): void {
+      for (const node of [document.documentElement, document.body]) {
+        node.style.removeProperty("overflow");
+        node.style.removeProperty("padding-right");
+        node.style.removeProperty("margin-right");
+        node.removeAttribute("data-scroll-locked");
+      }
+    }
+
+    releaseScrollLock();
+    const frame = requestAnimationFrame(releaseScrollLock);
+    const observer = new MutationObserver(releaseScrollLock);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-scroll-locked", "style"],
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-scroll-locked", "style"],
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      releaseScrollLock();
+    };
+  }, [open]);
 }
 
 function ChevronDownIcon({ className }: { className?: string }) {
@@ -93,9 +132,12 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const options = React.useMemo(() => parseSelectOptions(children), [children]);
     const placeholderOption = options.find((option) => option.value === "");
     const selectableOptions = options.filter((option) => option.value !== "");
-    const stringValue =
+    const nativeValue =
       value === undefined || value === null ? "" : String(value);
-    const resolvedValue = stringValue === "" ? undefined : stringValue;
+    const radixValue =
+      nativeValue === "" ? SELECT_EMPTY_VALUE : nativeValue;
+
+    useReleaseSelectScrollLock(open);
 
     React.useLayoutEffect(() => {
       if (!open) {
@@ -125,9 +167,11 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     }, [open, selectableOptions.length]);
 
     function handleValueChange(nextValue: string): void {
+      const emitted =
+        nextValue === SELECT_EMPTY_VALUE ? "" : nextValue;
       onChange?.({
-        target: { name: name ?? "", value: nextValue },
-        currentTarget: { name: name ?? "", value: nextValue },
+        target: { name: name ?? "", value: emitted },
+        currentTarget: { name: name ?? "", value: emitted },
       } as React.ChangeEvent<HTMLSelectElement>);
     }
 
@@ -139,7 +183,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         onValueChange={handleValueChange}
         open={open}
         required={required}
-        value={resolvedValue}
+        value={radixValue}
       >
         <div className="field-select">
           <SelectPrimitive.Trigger
@@ -179,6 +223,14 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             >
               <SelectPrimitive.Viewport className="field-select-viewport">
                 <div className="field-select-tray">
+                  <SelectPrimitive.Item
+                    className="sr-only"
+                    value={SELECT_EMPTY_VALUE}
+                  >
+                    <SelectPrimitive.ItemText>
+                      {placeholderOption?.label ?? "Select…"}
+                    </SelectPrimitive.ItemText>
+                  </SelectPrimitive.Item>
                   {selectableOptions.map((option) => (
                     <SelectPrimitive.Item
                       key={option.value}

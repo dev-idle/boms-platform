@@ -1,10 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields";
+import { CatalogImageField } from "@/components/ui/catalog-image-field";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import {
@@ -16,10 +19,12 @@ import {
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
 import { Input } from "@/components/ui/input";
 import {
+  FORM_FIELD_HINT,
   FORM_SWITCH_HINT,
   FORM_SWITCH_LABEL,
 } from "@/constants/dashboard-form-copy";
 import { Select } from "@/components/ui/select";
+import { isCloudinaryConfigured } from "@/lib/cloudinary/config";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
@@ -29,6 +34,16 @@ import {
   type ManagerProduct,
   type ProductFormInput,
 } from "../schemas";
+
+const CREATE_PRODUCT_EMPTY_VALUES: ProductFormInput = {
+  category_id: "",
+  name: "",
+  slug: "",
+  description: null,
+  price_cents: 0,
+  is_available: true,
+  image_url: null,
+};
 
 type ProductFormProps = {
   mode: "create" | "edit";
@@ -47,6 +62,7 @@ const PRODUCT_FORM_FIELDS = [
 ] as const;
 
 export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
+  const pathname = usePathname();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct(product?.id ?? "");
   const categoriesQuery = useCategories({
@@ -70,11 +86,23 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
     resolver: zodResolver(productFormSchema),
     defaultValues,
   });
+  const resetForm = form.reset;
+
+  useEffect(() => {
+    if (mode === "create") {
+      resetForm(CREATE_PRODUCT_EMPTY_VALUES);
+    }
+  }, [mode, pathname, resetForm]);
 
   function onSubmit(values: ProductFormInput): void {
     const mutation = mode === "create" ? createProduct : updateProduct;
     mutation.mutate(values, {
-      onSuccess: () => onSuccess?.(),
+      onSuccess: () => {
+        if (mode === "create") {
+          form.reset(CREATE_PRODUCT_EMPTY_VALUES);
+        }
+        onSuccess?.();
+      },
       onError: (error) => {
         if (!isApiError(error)) {
           toast.error("Failed to save product");
@@ -108,7 +136,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Category">
-                <Select onChange={field.onChange} value={field.value}>
+                <Select onChange={field.onChange} value={field.value ?? ""}>
                   <option value="">Select a category</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -122,6 +150,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           )}
         />
         <CatalogNameSlugFields
+          key={mode === "create" ? pathname : product?.id}
           control={form.control}
           mode={mode}
           namePlaceholder="Sourdough loaf"
@@ -151,7 +180,10 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="price_cents"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Price (cents)">
+              <FieldControl
+                hint={FORM_FIELD_HINT.catalogPriceCents}
+                label="Price (cents)"
+              >
                 <Input min={0} type="number" {...field} />
               </FieldControl>
               <FormMessage />
@@ -163,14 +195,30 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name="image_url"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Image URL" optional>
-                <Input
-                  placeholder="https://example.com/image.jpg"
-                  value={field.value ?? ""}
-                  onChange={(event) =>
-                    field.onChange(event.target.value || null)
-                  }
-                />
+              <FieldControl
+                hint={
+                  isCloudinaryConfigured()
+                    ? FORM_FIELD_HINT.productImageCloudinary
+                    : FORM_FIELD_HINT.productImageUrlFallback
+                }
+                label="Product image"
+                optional
+              >
+                {isCloudinaryConfigured() ? (
+                  <CatalogImageField
+                    disabled={isPending}
+                    onChange={field.onChange}
+                    value={field.value ?? null}
+                  />
+                ) : (
+                  <Input
+                    placeholder="https://example.com/image.jpg"
+                    value={field.value ?? ""}
+                    onChange={(event) =>
+                      field.onChange(event.target.value || null)
+                    }
+                  />
+                )}
               </FieldControl>
               <FormMessage />
             </FormItem>

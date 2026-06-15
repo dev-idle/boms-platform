@@ -13,6 +13,7 @@ import { FieldControl } from "@/components/ui/field-control";
 import { Label } from "@/components/ui/label";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
 import {
+  FORM_FIELD_HINT,
   FORM_SWITCH_HINT,
   FORM_SWITCH_LABEL,
 } from "@/constants/dashboard-form-copy";
@@ -167,7 +168,10 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           name="price_cents"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Combo price (cents)">
+              <FieldControl
+                hint={FORM_FIELD_HINT.catalogPriceCents}
+                label="Combo price (cents)"
+              >
                 <Input min={0} step={1} type="number" {...field} />
               </FieldControl>
               <FormMessage />

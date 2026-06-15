@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
-import { optionalHttpUrlSchema } from "@/lib/validation/url";
+import { productImageUrlSchema } from "@/lib/validation/cloudinary";
 
 export const managerCategorySchema = z.object({
   id: z.string().uuid(),
@@ -52,7 +52,7 @@ export const productFormSchema = z.object({
     .nullable(),
   price_cents: z.coerce.number().int().min(0, "Price must be zero or greater"),
   is_available: z.boolean(),
-  image_url: optionalHttpUrlSchema,
+  image_url: productImageUrlSchema,
 });
 
 export const productListFilterSchema = z.object({

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ROUTE } from "@/constants/routes";
+import { catalogProductImageUrl } from "@/lib/cloudinary/config";
 import { formatPriceCents } from "@/lib/validation/catalog";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +19,10 @@ export function ProductCard({
   featured = false,
   fallbackImageUrl,
 }: ProductCardProps) {
-  const imageUrl = product.image_url ?? fallbackImageUrl;
+  const imageUrl = catalogProductImageUrl(
+    product.image_url ?? fallbackImageUrl,
+    featured ? 960 : 640,
+  );
   return (
     <article
       className={cn(
