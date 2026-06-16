@@ -3,7 +3,8 @@ import { formatCloudinaryMaxImageSize } from "./format";
 
 /** User-facing Cloudinary upload copy (SSOT). */
 export const CLOUDINARY_UPLOAD_COPY = {
-  allowedFormats: "JPG, PNG, WebP, or AVIF",  cloudNameMismatch:
+  allowedFormats: "JPG, PNG, WebP, or AVIF",
+  cloudNameMismatch:
     "Cloudinary cloud name does not match this environment. Check NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.",
   folderMismatch:
     "Cloudinary folder does not match this environment. Check NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER.",
@@ -39,10 +40,11 @@ export function cloudinaryImageTooLargeMessage(maxBytes: number): string {
   return `Image must be ${formatCloudinaryMaxImageSize(maxBytes)} or smaller`;
 }
 
-export function cloudinaryProductImageUploadNote(
+/** Field hint — upload limits (primary/order is shown in the gallery UI). */
+export function cloudinaryProductImageFieldHint(
   maxBytes = CLOUDINARY_MAX_IMAGE_BYTES,
   maxImages = CLOUDINARY_MAX_PRODUCT_IMAGES,
 ): string {
   const sizeHint = formatCloudinaryMaxImageSize(maxBytes);
-  return `${CLOUDINARY_UPLOAD_COPY.allowedFormats}. Up to ${sizeHint} each, ${maxImages} images max.`;
+  return `Maximum ${maxImages} images. ${CLOUDINARY_UPLOAD_COPY.allowedFormats}, ${sizeHint} each.`;
 }

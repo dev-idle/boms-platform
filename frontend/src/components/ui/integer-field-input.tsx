@@ -15,9 +15,13 @@ type IntegerFieldInputProps = Omit<
   value: number;
 };
 
-function parseIntegerDraft(raw: string, fallback: number, min: number): number {
+export function parseIntegerFieldDraft(
+  raw: string,
+  fallback: number,
+  min: number,
+): number {
   const trimmed = raw.trim();
-  if (trimmed === "") {
+  if (trimmed === "" || trimmed === "-") {
     return min;
   }
 
@@ -51,8 +55,8 @@ export const IntegerFieldInput = React.forwardRef<
   const [draft, setDraft] = React.useState<string | null>(null);
   const displayValue = draft ?? String(value);
 
-  function commitDraft(nextDraft: string | null): void {
-    const resolved = parseIntegerDraft(nextDraft ?? "", value, safeMin);
+  function commitDraft(raw: string): void {
+    const resolved = parseIntegerFieldDraft(raw, value, safeMin);
     onChange(resolved);
     setDraft(null);
   }
@@ -63,8 +67,8 @@ export const IntegerFieldInput = React.forwardRef<
       className={cn("field-chrome--integer", className)}
       inputMode="numeric"
       min={safeMin}
-      onBlur={() => {
-        commitDraft(draft);
+      onBlur={(event) => {
+        commitDraft(event.currentTarget.value);
         onBlur?.();
       }}
       onChange={(event) => {

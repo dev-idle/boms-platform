@@ -82,7 +82,7 @@ export function DashboardOpenDetailIcon({ className }: DashboardUiIconProps) {
   );
 }
 
-/** Star outline — mark catalog gallery image as primary (first in list). */
+/** Star outline — set gallery image as primary (first in list). */
 export function DashboardPrimaryIcon({ className }: DashboardUiIconProps) {
   return (
     <svg

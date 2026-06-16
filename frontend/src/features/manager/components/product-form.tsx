@@ -25,6 +25,7 @@ import {
 } from "@/constants/dashboard-form-copy";
 import { Select } from "@/components/ui/select";
 import { isCloudinaryConfigured } from "@/lib/cloudinary/config";
+import { cloudinaryProductImageFieldHint } from "@/lib/cloudinary/messages";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
@@ -222,7 +223,7 @@ function ProductFormFields({
               <FieldControl
                 hint={
                   isCloudinaryConfigured()
-                    ? FORM_FIELD_HINT.catalogProductImages
+                    ? cloudinaryProductImageFieldHint()
                     : FORM_FIELD_HINT.productImageUrlFallback
                 }
                 label="Product images"

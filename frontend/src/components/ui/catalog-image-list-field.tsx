@@ -29,7 +29,6 @@ import {
 } from "@/lib/cloudinary/format";
 import {
   CLOUDINARY_UPLOAD_COPY,
-  cloudinaryProductImageUploadNote,
 } from "@/lib/cloudinary/messages";
 import { fetchCloudinaryUploadSignature } from "@/lib/cloudinary/signature";
 import { uploadImageToCloudinary } from "@/lib/cloudinary/upload";
@@ -249,7 +248,10 @@ export function CatalogImageListField({
         ) : null}
 
         {value.length > 0 ? (
-          <ul aria-label={CATALOG_IMAGE_FIELD_COPY.imageListAriaLabel} className="catalog-image-list-items">
+          <ul
+            aria-label={CATALOG_IMAGE_FIELD_COPY.imageListAriaLabel}
+            className="catalog-image-list-items"
+          >
             {value.map((url, index) => {
               const label = labelForUrl(url);
               const canPreview = isPreviewableImageUrl(url);
@@ -266,7 +268,12 @@ export function CatalogImageListField({
                   key={`${url}-${index}`}
                 >
                   <div className="catalog-image-list-item-main">
-                    <div className="catalog-image-list-thumb-wrap">
+                    <div
+                      className={cn(
+                        "catalog-image-list-thumb-wrap",
+                        isPrimary && "catalog-image-list-thumb-wrap--primary",
+                      )}
+                    >
                       {canPreview ? (
                         // eslint-disable-next-line @next/next/no-img-element -- manager preview of external Cloudinary URLs
                         <img
@@ -324,11 +331,11 @@ export function CatalogImageListField({
                     <span className="catalog-image-field-action-slot">
                       {!isPrimary ? (
                         <button
-                          aria-label={CATALOG_IMAGE_FIELD_COPY.setPrimaryImage(label)}
+                          aria-label={CATALOG_IMAGE_FIELD_COPY.setPrimaryImageFor(label)}
                           className="db-table-action db-table-action--edit"
                           disabled={isDisabled}
                           onClick={() => handleSetPrimary(index)}
-                          title={CATALOG_IMAGE_FIELD_COPY.setPrimary}
+                          title={CATALOG_IMAGE_FIELD_COPY.setPrimaryImage}
                           type="button"
                         >
                           <DashboardPrimaryIcon className="db-table-action-icon" />
@@ -359,12 +366,8 @@ export function CatalogImageListField({
                 </li>
               );
             })}
-          </ul>
-        ) : (
-          <p className="catalog-image-field-status catalog-image-list-empty">
-            {CATALOG_IMAGE_FIELD_COPY.noImages}
-          </p>
-        )}
+            </ul>
+        ) : null}
 
         {useCloudinary ? (
           <div className="catalog-image-field-row">
@@ -382,11 +385,6 @@ export function CatalogImageListField({
                 ? CATALOG_IMAGE_FIELD_COPY.uploadProgress
                 : CATALOG_IMAGE_FIELD_COPY.imageCount(value.length, maxImages)}
             </span>
-            {!isUploading ? (
-              <span className="catalog-image-field-upload-note">
-                {cloudinaryProductImageUploadNote()}
-              </span>
-            ) : null}
           </div>
         ) : (
           <Button
