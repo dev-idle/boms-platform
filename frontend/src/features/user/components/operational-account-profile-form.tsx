@@ -13,6 +13,7 @@ import { fullNamePhoneSnapshotFromProfile } from "../lib/profile-form-values";
 import type { Me } from "../types";
 
 import { FullNamePhoneSelfProfileForm } from "./full-name-phone-self-profile-form";
+import { ReadonlyAccountEmailField } from "./readonly-account-email-field";
 import { ReadonlyStaffProfileFields } from "./readonly-staff-profile-fields";
 
 type OperationalRole = (typeof ASSIGNABLE_OPERATIONAL_ROLES)[number];
@@ -63,6 +64,7 @@ export function OperationalAccountProfileForm({
         profile.phone,
       )}
     >
+      <ReadonlyAccountEmailField email={me.data.email} />
       <ReadonlyStaffProfileFields profile={profile} />
     </FullNamePhoneSelfProfileForm>
   );

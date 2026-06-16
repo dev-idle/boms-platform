@@ -6,7 +6,7 @@
  *   - Customer: /cart, /orders, /customer/account/*
  *   - Staff:    /staff/orders, /staff/orders/:id, /staff/account/*
  *   - Baker:    /baker/account/*
- *   - Manager:  /manager/categories, /manager/products, /manager/combos,
+ *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/account/*
  *   - Admin:    /admin, /admin/users, /admin/account/*
  */
@@ -42,6 +42,7 @@ export const ROUTE = {
     },
   },
   manager: {
+    dashboard: "/manager",
     categories: "/manager/categories",
     categoriesNew: "/manager/categories/new",
     categoryDetail: (id: string) => `/manager/categories/${id}`,

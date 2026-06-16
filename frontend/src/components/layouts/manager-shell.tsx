@@ -6,6 +6,12 @@ import { DashboardShell, type DashboardNavItem } from "./dashboard-shell";
 
 const MANAGER_NAV_ITEMS: readonly DashboardNavItem[] = [
   {
+    href: ROUTE.manager.dashboard,
+    icon: "dashboard",
+    label: "Dashboard",
+    match: "exact",
+  },
+  {
     href: ROUTE.manager.categories,
     icon: "categories",
     label: "Categories",
@@ -40,7 +46,7 @@ export function ManagerShell({ children }: ManagerShellProps) {
   return (
     <DashboardShell
       ariaLabel="Manager"
-      homeHref={ROUTE.manager.categories}
+      homeHref={ROUTE.manager.dashboard}
       navItems={MANAGER_NAV_ITEMS}
       roleLabel="Manager"
     >

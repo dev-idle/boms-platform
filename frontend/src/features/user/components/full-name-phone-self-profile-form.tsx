@@ -79,9 +79,7 @@ function FullNamePhoneSelfProfileFormBody({
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}
       >
-        {children ? (
-          <div className="dashboard-profile-form-span">{children}</div>
-        ) : null}
+        {children}
 
         <FormField
           control={form.control}

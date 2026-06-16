@@ -4,10 +4,10 @@ import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 
 export const metadata = pageTitle(PAGE_TITLES.dashboard);
 
-export default function AdminDashboardPage() {
+export default function ManagerDashboardPage() {
   return (
     <DashboardPageHeader
-      description={DASHBOARD_HOME_LEAD.admin}
+      description={DASHBOARD_HOME_LEAD.manager}
       title={PAGE_TITLES.dashboard}
     />
   );

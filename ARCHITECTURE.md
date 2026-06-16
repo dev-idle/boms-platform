@@ -120,7 +120,7 @@ frontend/src/
 │   ├── (customer)/              # /products, /cart, /orders, /customer/account/*
 │   ├── (staff)/                 # /staff/orders, /staff/account/*
 │   ├── (baker)/                 # /baker/account/*
-│   ├── (manager)/               # /manager/categories, /manager/products, /combos, /discount-codes, /account/*
+│   ├── (manager)/               # /manager, /manager/categories, /manager/products, /combos, /discount-codes, /account/*
 │   └── (admin)/admin/           # /admin, /admin/users, /admin/account/*
 ├── features/                    # Feature slices (auth | user | admin | manager | staff | customer)
 │   ├── auth/                    # api/, schemas/, hooks/, components/, lib/, provider/
@@ -193,7 +193,7 @@ features/<slice>/
 | Customer | `/products`, `/cart`, `/orders`, `/customer/account/{profile,password,delete}` |
 | Staff | `/staff/orders`, `/staff/orders/{id}`, `/staff/account/{profile,password}` |
 | Baker | `/baker/account/{profile,password}` |
-| Manager | `/manager/categories`, `/manager/products`, `/manager/account/{profile,password}` |
+| Manager | `/manager`, `/manager/categories`, `/manager/products`, `/manager/account/{profile,password}` |
 | Admin | `/admin`, `/admin/users`, `/admin/users/{new,[id]}`, `/admin/account/profile` (profile + password) |
 
 **Rule:** one role = one namespace. Each role may only access its own URL prefix (enforced by FE `RoleGate` + post-login redirect). Only `admin` is seeded in development (`bootstrap.EnsureDevAdmin`). No mixing of `/dashboard/*` with `/admin/*`. Agent/dev canonical detail: `.cursor/rules/roles.mdc` (local, not committed).

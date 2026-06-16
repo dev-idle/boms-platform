@@ -10,6 +10,9 @@ describe("resolvePostAuthDestination", () => {
     expect(resolvePostAuthDestination(USER_ROLE.admin)).toBe(
       ROUTE.admin.dashboard,
     );
+    expect(resolvePostAuthDestination(USER_ROLE.manager)).toBe(
+      ROUTE.manager.dashboard,
+    );
     expect(resolvePostAuthDestination(USER_ROLE.customer)).toBe(ROUTE.products);
   });
 
