@@ -27,7 +27,10 @@ import {
   cloudinaryDeliveryFileLabel,
   isDuplicateCatalogFileLabel,
 } from "@/lib/cloudinary/format";
-import { CLOUDINARY_UPLOAD_COPY } from "@/lib/cloudinary/messages";
+import {
+  CLOUDINARY_UPLOAD_COPY,
+  cloudinaryProductImageUploadNote,
+} from "@/lib/cloudinary/messages";
 import { fetchCloudinaryUploadSignature } from "@/lib/cloudinary/signature";
 import { uploadImageToCloudinary } from "@/lib/cloudinary/upload";
 import { cn } from "@/lib/utils";
@@ -379,6 +382,11 @@ export function CatalogImageListField({
                 ? CATALOG_IMAGE_FIELD_COPY.uploadProgress
                 : CATALOG_IMAGE_FIELD_COPY.imageCount(value.length, maxImages)}
             </span>
+            {!isUploading ? (
+              <span className="catalog-image-field-upload-note">
+                {cloudinaryProductImageUploadNote()}
+              </span>
+            ) : null}
           </div>
         ) : (
           <Button

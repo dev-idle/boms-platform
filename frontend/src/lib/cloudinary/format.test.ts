@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { cloudinaryDeliveryFileLabel, formatCloudinaryMaxImageSize, isDuplicateCatalogFileLabel } from "./format";
 import {
   cloudinaryImageTooLargeMessage,
-  cloudinaryProductImageFieldHint,
+  cloudinaryProductImageUploadNote,
 } from "./messages";
 
 describe("formatCloudinaryMaxImageSize", () => {
@@ -20,10 +20,10 @@ describe("cloudinaryImageTooLargeMessage", () => {
   });
 });
 
-describe("cloudinaryProductImageFieldHint", () => {
+describe("cloudinaryProductImageUploadNote", () => {
   it("uses the configured max image size", () => {
-    expect(cloudinaryProductImageFieldHint(5 * 1024 * 1024)).toBe(
-      "First image is the storefront cover; list order matches the customer gallery. JPG, PNG, WebP, or AVIF — up to 5 MB each (max 5).",
+    expect(cloudinaryProductImageUploadNote(5 * 1024 * 1024)).toBe(
+      "JPG, PNG, WebP, or AVIF. Up to 5 MB each, 5 images max.",
     );
   });
 });

@@ -14,7 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
-import { Input } from "@/components/ui/input";
+import { IntegerFieldInput } from "@/components/ui/integer-field-input";
 import {
   FORM_FIELD_HINT,
   FORM_SWITCH_HINT,
@@ -108,7 +108,7 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
                 hintId="category-sort-order-hint"
                 label="Sort order"
               >
-                <Input min={0} type="number" {...field} />
+                <IntegerFieldInput min={0} {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>

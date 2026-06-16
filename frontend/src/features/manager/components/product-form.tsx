@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
+import { IntegerFieldInput } from "@/components/ui/integer-field-input";
 import { Input } from "@/components/ui/input";
 import {
   FORM_FIELD_HINT,
@@ -24,7 +25,6 @@ import {
 } from "@/constants/dashboard-form-copy";
 import { Select } from "@/components/ui/select";
 import { isCloudinaryConfigured } from "@/lib/cloudinary/config";
-import { cloudinaryProductImageFieldHint } from "@/lib/cloudinary/messages";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
@@ -208,7 +208,7 @@ function ProductFormFields({
                 hint={FORM_FIELD_HINT.catalogPriceCents}
                 label="Price (cents)"
               >
-                <Input min={0} type="number" {...field} />
+                <IntegerFieldInput min={0} {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -222,7 +222,7 @@ function ProductFormFields({
               <FieldControl
                 hint={
                   isCloudinaryConfigured()
-                    ? cloudinaryProductImageFieldHint()
+                    ? FORM_FIELD_HINT.catalogProductImages
                     : FORM_FIELD_HINT.productImageUrlFallback
                 }
                 label="Product images"

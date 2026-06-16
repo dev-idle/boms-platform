@@ -3,8 +3,7 @@ import { formatCloudinaryMaxImageSize } from "./format";
 
 /** User-facing Cloudinary upload copy (SSOT). */
 export const CLOUDINARY_UPLOAD_COPY = {
-  allowedFormats: "Use JPG, PNG, WebP, or AVIF",
-  cloudNameMismatch:
+  allowedFormats: "JPG, PNG, WebP, or AVIF",  cloudNameMismatch:
     "Cloudinary cloud name does not match this environment. Check NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.",
   folderMismatch:
     "Cloudinary folder does not match this environment. Check NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER.",
@@ -40,10 +39,10 @@ export function cloudinaryImageTooLargeMessage(maxBytes: number): string {
   return `Image must be ${formatCloudinaryMaxImageSize(maxBytes)} or smaller`;
 }
 
-export function cloudinaryProductImageFieldHint(
+export function cloudinaryProductImageUploadNote(
   maxBytes = CLOUDINARY_MAX_IMAGE_BYTES,
   maxImages = CLOUDINARY_MAX_PRODUCT_IMAGES,
 ): string {
   const sizeHint = formatCloudinaryMaxImageSize(maxBytes);
-  return `First image is the storefront cover; list order matches the customer gallery. JPG, PNG, WebP, or AVIF — up to ${sizeHint} each (max ${maxImages}).`;
+  return `${CLOUDINARY_UPLOAD_COPY.allowedFormats}. Up to ${sizeHint} each, ${maxImages} images max.`;
 }
