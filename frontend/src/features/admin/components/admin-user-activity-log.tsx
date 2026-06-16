@@ -2,18 +2,14 @@
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
+import { DashboardAsyncPanel } from "@/components/ui/dashboard-async-panel";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardActivityFeedPagePlaceholders } from "@/components/ui/dashboard-activity-feed-page-placeholders";
-import { InlineLoadingState } from "@/components/ui/loading-state";
 import { roleDisplayLabel } from "@/constants/roles";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
-import {
-  isInitialQueryLoad,
-  isQueryRefetching,
-} from "@/lib/react-query/query-surface";
+import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { formatDateTime } from "@/lib/validation/datetime";
-import { cn } from "@/lib/utils";
 
 import { useUserActivity } from "../hooks";
 
@@ -30,22 +26,14 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
     page,
     page_size: PAGE_SIZE,
   });
+  const { initialLoading, refetching } = getDashboardQuerySurface(activityQuery);
 
   const entries = activityQuery.data?.entries ?? [];
   const pagination = activityQuery.data?.pagination;
   const totalItems = pagination?.total ?? entries.length;
   const totalPages = pagination?.total_pages ?? 1;
-  const initialLoad = isInitialQueryLoad(
-    activityQuery.isPending,
-    activityQuery.data,
-  );
-  const refetching = isQueryRefetching(
-    activityQuery.isFetching,
-    activityQuery.isPending,
-    activityQuery.data,
-  );
   const showPagination =
-    !initialLoad && !activityQuery.isError && totalItems > 0;
+    !initialLoading && !activityQuery.isError && totalItems > 0;
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     entries.length,
     pagination,
@@ -76,15 +64,12 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
       title="Activity log"
       variant="flush-feed"
     >
-      <div
-        className={cn(
-          "dashboard-activity-feed-panel",
-          refetching && "is-refetching",
-        )}
+      <DashboardAsyncPanel
+        className="dashboard-activity-feed-panel"
+        initialLoading={initialLoading}
+        refetching={refetching}
       >
-        {initialLoad ? (
-          <InlineLoadingState variant="compact" />
-        ) : activityQuery.isError ? (
+        {activityQuery.isError ? (
           <p className="dashboard-activity-feed-status text-error">
             Failed to load activity log.
           </p>
@@ -132,7 +117,7 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
             totalPages={totalPages}
           />
         ) : null}
-      </div>
+      </DashboardAsyncPanel>
     </DashboardProfileSection>
   );
 }

@@ -48,9 +48,20 @@
     --loading-indicator-size: 1.75rem;
   }
 
-  .loading-state--compact .loading-indicator,
-  .db-table-loading-indicator .loading-indicator {
+  .loading-state--compact .loading-indicator {
     --loading-indicator-size: 1.25rem;
+  }
+
+  .db-table-loading-cell {
+    padding-block: 0;
+    vertical-align: middle;
+  }
+
+  .db-table-loading-indicator {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-height: var(--db-table-row-height-comfortable, 2.75rem);
   }
 
   [data-theme="dashboard"] .loading-indicator {
@@ -71,22 +82,6 @@
 
   .loading-indicator__spinner .loading-ui-dots-ring__dot {
     animation: loading-ui-dots-ring-pulse var(--loading-duration) linear infinite;
-  }
-
-  .db-table-loading-cell {
-    padding-block: 1.375rem;
-  }
-
-  .db-table-loading-indicator {
-    align-items: center;
-    color: var(--color-primary);
-    display: flex;
-    justify-content: center;
-    min-height: 1.375rem;
-  }
-
-  [data-theme="dashboard"] .db-table-loading-indicator {
-    color: var(--color-db-accent);
   }
 
   /* Storefront product grid skeleton */

@@ -21,12 +21,9 @@ import { DASHBOARD_TABLE_PAGE_SIZE, DASHBOARD_TABLE_COLUMN_LABEL } from "@/const
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
-import {
-  isInitialQueryLoad,
-  isQueryRefetching,
-} from "@/lib/react-query/query-surface";
 import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -55,14 +52,9 @@ export function ManagerCombosTable() {
     [page, search],
   );
   const query = useCombos(filter);
+  const { initialLoading, refetching } = getDashboardQuerySurface(query);
   const combos = query.data?.combos ?? [];
   const pagination = query.data?.pagination;
-  const initialLoad = isInitialQueryLoad(query.isPending, query.data);
-  const refetching = isQueryRefetching(
-    query.isFetching,
-    query.isPending,
-    query.data,
-  );
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     combos.length,
     pagination,
@@ -111,9 +103,9 @@ export function ManagerCombosTable() {
                 hasActiveFilter={Boolean(search)}
                 isEmpty={combos.length === 0}
                 isError={query.isError}
-                isInitialLoad={initialLoad}
+                initialLoading={initialLoading}
               />
-              {!initialLoad && !query.isError && combos.length > 0
+              {!initialLoading && !query.isError && combos.length > 0
                 ? combos.map((combo) => (
                 <tr key={combo.id}>
                   <td className="db-table-cell-primary">{combo.name}</td>

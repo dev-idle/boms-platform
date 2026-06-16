@@ -21,12 +21,9 @@ import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
-import {
-  isInitialQueryLoad,
-  isQueryRefetching,
-} from "@/lib/react-query/query-surface";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 
 import { useCategories, useDeleteCategory } from "../hooks";
@@ -53,14 +50,9 @@ export function ManagerCategoriesTable() {
     [page, search],
   );
   const query = useCategories(filter);
+  const { initialLoading, refetching } = getDashboardQuerySurface(query);
   const categories = query.data?.categories ?? [];
   const pagination = query.data?.pagination;
-  const initialLoad = isInitialQueryLoad(query.isPending, query.data);
-  const refetching = isQueryRefetching(
-    query.isFetching,
-    query.isPending,
-    query.data,
-  );
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     categories.length,
     pagination,
@@ -114,9 +106,9 @@ export function ManagerCategoriesTable() {
                 hasActiveFilter={Boolean(search)}
                 isEmpty={categories.length === 0}
                 isError={query.isError}
-                isInitialLoad={initialLoad}
+                initialLoading={initialLoading}
               />
-              {!initialLoad && !query.isError && categories.length > 0
+              {!initialLoading && !query.isError && categories.length > 0
                 ? categories.map((category) => (
                   <tr key={category.id}>
                     <td className="db-table-cell-primary">{category.name}</td>

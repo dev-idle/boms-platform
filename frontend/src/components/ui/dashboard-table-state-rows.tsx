@@ -3,9 +3,8 @@ import {
   dashboardTableEmptyMessage,
   dashboardTableErrorMessage,
 } from "@/constants/dashboard-table";
-import { LOADING_MESSAGE } from "@/constants/loading-copy";
 
-import { LoadingIndicator } from "./loading-state";
+import { DashboardBusyIndicator } from "./dashboard-busy-overlay";
 
 type DashboardTableStateRowsProps = {
   columnCount: number;
@@ -15,10 +14,13 @@ type DashboardTableStateRowsProps = {
   hasActiveFilter?: boolean;
   isEmpty: boolean;
   isError: boolean;
-  isInitialLoad: boolean;
+  initialLoading: boolean;
 };
 
-/** Loading, error, and empty rows for dashboard data tables. */
+/**
+ * Loading, error, and empty rows for dashboard tables.
+ * Initial load: spinner in the first body row (row 2 under the header).
+ */
 export function DashboardTableStateRows({
   columnCount,
   emptyFilteredMessage,
@@ -27,15 +29,17 @@ export function DashboardTableStateRows({
   hasActiveFilter = false,
   isEmpty,
   isError,
-  isInitialLoad,
+  initialLoading,
 }: DashboardTableStateRowsProps) {
-  if (isInitialLoad) {
+  if (initialLoading) {
     return (
       <tr>
-        <td className="db-table-empty-cell db-table-loading-cell" colSpan={columnCount}>
+        <td
+          className="db-table-empty-cell db-table-loading-cell"
+          colSpan={columnCount}
+        >
           <div className="db-table-loading-indicator" role="status">
-            <span className="sr-only">{LOADING_MESSAGE}</span>
-            <LoadingIndicator dots={6} />
+            <DashboardBusyIndicator />
           </div>
         </td>
       </tr>

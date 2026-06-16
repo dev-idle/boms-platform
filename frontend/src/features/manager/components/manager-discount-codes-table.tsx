@@ -21,12 +21,9 @@ import { DASHBOARD_TABLE_PAGE_SIZE, DASHBOARD_TABLE_COLUMN_LABEL } from "@/const
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
-import {
-  isInitialQueryLoad,
-  isQueryRefetching,
-} from "@/lib/react-query/query-surface";
 import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -66,14 +63,9 @@ export function ManagerDiscountCodesTable() {
     [page, search],
   );
   const query = useDiscountCodes(filter);
+  const { initialLoading, refetching } = getDashboardQuerySurface(query);
   const discountCodes = query.data?.discount_codes ?? [];
   const pagination = query.data?.pagination;
-  const initialLoad = isInitialQueryLoad(query.isPending, query.data);
-  const refetching = isQueryRefetching(
-    query.isFetching,
-    query.isPending,
-    query.data,
-  );
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     discountCodes.length,
     pagination,
@@ -122,9 +114,9 @@ export function ManagerDiscountCodesTable() {
                 hasActiveFilter={Boolean(search)}
                 isEmpty={discountCodes.length === 0}
                 isError={query.isError}
-                isInitialLoad={initialLoad}
+                initialLoading={initialLoading}
               />
-              {!initialLoad && !query.isError && discountCodes.length > 0
+              {!initialLoading && !query.isError && discountCodes.length > 0
                 ? discountCodes.map((discountCode) => (
                 <tr key={discountCode.id}>
                   <td className="db-table-cell-primary text-order-code">

@@ -528,9 +528,35 @@
     width: 100%;
   }
 
-  .dashboard-activity-feed-panel.is-refetching .dashboard-activity-feed {
-    opacity: 0.72;
-    transition: opacity var(--duration-standard) var(--ease-luxury);
+  .dashboard-async-panel {
+    position: relative;
+  }
+
+  .dashboard-async-panel.is-initial-loading {
+    min-height: 11rem;
+  }
+
+  .dashboard-async-panel.is-initial-loading
+    > :not(.dashboard-async-panel__overlay) {
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .dashboard-async-panel__overlay {
+    align-items: center;
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    position: absolute;
+    z-index: 2;
+  }
+
+  .dashboard-async-panel.is-refetching .dashboard-async-panel__overlay {
+    background-color: color-mix(in srgb, var(--color-db-surface) 58%, transparent);
+  }
+
+  .dashboard-async-panel.is-refetching {
+    pointer-events: none;
   }
 
   .dashboard-activity-feed-status {
@@ -1765,35 +1791,6 @@
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-rest);
     overflow-x: auto;
-    position: relative;
-  }
-
-  .db-table-wrap.is-refetching::before {
-    animation: db-table-refetch-indeterminate 1s linear infinite;
-    background-color: var(--color-db-accent);
-    block-size: 2px;
-    content: "";
-    inline-size: 25%;
-    inset-block-start: 0;
-    inset-inline-start: 0;
-    opacity: 0.95;
-    position: absolute;
-    transform: translateZ(0);
-    z-index: 1;
-  }
-
-  .db-table-wrap.is-refetching {
-    opacity: 0.72;
-    pointer-events: none;
-    transition: opacity var(--duration-standard) var(--ease-luxury);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .db-table-wrap.is-refetching::before {
-      animation: none;
-      inline-size: 100%;
-      opacity: 0.5;
-    }
   }
 
   .dashboard-pagination {
@@ -2147,6 +2144,10 @@
     height: var(--db-table-row-height-comfortable);
     line-height: 1.45;
     padding-inline: 1.125rem;
+  }
+
+  .db-table--relaxed .db-table-loading-indicator {
+    min-height: var(--db-table-row-height-relaxed, 3rem);
   }
 
   .db-table-row--page-placeholder td {

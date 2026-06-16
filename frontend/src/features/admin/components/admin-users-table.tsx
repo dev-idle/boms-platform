@@ -21,12 +21,9 @@ import { USER_ROLE, roleDisplayLabel } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
-import {
-  isInitialQueryLoad,
-  isQueryRefetching,
-} from "@/lib/react-query/query-surface";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
@@ -74,14 +71,9 @@ export function AdminUsersTable() {
     [page, role, search],
   );
   const usersQuery = useUsers(filter);
+  const { initialLoading, refetching } = getDashboardQuerySurface(usersQuery);
   const users = usersQuery.data?.users ?? [];
   const pagination = usersQuery.data?.pagination;
-  const initialLoad = isInitialQueryLoad(usersQuery.isPending, usersQuery.data);
-  const refetching = isQueryRefetching(
-    usersQuery.isFetching,
-    usersQuery.isPending,
-    usersQuery.data,
-  );
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     users.length,
     pagination,
@@ -160,9 +152,9 @@ export function AdminUsersTable() {
               hasActiveFilter={Boolean(search || role)}
               isEmpty={users.length === 0}
               isError={usersQuery.isError}
-              isInitialLoad={initialLoad}
+              initialLoading={initialLoading}
             />
-            {!initialLoad && !usersQuery.isError && users.length > 0
+            {!initialLoading && !usersQuery.isError && users.length > 0
               ? users.map((user) => {
                 const listName = adminUserListName(user);
                 return (

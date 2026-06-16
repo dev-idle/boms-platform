@@ -21,12 +21,9 @@ import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
+import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
-import {
-  isInitialQueryLoad,
-  isQueryRefetching,
-} from "@/lib/react-query/query-surface";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -54,14 +51,9 @@ export function ManagerProductsTable() {
     [page, search],
   );
   const query = useProducts(filter);
+  const { initialLoading, refetching } = getDashboardQuerySurface(query);
   const products = query.data?.products ?? [];
   const pagination = query.data?.pagination;
-  const initialLoad = isInitialQueryLoad(query.isPending, query.data);
-  const refetching = isQueryRefetching(
-    query.isFetching,
-    query.isPending,
-    query.data,
-  );
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     products.length,
     pagination,
@@ -108,9 +100,9 @@ export function ManagerProductsTable() {
                 hasActiveFilter={Boolean(search)}
                 isEmpty={products.length === 0}
                 isError={query.isError}
-                isInitialLoad={initialLoad}
+                initialLoading={initialLoading}
               />
-              {!initialLoad && !query.isError && products.length > 0
+              {!initialLoading && !query.isError && products.length > 0
                 ? products.map((product) => (
                 <tr key={product.id}>
                   <td className="db-table-cell-primary">{product.name}</td>

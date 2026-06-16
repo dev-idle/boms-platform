@@ -16,10 +16,7 @@ import {
 import { DASHBOARD_STAFF_ORDERS_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
-import {
-  isInitialQueryLoad,
-  isQueryRefetching,
-} from "@/lib/react-query/query-surface";
+import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -45,14 +42,9 @@ export function StaffOrdersTable() {
     [page, status],
   );
   const ordersQuery = useStaffOrders(filter);
+  const { initialLoading, refetching } = getDashboardQuerySurface(ordersQuery);
   const orders = ordersQuery.data?.orders ?? [];
   const pagination = ordersQuery.data?.pagination;
-  const initialLoad = isInitialQueryLoad(ordersQuery.isPending, ordersQuery.data);
-  const refetching = isQueryRefetching(
-    ordersQuery.isFetching,
-    ordersQuery.isPending,
-    ordersQuery.data,
-  );
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     orders.length,
     pagination,
@@ -93,9 +85,9 @@ export function StaffOrdersTable() {
               hasActiveFilter={status !== undefined}
               isEmpty={orders.length === 0}
               isError={ordersQuery.isError}
-              isInitialLoad={initialLoad}
+              initialLoading={initialLoading}
             />
-            {!initialLoad && !ordersQuery.isError && orders.length > 0
+            {!initialLoading && !ordersQuery.isError && orders.length > 0
               ? orders.map((order) => (
                   <tr key={order.id}>
                     <td>

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
-import { LOADING_MESSAGE } from "@/constants/loading-copy";
 import { cn } from "@/lib/utils";
+
+import { DashboardAsyncPanel } from "./dashboard-async-panel";
 
 type DashboardTableWrapProps = {
   children: ReactNode;
@@ -9,19 +10,19 @@ type DashboardTableWrapProps = {
   refetching: boolean;
 };
 
-/** Dashboard data table shell — refetch affordance + a11y during background fetch. */
+/** Table card — refetch overlay only; initial load spinner lives in tbody row 2. */
 export function DashboardTableWrap({
   children,
   className,
   refetching,
 }: DashboardTableWrapProps) {
   return (
-    <div
-      aria-busy={refetching || undefined}
-      aria-label={refetching ? LOADING_MESSAGE : undefined}
-      className={cn("db-table-wrap", refetching && "is-refetching", className)}
+    <DashboardAsyncPanel
+      className={cn("db-table-wrap", className)}
+      overlayOnInitialLoad={false}
+      refetching={refetching}
     >
       {children}
-    </div>
+    </DashboardAsyncPanel>
   );
 }
