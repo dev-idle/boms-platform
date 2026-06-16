@@ -163,7 +163,18 @@ export const discountCodeFormSchema = z
   .object({
     code: z.string().trim().min(3, "Code is required").max(64),
     discount_type: z.enum([DISCOUNT_TYPE.percent, DISCOUNT_TYPE.fixedCents]),
-    value: z.coerce.number().int().min(1, "Value must be at least 1"),
+    value: z
+      .union([
+        z.undefined(),
+        z
+          .number({ invalid_type_error: "Value is required" })
+          .int()
+          .min(1, "Value must be at least 1"),
+      ])
+      .refine((val) => val !== undefined, {
+        message: "Value is required",
+      })
+      .transform((val) => val as number),
     min_order_cents: z.coerce
       .number()
       .int()
@@ -206,6 +217,10 @@ export type ComboListFilterInput = z.infer<typeof comboListFilterSchema>;
 
 export type ManagerDiscountCode = z.infer<typeof managerDiscountCodeSchema>;
 export type DiscountCodeFormInput = z.infer<typeof discountCodeFormSchema>;
+/** RHF defaults — `value` unset on create until the manager enters it. */
+export type DiscountCodeFormValues = Omit<DiscountCodeFormInput, "value"> & {
+  value?: number;
+};
 export type DiscountCodeListFilterInput = z.infer<
   typeof discountCodeListFilterSchema
 >;

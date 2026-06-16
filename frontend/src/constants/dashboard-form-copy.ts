@@ -11,6 +11,9 @@ export const FORM_FIELD_HINT = {
   catalogPriceCents: "Amount in cents (100 = $1.00).",
   catalogSlugCreate: "Auto-filled from name.",
   catalogSortOrder: "Lower values appear first.",
+  discountMaxUses: "Leave empty for unlimited uses.",
+  discountMinOrderCents: "Minimum cart total in cents. Leave empty for no minimum.",
+  discountPercentOff: "Whole number from 1 to 100.",
   operationalEmployeeCode: "Permanent staff ID. Assigned at creation.",
   productImageUrlFallback: "Maximum 5 HTTPS image URLs.",
 } as const;

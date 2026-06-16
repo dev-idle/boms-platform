@@ -27,7 +27,7 @@ import {
   isInitialQueryLoad,
   isQueryRefetching,
 } from "@/lib/react-query/query-surface";
-import { cn } from "@/lib/utils";
+import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -91,7 +91,7 @@ export function ManagerCombosTable() {
           />
         </div>
 
-        <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <DashboardTableWrap refetching={refetching}>
           <table className="db-table db-table--catalog db-table--comfortable">
             <thead>
               <tr>
@@ -158,7 +158,7 @@ export function ManagerCombosTable() {
             totalItems={pagination?.total ?? combos.length}
             totalPages={pagination?.total_pages ?? 1}
           />
-        </div>
+        </DashboardTableWrap>
       </div>
 
       <ConfirmDialog

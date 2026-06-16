@@ -20,7 +20,7 @@ import {
   isInitialQueryLoad,
   isQueryRefetching,
 } from "@/lib/react-query/query-surface";
-import { cn } from "@/lib/utils";
+import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -73,7 +73,7 @@ export function StaffOrdersTable() {
         />
       </div>
 
-      <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+      <DashboardTableWrap refetching={refetching}>
         <table className="db-table db-table--catalog db-table--relaxed">
           <thead>
             <tr>
@@ -149,7 +149,7 @@ export function StaffOrdersTable() {
           totalItems={pagination?.total ?? orders.length}
           totalPages={pagination?.total_pages ?? 1}
         />
-      </div>
+      </DashboardTableWrap>
     </div>
   );
 }

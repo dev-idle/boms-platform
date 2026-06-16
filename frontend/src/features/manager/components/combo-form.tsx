@@ -26,6 +26,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { IntegerFieldInput } from "@/components/ui/integer-field-input";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
@@ -171,9 +172,9 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
             <FormItem>
               <FieldControl
                 hint={FORM_FIELD_HINT.catalogPriceCents}
-                label="Combo price (cents)"
+                label="Price (cents)"
               >
-                <Input min={0} step={1} type="number" {...field} />
+                <IntegerFieldInput min={0} {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -297,12 +298,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
                   <FormItem>
                     <FormLabel className="sr-only">Quantity</FormLabel>
                     <FormControl>
-                      <Input
-                        min={1}
-                        step={1}
-                        type="number"
-                        {...quantityField}
-                      />
+                      <IntegerFieldInput min={1} {...quantityField} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

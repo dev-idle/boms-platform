@@ -27,6 +27,7 @@ import {
   isInitialQueryLoad,
   isQueryRefetching,
 } from "@/lib/react-query/query-surface";
+import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -131,7 +132,7 @@ export function AdminUsersTable() {
           />
         </div>
 
-        <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <DashboardTableWrap refetching={refetching}>
         <table className="db-table db-table--admin-users db-table--comfortable">
           <colgroup>
             <col className="db-table-col-email" />
@@ -229,7 +230,7 @@ export function AdminUsersTable() {
           totalItems={pagination?.total ?? users.length}
           totalPages={pagination?.total_pages ?? 1}
         />
-        </div>
+        </DashboardTableWrap>
       </div>
 
       <ConfirmDialog

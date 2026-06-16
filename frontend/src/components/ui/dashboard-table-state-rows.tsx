@@ -35,7 +35,7 @@ export function DashboardTableStateRows({
         <td className="db-table-empty-cell db-table-loading-cell" colSpan={columnCount}>
           <div className="db-table-loading-indicator" role="status">
             <span className="sr-only">{LOADING_MESSAGE}</span>
-            <LoadingIndicator />
+            <LoadingIndicator dots={6} />
           </div>
         </td>
       </tr>

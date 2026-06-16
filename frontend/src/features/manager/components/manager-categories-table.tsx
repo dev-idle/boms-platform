@@ -27,7 +27,7 @@ import {
   isInitialQueryLoad,
   isQueryRefetching,
 } from "@/lib/react-query/query-surface";
-import { cn } from "@/lib/utils";
+import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 
 import { useCategories, useDeleteCategory } from "../hooks";
 
@@ -89,7 +89,7 @@ export function ManagerCategoriesTable() {
           />
         </div>
 
-        <div className={cn("db-table-wrap", refetching && "is-refetching")}>
+        <DashboardTableWrap refetching={refetching}>
           <table className="db-table db-table--catalog db-table--categories db-table--comfortable">
             <colgroup>
               <col className="db-table-col-name" />
@@ -165,7 +165,7 @@ export function ManagerCategoriesTable() {
             totalItems={pagination?.total ?? categories.length}
             totalPages={pagination?.total_pages ?? 1}
           />
-        </div>
+        </DashboardTableWrap>
       </div>
 
       <ConfirmDialog

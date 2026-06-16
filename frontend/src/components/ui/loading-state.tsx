@@ -6,13 +6,15 @@ type LoadingStateVariant = "compact" | "inline" | "page";
 
 type LoadingIndicatorProps = {
   className?: string;
+  /** Fewer dots for dense surfaces (e.g. table cells). */
+  dots?: number;
 };
 
 /** Dots ring spinner — `@loading-ui/dots-ring` via shadcn. */
-export function LoadingIndicator({ className }: LoadingIndicatorProps) {
+export function LoadingIndicator({ className, dots }: LoadingIndicatorProps) {
   return (
     <div aria-hidden="true" className={cn("loading-indicator", className)}>
-      <DotsRing className="loading-indicator__spinner" />
+      <DotsRing className="loading-indicator__spinner" dots={dots} />
     </div>
   );
 }

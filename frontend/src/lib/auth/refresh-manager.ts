@@ -87,6 +87,10 @@ async function performRefresh(): Promise<void> {
   scheduleRefresh(useAuthStore.getState().expiresAt);
 }
 
+function isTransientRefreshError(error: unknown): boolean {
+  return isApiError(error) && error.isRateLimited();
+}
+
 export function refreshNow(options: RefreshOptions = {}): Promise<void> {
   const { redirectOnFailure = true } = options;
 
@@ -96,6 +100,10 @@ export function refreshNow(options: RefreshOptions = {}): Promise<void> {
 
   refreshPromise = performRefresh()
     .catch(async (error) => {
+      if (isTransientRefreshError(error)) {
+        throw error;
+      }
+
       if (
         isAuthSessionError(error) &&
         !(

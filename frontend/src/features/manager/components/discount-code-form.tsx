@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
 import {
+  FORM_FIELD_HINT,
   FORM_SWITCH_HINT,
   FORM_SWITCH_LABEL,
 } from "@/constants/dashboard-form-copy";
@@ -18,6 +19,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { FieldControl } from "@/components/ui/field-control";
+import {
+  IntegerFieldInput,
+  OptionalIntegerFieldInput,
+} from "@/components/ui/integer-field-input";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
@@ -35,6 +40,7 @@ import {
   DISCOUNT_TYPE,
   discountCodeFormSchema,
   type DiscountCodeFormInput,
+  type DiscountCodeFormValues,
   type ManagerDiscountCode,
 } from "../schemas";
 
@@ -69,10 +75,10 @@ export function DiscountCodeForm({
   const updateDiscountCode = useUpdateDiscountCode(discountCode?.id ?? "");
 
   const defaultValues = useMemo(
-    (): DiscountCodeFormInput => ({
+    (): DiscountCodeFormValues => ({
       code: discountCode?.code ?? "",
       discount_type: discountCode?.discount_type ?? DISCOUNT_TYPE.percent,
-      value: discountCode?.value ?? 10,
+      ...(discountCode ? { value: discountCode.value } : {}),
       min_order_cents: discountCode?.min_order_cents ?? null,
       max_uses: discountCode?.max_uses ?? null,
       starts_at: discountCode?.starts_at ?? defaultStartsAt(),
@@ -82,7 +88,7 @@ export function DiscountCodeForm({
     [discountCode],
   );
 
-  const form = useForm<DiscountCodeFormInput>({
+  const form = useForm<DiscountCodeFormValues, unknown, DiscountCodeFormInput>({
     resolver: zodResolver(discountCodeFormSchema),
     defaultValues,
   });
@@ -115,6 +121,7 @@ export function DiscountCodeForm({
   }
 
   const isPending = createDiscountCode.isPending || updateDiscountCode.isPending;
+  const isPercent = discountType === DISCOUNT_TYPE.percent;
 
   return (
     <Form {...form}>
@@ -142,9 +149,27 @@ export function DiscountCodeForm({
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Discount type">
-                <Select onChange={field.onChange} value={field.value}>
+                <Select
+                  onChange={(event) => {
+                    const nextType = event.target
+                      .value as DiscountCodeFormInput["discount_type"];
+                    field.onChange(nextType);
+                    if (nextType === DISCOUNT_TYPE.percent) {
+                      const currentValue = form.getValues("value");
+                      if (
+                        currentValue !== undefined &&
+                        currentValue > 100
+                      ) {
+                        form.setValue("value", 100, { shouldValidate: true });
+                      }
+                    }
+                  }}
+                  value={field.value}
+                >
                   <option value={DISCOUNT_TYPE.percent}>Percent</option>
-                  <option value={DISCOUNT_TYPE.fixedCents}>Fixed amount (cents)</option>
+                  <option value={DISCOUNT_TYPE.fixedCents}>
+                    Fixed amount (cents)
+                  </option>
                 </Select>
               </FieldControl>
               <FormMessage />
@@ -158,13 +183,19 @@ export function DiscountCodeForm({
           render={({ field }) => (
             <FormItem>
               <FieldControl
-                label={
-                  discountType === DISCOUNT_TYPE.percent
-                    ? "Percent off (1–100)"
-                    : "Discount amount (cents)"
+                hint={
+                  isPercent
+                    ? FORM_FIELD_HINT.discountPercentOff
+                    : FORM_FIELD_HINT.catalogPriceCents
                 }
+                label={isPercent ? "Percent off" : "Discount amount (cents)"}
               >
-                <Input min={1} step={1} type="number" {...field} />
+                <IntegerFieldInput
+                  allowEmpty
+                  min={1}
+                  max={isPercent ? 100 : undefined}
+                  {...field}
+                />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -176,16 +207,15 @@ export function DiscountCodeForm({
           name="min_order_cents"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Minimum order (cents)" optional>
-                <Input
+              <FieldControl
+                hint={FORM_FIELD_HINT.discountMinOrderCents}
+                label="Minimum order (cents)"
+                optional
+              >
+                <OptionalIntegerFieldInput
                   min={0}
-                  step={1}
-                  type="number"
-                  value={field.value ?? ""}
-                  onChange={(event) => {
-                    const raw = event.target.value;
-                    field.onChange(raw === "" ? null : Number(raw));
-                  }}
+                  {...field}
+                  value={field.value ?? null}
                 />
               </FieldControl>
               <FormMessage />
@@ -198,16 +228,15 @@ export function DiscountCodeForm({
           name="max_uses"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="Maximum uses" optional>
-                <Input
+              <FieldControl
+                hint={FORM_FIELD_HINT.discountMaxUses}
+                label="Maximum uses"
+                optional
+              >
+                <OptionalIntegerFieldInput
                   min={1}
-                  step={1}
-                  type="number"
-                  value={field.value ?? ""}
-                  onChange={(event) => {
-                    const raw = event.target.value;
-                    field.onChange(raw === "" ? null : Number(raw));
-                  }}
+                  {...field}
+                  value={field.value ?? null}
                 />
               </FieldControl>
               <FormMessage />

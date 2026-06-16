@@ -122,6 +122,11 @@ export class ApiError extends Error {
   isCodeExists(): boolean {
     return this.code === ApiErrorCode.CodeExists;
   }
+
+  /** True for HTTP 429 / rate_limited (transient — do not treat as logout). */
+  isRateLimited(): boolean {
+    return this.status === 429 || this.code === ApiErrorCode.RateLimited;
+  }
 }
 
 export function isApiError(error: unknown): error is ApiError {
