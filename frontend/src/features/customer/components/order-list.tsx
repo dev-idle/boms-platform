@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
@@ -17,7 +18,7 @@ export function OrderList() {
   const ordersQuery = useOrders(filter);
 
   if (ordersQuery.isPending) {
-    return <p className="text-sm text-muted">Loading orders…</p>;
+    return <InlineLoadingState />;
   }
 
   if (ordersQuery.isError) {

@@ -2,8 +2,10 @@ import {
   dashboardTableEmptyFilteredMessage,
   dashboardTableEmptyMessage,
   dashboardTableErrorMessage,
-  dashboardTableLoadingMessage,
 } from "@/constants/dashboard-table";
+import { LOADING_MESSAGE } from "@/constants/loading-copy";
+
+import { LoadingIndicator } from "./loading-state";
 
 type DashboardTableStateRowsProps = {
   columnCount: number;
@@ -30,8 +32,11 @@ export function DashboardTableStateRows({
   if (isInitialLoad) {
     return (
       <tr>
-        <td className="db-table-empty-cell" colSpan={columnCount}>
-          {dashboardTableLoadingMessage(entityLabel)}
+        <td className="db-table-empty-cell db-table-loading-cell" colSpan={columnCount}>
+          <div className="db-table-loading-indicator" role="status">
+            <span className="sr-only">{LOADING_MESSAGE}</span>
+            <LoadingIndicator />
+          </div>
         </td>
       </tr>
     );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -52,7 +53,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
   return (
     <>
       {userQuery.isPending ? (
-        <p className="text-sm text-muted">Loading user details…</p>
+        <InlineLoadingState />
       ) : !user ? (
         <p className="text-sm text-muted">Unable to load this user.</p>
       ) : (

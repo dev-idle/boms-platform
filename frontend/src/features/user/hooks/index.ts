@@ -52,9 +52,13 @@ export function useUpdateProfile() {
 export function useChangePassword() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const beginLogout = useAuthStore((state) => state.beginLogout);
 
   return useMutation({
     mutationFn: (input: ChangePasswordInput) => changePassword(input),
+    onMutate: () => {
+      beginLogout();
+    },
     onSuccess: () => {
       endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });
@@ -67,9 +71,13 @@ export function useChangePassword() {
 export function useDeleteAccount() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const beginLogout = useAuthStore((state) => state.beginLogout);
 
   return useMutation({
     mutationFn: () => deleteAccount(),
+    onMutate: () => {
+      beginLogout();
+    },
     onSuccess: () => {
       endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });

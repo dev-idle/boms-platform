@@ -4,6 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import {
   formatOrderStatusLabel,
   orderStatusToPillVariant,
@@ -51,7 +52,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
   }
 
   if (orderQuery.isPending) {
-    return <p className="text-sm text-muted">Loading order…</p>;
+    return <InlineLoadingState />;
   }
 
   if (orderQuery.isError) {

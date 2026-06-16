@@ -92,8 +92,10 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: () => logout(),
-    onSettled: () => {
+    onMutate: () => {
       beginLogout();
+    },
+    onSettled: () => {
       endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });
       router.replace(ROUTE.login);

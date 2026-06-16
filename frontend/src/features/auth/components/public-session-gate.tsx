@@ -15,7 +15,7 @@ import { validateNext } from "@/lib/validate-next";
 import { useAuthStore } from "@/stores/auth-store";
 
 import { useSessionAuthHint } from "../provider";
-import { SessionRestoreShell } from "./session-restore-shell";
+import { AuthGateShell } from "./auth-gate-shell";
 
 function useAuthenticatedPublicRedirect(
   pathname: string,
@@ -54,6 +54,7 @@ function PublicSessionGateInner({ children }: { children: ReactNode }) {
   const status = useAuthStore((state) => state.status);
   const role = useAuthStore((state) => state.user?.role);
   const clearLogoutIntent = useAuthStore((state) => state.clearLogoutIntent);
+  const logoutIntent = useAuthStore((state) => state.logoutIntent);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -70,8 +71,12 @@ function PublicSessionGateInner({ children }: { children: ReactNode }) {
 
   useAuthenticatedPublicRedirect(pathname, loginNext);
 
+  if (logoutIntent && pathname !== ROUTE.login) {
+    return <AuthGateShell />;
+  }
+
   if (hasRefreshCookie && status === "idle") {
-    return <SessionRestoreShell />;
+    return <AuthGateShell />;
   }
 
   if (status === "authenticated" && role) {
@@ -82,7 +87,7 @@ function PublicSessionGateInner({ children }: { children: ReactNode }) {
       isPublicAuthEntryPath(pathname) ||
       shouldRedirectAuthenticatedPublicUser(pathname, role)
     ) {
-      return <SessionRestoreShell />;
+      return <AuthGateShell />;
     }
   }
 
@@ -95,7 +100,7 @@ function PublicSessionGateInner({ children }: { children: ReactNode }) {
  */
 export function PublicSessionGate({ children }: { children: ReactNode }) {
   return (
-    <Suspense fallback={<SessionRestoreShell />}>
+    <Suspense fallback={<AuthGateShell />}>
       <PublicSessionGateInner>{children}</PublicSessionGateInner>
     </Suspense>
   );

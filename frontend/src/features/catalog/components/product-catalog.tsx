@@ -3,6 +3,10 @@
 import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  StorefrontCategoryPillsSkeleton,
+  StorefrontProductGridSkeleton,
+} from "@/components/ui/storefront-loading-skeletons";
 import { cn } from "@/lib/utils";
 
 import { catalogProductFallbackImageUrl } from "@/constants/storefront-imagery";
@@ -62,7 +66,7 @@ export function ProductCatalog() {
       <div className="mt-10 space-y-8">
         <section aria-label="Filters" className="space-y-6">
           {categoriesQuery.isPending ? (
-            <p className="text-sm text-muted">Loading categories…</p>
+            <StorefrontCategoryPillsSkeleton />
           ) : categoriesQuery.isError ? (
             <p className="text-sm text-error">Failed to load categories.</p>
           ) : categories.length > 0 ? (
@@ -103,7 +107,7 @@ export function ProductCatalog() {
 
         <section aria-label="Products" className="space-y-6">
           {productsQuery.isPending ? (
-            <p className="text-sm text-muted">Loading products…</p>
+            <StorefrontProductGridSkeleton />
           ) : productsQuery.isError ? (
             <p className="text-sm text-error">Failed to load products.</p>
           ) : products.length === 0 ? (

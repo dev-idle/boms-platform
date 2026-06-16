@@ -4,6 +4,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardActivityFeedPagePlaceholders } from "@/components/ui/dashboard-activity-feed-page-placeholders";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { roleDisplayLabel } from "@/constants/roles";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import {
@@ -82,7 +83,7 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
         )}
       >
         {initialLoad ? (
-          <p className="dashboard-activity-feed-status">Loading activity…</p>
+          <InlineLoadingState variant="compact" />
         ) : activityQuery.isError ? (
           <p className="dashboard-activity-feed-status text-error">
             Failed to load activity log.

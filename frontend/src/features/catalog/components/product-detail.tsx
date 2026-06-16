@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { ROUTE } from "@/constants/routes";
 import { catalogProductImageUrl } from "@/lib/cloudinary/config";
 import { isApiError } from "@/lib/errors";
@@ -46,7 +47,7 @@ export function ProductDetail({
   if (!product && productQuery.isPending) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <p className="text-sm text-muted">Loading product…</p>
+        <InlineLoadingState />
       </div>
     );
   }

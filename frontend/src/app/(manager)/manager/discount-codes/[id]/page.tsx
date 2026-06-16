@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { use } from "react";
 
 import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import {
   DiscountCodeForm,
@@ -23,7 +24,9 @@ export default function ManagerEditDiscountCodePage({ params }: PageProps) {
   const discountCodeQuery = useDiscountCode(id);
 
   if (discountCodeQuery.isPending) {
-    return <p className="text-sm text-muted">Loading discount code…</p>;
+    return (
+      <InlineLoadingState />
+    );
   }
 
   if (discountCodeQuery.isError) {

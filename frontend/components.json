@@ -15,5 +15,8 @@
     "utils": "@/lib/utils",
     "ui": "@/components/ui",
     "lib": "@/lib"
+  },
+  "registries": {
+    "@loading-ui": "https://loading-ui.com/r/{name}.json"
   }
 }

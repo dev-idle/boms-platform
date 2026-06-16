@@ -9,6 +9,7 @@ import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields"
 import { Button } from "@/components/ui/button";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { FieldControl } from "@/components/ui/field-control";
 import { Label } from "@/components/ui/label";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
@@ -259,7 +260,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
             </Button>
           </div>
           {productsQuery.isPending ? (
-            <p className="text-sm text-muted">Loading products…</p>
+            <InlineLoadingState variant="compact" />
           ) : null}
           {fields.map((field, index) => (
             <div

@@ -12,7 +12,7 @@ import { loginHrefPreservingNext } from "@/lib/validate-next";
 import { useAuthHydrated } from "../hooks";
 import { useAuthStore } from "@/stores/auth-store";
 
-import { SessionRestoreShell } from "./session-restore-shell";
+import { AuthGateShell } from "./auth-gate-shell";
 
 type RoleGateProps = {
   allowedRole: UserRole;
@@ -57,12 +57,16 @@ export function RoleGate({ allowedRole, children }: RoleGateProps) {
     }
   }, [status, role, pathname, router, allowedRole, logoutIntent]);
 
+  if (logoutIntent) {
+    return <AuthGateShell />;
+  }
+
   if (!hydrated || status === "idle") {
-    return <SessionRestoreShell />;
+    return <AuthGateShell />;
   }
 
   if (!hasAccess) {
-    return <SessionRestoreShell />;
+    return <AuthGateShell />;
   }
 
   return children;

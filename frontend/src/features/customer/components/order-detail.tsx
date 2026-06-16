@@ -4,6 +4,7 @@ import Link from "next/link";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
@@ -24,7 +25,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
   }
 
   if (orderQuery.isPending) {
-    return <p className="text-sm text-muted">Loading order…</p>;
+    return <InlineLoadingState />;
   }
 
   if (orderQuery.isError) {

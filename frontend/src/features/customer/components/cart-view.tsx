@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -86,7 +87,7 @@ export function CartView() {
   const [discountCode, setDiscountCode] = useState("");
 
   if (cartQuery.isPending) {
-    return <p className="text-sm text-muted">Loading cart…</p>;
+    return <InlineLoadingState />;
   }
 
   if (cartQuery.isError) {

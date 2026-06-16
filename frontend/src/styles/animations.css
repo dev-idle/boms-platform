@@ -10,6 +10,39 @@
   }
 }
 
+@keyframes loading-ui-dots-ring-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.65);
+  }
+
+  12.5% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  25% {
+    opacity: 0.75;
+    transform: scale(0.85);
+  }
+
+  50% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+
+@keyframes loading-indicator-reveal {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes storefront-search-reveal {
   from {
     opacity: 0;

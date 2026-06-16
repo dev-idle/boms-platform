@@ -1,0 +1,187 @@
+/* Shared loading primitives — theme-aware via semantic tokens and `.skeleton`. */
+
+@layer components {
+  .loading-state {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .loading-state--page {
+    flex: 1 1 auto;
+    min-height: 40vh;
+    padding: 2.5rem 1rem;
+  }
+
+  .loading-state--inline {
+    padding: 2.5rem 0;
+  }
+
+  .loading-state--compact {
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+  }
+
+  .loading-state__message {
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    letter-spacing: 0.01em;
+    line-height: 1.45;
+    margin: 0;
+    max-width: 18rem;
+  }
+
+  .loading-indicator {
+    align-items: center;
+    color: var(--color-primary);
+    display: flex;
+    flex-shrink: 0;
+    justify-content: center;
+    --loading-duration: 1s;
+    --loading-indicator-size: 1.5rem;
+  }
+
+  .loading-state--page .loading-indicator {
+    --loading-indicator-size: 1.75rem;
+  }
+
+  .loading-state--compact .loading-indicator,
+  .db-table-loading-indicator .loading-indicator {
+    --loading-indicator-size: 1.25rem;
+  }
+
+  [data-theme="dashboard"] .loading-indicator {
+    color: var(--color-db-accent);
+  }
+
+  [data-theme="dashboard"] .loading-state__message {
+    color: var(--color-db-muted);
+  }
+
+  .loading-indicator__spinner {
+    --duration: var(--loading-duration);
+    animation: loading-indicator-reveal 0.15s ease 0.2s forwards;
+    block-size: var(--loading-indicator-size);
+    inline-size: var(--loading-indicator-size);
+    opacity: 0;
+  }
+
+  .loading-indicator__spinner .loading-ui-dots-ring__dot {
+    animation: loading-ui-dots-ring-pulse var(--loading-duration) linear infinite;
+  }
+
+  .db-table-loading-cell {
+    padding-block: 1.375rem;
+  }
+
+  .db-table-loading-indicator {
+    align-items: center;
+    color: var(--color-primary);
+    display: flex;
+    justify-content: center;
+    min-height: 1.375rem;
+  }
+
+  [data-theme="dashboard"] .db-table-loading-indicator {
+    color: var(--color-db-accent);
+  }
+
+  /* Storefront product grid skeleton */
+  .storefront-product-grid-skeleton {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  @media (width >= 40rem) {
+    .storefront-product-grid-skeleton {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (width >= 64rem) {
+    .storefront-product-grid-skeleton {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (width >= 80rem) {
+    .storefront-product-grid-skeleton {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .storefront-product-card-skeleton {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    contain: layout paint style;
+    content-visibility: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .storefront-product-card-skeleton__image {
+    aspect-ratio: 4 / 3;
+    background-color: var(--color-mint);
+    border-radius: 0;
+    width: 100%;
+  }
+
+  .storefront-product-card-skeleton__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 1rem 1.125rem;
+  }
+
+  .storefront-product-card-skeleton__title,
+  .storefront-product-card-skeleton__price {
+    background-color: color-mix(in srgb, var(--color-mint) 82%, var(--color-border));
+    border-radius: var(--radius-input);
+  }
+
+  .storefront-product-card-skeleton__title {
+    height: 1rem;
+    width: 78%;
+  }
+
+  .storefront-product-card-skeleton__price {
+    height: 0.875rem;
+    width: 38%;
+  }
+
+  .storefront-category-pills-skeleton {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .storefront-category-pill-skeleton {
+    background-color: var(--color-mint);
+    border-radius: 9999px;
+    height: 2.75rem;
+    width: 5.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .loading-indicator__spinner,
+    .skeleton {
+      animation: none;
+      opacity: 0.55;
+    }
+
+    .loading-indicator__spinner {
+      opacity: 0.85;
+    }
+
+    .loading-indicator__spinner .loading-ui-dots-ring__dot {
+      animation: none;
+      opacity: 0.7;
+      transform: scale(0.85);
+    }
+  }
+}

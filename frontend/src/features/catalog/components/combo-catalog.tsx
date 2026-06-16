@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -28,7 +29,7 @@ export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
   if (combosQuery.isPending) {
     return (
       <section className="mx-auto w-full max-w-7xl px-4 pb-10 pt-10 sm:px-6 lg:px-8">
-        <p className="text-sm text-muted">Loading combo deals…</p>
+        <InlineLoadingState />
       </section>
     );
   }

@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import { Toaster } from "sonner";
 
 import "./globals.css";
+import { PageLoadingState } from "@/components/ui/loading-state";
+import { ThemeScope } from "@/components/theme/theme-scope";
 import { BRAND } from "@/constants/brand";
+import { APP_THEME } from "@/constants/themes";
 import { AuthBootstrap } from "@/features/auth/server";
 import { QueryProvider } from "@/providers";
 
@@ -57,9 +60,9 @@ export default function RootLayout({
         <QueryProvider>
           <Suspense
             fallback={
-              <div className="flex flex-1 items-center justify-center text-caption">
-                Loading…
-              </div>
+              <ThemeScope theme={APP_THEME.storefront}>
+                <PageLoadingState />
+              </ThemeScope>
             }
           >
             <AuthBootstrap>{children}</AuthBootstrap>

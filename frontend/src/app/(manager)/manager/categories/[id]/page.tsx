@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { use } from "react";
 
 import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import { CategoryForm, managerCategoriesBreadcrumb, useCategory } from "@/features/manager";
 import { ROUTE } from "@/constants/routes";
@@ -19,7 +20,7 @@ export default function ManagerEditCategoryPage({ params }: PageProps) {
   const categoryQuery = useCategory(id);
 
   if (categoryQuery.isPending) {
-    return <p className="text-sm text-muted">Loading category…</p>;
+    return <InlineLoadingState />;
   }
 
   if (categoryQuery.isError) {
