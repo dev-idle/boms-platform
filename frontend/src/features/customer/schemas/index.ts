@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
+import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 export const cartItemSchema = z.object({
   id: z.string().uuid(),
@@ -72,8 +73,8 @@ export const orderSchema = z.object({
   total_cents: z.number().int().min(0),
   discount_code_snapshot: z.string().nullable().optional(),
   items: z.array(orderItemSchema),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  created_at: apiDateTimeSchema,
+  updated_at: apiDateTimeSchema,
 });
 
 export const orderSummarySchema = z.object({
@@ -81,7 +82,7 @@ export const orderSummarySchema = z.object({
   status: z.enum(["pending", "confirmed", "cancelled", "fulfilled"]),
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
-  created_at: z.string().datetime(),
+  created_at: apiDateTimeSchema,
 });
 
 export const ordersListFilterSchema = z.object({

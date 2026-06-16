@@ -17,7 +17,7 @@ import {
   DashboardTableRowActions,
 } from "@/components/ui/dashboard-table-actions";
 import { EntityActivePill } from "@/components/ui/status-pill";
-import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
+import { DASHBOARD_TABLE_PAGE_SIZE, DASHBOARD_TABLE_COLUMN_LABEL } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -27,8 +27,8 @@ import {
   isInitialQueryLoad,
   isQueryRefetching,
 } from "@/lib/react-query/query-surface";
+import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
-import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useCombos, useDeleteCombo } from "../hooks";
@@ -97,7 +97,8 @@ export function ManagerCombosTable() {
               <tr>
                 <th>Name</th>
                 <th>Price</th>
-                <th>Window</th>
+                <th>{DASHBOARD_TABLE_COLUMN_LABEL.startsAt}</th>
+                <th>{DASHBOARD_TABLE_COLUMN_LABEL.endsAt}</th>
                 <th>Items</th>
                 <th className="db-table-status">Status</th>
                 <th className="db-table-detail">Actions</th>
@@ -105,7 +106,7 @@ export function ManagerCombosTable() {
             </thead>
             <tbody>
               <DashboardTableStateRows
-                columnCount={6}
+                columnCount={7}
                 entityLabel="combos"
                 hasActiveFilter={Boolean(search)}
                 isEmpty={combos.length === 0}
@@ -119,9 +120,8 @@ export function ManagerCombosTable() {
                   <td className="text-tabular">
                     {formatPriceCents(combo.price_cents)}
                   </td>
-                  <td className="text-muted">
-                    {formatDateTime(combo.starts_at)} – {formatDateTime(combo.ends_at)}
-                  </td>
+                  <DashboardTableDateTimeCell iso={combo.starts_at} />
+                  <DashboardTableDateTimeCell iso={combo.ends_at} />
                   <td className="text-tabular">{combo.items.length}</td>
                   <td className="db-table-status">
                     <EntityActivePill active={combo.is_active} />
@@ -144,7 +144,7 @@ export function ManagerCombosTable() {
               ))
                 : null}
               <DashboardTablePagePlaceholders
-                columnCount={6}
+                columnCount={7}
                 count={pagePlaceholderCount}
               />
             </tbody>

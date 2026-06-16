@@ -1,14 +1,10 @@
-/** Converts an ISO timestamp to a `datetime-local` input value (local timezone). */
-export function toDatetimeLocalValue(iso: string): string {
-  const date = new Date(iso);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+import { z } from "zod";
 
-/** Converts a `datetime-local` input value to an ISO timestamp (UTC). */
-export function fromDatetimeLocalValue(value: string): string {
-  return new Date(value).toISOString();
-}
+/**
+ * RFC 3339 timestamps from the Go API (Fiber JSON) include a numeric offset
+ * (e.g. `+07:00`). Zod's default `datetime()` only accepts UTC `Z` suffixes.
+ */
+export const apiDateTimeSchema = z.string().datetime({ offset: true });
 
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {

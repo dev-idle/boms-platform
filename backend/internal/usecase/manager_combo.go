@@ -275,7 +275,22 @@ func parseComboItems(items []dto.ComboItemInput) ([]port.ComboItemParams, []uuid
 		})
 		productIDs = append(productIDs, productID)
 	}
+	if err := validateComboBundleSize(items); err != nil {
+		return nil, nil, err
+	}
 	return itemParams, productIDs, nil
+}
+
+const comboBundleMinDetail = "Add at least two products, or one product with quantity of at least 2"
+
+func validateComboBundleSize(items []dto.ComboItemInput) error {
+	if len(items) >= 2 {
+		return nil
+	}
+	if len(items) == 1 && items[0].Quantity >= 2 {
+		return nil
+	}
+	return apperrors.ErrValidation.WithDetail("items", comboBundleMinDetail)
 }
 
 func toComboResponse(combo *domaincombo.Combo, items []domaincombo.Item) *dto.ComboResponse {

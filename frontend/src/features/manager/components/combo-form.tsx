@@ -1,17 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields";
-import { Button } from "@/components/ui/button";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
-import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
-import { InlineLoadingState } from "@/components/ui/loading-state";
 import { FieldControl } from "@/components/ui/field-control";
-import { Label } from "@/components/ui/label";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
 import {
   FORM_FIELD_HINT,
@@ -20,26 +16,17 @@ import {
 } from "@/constants/dashboard-form-copy";
 import {
   Form,
-  FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { DashboardDatetimeInput } from "@/components/ui/dashboard-datetime-input";
 import { IntegerFieldInput } from "@/components/ui/integer-field-input";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { applyFormFieldErrors } from "@/lib/validation";
-import {
-  fromDatetimeLocalValue,
-  toDatetimeLocalValue,
-} from "@/lib/validation/datetime";
 
 import {
   useCreateCombo,
-  useProducts,
   useUpdateCombo,
 } from "../hooks";
 import {
@@ -47,6 +34,8 @@ import {
   type ComboFormInput,
   type ManagerCombo,
 } from "../schemas";
+
+import { ComboFormItemsSection } from "./combo-form-items-section";
 
 type ComboFormProps = {
   mode: "create" | "edit";
@@ -72,33 +61,6 @@ const defaultEndsAt = (): string =>
 export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
   const createCombo = useCreateCombo();
   const updateCombo = useUpdateCombo(combo?.id ?? "");
-  const [productSearchInput, setProductSearchInput] = useState("");
-  const productSearch = useDebouncedValue(productSearchInput, 280).trim();
-  const productsQuery = useProducts({
-    page: 1,
-    page_size: 100,
-    search: productSearch,
-    category_id: "",
-  });
-  const productOptions = useMemo(() => {
-    const options = new Map<string, { id: string; name: string }>();
-    for (const product of productsQuery.data?.products ?? []) {
-      options.set(product.id, { id: product.id, name: product.name });
-    }
-    if (combo) {
-      for (const item of combo.items) {
-        if (!options.has(item.product_id)) {
-          options.set(item.product_id, {
-            id: item.product_id,
-            name: item.product_name,
-          });
-        }
-      }
-    }
-    return Array.from(options.values()).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }, [combo, productsQuery.data?.products]);
 
   const defaultValues = useMemo(
     (): ComboFormInput => ({
@@ -108,10 +70,11 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
       starts_at: combo?.starts_at ?? defaultStartsAt(),
       ends_at: combo?.ends_at ?? defaultEndsAt(),
       is_active: combo?.is_active ?? true,
-      items: combo?.items.map((item) => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-      })) ?? [{ product_id: "", quantity: 1 }],
+      items:
+        combo?.items.map((item) => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+        })) ?? [],
     }),
     [combo],
   );
@@ -121,7 +84,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
     defaultValues,
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { append, fields, remove } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -181,19 +144,16 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           )}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="dashboard-datetime-grid grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="starts_at"
             render={({ field }) => (
               <FormItem>
                 <FieldControl label="Starts at">
-                  <Input
-                    type="datetime-local"
-                    value={toDatetimeLocalValue(field.value)}
-                    onChange={(event) =>
-                      field.onChange(fromDatetimeLocalValue(event.target.value))
-                    }
+                  <DashboardDatetimeInput
+                    onChange={field.onChange}
+                    value={field.value}
                   />
                 </FieldControl>
                 <FormMessage />
@@ -206,12 +166,9 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FieldControl label="Ends at">
-                  <Input
-                    type="datetime-local"
-                    value={toDatetimeLocalValue(field.value)}
-                    onChange={(event) =>
-                      field.onChange(fromDatetimeLocalValue(event.target.value))
-                    }
+                  <DashboardDatetimeInput
+                    onChange={field.onChange}
+                    value={field.value}
                   />
                 </FieldControl>
                 <FormMessage />
@@ -219,6 +176,14 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
             )}
           />
         </div>
+
+        <ComboFormItemsSection
+          append={append}
+          combo={combo}
+          control={form.control}
+          fields={fields}
+          remove={remove}
+        />
 
         <FormField
           control={form.control}
@@ -240,81 +205,6 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
             </FormItem>
           )}
         />
-
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="min-w-[16rem] flex-1 space-y-2">
-              <Label className="text-form-label">Products in combo</Label>
-              <DashboardSearchField
-                onChange={setProductSearchInput}
-                onClear={() => setProductSearchInput("")}
-                placeholder="Search products by name or slug"
-                value={productSearchInput}
-              />
-            </div>
-            <Button
-              onClick={() => append({ product_id: "", quantity: 1 })}
-              type="button"
-              variant="outline"
-            >
-              Add product
-            </Button>
-          </div>
-          {productsQuery.isPending ? (
-            <InlineLoadingState variant="compact" />
-          ) : null}
-          {fields.map((field, index) => (
-            <div
-              key={field.id}
-              className="grid gap-3 rounded-card border border-border p-3 sm:grid-cols-[1fr_120px_auto]"
-            >
-              <FormField
-                control={form.control}
-                name={`items.${index}.product_id`}
-                render={({ field: productField }) => (
-                  <FormItem>
-                    <FormLabel className="sr-only">Product</FormLabel>
-                    <FormControl>
-                      <Select
-                        onChange={productField.onChange}
-                        value={productField.value}
-                      >
-                        <option value="">Select product</option>
-                        {productOptions.map((product) => (
-                          <option key={product.id} value={product.id}>
-                            {product.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name={`items.${index}.quantity`}
-                render={({ field: quantityField }) => (
-                  <FormItem>
-                    <FormLabel className="sr-only">Quantity</FormLabel>
-                    <FormControl>
-                      <IntegerFieldInput min={1} {...quantityField} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button
-                disabled={fields.length <= 1}
-                onClick={() => remove(index)}
-                type="button"
-                variant="outline"
-              >
-                Remove
-              </Button>
-            </div>
-          ))}
-        </div>
 
         <div className="dashboard-profile-form-actions">
           <DashboardFormSaveButton

@@ -546,6 +546,12 @@
   );
 }
 
+/* Chromium / WebKit — mask without flipping input type (caret-safe). */
+.password-field-input--masked {
+  -webkit-text-security: disc;
+  text-security: disc;
+}
+
 /* Edge / legacy IE — hide the native reveal so only our toggle shows. */
 .password-field-input::-ms-reveal,
 .password-field-input::-ms-clear {

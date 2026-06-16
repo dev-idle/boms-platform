@@ -11,6 +11,7 @@ export const FORM_FIELD_HINT = {
   catalogPriceCents: "Amount in cents (100 = $1.00).",
   catalogSlugCreate: "Auto-filled from name.",
   catalogSortOrder: "Lower values appear first.",
+  comboItems: "Each product once. Add two products, or one product with quantity at least 2.",
   discountMaxUses: "Leave empty for unlimited uses.",
   discountMinOrderCents: "Minimum cart total in cents. Leave empty for no minimum.",
   discountPercentOff: "Whole number from 1 to 100.",

@@ -1,7 +1,13 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
+import { apiDateTimeSchema } from "@/lib/validation/datetime";
 import { productImageUrlsResponseSchema, productImageUrlsSchema } from "@/lib/validation/cloudinary";
+
+import {
+  COMBO_BUNDLE_MIN_MESSAGE,
+  isValidComboBundle,
+} from "../lib/combo-bundle-rules";
 
 export const managerCategorySchema = z.object({
   id: z.string().uuid(),
@@ -110,8 +116,8 @@ export const managerComboSchema = z.object({
   name: z.string().min(1),
   slug: catalogSlugSchema,
   price_cents: z.number().int().min(0),
-  starts_at: z.string().datetime(),
-  ends_at: z.string().datetime(),
+  starts_at: apiDateTimeSchema,
+  ends_at: apiDateTimeSchema,
   is_active: z.boolean(),
   items: z.array(comboItemResponseSchema),
   created_at: z.string(),
@@ -123,10 +129,14 @@ export const comboFormSchema = z
     name: z.string().trim().min(1, "Name is required").max(255),
     slug: catalogSlugSchema,
     price_cents: z.coerce.number().int().min(0, "Price must be zero or greater"),
-    starts_at: z.string().datetime(),
-    ends_at: z.string().datetime(),
+    starts_at: apiDateTimeSchema,
+    ends_at: apiDateTimeSchema,
     is_active: z.boolean(),
     items: z.array(comboItemFormSchema).min(1, "Add at least one product"),
+  })
+  .refine((data) => isValidComboBundle(data.items), {
+    message: COMBO_BUNDLE_MIN_MESSAGE,
+    path: ["items"],
   })
   .refine((data) => new Date(data.ends_at) > new Date(data.starts_at), {
     message: "End time must be after start time",
@@ -152,8 +162,8 @@ export const managerDiscountCodeSchema = z.object({
   min_order_cents: z.number().int().min(0).nullable().optional(),
   max_uses: z.number().int().min(1).nullable().optional(),
   used_count: z.number().int().min(0),
-  starts_at: z.string().datetime(),
-  ends_at: z.string().datetime(),
+  starts_at: apiDateTimeSchema,
+  ends_at: apiDateTimeSchema,
   is_active: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -187,8 +197,8 @@ export const discountCodeFormSchema = z
       .min(1)
       .optional()
       .nullable(),
-    starts_at: z.string().datetime(),
-    ends_at: z.string().datetime(),
+    starts_at: apiDateTimeSchema,
+    ends_at: apiDateTimeSchema,
     is_active: z.boolean(),
   })
   .refine((data) => new Date(data.ends_at) > new Date(data.starts_at), {

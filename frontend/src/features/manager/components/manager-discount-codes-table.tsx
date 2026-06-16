@@ -17,7 +17,7 @@ import {
   DashboardTableRowActions,
 } from "@/components/ui/dashboard-table-actions";
 import { EntityActivePill } from "@/components/ui/status-pill";
-import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
+import { DASHBOARD_TABLE_PAGE_SIZE, DASHBOARD_TABLE_COLUMN_LABEL } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -27,8 +27,8 @@ import {
   isInitialQueryLoad,
   isQueryRefetching,
 } from "@/lib/react-query/query-surface";
+import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
-import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useDeleteDiscountCode, useDiscountCodes } from "../hooks";
@@ -109,14 +109,15 @@ export function ManagerDiscountCodesTable() {
                 <th>Code</th>
                 <th>Value</th>
                 <th>Uses</th>
-                <th>Window</th>
+                <th>{DASHBOARD_TABLE_COLUMN_LABEL.startsAt}</th>
+                <th>{DASHBOARD_TABLE_COLUMN_LABEL.endsAt}</th>
                 <th className="db-table-status">Status</th>
                 <th className="db-table-detail">Actions</th>
               </tr>
             </thead>
             <tbody>
               <DashboardTableStateRows
-                columnCount={6}
+                columnCount={7}
                 entityLabel="discount codes"
                 hasActiveFilter={Boolean(search)}
                 isEmpty={discountCodes.length === 0}
@@ -141,10 +142,8 @@ export function ManagerDiscountCodesTable() {
                       ? ` / ${discountCode.max_uses}`
                       : ""}
                   </td>
-                  <td className="text-muted">
-                    {formatDateTime(discountCode.starts_at)} –{" "}
-                    {formatDateTime(discountCode.ends_at)}
-                  </td>
+                  <DashboardTableDateTimeCell iso={discountCode.starts_at} />
+                  <DashboardTableDateTimeCell iso={discountCode.ends_at} />
                   <td className="db-table-status">
                     <EntityActivePill active={discountCode.is_active} />
                   </td>
@@ -169,7 +168,7 @@ export function ManagerDiscountCodesTable() {
               ))
                 : null}
               <DashboardTablePagePlaceholders
-                columnCount={6}
+                columnCount={7}
                 count={pagePlaceholderCount}
               />
             </tbody>

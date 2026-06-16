@@ -23,14 +23,11 @@ import {
   IntegerFieldInput,
   OptionalIntegerFieldInput,
 } from "@/components/ui/integer-field-input";
+import { DashboardDatetimeInput } from "@/components/ui/dashboard-datetime-input";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
-import {
-  fromDatetimeLocalValue,
-  toDatetimeLocalValue,
-} from "@/lib/validation/datetime";
 
 import {
   useCreateDiscountCode,
@@ -244,19 +241,16 @@ export function DiscountCodeForm({
           )}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="dashboard-datetime-grid grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="starts_at"
             render={({ field }) => (
               <FormItem>
                 <FieldControl label="Starts at">
-                  <Input
-                    type="datetime-local"
-                    value={toDatetimeLocalValue(field.value)}
-                    onChange={(event) =>
-                      field.onChange(fromDatetimeLocalValue(event.target.value))
-                    }
+                  <DashboardDatetimeInput
+                    onChange={field.onChange}
+                    value={field.value}
                   />
                 </FieldControl>
                 <FormMessage />
@@ -269,12 +263,9 @@ export function DiscountCodeForm({
             render={({ field }) => (
               <FormItem>
                 <FieldControl label="Ends at">
-                  <Input
-                    type="datetime-local"
-                    value={toDatetimeLocalValue(field.value)}
-                    onChange={(event) =>
-                      field.onChange(fromDatetimeLocalValue(event.target.value))
-                    }
+                  <DashboardDatetimeInput
+                    onChange={field.onChange}
+                    value={field.value}
                   />
                 </FieldControl>
                 <FormMessage />

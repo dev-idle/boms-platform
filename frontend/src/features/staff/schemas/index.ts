@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
+import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 export const orderStatusSchema = z.enum([
   "pending",
@@ -33,7 +34,7 @@ export const staffOrderSummarySchema = z.object({
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
   customer: staffOrderCustomerSchema,
-  created_at: z.string().datetime(),
+  created_at: apiDateTimeSchema,
 });
 
 export const staffOrderSchema = z.object({
@@ -45,8 +46,8 @@ export const staffOrderSchema = z.object({
   discount_code_snapshot: z.string().nullable().optional(),
   items: z.array(staffOrderItemSchema),
   customer: staffOrderCustomerSchema,
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  created_at: apiDateTimeSchema,
+  updated_at: apiDateTimeSchema,
 });
 
 export const staffOrdersListFilterSchema = z.object({

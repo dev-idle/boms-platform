@@ -21,6 +21,8 @@ export type SelectProps = Omit<
   "children" | "onChange"
 > & {
   children: React.ReactNode;
+  /** Applied to the portaled listbox (not scoped under the trigger parent). */
+  contentClassName?: string;
   onChange?: React.ChangeEventHandler<HTMLSelectElement>;
 };
 
@@ -116,6 +118,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       "aria-invalid": ariaInvalid,
       children,
       className,
+      contentClassName,
       disabled,
       id,
       name,
@@ -215,7 +218,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               ref={contentRef}
               align="start"
               avoidCollisions
-              className="field-select-content"
+              className={cn("field-select-content", contentClassName)}
               collisionPadding={8}
               position="popper"
               side="bottom"

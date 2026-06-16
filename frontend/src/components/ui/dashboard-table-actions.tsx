@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 import Link from "next/link";
 
 import {
+  DashboardAddIcon,
   DashboardDeleteIcon,
   DashboardEditIcon,
 } from "@/components/icons/dashboard-ui-icons";
@@ -18,6 +19,14 @@ type DashboardTableDeleteButtonProps = {
   disabled?: boolean;
   label?: string;
   onClick: () => void;
+};
+
+type DashboardTableAddButtonProps = {
+  className?: string;
+  disabled?: boolean;
+  label?: string;
+  onClick: () => void;
+  onMouseDown?: MouseEventHandler<HTMLButtonElement>;
 };
 
 /** Icon row actions — shared across manager, staff, and admin tables. */
@@ -64,6 +73,28 @@ export function DashboardTableDeleteButton({
       type="button"
     >
       <DashboardDeleteIcon className="db-table-action-icon" />
+    </button>
+  );
+}
+
+export function DashboardTableAddButton({
+  className,
+  disabled = false,
+  label = "Add",
+  onClick,
+  onMouseDown,
+}: DashboardTableAddButtonProps) {
+  return (
+    <button
+      aria-label={label}
+      className={cn("db-table-action db-table-action--add", className)}
+      disabled={disabled}
+      onClick={onClick}
+      onMouseDown={onMouseDown}
+      title={label}
+      type="button"
+    >
+      <DashboardAddIcon className="db-table-action-icon" />
     </button>
   );
 }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
+import { apiDateTimeSchema } from "@/lib/validation/datetime";
 import { productImageUrlsResponseSchema } from "@/lib/validation/cloudinary";
 
 export const catalogCategorySchema = z.object({
@@ -47,8 +48,8 @@ export const catalogComboSchema = z.object({
   name: z.string().min(1),
   slug: catalogSlugSchema,
   price_cents: z.number().int().min(0),
-  starts_at: z.string().datetime(),
-  ends_at: z.string().datetime(),
+  starts_at: apiDateTimeSchema,
+  ends_at: apiDateTimeSchema,
   items: z.array(comboItemSchema),
 });
 

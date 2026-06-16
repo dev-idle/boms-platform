@@ -12,7 +12,7 @@ import {
 import { ROUTE } from "@/constants/routes";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
-
+import { StorefrontAccountMenu } from "./storefront-account-menu";
 import { StorefrontHeaderSearch } from "./storefront-header-search";
 import { StorefrontIconButton } from "./storefront-icon-button";
 import { useStorefrontSearchPanel } from "./use-storefront-search-panel";
@@ -25,13 +25,6 @@ export function StorefrontHeader() {
   const searchToggleRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const status = useAuthStore((state) => state.status);
-
-  const accountHref =
-    status === "authenticated"
-      ? ROUTE.customer.account.profile
-      : ROUTE.login;
-  const accountLabel =
-    status === "authenticated" ? "Account" : "Sign in";
 
   const closeSearch = useCallback(() => setSearchOpen(false), []);
 
@@ -84,9 +77,13 @@ export function StorefrontHeader() {
               <CartIcon />
             </StorefrontIconButton>
 
-            <StorefrontIconButton href={accountHref} label={accountLabel}>
-              <UserIcon />
-            </StorefrontIconButton>
+            {status === "authenticated" ? (
+              <StorefrontAccountMenu />
+            ) : (
+              <StorefrontIconButton href={ROUTE.login} label="Sign in">
+                <UserIcon />
+              </StorefrontIconButton>
+            )}
           </div>
         </div>
       </div>
