@@ -54,7 +54,9 @@ export function StorefrontCustomerLayout({
                   )}
                   href={item.href}
                 >
-                  <Icon className="storefront-customer-nav__icon" />
+                  <span aria-hidden="true" className="storefront-customer-nav__icon">
+                    <Icon className="storefront-customer-nav__icon-svg" />
+                  </span>
                   <span className="storefront-customer-nav__label">{item.label}</span>
                 </Link>
               </li>

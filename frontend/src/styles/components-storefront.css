@@ -808,6 +808,7 @@
     background-color: color-mix(in srgb, var(--color-bg) 94%, transparent);
     backdrop-filter: blur(14px);
     border-bottom: 1px solid transparent;
+    overflow: visible;
     transition:
       border-color var(--duration-standard) var(--ease-luxury),
       box-shadow var(--duration-standard) var(--ease-luxury);
@@ -831,6 +832,7 @@
     display: inline-flex;
     flex-shrink: 0;
     gap: 0.125rem;
+    overflow: visible;
   }
 
   @media (min-width: 40rem) {
@@ -841,7 +843,11 @@
 
   .storefront-icon {
     block-size: 1.3125rem;
+    display: block;
+    flex-shrink: 0;
     inline-size: 1.3125rem;
+    max-block-size: 100%;
+    max-inline-size: 100%;
   }
 
   .storefront-header-icon {
@@ -878,6 +884,7 @@
 
   .storefront-account-menu {
     position: relative;
+    z-index: 2;
   }
 
   .storefront-account-menu__panel {
@@ -892,7 +899,7 @@
     min-inline-size: 13.25rem;
     padding: 0.5rem;
     position: absolute;
-    z-index: 60;
+    z-index: 70;
   }
 
   .storefront-account-menu__list {
@@ -932,8 +939,10 @@
     transition: color var(--duration-standard) var(--ease-luxury);
   }
 
-  .storefront-account-menu__icon.storefront-icon {
+  .storefront-account-menu__icon-svg {
     block-size: 1.125rem;
+    display: block;
+    flex-shrink: 0;
     inline-size: 1.125rem;
   }
 
@@ -1088,7 +1097,7 @@
     box-sizing: border-box;
     color: var(--color-muted);
     display: inline-flex;
-    flex: 1;
+    flex: 0 1 auto;
     font-size: 0.875rem;
     font-weight: 500;
     gap: 0.6875rem;
@@ -1113,8 +1122,10 @@
     transition: color var(--duration-standard) var(--ease-luxury);
   }
 
-  .storefront-customer-nav__icon.storefront-icon {
+  .storefront-customer-nav__icon-svg {
     block-size: 1.125rem;
+    display: block;
+    flex-shrink: 0;
     inline-size: 1.125rem;
   }
 
@@ -1144,6 +1155,7 @@
 
   @media (min-width: 64rem) {
     .storefront-customer-nav__link {
+      flex: 1;
       inline-size: 100%;
     }
   }

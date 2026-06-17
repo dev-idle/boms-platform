@@ -92,7 +92,9 @@ export function StorefrontAccountMenu() {
                     onClick={closeMenu}
                     role="menuitem"
                   >
-                    <Icon className="storefront-account-menu__icon" />
+                    <span aria-hidden="true" className="storefront-account-menu__icon">
+                      <Icon className="storefront-account-menu__icon-svg" />
+                    </span>
                     <span>{item.label}</span>
                   </Link>
                 </li>
@@ -111,7 +113,12 @@ export function StorefrontAccountMenu() {
               role="menuitem"
               type="button"
             >
-              <SignOutIcon className="storefront-account-menu__icon storefront-account-menu__icon--sign-out" />
+              <span
+                aria-hidden="true"
+                className="storefront-account-menu__icon storefront-account-menu__icon--sign-out"
+              >
+                <SignOutIcon className="storefront-account-menu__icon-svg" />
+              </span>
               <span>{logout.isPending ? "Signing out…" : "Sign out"}</span>
             </button>
           </div>
