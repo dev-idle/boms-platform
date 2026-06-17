@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import { ROUTE } from "@/constants/routes";
+import { STOREFRONT_NAV_COPY } from "@/constants/storefront-nav-copy";
 import { isApiError } from "@/lib/errors";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -26,30 +27,30 @@ function CartLineItem({ item }: { item: CartItem }) {
   const removeItem = useRemoveCartItem();
 
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-border p-4 rounded-card border bg-surface">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="font-medium text-ink">{item.name}</p>
-          <p className="text-sm text-muted">
+    <li className="storefront-cart-line">
+      <div className="storefront-cart-line__header">
+        <div className="storefront-cart-line__copy">
+          <p className="storefront-cart-line__name">{item.name}</p>
+          <p className="storefront-cart-line__meta text-caption">
             {item.line_type === "combo" ? "Combo" : "Product"} ·{" "}
             {formatPriceCents(item.unit_price_cents)} each
           </p>
           {!item.is_available ? (
-            <p className="mt-1 text-sm text-amber-700">
+            <p className="storefront-cart-line__warning text-caption">
               No longer available — remove to continue checkout.
             </p>
           ) : null}
         </div>
-        <p className="font-medium text-ink">
+        <p className="text-price storefront-cart-line__total">
           {formatPriceCents(item.line_total_cents)}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="storefront-cart-line__actions">
         <label className="sr-only" htmlFor={`qty-${item.id}`}>
           Quantity for {item.name}
         </label>
         <Input
-          className="w-20"
+          className="storefront-cart-line__qty"
           disabled={updateItem.isPending || !item.is_available}
           variant="inline"
           id={`qty-${item.id}`}
@@ -65,14 +66,17 @@ function CartLineItem({ item }: { item: CartItem }) {
             updateItem.mutate({ quantity: next });
           }}
         />
-        <Button
+        <button
+          className="storefront-cart-remove"
           disabled={removeItem.isPending}
           type="button"
-          variant="outline"
           onClick={() => removeItem.mutate(item.id)}
         >
-          Remove
-        </Button>
+          <span aria-hidden="true" className="storefront-cart-remove__icon">
+            ×
+          </span>
+          <span>Remove</span>
+        </button>
       </div>
     </li>
   );
@@ -87,7 +91,7 @@ export function CartView() {
   const [discountCode, setDiscountCode] = useState("");
 
   if (cartQuery.isPending) {
-    return <InlineLoadingState />;
+    return <InlineLoadingState className="storefront-customer-loading" />;
   }
 
   if (cartQuery.isError) {
@@ -104,92 +108,101 @@ export function CartView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="storefront-cart">
       {cart.items.length === 0 ? (
-        <div className="space-y-4">
-          <p className="text-sm text-muted">
-            Your cart is empty.
-          </p>
-          <Link href={ROUTE.products}>
-            <Button type="button" variant="outline">
-              Browse products
-            </Button>
-          </Link>
+        <div className="storefront-empty-state storefront-empty-state--card">
+          <p className="storefront-empty-state__message">Your cart is empty.</p>
+          <Button asChild variant="outline">
+            <Link href={ROUTE.products}>{STOREFRONT_NAV_COPY.returnToShop}</Link>
+          </Button>
         </div>
       ) : (
-        <>
-          <ul className="space-y-3">
-            {cart.items.map((item) => (
-              <CartLineItem key={item.id} item={item} />
-            ))}
-          </ul>
+        <div className="storefront-cart-layout">
+          <div className="storefront-cart__main">
+            <ul className="storefront-cart__lines">
+              {cart.items.map((item) => (
+                <CartLineItem key={item.id} item={item} />
+              ))}
+            </ul>
 
-          <div className="space-y-3 rounded-lg border border-border p-4 rounded-card border bg-surface">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted">Subtotal</span>
-              <span>{formatPriceCents(cart.subtotal_cents)}</span>
-            </div>
-            {cart.discount ? (
-              <div className="flex justify-between text-sm text-emerald-700">
-                <span>Discount ({cart.discount.code})</span>
-                <span>-{formatPriceCents(cart.discount_cents)}</span>
-              </div>
-            ) : null}
-            <div className="flex justify-between text-base font-medium">
-              <span>Total</span>
-              <span>{formatPriceCents(cart.total_cents)}</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-ink">
-              Discount code
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Input
-                className="max-w-xs"
-                placeholder="Enter code"
-                value={discountCode}
-                variant="inline"
-                onChange={(event) => setDiscountCode(event.target.value)}
-              />
-              <Button
-                disabled={applyDiscount.isPending || discountCode.trim() === ""}
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  applyDiscount.mutate({ code: discountCode.trim() })
-                }
-              >
-                Apply
-              </Button>
-              {cart.discount ? (
+            <div className="storefront-panel storefront-cart-discount">
+              <p className="storefront-cart-discount__label">Discount code</p>
+              <div className="storefront-cart-discount__controls">
+                <Input
+                  className="storefront-cart-discount__input"
+                  placeholder="Enter code"
+                  value={discountCode}
+                  variant="inline"
+                  onChange={(event) => setDiscountCode(event.target.value)}
+                />
                 <Button
-                  disabled={removeDiscount.isPending}
+                  disabled={applyDiscount.isPending || discountCode.trim() === ""}
                   type="button"
-                  variant="ghost"
-                  onClick={() => removeDiscount.mutate()}
+                  variant="outline"
+                  onClick={() =>
+                    applyDiscount.mutate({ code: discountCode.trim() })
+                  }
                 >
-                  Remove discount
+                  Apply
                 </Button>
-              ) : null}
+                {cart.discount ? (
+                  <button
+                    className="storefront-cart-remove storefront-cart-remove--code"
+                    disabled={removeDiscount.isPending}
+                    type="button"
+                    onClick={() => removeDiscount.mutate()}
+                  >
+                    <span aria-hidden="true" className="storefront-cart-remove__icon">
+                      ×
+                    </span>
+                    <span>Remove code</span>
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          <Button
-            disabled={!cart.checkout_ready || checkout.isPending}
-            type="button"
-            onClick={() =>
-              checkout.mutate(undefined, {
-                onSuccess: (order) => {
-                  router.push(ROUTE.orderDetail(order.id));
-                },
-              })
-            }
-          >
-            {checkout.isPending ? "Placing order…" : "Checkout"}
-          </Button>
-        </>
+          <aside className="storefront-cart__aside">
+            <div className="storefront-panel storefront-cart-summary">
+              <p className="storefront-cart-summary__title">Order summary</p>
+              <div className="storefront-cart-summary__row">
+                <span className="text-muted">Subtotal</span>
+                <span className="text-table-cell">
+                  {formatPriceCents(cart.subtotal_cents)}
+                </span>
+              </div>
+              {cart.discount ? (
+                <div className="storefront-cart-summary__row storefront-cart-summary__row--discount">
+                  <span>Discount ({cart.discount.code})</span>
+                  <span>-{formatPriceCents(cart.discount_cents)}</span>
+                </div>
+              ) : null}
+              <div className="storefront-cart-summary__row storefront-cart-summary__row--total">
+                <span>Total</span>
+                <span className="text-price">
+                  {formatPriceCents(cart.total_cents)}
+                </span>
+              </div>
+
+              <div className="storefront-cart-summary__checkout">
+                <Button
+                  className="storefront-cart-summary__checkout-btn"
+                  disabled={!cart.checkout_ready || checkout.isPending}
+                  type="button"
+                  onClick={() =>
+                    checkout.mutate(undefined, {
+                      onSuccess: (order) => {
+                        router.push(ROUTE.orderDetail(order.id));
+                      },
+                    })
+                  }
+                >
+                  {checkout.isPending ? "Placing order…" : "Checkout"}
+                </Button>
+              </div>
+            </div>
+          </aside>
+        </div>
       )}
     </div>
   );

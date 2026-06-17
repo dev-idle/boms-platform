@@ -59,7 +59,7 @@
   --btn-control-padding-inline: 1rem;
   --radius-card: 12px;
   --radius-input: 10px;
-  --radius-button: 10px;
+  --radius-button: 11px;
 
   /* Dashboard data table — readable density without oversized chrome */
   --db-table-row-height: 2.75rem;

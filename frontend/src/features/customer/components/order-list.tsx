@@ -5,7 +5,13 @@ import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { InlineLoadingState } from "@/components/ui/loading-state";
+import {
+  formatOrderStatusLabel,
+  orderStatusToPillVariant,
+  StatusPill,
+} from "@/components/ui/status-pill";
 import { ROUTE } from "@/constants/routes";
+import { STOREFRONT_NAV_COPY } from "@/constants/storefront-nav-copy";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -18,7 +24,7 @@ export function OrderList() {
   const ordersQuery = useOrders(filter);
 
   if (ordersQuery.isPending) {
-    return <InlineLoadingState />;
+    return <InlineLoadingState className="storefront-customer-loading" />;
   }
 
   if (ordersQuery.isError) {
@@ -34,37 +40,51 @@ export function OrderList() {
 
   if (orders.length === 0) {
     return (
-      <p className="text-sm text-muted">
-        You have not placed any orders yet.
-      </p>
+      <div className="storefront-empty-state storefront-empty-state--card">
+        <p className="storefront-empty-state__message">
+          You have not placed any orders yet.
+        </p>
+        <Button asChild variant="outline">
+          <Link href={ROUTE.products}>{STOREFRONT_NAV_COPY.returnToShop}</Link>
+        </Button>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <ul className="divide-y divide-border rounded-card border border-border">
+    <div className="storefront-orders">
+      <ul className="storefront-orders__list">
         {orders.map((order) => (
-          <li key={order.id} className="flex items-center justify-between gap-4 p-4">
-            <div>
-              <p className="font-medium text-ink">
-                {formatPriceCents(order.total_cents)}
-              </p>
-              <p className="text-sm text-muted">
-                {formatDateTime(order.created_at)} · {order.item_count} item
-                {order.item_count === 1 ? "" : "s"} · {order.status}
-              </p>
-            </div>
-            <Link href={ROUTE.orderDetail(order.id)}>
-              <Button type="button" variant="outline">
-                View
-              </Button>
+          <li key={order.id}>
+            <Link
+              className="storefront-order-card"
+              href={ROUTE.orderDetail(order.id)}
+            >
+              <div className="storefront-order-card__main">
+                <div className="storefront-order-card__top">
+                  <p className="storefront-order-card__price text-price">
+                    {formatPriceCents(order.total_cents)}
+                  </p>
+                  <StatusPill
+                    label={formatOrderStatusLabel(order.status)}
+                    variant={orderStatusToPillVariant(order.status)}
+                  />
+                </div>
+                <p className="storefront-order-card__meta text-caption">
+                  {formatDateTime(order.created_at)} · {order.item_count} item
+                  {order.item_count === 1 ? "" : "s"}
+                </p>
+              </div>
+              <span className="storefront-order-card__cta" aria-hidden="true">
+                →
+              </span>
             </Link>
           </li>
         ))}
       </ul>
 
       {pagination && pagination.total_pages > 1 ? (
-        <div className="flex items-center gap-2">
+        <div className="storefront-orders__pagination">
           <Button
             disabled={page <= 1}
             type="button"
@@ -73,7 +93,7 @@ export function OrderList() {
           >
             Previous
           </Button>
-          <span className="text-sm text-muted">
+          <span className="text-caption">
             Page {pagination.page} of {pagination.total_pages}
           </span>
           <Button

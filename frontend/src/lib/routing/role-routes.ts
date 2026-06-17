@@ -1,4 +1,5 @@
 import { USER_ROLE, type UserRole } from "@/constants/roles";
+import { customerAccountSectionHref } from "@/constants/customer-account-sections";
 import {
   ADMIN_ROUTE_PREFIXES,
   BAKER_ROUTE_PREFIXES,
@@ -68,7 +69,7 @@ export function profileRouteForRole(role: UserRole): string {
 export function passwordRouteForRole(role: UserRole): string {
   switch (role) {
     case USER_ROLE.customer:
-      return ROUTE.customer.account.password;
+      return customerAccountSectionHref("password");
     case USER_ROLE.staff:
       return `${ROUTE.staff.account.profile}#staff-password`;
     case USER_ROLE.baker:
@@ -80,6 +81,14 @@ export function passwordRouteForRole(role: UserRole): string {
     default:
       return assertNeverRole(role);
   }
+}
+
+/** Customer-only — legacy `/customer/account/delete` redirects to profile anchor. */
+export function deleteAccountRouteForRole(role: UserRole): string {
+  if (role !== USER_ROLE.customer) {
+    throw new Error(`Delete account route is customer-only: ${role}`);
+  }
+  return customerAccountSectionHref("delete");
 }
 
 function matchesRoutePrefix(pathname: string, prefix: string): boolean {

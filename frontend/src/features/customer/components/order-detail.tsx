@@ -1,11 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
 import { InlineLoadingState } from "@/components/ui/loading-state";
-import { ROUTE } from "@/constants/routes";
+import {
+  formatOrderStatusLabel,
+  orderStatusToPillVariant,
+  StatusPill,
+} from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -25,7 +27,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
   }
 
   if (orderQuery.isPending) {
-    return <InlineLoadingState />;
+    return <InlineLoadingState className="storefront-customer-loading" />;
   }
 
   if (orderQuery.isError) {
@@ -42,58 +44,60 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <Link href={ROUTE.orders}>
-        <Button type="button" variant="outline">
-          Back to orders
-        </Button>
-      </Link>
+    <div className="storefront-order-detail">
+      <div className="storefront-panel storefront-order-detail__card">
+        <div className="storefront-order-detail__meta">
+          <p className="text-caption">
+            Placed {formatDateTime(order.created_at)}
+          </p>
+          <StatusPill
+            label={formatOrderStatusLabel(order.status)}
+            variant={orderStatusToPillVariant(order.status)}
+          />
+        </div>
 
-      <div className="rounded-lg border border-border p-4 rounded-card border bg-surface">
-        <p className="text-sm text-muted">
-          Placed {formatDateTime(order.created_at)} · Status: {order.status}
-        </p>
         {order.discount_code_snapshot ? (
-          <p className="mt-1 text-sm text-muted">
+          <p className="text-caption">
             Discount code: {order.discount_code_snapshot}
           </p>
         ) : null}
 
-        <ul className="mt-6 space-y-3">
+        <ul className="storefront-order-detail__items">
           {order.items.map((item) => (
-            <li
-              key={item.id}
-              className="flex items-start justify-between gap-4 text-sm"
-            >
+            <li key={item.id} className="storefront-order-detail__item">
               <div>
-                <p className="font-medium text-ink">
+                <p className="text-section-heading">
                   {item.quantity}× {item.name}
                 </p>
-                <p className="text-muted">
+                <p className="text-caption">
                   {formatPriceCents(item.unit_price_cents)} each
                 </p>
               </div>
-              <p className="font-medium">
+              <p className="text-table-cell">
                 {formatPriceCents(item.line_total_cents)}
               </p>
             </li>
           ))}
         </ul>
 
-        <div className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
-          <div className="flex justify-between">
+        <div className="storefront-cart-summary storefront-order-detail__totals">
+          <div className="storefront-cart-summary__row">
             <span className="text-muted">Subtotal</span>
-            <span>{formatPriceCents(order.subtotal_cents)}</span>
+            <span className="text-table-cell">
+              {formatPriceCents(order.subtotal_cents)}
+            </span>
           </div>
           {order.discount_cents > 0 ? (
-            <div className="flex justify-between text-emerald-700">
+            <div className="storefront-cart-summary__row storefront-cart-summary__row--discount">
               <span>Discount</span>
               <span>-{formatPriceCents(order.discount_cents)}</span>
             </div>
           ) : null}
-          <div className="flex justify-between text-base font-medium">
+          <div className="storefront-cart-summary__row storefront-cart-summary__row--total">
             <span>Total</span>
-            <span>{formatPriceCents(order.total_cents)}</span>
+            <span className="text-price">
+              {formatPriceCents(order.total_cents)}
+            </span>
           </div>
         </div>
       </div>

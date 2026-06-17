@@ -88,14 +88,22 @@ export function StorefrontHeader() {
         </div>
       </div>
 
-      {searchOpen ? (
-        <StorefrontHeaderSearch
-          inputRef={searchInputRef}
-          onClose={closeSearch}
-          panelId={searchPanelId}
-          panelRef={searchPanelRef}
-        />
-      ) : null}
+      <div
+        className={cn(
+          "storefront-header-search-wrap",
+          searchOpen && "storefront-header-search-wrap--open",
+        )}
+      >
+        <div className="storefront-header-search-wrap__inner">
+          <StorefrontHeaderSearch
+            inputRef={searchInputRef}
+            onClose={closeSearch}
+            open={searchOpen}
+            panelId={searchPanelId}
+            panelRef={searchPanelRef}
+          />
+        </div>
+      </div>
     </header>
   );
 }

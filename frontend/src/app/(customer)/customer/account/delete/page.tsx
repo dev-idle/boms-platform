@@ -1,18 +1,7 @@
-import { DeleteAccountCard } from "@/features/user";
-import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
-
-export const metadata = pageTitle(PAGE_TITLES.deleteAccount);
+import { USER_ROLE } from "@/constants/roles";
+import { deleteAccountRouteForRole } from "@/lib/routing/role-routes";
+import { redirect } from "next/navigation";
 
 export default function CustomerAccountDeletePage() {
-  return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-page-title">{PAGE_TITLES.deleteAccount}</h1>
-        <p className="mt-2 text-sm text-muted">
-          This is available for customers only.
-        </p>
-      </div>
-      <DeleteAccountCard />
-    </div>
-  );
+  redirect(deleteAccountRouteForRole(USER_ROLE.customer));
 }

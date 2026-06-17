@@ -9,7 +9,7 @@ export function ButtonArrowIcon({ className }: { className?: string }) {
   return (
     <svg
       aria-hidden
-      className={cn("btn-arrow size-[15px] shrink-0", className)}
+      className={cn("btn-arrow size-3.5 shrink-0", className)}
       fill="none"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
@@ -19,7 +19,7 @@ export function ButtonArrowIcon({ className }: { className?: string }) {
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth={1.8}
+        strokeWidth={1.5}
       />
     </svg>
   );
@@ -27,8 +27,8 @@ export function ButtonArrowIcon({ className }: { className?: string }) {
 
 const buttonVariants = cva(
   [
-    "btn-chrome inline-flex items-center justify-center gap-1.5 whitespace-nowrap",
-    "rounded-button font-body text-sm font-medium leading-none tracking-[0.012em] antialiased",
+    "btn-chrome inline-flex items-center justify-center gap-2 whitespace-nowrap",
+    "rounded-button font-body text-sm font-medium leading-none antialiased",
   ].join(" "),
   {
     variants: {
@@ -42,8 +42,8 @@ const buttonVariants = cva(
       },
       size: {
         default: "",
-        sm: "text-xs [--btn-control-min-height:2.25rem] [--btn-control-min-width:2.25rem] [--btn-control-padding-inline:0.875rem]",
-        lg: "[--btn-control-min-height:2.875rem] [--btn-control-min-width:2.875rem] [--btn-control-padding-inline:1.5rem]",
+        sm: "btn-chrome--sm",
+        lg: "btn-chrome--lg",
       },
     },
     defaultVariants: {

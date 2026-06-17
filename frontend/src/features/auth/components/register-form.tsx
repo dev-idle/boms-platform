@@ -9,7 +9,7 @@ import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { ROUTE } from "@/constants/routes";
+import { loginHrefWithNext } from "@/lib/validate-next";
 import { isApiError } from "@/lib/errors";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
@@ -20,7 +20,7 @@ import { AuthInlineLink } from "./auth-inline-link";
 import { AuthFormShell } from "./auth-form-shell";
 import { AuthPasswordChecklist } from "./auth-password-checklist";
 
-export function RegisterForm() {
+export function RegisterForm({ next }: { next?: string }) {
   const registerMutation = useRegister();
 
   const form = useForm<RegisterInput>({
@@ -38,27 +38,30 @@ export function RegisterForm() {
   });
 
   function onSubmit(values: RegisterInput) {
-    registerMutation.mutate(values, {
-      onError: (error) => {
-        if (!isApiError(error)) {
-          toast.error("Something went wrong. Please try again.");
-          return;
-        }
-        if (error.isEmailExists()) {
-          form.setError("email", { message: "Email already registered" });
-          return;
-        }
-        if (error.status === 422 && error.details) {
-          for (const item of mapValidationDetailsToFormErrors(error.details)) {
-            if (item.field === "email" || item.field === "password") {
-              form.setError(item.field, { message: item.message });
-            }
+    registerMutation.mutate(
+      { input: values, next },
+      {
+        onError: (error) => {
+          if (!isApiError(error)) {
+            toast.error("Something went wrong. Please try again.");
+            return;
           }
-          return;
-        }
-        toast.error(error.message);
+          if (error.isEmailExists()) {
+            form.setError("email", { message: "Email already registered" });
+            return;
+          }
+          if (error.status === 422 && error.details) {
+            for (const item of mapValidationDetailsToFormErrors(error.details)) {
+              if (item.field === "email" || item.field === "password") {
+                form.setError(item.field, { message: item.message });
+              }
+            }
+            return;
+          }
+          toast.error(error.message);
+        },
       },
-    });
+    );
   }
 
   return (
@@ -67,7 +70,7 @@ export function RegisterForm() {
       footer={
         <p className="auth-page-switch">
           Already have an account?{" "}
-          <AuthInlineLink href={ROUTE.login}>Sign in</AuthInlineLink>
+          <AuthInlineLink href={loginHrefWithNext(next)}>Sign in</AuthInlineLink>
         </p>
       }
       title={PAGE_TITLES.createAccount}

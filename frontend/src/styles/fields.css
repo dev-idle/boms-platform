@@ -893,16 +893,32 @@
 /* Dashboard — denser controls; beats Tailwind size utilities on Button */
 [data-theme="dashboard"] .btn-chrome {
   font-size: var(--btn-control-font-size);
+  font-weight: 500;
   height: var(--btn-control-min-height);
+  letter-spacing: 0.01em;
   min-height: var(--btn-control-min-height);
   min-width: var(--btn-control-min-width);
   padding-inline: var(--btn-control-padding-inline);
+  transition:
+    background-color var(--duration-standard) var(--ease-luxury),
+    box-shadow var(--duration-standard) var(--ease-luxury),
+    color var(--duration-standard) var(--ease-luxury);
+}
+
+[data-theme="dashboard"] .btn-chrome:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-db-accent) 40%, transparent);
+  outline-offset: 2px;
 }
 
 /* Dashboard primary — flat accent (no satin, no gradient, no lift) */
 [data-theme="dashboard"] .btn-primary {
   background: var(--color-db-accent);
   box-shadow: none;
+  text-shadow: none;
+}
+
+[data-theme="dashboard"] .btn-primary::before {
+  display: none;
 }
 
 [data-theme="dashboard"] .btn-primary:hover:not(:disabled) {
@@ -924,6 +940,7 @@
 
 /* Dashboard secondary — neutral hairline (accent reserved for primary) */
 [data-theme="dashboard"] .btn-variant-outline {
+  border: none;
   box-shadow: inset 0 0 0 1px var(--color-db-border);
   color: var(--color-db-muted);
 }

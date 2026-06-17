@@ -11,6 +11,7 @@ export const PAGE_TITLES = {
   cart: "Cart",
   orders: "Orders",
   orderDetail: "Order Detail",
+  account: "Account",
   profile: "Profile",
   changePassword: "Change Password",
   deleteAccount: "Delete Account",

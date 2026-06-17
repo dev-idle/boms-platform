@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 
 import { USER_ROLE } from "@/constants/roles";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
-import { DashboardProfileFormSkeleton } from "@/components/ui/dashboard-profile-form-skeleton";
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -21,13 +21,16 @@ import {
   customerProfileSnapshot,
   normalizeCustomerProfileFormValues,
 } from "../lib/profile-form-values";
+import { ReadonlyAccountEmailField } from "./readonly-account-email-field";
 
 type CustomerAccountProfileFormBodyProps = {
+  email: string;
   initialValues: CustomerSelfProfileFormValues;
   onSaved: (values: CustomerSelfProfileFormValues) => void;
 };
 
 function CustomerAccountProfileFormBody({
+  email,
   initialValues,
   onSaved,
 }: CustomerAccountProfileFormBodyProps) {
@@ -63,10 +66,12 @@ function CustomerAccountProfileFormBody({
   return (
     <Form {...form}>
       <form
-        className="dashboard-profile-form"
+        className="dashboard-profile-form storefront-account-form"
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}
       >
+        <ReadonlyAccountEmailField email={email} />
+
         <FormField
           control={form.control}
           name="display_name"
@@ -118,10 +123,12 @@ function CustomerAccountProfileFormBody({
 }
 
 type CustomerAccountProfileFormProps = {
+  email: string;
   initialSnapshot: CustomerSelfProfileFormValues;
 };
 
 function CustomerAccountProfileFormInner({
+  email,
   initialSnapshot,
 }: CustomerAccountProfileFormProps) {
   const { commitSnapshot, formKey, snapshot } =
@@ -130,6 +137,7 @@ function CustomerAccountProfileFormInner({
   return (
     <CustomerAccountProfileFormBody
       key={formKey}
+      email={email}
       initialValues={snapshot}
       onSaved={commitSnapshot}
     />
@@ -140,7 +148,7 @@ export function CustomerAccountProfileForm() {
   const me = useMe();
 
   if (me.isPending) {
-    return <DashboardProfileFormSkeleton />;
+    return <InlineLoadingState className="storefront-account-form__loading" />;
   }
 
   if (!me.data || me.data.role !== USER_ROLE.customer) {
@@ -150,6 +158,7 @@ export function CustomerAccountProfileForm() {
   return (
     <CustomerAccountProfileFormInner
       key={me.data.id}
+      email={me.data.email}
       initialSnapshot={customerProfileSnapshot(me.data.profile)}
     />
   );

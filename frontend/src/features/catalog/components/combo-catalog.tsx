@@ -1,14 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
-
-import { InlineLoadingState } from "@/components/ui/loading-state";
-import { formatDateTime } from "@/lib/validation/datetime";
-import { formatPriceCents } from "@/lib/validation/catalog";
+import { useEffect, useMemo, useState } from "react";
 
 import { useCatalogCombos } from "../hooks";
+import {
+  CATALOG_COMBOS_HEADING_ID,
+  CATALOG_COMBOS_SECTION_ID,
+  resolveStorefrontCombosHeadingHash,
+  scrollToStorefrontCombosSection,
+} from "../lib/scroll-to-storefront-anchor";
 import { CatalogPagination } from "./catalog-pagination";
+import { ComboCard } from "./combo-card";
 
 const COMBOS_PAGE_SIZE = 12;
 
@@ -25,21 +28,34 @@ export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
   const combosQuery = useCatalogCombos(filter);
   const combos = combosQuery.data?.combos ?? [];
   const pagination = combosQuery.data?.pagination;
+  const sectionMounted =
+    combosQuery.isPending || combosQuery.isError || combos.length > 0;
+
+  useEffect(() => {
+    if (!sectionMounted) {
+      return;
+    }
+
+    const anchorId = resolveStorefrontCombosHeadingHash();
+    if (!anchorId) {
+      return;
+    }
+
+    requestAnimationFrame(() => scrollToStorefrontCombosSection());
+  }, [sectionMounted, combosQuery.isPending]);
 
   if (combosQuery.isPending) {
-    return (
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 pt-10 sm:px-6 lg:px-8">
-        <InlineLoadingState />
-      </section>
-    );
+    return null;
   }
 
   if (combosQuery.isError) {
     return (
-      <section className="mx-auto w-full max-w-7xl space-y-2 px-4 pb-10 pt-10 sm:px-6 lg:px-8">
-        <h2 className="text-h2">Combo deals</h2>
-        <p className="text-caption text-error">Failed to load combo deals.</p>
-      </section>
+      <ComboCatalogSection>
+        <ComboCatalogHeading variant="minimal" />
+        <ComboCatalogMain>
+          <p className="text-caption text-error">Failed to load combo bundles.</p>
+        </ComboCatalogMain>
+      </ComboCatalogSection>
     );
   }
 
@@ -48,48 +64,86 @@ export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl space-y-6 bg-mint px-4 pb-12 pt-12 sm:px-6 lg:px-8">
-      <div>
-        <h2 className="text-h2">Combo deals</h2>
-        <p className="text-body mt-2">
-          Limited-time bundles with special pricing.
+    <ComboCatalogSection>
+      <ComboCatalogHeading pagination={pagination} variant="full" />
+
+      <ComboCatalogMain>
+        <div className="catalog-combo-grid">
+          {combos.map((combo) => (
+            <ComboCard
+              key={combo.id}
+              combo={combo}
+              renderPurchaseActions={renderPurchaseActions}
+            />
+          ))}
+        </div>
+
+        {pagination ? (
+          <CatalogPagination
+            className="catalog-pagination catalog-combos__pagination"
+            onPageChange={setPage}
+            page={page}
+            totalPages={pagination.total_pages}
+          />
+        ) : null}
+      </ComboCatalogMain>
+    </ComboCatalogSection>
+  );
+}
+
+type ComboCatalogSectionProps = {
+  children: ReactNode;
+};
+
+function ComboCatalogSection({ children }: ComboCatalogSectionProps) {
+  return (
+    <section
+      aria-labelledby={CATALOG_COMBOS_HEADING_ID}
+      className="catalog-combos"
+      id={CATALOG_COMBOS_SECTION_ID}
+    >
+      <div className="storefront-container catalog-combos__container">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function ComboCatalogMain({ children }: { children: ReactNode }) {
+  return <div className="catalog-combos__main">{children}</div>;
+}
+
+type ComboCatalogHeadingProps = {
+  pagination?: { total: number };
+  variant: "full" | "minimal";
+};
+
+function ComboCatalogHeading({ pagination, variant }: ComboCatalogHeadingProps) {
+  if (variant === "minimal") {
+    return (
+      <header
+        className="catalog-combos__header"
+        id={CATALOG_COMBOS_HEADING_ID}
+      >
+        <h2 className="catalog-combos__title">Combo bundles</h2>
+      </header>
+    );
+  }
+
+  return (
+    <header className="catalog-combos__header" id={CATALOG_COMBOS_HEADING_ID}>
+      <div className="catalog-combos__header-copy">
+        <p className="catalog-combos__eyebrow">Limited time</p>
+        <h2 className="catalog-combos__title">Combo bundles</h2>
+        <p className="catalog-combos__lead">
+          Curated sets with bundle pricing for pickup.
         </p>
       </div>
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        {combos.map((combo) => (
-          <article
-            key={combo.id}
-            className="rounded-card bg-surface p-6 shadow-rest"
-          >
-            <h3 className="text-h3">{combo.name}</h3>
-            <p className="text-caption mt-2">
-              Valid until {formatDateTime(combo.ends_at)}
-            </p>
-            <ul className="mt-4 space-y-1 text-sm text-muted">
-              {combo.items.map((item) => (
-                <li key={`${combo.id}-${item.product_id}`}>
-                  {item.quantity}× {item.product_name}
-                </li>
-              ))}
-            </ul>
-            <p className="text-price mt-4 text-lg">
-              {formatPriceCents(combo.price_cents)}
-            </p>
-            {renderPurchaseActions ? (
-              <div className="mt-4">{renderPurchaseActions(combo.id)}</div>
-            ) : null}
-          </article>
-        ))}
-      </div>
-
       {pagination ? (
-        <CatalogPagination
-          onPageChange={setPage}
-          page={page}
-          totalPages={pagination.total_pages}
-        />
+        <p className="catalog-combos__count">
+          {pagination.total} {pagination.total === 1 ? "bundle" : "bundles"}
+        </p>
       ) : null}
-    </section>
+    </header>
   );
 }

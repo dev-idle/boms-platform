@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 
-import { PageLoadingState } from "@/components/ui/loading-state";
 import { ProductCatalog } from "@/features/catalog/components/product-catalog";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 
@@ -13,13 +12,7 @@ export const metadata = pageTitle(
 
 export default function ProductsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="storefront-container py-10">
-          <PageLoadingState />
-        </div>
-      }
-    >
+    <Suspense fallback={null}>
       <ProductCatalog />
       <ComboCatalogSection />
     </Suspense>

@@ -12,6 +12,7 @@ import {
 type StorefrontHeaderSearchProps = {
   inputRef: RefObject<HTMLInputElement | null>;
   onClose: () => void;
+  open: boolean;
   panelRef: RefObject<HTMLDivElement | null>;
   panelId: string;
 };
@@ -19,6 +20,7 @@ type StorefrontHeaderSearchProps = {
 export function StorefrontHeaderSearch({
   inputRef,
   onClose,
+  open,
   panelRef,
   panelId,
 }: StorefrontHeaderSearchProps) {
@@ -27,6 +29,7 @@ export function StorefrontHeaderSearch({
   return (
     <div
       ref={panelRef}
+      aria-hidden={!open}
       className="storefront-header-search"
       id={panelId}
     >

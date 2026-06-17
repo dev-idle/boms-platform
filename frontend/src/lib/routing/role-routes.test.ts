@@ -4,6 +4,7 @@ import { USER_ROLE } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 
 import {
+  deleteAccountRouteForRole,
   homeRouteForRole,
   isPathAllowedForRole,
   isProtectedPath,
@@ -79,7 +80,15 @@ describe("passwordRouteForRole", () => {
       `${ROUTE.admin.account.profile}#admin-profile-password`,
     );
     expect(passwordRouteForRole(USER_ROLE.customer)).toBe(
-      ROUTE.customer.account.password,
+      `${ROUTE.customer.account.profile}#customer-password`,
+    );
+  });
+});
+
+describe("deleteAccountRouteForRole", () => {
+  it("returns customer profile delete anchor", () => {
+    expect(deleteAccountRouteForRole(USER_ROLE.customer)).toBe(
+      `${ROUTE.customer.account.profile}#customer-delete-account`,
     );
   });
 });

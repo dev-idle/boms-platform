@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
+import { loginHrefAfterRegister } from "@/lib/validate-next";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   getMe as getMeFromUserApi,
@@ -20,13 +21,18 @@ import type { LoginInput, RegisterInput } from "../schemas";
 
 export { useAuthHydrated } from "./use-auth-hydrated";
 
+export type RegisterMutationVariables = {
+  input: RegisterInput;
+  next?: string | null;
+};
+
 export function useRegister() {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: (input: RegisterInput) => register(input),
-    onSuccess: () => {
-      router.push(`${ROUTE.login}?registered=1`);
+    mutationFn: ({ input }: RegisterMutationVariables) => register(input),
+    onSuccess: (_data, variables) => {
+      router.push(loginHrefAfterRegister(variables.next));
     },
     onError: (error) => {
       if (!isApiError(error)) {

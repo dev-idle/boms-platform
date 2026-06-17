@@ -3,20 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { UserIcon } from "@/components/icons/storefront-icons";
+
+import {
+  OrdersIcon,
+  SignOutIcon,
+  UserIcon,
+} from "@/components/icons/storefront-icons";
 import { ROUTE } from "@/constants/routes";
+import { isStorefrontCustomerNavActive } from "@/constants/storefront-customer-nav";
 import { useLogout } from "@/features/auth/hooks";
 import { cn } from "@/lib/utils";
 
 import { StorefrontIconButton } from "./storefront-icon-button";
 
 const ACCOUNT_LINKS = [
-  { href: ROUTE.customer.account.profile, label: "Profile" },
-  { href: ROUTE.customer.account.password, label: "Password" },
-  { href: ROUTE.orders, label: "Orders" },
+  { href: ROUTE.orders, label: "Orders", Icon: OrdersIcon },
+  { href: ROUTE.customer.account.profile, label: "Account", Icon: UserIcon },
 ] as const;
 
-/** Authenticated customer account menu — profile links + sign out. */
+/** Authenticated customer account menu — shop links + sign out. */
 export function StorefrontAccountMenu() {
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -72,35 +77,44 @@ export function StorefrontAccountMenu() {
           role="menu"
         >
           <ul className="storefront-account-menu__list">
-            {ACCOUNT_LINKS.map((item) => (
-              <li key={item.href} role="none">
-                <Link
-                  className={cn(
-                    "storefront-account-menu__item",
-                    pathname === item.href &&
-                      "storefront-account-menu__item--active",
-                  )}
-                  href={item.href}
-                  onClick={closeMenu}
-                  role="menuitem"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {ACCOUNT_LINKS.map((item) => {
+              const Icon = item.Icon;
+              const active = isStorefrontCustomerNavActive(pathname, item.href);
+
+              return (
+                <li key={item.href} role="none">
+                  <Link
+                    className={cn(
+                      "storefront-account-menu__item",
+                      active && "storefront-account-menu__item--active",
+                    )}
+                    href={item.href}
+                    onClick={closeMenu}
+                    role="menuitem"
+                  >
+                    <Icon className="storefront-account-menu__icon" />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
 
-          <div className="storefront-account-menu__divider" role="separator" />
-
-          <button
-            className="storefront-account-menu__sign-out"
-            disabled={logout.isPending}
-            onClick={() => logout.mutate()}
-            role="menuitem"
-            type="button"
-          >
-            {logout.isPending ? "Signing out…" : "Sign out"}
-          </button>
+          <div className="storefront-account-menu__footer">
+            <button
+              className="storefront-account-menu__sign-out"
+              disabled={logout.isPending}
+              onClick={() => {
+                closeMenu();
+                logout.mutate();
+              }}
+              role="menuitem"
+              type="button"
+            >
+              <SignOutIcon className="storefront-account-menu__icon storefront-account-menu__icon--sign-out" />
+              <span>{logout.isPending ? "Signing out…" : "Sign out"}</span>
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

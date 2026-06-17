@@ -15,19 +15,16 @@ export function DeleteAccountCard() {
   const canDelete = me.data?.role === "customer";
 
   return (
-    <div className="rounded-lg border border-error/30 bg-error-bg p-4 rounded-card">
-      <h2 className="text-lg font-medium text-red-800">
-        Delete account
-      </h2>
-      <p className="mt-2 text-sm text-red-700">
-        This action disables your account and signs you out immediately.
+    <div className="storefront-account-danger">
+      <p className="storefront-account-danger__copy">
+        This action disables your account and signs you out immediately. This
+        cannot be undone from the app.
       </p>
       <Button
-        className="mt-4"
         disabled={!canDelete || mutation.isPending}
         onClick={() => setOpen(true)}
         type="button"
-        variant="outline"
+        variant="destructive"
       >
         Delete my account
       </Button>

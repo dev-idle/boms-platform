@@ -14,6 +14,7 @@ import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
+import { registerHrefWithNext } from "@/lib/validate-next";
 
 import { useLogin } from "../hooks";
 import { loginSchema, type LoginInput } from "../schemas";
@@ -84,7 +85,9 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
       footer={
         <p className="auth-page-switch">
           New here?{" "}
-          <AuthInlineLink href={ROUTE.register}>Create an account</AuthInlineLink>
+          <AuthInlineLink href={registerHrefWithNext(next)}>
+            Create an account
+          </AuthInlineLink>
         </p>
       }
       title={PAGE_TITLES.signIn}

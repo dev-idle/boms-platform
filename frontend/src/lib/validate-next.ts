@@ -59,14 +59,60 @@ export function validateNextForRole(
   return path;
 }
 
-/** Safe login URL that preserves the current protected path for post-auth redirect. */
-export function loginHrefPreservingNext(
+function authHrefPreservingNext(
+  route: string,
   pathname: string,
   search = "",
 ): string {
   const next = validateNext(`${pathname}${search}`);
   if (!next) {
+    return route;
+  }
+  return `${route}?next=${encodeURIComponent(next)}`;
+}
+
+/** Safe login URL that preserves the current protected path for post-auth redirect. */
+export function loginHrefPreservingNext(
+  pathname: string,
+  search = "",
+): string {
+  return authHrefPreservingNext(ROUTE.login, pathname, search);
+}
+
+/** Safe register URL that preserves the current path for post-auth redirect. */
+export function registerHrefPreservingNext(
+  pathname: string,
+  search = "",
+): string {
+  return authHrefPreservingNext(ROUTE.register, pathname, search);
+}
+
+/** Login URL with a validated `next` query (e.g. after registration). */
+export function loginHrefWithNext(next: string | null | undefined): string {
+  const safeNext = validateNext(next);
+  if (!safeNext) {
     return ROUTE.login;
   }
-  return `${ROUTE.login}?next=${encodeURIComponent(next)}`;
+  return `${ROUTE.login}?next=${encodeURIComponent(safeNext)}`;
+}
+
+/** Register URL with a validated `next` query (e.g. from login hop). */
+export function registerHrefWithNext(next: string | null | undefined): string {
+  const safeNext = validateNext(next);
+  if (!safeNext) {
+    return ROUTE.register;
+  }
+  return `${ROUTE.register}?next=${encodeURIComponent(safeNext)}`;
+}
+
+/** Login URL after registration, preserving optional post-auth redirect. */
+export function loginHrefAfterRegister(
+  next: string | null | undefined,
+): string {
+  const params = new URLSearchParams({ registered: "1" });
+  const safeNext = validateNext(next);
+  if (safeNext) {
+    params.set("next", safeNext);
+  }
+  return `${ROUTE.login}?${params.toString()}`;
 }

@@ -1,18 +1,7 @@
-import { ChangePasswordForm } from "@/features/user";
-import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
-
-export const metadata = pageTitle(PAGE_TITLES.changePassword);
+import { USER_ROLE } from "@/constants/roles";
+import { passwordRouteForRole } from "@/lib/routing/role-routes";
+import { redirect } from "next/navigation";
 
 export default function CustomerAccountPasswordPage() {
-  return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-page-title">{PAGE_TITLES.changePassword}</h1>
-        <p className="mt-2 text-sm text-muted">
-          After changing password, you will be signed out from all sessions.
-        </p>
-      </div>
-      <ChangePasswordForm />
-    </div>
-  );
+  redirect(passwordRouteForRole(USER_ROLE.customer));
 }

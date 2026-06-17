@@ -12,7 +12,17 @@
     -moz-osx-font-smoothing: grayscale;
     color-scheme: light;
     font-optical-sizing: auto;
+    scroll-behavior: smooth;
+    scroll-padding-top: calc(
+      var(--storefront-header-height) + var(--storefront-anchor-gap)
+    );
     scrollbar-gutter: stable;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
   /* Radix RemoveScroll padding stacks on scrollbar-gutter and shifts layout horizontally. */

@@ -10,6 +10,7 @@ export {
   AdminAccountProfileView,
   ChangePasswordForm,
   CustomerAccountProfileForm,
+  CustomerAccountView,
   DeleteAccountCard,
   OperationalAccountProfileView,
 } from "./components";

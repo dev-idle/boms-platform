@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 
-import { ROUTE } from "@/constants/routes";
+import { StorefrontBrowseLink } from "@/components/layouts/storefront-browse-link";
 
 type AuthFormShellProps = {
   title: string;
@@ -19,12 +18,7 @@ export function AuthFormShell({
   return (
     <div className="auth-page-form-stack">
       <div className="auth-page-form-exit">
-        <Link className="auth-page-exit-link" href={ROUTE.products}>
-          <span aria-hidden="true" className="auth-page-exit-icon">
-            ←
-          </span>
-          Browse the menu
-        </Link>
+        <StorefrontBrowseLink />
       </div>
 
       <header className="auth-page-form-intro">

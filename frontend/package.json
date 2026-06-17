@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:design": "node scripts/check-design-tokens.mjs",
+    "check:design": "node scripts/check-design-tokens.mjs && node scripts/check-css-braces.mjs",
     "generate:brand-icons": "node scripts/generate-brand-icons.mjs",
     "ci": "pnpm run typecheck && pnpm run lint && pnpm run check:design && pnpm run test && pnpm run build",
     "audit:ci": "pnpm audit --audit-level=high"

@@ -1,4 +1,5 @@
 import { OrderDetail } from "@/features/customer";
+import { StorefrontPageHeader } from "@/components/layouts/storefront-page-header";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 
 export const metadata = pageTitle(PAGE_TITLES.orderDetail);
@@ -10,11 +11,9 @@ type OrderDetailPageProps = {
 export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
   const { id } = await params;
   return (
-    <div>
-      <h1 className="text-page-title">{PAGE_TITLES.orderDetail}</h1>
-      <div className="mt-6">
-        <OrderDetail orderId={id} />
-      </div>
+    <div className="storefront-customer-section">
+      <StorefrontPageHeader title={PAGE_TITLES.orderDetail} />
+      <OrderDetail orderId={id} />
     </div>
   );
 }

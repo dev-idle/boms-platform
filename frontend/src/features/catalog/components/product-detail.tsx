@@ -1,13 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
+import { StorefrontBrowseLink } from "@/components/layouts/storefront-browse-link";
 import { InlineLoadingState } from "@/components/ui/loading-state";
-import { ROUTE } from "@/constants/routes";
 import { catalogProductImageUrl } from "@/lib/cloudinary/config";
 import { isApiError } from "@/lib/errors";
 import type { CatalogProduct } from "@/lib/schemas/catalog";
@@ -15,6 +13,7 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 import { cn } from "@/lib/utils";
 
 import { useCatalogProduct } from "../hooks";
+import { buildCatalogBrowseHref } from "../lib/catalog-browse-params";
 
 type ProductDetailProps = {
   productId: string;
@@ -36,7 +35,7 @@ export function ProductDetail({
 
   if (!isValidId) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="catalog-detail storefront-container">
         <p className="text-sm text-muted">Invalid product link.</p>
       </div>
     );
@@ -46,7 +45,7 @@ export function ProductDetail({
 
   if (!product && productQuery.isPending) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="catalog-detail storefront-container">
         <InlineLoadingState />
       </div>
     );
@@ -58,7 +57,7 @@ export function ProductDetail({
         ? "Product not found."
         : "Failed to load product.";
     return (
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="catalog-detail storefront-container">
         <p className="text-sm text-error">{message}</p>
       </div>
     );
@@ -66,7 +65,7 @@ export function ProductDetail({
 
   if (!product) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="catalog-detail storefront-container">
         <p className="text-sm text-muted">Product not found.</p>
       </div>
     );
@@ -79,15 +78,17 @@ export function ProductDetail({
     : undefined;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <Link href={ROUTE.products}>
-        <Button type="button" variant="ghost">
-          Back to shop
-        </Button>
-      </Link>
+    <div className="catalog-detail storefront-container">
+      <StorefrontBrowseLink
+        href={buildCatalogBrowseHref({
+          category: product.category_id,
+          page: 1,
+        })}
+        withNavShell
+      />
 
-      <article className="mt-8 grid gap-10 lg:grid-cols-2 lg:gap-16">
-        <div className="space-y-4">
+      <article className="catalog-detail__layout">
+        <div className="catalog-detail__gallery">
           <div className="overflow-hidden rounded-card bg-mint shadow-rest">
             {heroUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are external manager-provided links
@@ -139,22 +140,20 @@ export function ProductDetail({
           ) : null}
         </div>
 
-        <div>
-          <p className="text-caption uppercase tracking-wide">
+        <div className="catalog-detail__info">
+          <p className="catalog-detail__category text-overline">
             {product.category_name}
           </p>
-          <h1 className="mt-2">
-            {product.name}
-          </h1>
-          <p className="text-price mt-4 text-2xl">
+          <h1 className="catalog-detail__title">{product.name}</h1>
+          <p className="catalog-detail__price text-price">
             {formatPriceCents(product.price_cents)}
           </p>
           {product.description ? (
-            <p className="mt-6 text-base leading-relaxed text-muted">
-              {product.description}
-            </p>
+            <p className="catalog-detail__description">{product.description}</p>
           ) : null}
-          {purchaseActions ? <div className="mt-8">{purchaseActions}</div> : null}
+          {purchaseActions ? (
+            <div className="catalog-detail__actions">{purchaseActions}</div>
+          ) : null}
         </div>
       </article>
     </div>
