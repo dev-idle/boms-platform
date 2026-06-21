@@ -62,7 +62,6 @@ export function useChangePassword() {
     onSuccess: () => {
       endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });
-      toast.success("Password changed. Please sign in again.");
       router.push(`${ROUTE.login}?changed=1`);
     },
   });

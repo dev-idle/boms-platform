@@ -914,6 +914,7 @@
 [data-theme="dashboard"] .btn-primary {
   background: var(--color-db-accent);
   box-shadow: none;
+  color: var(--theme-on-primary);
   text-shadow: none;
 }
 
@@ -924,12 +925,14 @@
 [data-theme="dashboard"] .btn-primary:hover:not(:disabled) {
   background: var(--color-db-accent-hover);
   box-shadow: none;
+  color: var(--theme-on-primary);
   transform: none;
 }
 
 [data-theme="dashboard"] .btn-primary:active:not(:disabled) {
   background: var(--color-db-accent-hover);
   box-shadow: none;
+  color: var(--theme-on-primary);
   transform: none;
 }
 
@@ -974,6 +977,29 @@
 }
 
 [data-theme="dashboard"] .btn-variant-warning:disabled {
+  background: var(--color-db-row);
+  color: var(--color-db-muted);
+}
+
+[data-theme="dashboard"] .btn-variant-destructive {
+  background: var(--color-danger);
+  box-shadow: none;
+  color: var(--theme-on-primary);
+}
+
+[data-theme="dashboard"] .btn-variant-destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 88%, var(--color-db-ink));
+  box-shadow: none;
+  color: var(--theme-on-primary);
+}
+
+[data-theme="dashboard"] .btn-variant-destructive:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 82%, var(--color-db-ink));
+  box-shadow: none;
+  color: var(--theme-on-primary);
+}
+
+[data-theme="dashboard"] .btn-variant-destructive:disabled {
   background: var(--color-db-row);
   color: var(--color-db-muted);
 }

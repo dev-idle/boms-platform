@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 import { registerHrefWithNext } from "@/lib/validate-next";
 
+import { showLoginFlashToast } from "../lib/login-flash";
 import { useLogin } from "../hooks";
 import { loginSchema, type LoginInput } from "../schemas";
 import { AuthInlineLink } from "./auth-inline-link";
@@ -29,6 +31,8 @@ type LoginFormProps = {
 
 export function LoginForm({ next, registered, changed }: LoginFormProps) {
   const login = useLogin();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -39,16 +43,22 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
   });
 
   useEffect(() => {
-    if (registered) {
-      toast.success("Account created. Sign in to continue.");
+    if (!registered && !changed) {
+      return;
     }
-  }, [registered]);
 
-  useEffect(() => {
     if (changed) {
-      toast.success("Password changed. Sign in again.");
+      showLoginFlashToast("passwordChanged");
+    } else if (registered) {
+      showLoginFlashToast("accountRegistered");
     }
-  }, [changed]);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("changed");
+    params.delete("registered");
+    const query = params.toString();
+    router.replace(query ? `${ROUTE.login}?${query}` : ROUTE.login);
+  }, [changed, registered, router, searchParams]);
 
   function onSubmit(values: LoginInput) {
     login.mutate(
