@@ -12,7 +12,7 @@ export function CustomerAccountView() {
   return (
     <div className="storefront-customer-section storefront-customer-section--account">
       <StorefrontPageHeader
-        lead="Manage your pickup details, password, and account preferences in one place."
+        lead="Manage your contact details, password, and account preferences in one place."
         title={PAGE_TITLES.account}
       />
 

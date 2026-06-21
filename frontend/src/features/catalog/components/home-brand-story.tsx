@@ -27,8 +27,8 @@ export function HomeBrandStory() {
             intention — never rushed, never mass-produced.
           </p>
           <p className="mt-4 text-base leading-relaxed text-muted">
-            Order ahead, choose your pickup window, and we will have everything
-            ready at the counter.
+            Order ahead and we will have everything ready at the counter for
+            pickup.
           </p>
           <div className="mt-8">
             <Button asChild variant="outline">

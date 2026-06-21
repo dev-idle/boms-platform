@@ -248,7 +248,7 @@ Signed upload keeps `CLOUDINARY_API_SECRET` on the API only.
 | Manager requests signature | `GET /api/v1/manager/media/cloudinary-signature` (`manager` role, session, per-user rate limit) |
 | Browser uploads file | Direct `POST` to `https://api.cloudinary.com/v1_1/{cloud}/image/upload` |
 | Persist URLs | `product_images` table (max 5 per product, `sort_order` 0–4) stores Cloudinary `secure_url` values |
-| Storefront delivery | `catalogProductImageUrl()` / gallery on detail; cards use first image |
+| Storefront image URLs | `catalogProductImageUrl()` / gallery on detail; cards use first image |
 
 **Validation (defense in depth):**
 
@@ -294,13 +294,28 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` + `manager_combo` + `manager_discount_code` (BE) |
 | Product images (Cloudinary) | `lib/cloudinary/*` + `components/ui/catalog-image-list-field` (FE) + `usecase/manager_media` + `service/cloudinary` (BE) |
 | Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
-| Customer cart & checkout | `features/customer` (FE) + `usecase/cart` + `usecase/order` (BE) — `/cart/*`, `/orders/*` (session + server pricing) |
+| Customer cart & checkout | `features/customer` (FE) + `usecase/cart` + `usecase/order` (BE) — `/cart/*`, `/orders/*` (session + server pricing; **pickup-only**, see below) |
 | Staff order queue | `features/staff` (FE) + `usecase/staff_order` (BE) — `/staff/orders/*` (list, detail, status transitions) |
 | Audit logs | `service/auditlogger` (BE only) |
 | Profile entity dispatch | `service/profilesvc` (BE) |
 | Routes table | `constants/routes.ts` (FE) |
 | Roles enum | `constants/roles.ts` (FE) + `domain/user/role.go` (BE) |
 | Validation messages | `lib/validation/` (FE) + `shared/validator/` (BE) |
+
+### Fulfillment model (pickup-only — no Address module)
+
+BOMS is a **bakery pickup** flow, not delivery or shipping.
+
+| Topic | Spec (canonical) |
+|-------|------------------|
+| **Fulfillment** | Customer orders for **in-store / counter pickup** at the bakery. |
+| **No Address module** | No `addresses` table, no shipping/delivery address on profile or orders, no geocoding, no carrier integration. **Do not add** unless this document is updated first. |
+| **Customer profile** | `customer_profiles`: `display_name`, `phone` (+ account `email` on `users`). Phone is contact info for pickup coordination — **not** a delivery address. |
+| **Checkout / orders** | `orders` stores pricing, discount snapshot, status, line items — **no** `shipping_address`, `delivery_*`, or `pickup_slot` columns in the current schema. |
+| **Storefront `BRAND.addressLine`** | Static marketing copy for footer “Visit us” (`constants/brand.ts`) — the **bakery location**, not per-customer data. |
+| **Marketing copy** | UI may say “pickup” but must not imply saved delivery addresses or ship-to-door unless a feature is implemented. |
+
+**Staff workflow:** `staff` updates order status (`pending` → … → `ready`) for counter handoff; no driver/dispatch role.
 
 ---
 
@@ -346,6 +361,7 @@ CI must run backend tests + frontend typecheck, lint, test, and build. Productio
 6. **No untyped API responses.** Zod parse at the FE boundary; struct binding + validator on BE.
 7. **One file = one component (FE).** Helpers go in `helpers.ts` next to consumers.
 8. **One namespace per role.** No mixed URL prefixes (e.g. `/dashboard/*` + `/admin/*`).
+9. **No Address module.** Pickup-only fulfillment — no customer delivery/shipping addresses on profile or orders (see §6 Fulfillment model).
 
 ---
 
@@ -356,5 +372,6 @@ CI must run backend tests + frontend typecheck, lint, test, and build. Productio
 | Asynq queue | client only | add `cmd/worker` + task definitions |
 | WebSocket | n/a | add `internal/adapter/websocket/` when needed |
 | Server actions | DAL ready | wire mutations from RSC pages |
+| Pickup time slot | not in schema | optional future: `pickup_at` on `orders` — still **no** delivery addresses |
 
 Adding a feature SHOULD follow this spec; deviations require updating this document.

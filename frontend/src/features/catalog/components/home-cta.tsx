@@ -14,8 +14,8 @@ export function HomeCta() {
             Planning a celebration?
           </h2>
           <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-muted sm:text-base">
-            Custom cakes and party trays available for advance order. Start with
-            our menu, then pick your pickup date and time.
+            Custom cakes and party trays available for advance order. Browse
+            our menu and check out when you are ready for pickup.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-2.5">
             <Button asChild showArrow size="lg">
