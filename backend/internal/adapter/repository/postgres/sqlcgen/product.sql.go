@@ -28,7 +28,7 @@ FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 WHERE p.id = $1
   AND p.deleted_at IS NULL
-  AND p.is_available = true
+  AND p.is_active = true
 `
 
 type CatalogGetProductByIDRow struct {
@@ -57,7 +57,7 @@ type CatalogGetProductByIDRow struct {
 //	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 //	WHERE p.id = $1
 //	  AND p.deleted_at IS NULL
-//	  AND p.is_available = true
+//	  AND p.is_active = true
 func (q *Queries) CatalogGetProductByID(ctx context.Context, id uuid.UUID) (CatalogGetProductByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, catalogGetProductByID, id)
 	var i CatalogGetProductByIDRow
@@ -88,7 +88,7 @@ FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 WHERE p.id = ANY($1::uuid[])
   AND p.deleted_at IS NULL
-  AND p.is_available = true
+  AND p.is_active = true
 `
 
 type CatalogGetProductsByIDsRow struct {
@@ -117,7 +117,7 @@ type CatalogGetProductsByIDsRow struct {
 //	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 //	WHERE p.id = ANY($1::uuid[])
 //	  AND p.deleted_at IS NULL
-//	  AND p.is_available = true
+//	  AND p.is_active = true
 func (q *Queries) CatalogGetProductsByIDs(ctx context.Context, productIds []uuid.UUID) ([]CatalogGetProductsByIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, catalogGetProductsByIDs, pq.Array(productIds))
 	if err != nil {
@@ -163,7 +163,7 @@ SELECT
 FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 WHERE p.deleted_at IS NULL
-  AND p.is_available = true
+  AND p.is_active = true
   AND (
     $3::uuid IS NULL
     OR p.category_id = $3::uuid
@@ -209,7 +209,7 @@ type CatalogListProductsRow struct {
 //	FROM products p
 //	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 //	WHERE p.deleted_at IS NULL
-//	  AND p.is_available = true
+//	  AND p.is_active = true
 //	  AND (
 //	    $3::uuid IS NULL
 //	    OR p.category_id = $3::uuid
@@ -263,7 +263,7 @@ SELECT count(*)::bigint AS count
 FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 WHERE p.deleted_at IS NULL
-  AND p.is_available = true
+  AND p.is_active = true
   AND (
     $1::uuid IS NULL
     OR p.category_id = $1::uuid
@@ -286,7 +286,7 @@ type CatalogListProductsCountParams struct {
 //	FROM products p
 //	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 //	WHERE p.deleted_at IS NULL
-//	  AND p.is_available = true
+//	  AND p.is_active = true
 //	  AND (
 //	    $1::uuid IS NULL
 //	    OR p.category_id = $1::uuid
@@ -304,9 +304,9 @@ func (q *Queries) CatalogListProductsCount(ctx context.Context, arg CatalogListP
 }
 
 const createProduct = `-- name: CreateProduct :one
-INSERT INTO products (category_id, name, slug, description, price_cents, is_available)
+INSERT INTO products (category_id, name, slug, description, price_cents, is_active)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
 `
 
 type CreateProductParams struct {
@@ -315,14 +315,14 @@ type CreateProductParams struct {
 	Slug        string         `db:"slug" json:"slug"`
 	Description sql.NullString `db:"description" json:"description"`
 	PriceCents  int64          `db:"price_cents" json:"priceCents"`
-	IsAvailable bool           `db:"is_available" json:"isAvailable"`
+	IsActive    bool           `db:"is_active" json:"isActive"`
 }
 
 // CreateProduct
 //
-//	INSERT INTO products (category_id, name, slug, description, price_cents, is_available)
+//	INSERT INTO products (category_id, name, slug, description, price_cents, is_active)
 //	VALUES ($1, $2, $3, $4, $5, $6)
-//	RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
+//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
 	row := q.db.QueryRowContext(ctx, createProduct,
 		arg.CategoryID,
@@ -330,7 +330,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		arg.Slug,
 		arg.Description,
 		arg.PriceCents,
-		arg.IsAvailable,
+		arg.IsActive,
 	)
 	var i Product
 	err := row.Scan(
@@ -340,7 +340,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.Slug,
 		&i.Description,
 		&i.PriceCents,
-		&i.IsAvailable,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -349,7 +349,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
+SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
 FROM products
 WHERE id = $1
   AND deleted_at IS NULL
@@ -357,7 +357,7 @@ WHERE id = $1
 
 // GetProductByID
 //
-//	SELECT id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
+//	SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
 //	FROM products
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -371,7 +371,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.Slug,
 		&i.Description,
 		&i.PriceCents,
-		&i.IsAvailable,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -387,7 +387,7 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.is_available,
+    p.is_active,
     p.created_at,
     p.updated_at,
     p.deleted_at,
@@ -405,7 +405,7 @@ type ManagerGetProductByIDRow struct {
 	Slug         string         `db:"slug" json:"slug"`
 	Description  sql.NullString `db:"description" json:"description"`
 	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	IsAvailable  bool           `db:"is_available" json:"isAvailable"`
+	IsActive     bool           `db:"is_active" json:"isActive"`
 	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
 	DeletedAt    sql.NullTime   `db:"deleted_at" json:"deletedAt"`
@@ -421,7 +421,7 @@ type ManagerGetProductByIDRow struct {
 //	    p.slug,
 //	    p.description,
 //	    p.price_cents,
-//	    p.is_available,
+//	    p.is_active,
 //	    p.created_at,
 //	    p.updated_at,
 //	    p.deleted_at,
@@ -440,7 +440,7 @@ func (q *Queries) ManagerGetProductByID(ctx context.Context, id uuid.UUID) (Mana
 		&i.Slug,
 		&i.Description,
 		&i.PriceCents,
-		&i.IsAvailable,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -457,7 +457,7 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.is_available,
+    p.is_active,
     p.created_at,
     p.updated_at,
     p.deleted_at,
@@ -492,7 +492,7 @@ type ManagerListProductsRow struct {
 	Slug         string         `db:"slug" json:"slug"`
 	Description  sql.NullString `db:"description" json:"description"`
 	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	IsAvailable  bool           `db:"is_available" json:"isAvailable"`
+	IsActive     bool           `db:"is_active" json:"isActive"`
 	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
 	DeletedAt    sql.NullTime   `db:"deleted_at" json:"deletedAt"`
@@ -508,7 +508,7 @@ type ManagerListProductsRow struct {
 //	    p.slug,
 //	    p.description,
 //	    p.price_cents,
-//	    p.is_available,
+//	    p.is_active,
 //	    p.created_at,
 //	    p.updated_at,
 //	    p.deleted_at,
@@ -548,7 +548,7 @@ func (q *Queries) ManagerListProducts(ctx context.Context, arg ManagerListProduc
 			&i.Slug,
 			&i.Description,
 			&i.PriceCents,
-			&i.IsAvailable,
+			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
@@ -638,11 +638,11 @@ SET category_id  = $2,
     slug         = $4,
     description  = $5,
     price_cents  = $6,
-    is_available = $7,
+    is_active    = $7,
     updated_at   = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
 `
 
 type UpdateProductParams struct {
@@ -652,7 +652,7 @@ type UpdateProductParams struct {
 	Slug        string         `db:"slug" json:"slug"`
 	Description sql.NullString `db:"description" json:"description"`
 	PriceCents  int64          `db:"price_cents" json:"priceCents"`
-	IsAvailable bool           `db:"is_available" json:"isAvailable"`
+	IsActive    bool           `db:"is_active" json:"isActive"`
 }
 
 // UpdateProduct
@@ -663,11 +663,11 @@ type UpdateProductParams struct {
 //	    slug         = $4,
 //	    description  = $5,
 //	    price_cents  = $6,
-//	    is_available = $7,
+//	    is_active    = $7,
 //	    updated_at   = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
-//	RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
+//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error) {
 	row := q.db.QueryRowContext(ctx, updateProduct,
 		arg.ID,
@@ -676,7 +676,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		arg.Slug,
 		arg.Description,
 		arg.PriceCents,
-		arg.IsAvailable,
+		arg.IsActive,
 	)
 	var i Product
 	err := row.Scan(
@@ -686,7 +686,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.Slug,
 		&i.Description,
 		&i.PriceCents,
-		&i.IsAvailable,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,

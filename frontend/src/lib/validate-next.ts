@@ -41,6 +41,12 @@ export function validateNext(next: string | null | undefined): string | null {
     return null;
   }
 
+  // Reject dot segments so role-namespace prefix checks cannot be escaped
+  // (e.g. "/baker/../admin" would pass a naive "/baker/" prefix match).
+  if (decoded.split("?")[0].split("/").some((segment) => segment === ".." || segment === ".")) {
+    return null;
+  }
+
   return decoded;
 }
 

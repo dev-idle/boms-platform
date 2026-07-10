@@ -72,12 +72,12 @@ func (q *Queries) CreateCart(ctx context.Context, userID uuid.UUID) (Cart, error
 const createCartItem = `-- name: CreateCartItem :one
 INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 `
 
 type CreateCartItemParams struct {
 	CartID    uuid.UUID     `db:"cart_id" json:"cartId"`
-	LineType  CartLineType  `db:"line_type" json:"lineType"`
+	LineType  LineType      `db:"line_type" json:"lineType"`
 	ProductID uuid.NullUUID `db:"product_id" json:"productId"`
 	ComboID   uuid.NullUUID `db:"combo_id" json:"comboId"`
 	Quantity  int32         `db:"quantity" json:"quantity"`
@@ -87,7 +87,7 @@ type CreateCartItemParams struct {
 //
 //	INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity)
 //	VALUES ($1, $2, $3, $4, $5)
-//	RETURNING id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+//	RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 func (q *Queries) CreateCartItem(ctx context.Context, arg CreateCartItemParams) (CartItem, error) {
 	row := q.db.QueryRowContext(ctx, createCartItem,
 		arg.CartID,
@@ -104,6 +104,7 @@ func (q *Queries) CreateCartItem(ctx context.Context, arg CreateCartItemParams) 
 		&i.ProductID,
 		&i.ComboID,
 		&i.Quantity,
+		&i.Configuration,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -171,7 +172,7 @@ func (q *Queries) GetCartByUserID(ctx context.Context, userID uuid.UUID) (Cart, 
 }
 
 const getCartItemByCombo = `-- name: GetCartItemByCombo :one
-SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items
 WHERE cart_id = $1 AND line_type = 'combo' AND combo_id = $2
 `
@@ -183,7 +184,7 @@ type GetCartItemByComboParams struct {
 
 // GetCartItemByCombo
 //
-//	SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+//	SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 //	FROM cart_items
 //	WHERE cart_id = $1 AND line_type = 'combo' AND combo_id = $2
 func (q *Queries) GetCartItemByCombo(ctx context.Context, arg GetCartItemByComboParams) (CartItem, error) {
@@ -196,6 +197,7 @@ func (q *Queries) GetCartItemByCombo(ctx context.Context, arg GetCartItemByCombo
 		&i.ProductID,
 		&i.ComboID,
 		&i.Quantity,
+		&i.Configuration,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -203,7 +205,7 @@ func (q *Queries) GetCartItemByCombo(ctx context.Context, arg GetCartItemByCombo
 }
 
 const getCartItemByID = `-- name: GetCartItemByID :one
-SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items
 WHERE cart_id = $1 AND id = $2
 `
@@ -215,7 +217,7 @@ type GetCartItemByIDParams struct {
 
 // GetCartItemByID
 //
-//	SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+//	SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 //	FROM cart_items
 //	WHERE cart_id = $1 AND id = $2
 func (q *Queries) GetCartItemByID(ctx context.Context, arg GetCartItemByIDParams) (CartItem, error) {
@@ -228,6 +230,7 @@ func (q *Queries) GetCartItemByID(ctx context.Context, arg GetCartItemByIDParams
 		&i.ProductID,
 		&i.ComboID,
 		&i.Quantity,
+		&i.Configuration,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -235,7 +238,7 @@ func (q *Queries) GetCartItemByID(ctx context.Context, arg GetCartItemByIDParams
 }
 
 const getCartItemByProduct = `-- name: GetCartItemByProduct :one
-SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items
 WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2
 `
@@ -247,7 +250,7 @@ type GetCartItemByProductParams struct {
 
 // GetCartItemByProduct
 //
-//	SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+//	SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 //	FROM cart_items
 //	WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2
 func (q *Queries) GetCartItemByProduct(ctx context.Context, arg GetCartItemByProductParams) (CartItem, error) {
@@ -260,6 +263,7 @@ func (q *Queries) GetCartItemByProduct(ctx context.Context, arg GetCartItemByPro
 		&i.ProductID,
 		&i.ComboID,
 		&i.Quantity,
+		&i.Configuration,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -267,7 +271,7 @@ func (q *Queries) GetCartItemByProduct(ctx context.Context, arg GetCartItemByPro
 }
 
 const listCartItemsByCartID = `-- name: ListCartItemsByCartID :many
-SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items
 WHERE cart_id = $1
 ORDER BY created_at ASC
@@ -275,7 +279,7 @@ ORDER BY created_at ASC
 
 // ListCartItemsByCartID
 //
-//	SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+//	SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 //	FROM cart_items
 //	WHERE cart_id = $1
 //	ORDER BY created_at ASC
@@ -295,6 +299,7 @@ func (q *Queries) ListCartItemsByCartID(ctx context.Context, cartID uuid.UUID) (
 			&i.ProductID,
 			&i.ComboID,
 			&i.Quantity,
+			&i.Configuration,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -336,7 +341,7 @@ const updateCartItemQuantity = `-- name: UpdateCartItemQuantity :one
 UPDATE cart_items
 SET quantity = $3, updated_at = now()
 WHERE cart_id = $1 AND id = $2
-RETURNING id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 `
 
 type UpdateCartItemQuantityParams struct {
@@ -350,7 +355,7 @@ type UpdateCartItemQuantityParams struct {
 //	UPDATE cart_items
 //	SET quantity = $3, updated_at = now()
 //	WHERE cart_id = $1 AND id = $2
-//	RETURNING id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+//	RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 func (q *Queries) UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error) {
 	row := q.db.QueryRowContext(ctx, updateCartItemQuantity, arg.CartID, arg.ID, arg.Quantity)
 	var i CartItem
@@ -361,6 +366,7 @@ func (q *Queries) UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItem
 		&i.ProductID,
 		&i.ComboID,
 		&i.Quantity,
+		&i.Configuration,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

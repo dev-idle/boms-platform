@@ -1,10 +1,12 @@
 package v1
 
 import (
+	"github.com/boms/backend/internal/dto"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/middleware"
 	"github.com/boms/backend/internal/shared/response"
 	"github.com/boms/backend/internal/shared/utils"
+	sharevalidator "github.com/boms/backend/internal/shared/validator"
 	"github.com/boms/backend/internal/usecase"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -24,7 +26,14 @@ func (h *OrderHandler) Checkout(c *fiber.Ctx) error {
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
-	out, err := h.usecase.Checkout(c.UserContext(), userID)
+	var req dto.CheckoutRequest
+	if err := c.BodyParser(&req); err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
+	}
+	if err := sharevalidator.Struct(&req); err != nil {
+		return writeValidationError(c, err)
+	}
+	out, err := h.usecase.Checkout(c.UserContext(), userID, req.PickupAt)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

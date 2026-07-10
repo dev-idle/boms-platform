@@ -246,7 +246,7 @@ func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUse
 			UpdatedAt:          row.UpdatedAt,
 			FullName:           stringPtrOrNil(row.FullName),
 			Phone:              nullStringPtr(row.Phone),
-			EmployeeCode:       nullStringPtr(row.EmployeeCode),
+			EmployeeCode:       stringPtrOrNil(row.EmployeeCode),
 			DisplayName:        nullStringPtr(row.DisplayName),
 		}
 		if row.DeletedAt.Valid {

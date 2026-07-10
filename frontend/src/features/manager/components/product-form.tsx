@@ -42,7 +42,7 @@ const CREATE_PRODUCT_EMPTY_VALUES: ProductFormInput = {
   slug: "",
   description: null,
   price_cents: 0,
-  is_available: true,
+  is_active: true,
   image_urls: [],
 };
 
@@ -58,7 +58,7 @@ const PRODUCT_FORM_FIELDS = [
   "slug",
   "description",
   "price_cents",
-  "is_available",
+  "is_active",
   "image_urls",
 ] as const;
 
@@ -74,7 +74,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           slug: product?.slug ?? "",
           description: product?.description ?? null,
           price_cents: product?.price_cents ?? 0,
-          is_available: product?.is_available ?? true,
+          is_active: product?.is_active ?? true,
           image_urls: product?.image_urls ?? [],
         };
 
@@ -241,7 +241,7 @@ function ProductFormFields({
         />
         <FormField
           control={form.control}
-          name="is_available"
+          name="is_active"
           render={({ field }) => (
             <FormItem>
               <FieldControl

@@ -5,11 +5,12 @@ INSERT INTO discount_codes (
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     starts_at,
     ends_at,
     is_active
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING
     id,
     code,
@@ -17,6 +18,7 @@ RETURNING
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -33,6 +35,7 @@ SELECT
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -46,15 +49,16 @@ WHERE id = $1
 
 -- name: UpdateDiscountCode :one
 UPDATE discount_codes
-SET code            = $2,
-    discount_type   = $3,
-    value           = $4,
-    min_order_cents = $5,
-    max_uses        = $6,
-    starts_at       = $7,
-    ends_at         = $8,
-    is_active       = $9,
-    updated_at      = now()
+SET code               = $2,
+    discount_type      = $3,
+    value              = $4,
+    min_order_cents    = $5,
+    max_uses           = $6,
+    max_discount_cents = $7,
+    starts_at          = $8,
+    ends_at            = $9,
+    is_active          = $10,
+    updated_at         = now()
 WHERE id = $1
   AND deleted_at IS NULL
 RETURNING
@@ -64,6 +68,7 @@ RETURNING
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -87,6 +92,7 @@ SELECT
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -111,6 +117,7 @@ SELECT
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -136,6 +143,7 @@ RETURNING
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,

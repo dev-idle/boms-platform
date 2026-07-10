@@ -26,6 +26,13 @@ describe("validateNext", () => {
     expect(validateNext("/login@evil.com")).toBeNull();
     expect(validateNext("/path%00")).toBeNull();
   });
+
+  it("rejects dot-segment traversal that could escape a role namespace", () => {
+    expect(validateNext("/baker/../admin")).toBeNull();
+    expect(validateNext("/baker/%2e%2e/admin")).toBeNull();
+    expect(validateNext("/staff/./orders")).toBeNull();
+    expect(validateNext("/orders/..")).toBeNull();
+  });
 });
 
 describe("loginHrefPreservingNext", () => {

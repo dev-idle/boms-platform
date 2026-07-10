@@ -53,6 +53,19 @@ export const applyCartDiscountInputSchema = z.object({
   code: z.string().min(3).max(64),
 });
 
+export const orderStatusSchema = z.enum([
+  "pending",
+  "confirmed",
+  "in_production",
+  "ready",
+  "cancelled",
+  "fulfilled",
+]);
+
+export const checkoutInputSchema = z.object({
+  pickup_at: apiDateTimeSchema,
+});
+
 export const orderItemSchema = z.object({
   id: z.string().uuid(),
   line_type: z.enum(["product", "combo"]),
@@ -67,11 +80,12 @@ export const orderItemSchema = z.object({
 
 export const orderSchema = z.object({
   id: z.string().uuid(),
-  status: z.enum(["pending", "confirmed", "cancelled", "fulfilled"]),
+  status: orderStatusSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),
   total_cents: z.number().int().min(0),
   discount_code_snapshot: z.string().nullable().optional(),
+  pickup_at: apiDateTimeSchema.nullable().optional(),
   items: z.array(orderItemSchema),
   created_at: apiDateTimeSchema,
   updated_at: apiDateTimeSchema,
@@ -79,9 +93,10 @@ export const orderSchema = z.object({
 
 export const orderSummarySchema = z.object({
   id: z.string().uuid(),
-  status: z.enum(["pending", "confirmed", "cancelled", "fulfilled"]),
+  status: orderStatusSchema,
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
+  pickup_at: apiDateTimeSchema.nullable().optional(),
   created_at: apiDateTimeSchema,
 });
 
@@ -95,6 +110,8 @@ export type CartItem = z.infer<typeof cartItemSchema>;
 export type AddCartItemInput = z.infer<typeof addCartItemInputSchema>;
 export type UpdateCartItemInput = z.infer<typeof updateCartItemInputSchema>;
 export type ApplyCartDiscountInput = z.infer<typeof applyCartDiscountInputSchema>;
+export type CheckoutInput = z.infer<typeof checkoutInputSchema>;
+export type OrderStatus = z.infer<typeof orderStatusSchema>;
 export type Order = z.infer<typeof orderSchema>;
 export type OrderSummary = z.infer<typeof orderSummarySchema>;
 export type OrdersListFilterInput = z.infer<typeof ordersListFilterSchema>;

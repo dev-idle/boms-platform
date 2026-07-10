@@ -43,6 +43,7 @@ func (r *OrderRepository) Create(ctx context.Context, params port.CreateOrderPar
 		TotalCents:           params.TotalCents,
 		DiscountCodeID:       optionalUUID(params.DiscountCodeID),
 		DiscountCodeSnapshot: optionalString(params.DiscountCodeSnapshot),
+		PickupAt:             optionalTime(params.PickupAt),
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create order")
@@ -125,6 +126,44 @@ func (r *OrderRepository) StaffListCount(ctx context.Context, status *domainorde
 	return count, nil
 }
 
+func (r *OrderRepository) BakerListProduction(
+	ctx context.Context,
+	params port.BakerListOrdersParams,
+) ([]port.StaffOrderListRow, error) {
+	status, err := optionalOrderStatus(params.Status)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.q(ctx).BakerListProductionOrders(ctx, sqlcgen.BakerListProductionOrdersParams{
+		Status: status,
+		Limit:  params.Limit,
+		Offset: params.Offset,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "baker list production orders")
+	}
+	out := make([]port.StaffOrderListRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, *mapBakerListProductionOrdersRow(row))
+	}
+	return out, nil
+}
+
+func (r *OrderRepository) BakerListProductionCount(
+	ctx context.Context,
+	status *domainorder.Status,
+) (int64, error) {
+	statusSQL, err := optionalOrderStatus(status)
+	if err != nil {
+		return 0, err
+	}
+	count, err := r.q(ctx).BakerListProductionOrdersCount(ctx, statusSQL)
+	if err != nil {
+		return 0, mapRepoError(err, "baker list production orders count")
+	}
+	return count, nil
+}
+
 func (r *OrderRepository) UpdateStatus(
 	ctx context.Context,
 	params port.UpdateOrderStatusParams,
@@ -153,7 +192,7 @@ func (r *OrderRepository) UpdateStatus(
 
 func (r *OrderRepository) CreateItems(ctx context.Context, items []port.CreateOrderItemParams) error {
 	for _, item := range items {
-		lineType, err := mapCartLineTypeToSQL(domaincart.LineType(item.LineType))
+		lineType, err := mapLineTypeToSQL(domaincart.LineType(item.LineType))
 		if err != nil {
 			return err
 		}
@@ -162,6 +201,7 @@ func (r *OrderRepository) CreateItems(ctx context.Context, items []port.CreateOr
 			LineType:       lineType,
 			ProductID:      optionalUUID(item.ProductID),
 			ComboID:        optionalUUID(item.ComboID),
+			Configuration:  item.Configuration,
 			Name:           item.Name,
 			Slug:           item.Slug,
 			Quantity:       item.Quantity,
@@ -223,6 +263,10 @@ func mapOrder(row sqlcgen.Order) *domainorder.Order {
 		s := row.DiscountCodeSnapshot.String
 		o.DiscountCodeSnapshot = &s
 	}
+	if row.PickupAt.Valid {
+		t := row.PickupAt.Time
+		o.PickupAt = &t
+	}
 	return o
 }
 
@@ -230,7 +274,8 @@ func mapOrderItem(row sqlcgen.OrderItem) domainorder.Item {
 	item := domainorder.Item{
 		ID:             row.ID,
 		OrderID:        row.OrderID,
-		LineType:       mapCartLineTypeFromSQL(row.LineType),
+		LineType:       mapLineTypeFromSQL(row.LineType),
+		Configuration:  row.Configuration,
 		Name:           row.Name,
 		Slug:           row.Slug,
 		Quantity:       row.Quantity,
@@ -246,6 +291,9 @@ func mapOrderItem(row sqlcgen.OrderItem) domainorder.Item {
 		id := row.ComboID.UUID
 		item.ComboID = &id
 	}
+	if len(item.Configuration) == 0 {
+		item.Configuration = domaincart.EmptyConfiguration
+	}
 	return item
 }
 
@@ -255,6 +303,10 @@ func mapOrderStatusToSQL(s domainorder.Status) (sqlcgen.OrderStatus, error) {
 		return sqlcgen.OrderStatusPending, nil
 	case domainorder.StatusConfirmed:
 		return sqlcgen.OrderStatusConfirmed, nil
+	case domainorder.StatusInProduction:
+		return sqlcgen.OrderStatusInProduction, nil
+	case domainorder.StatusReady:
+		return sqlcgen.OrderStatusReady, nil
 	case domainorder.StatusCancelled:
 		return sqlcgen.OrderStatusCancelled, nil
 	case domainorder.StatusFulfilled:
@@ -274,6 +326,7 @@ func mapStaffListOrdersRow(row sqlcgen.StaffListOrdersRow) *port.StaffOrderListR
 		row.TotalCents,
 		row.DiscountCodeID,
 		row.DiscountCodeSnapshot,
+		row.PickupAt,
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.CustomerEmail,
@@ -291,6 +344,25 @@ func mapStaffGetOrderByIDRow(row sqlcgen.StaffGetOrderByIDRow) *port.StaffOrderL
 		row.TotalCents,
 		row.DiscountCodeID,
 		row.DiscountCodeSnapshot,
+		row.PickupAt,
+		row.CreatedAt,
+		row.UpdatedAt,
+		row.CustomerEmail,
+		row.CustomerDisplayName,
+	)
+}
+
+func mapBakerListProductionOrdersRow(row sqlcgen.BakerListProductionOrdersRow) *port.StaffOrderListRow {
+	return mapStaffOrderJoined(
+		row.ID,
+		row.UserID,
+		row.Status,
+		row.SubtotalCents,
+		row.DiscountCents,
+		row.TotalCents,
+		row.DiscountCodeID,
+		row.DiscountCodeSnapshot,
+		row.PickupAt,
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.CustomerEmail,
@@ -304,6 +376,7 @@ func mapStaffOrderJoined(
 	subtotalCents, discountCents, totalCents int64,
 	discountCodeID uuid.NullUUID,
 	discountCodeSnapshot sql.NullString,
+	pickupAt sql.NullTime,
 	createdAt, updatedAt time.Time,
 	customerEmail string,
 	customerDisplayName sql.NullString,
@@ -328,6 +401,10 @@ func mapStaffOrderJoined(
 	if discountCodeSnapshot.Valid {
 		s := discountCodeSnapshot.String
 		out.Order.DiscountCodeSnapshot = &s
+	}
+	if pickupAt.Valid {
+		t := pickupAt.Time
+		out.Order.PickupAt = &t
 	}
 	if customerDisplayName.Valid {
 		name := customerDisplayName.String
@@ -356,6 +433,10 @@ func mapOrderStatusFromSQL(s sqlcgen.OrderStatus) domainorder.Status {
 		return domainorder.StatusPending
 	case sqlcgen.OrderStatusConfirmed:
 		return domainorder.StatusConfirmed
+	case sqlcgen.OrderStatusInProduction:
+		return domainorder.StatusInProduction
+	case sqlcgen.OrderStatusReady:
+		return domainorder.StatusReady
 	case sqlcgen.OrderStatusCancelled:
 		return domainorder.StatusCancelled
 	case sqlcgen.OrderStatusFulfilled:

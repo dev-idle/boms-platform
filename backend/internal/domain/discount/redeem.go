@@ -30,7 +30,11 @@ func ValidateRedeemable(code *Code, now time.Time, subtotalCents int64) error {
 func ComputeDiscountCents(code *Code, subtotalCents int64) int64 {
 	switch code.DiscountType {
 	case TypePercent:
-		return subtotalCents * code.Value / 100
+		discount := subtotalCents * code.Value / 100
+		if code.MaxDiscountCents != nil && discount > *code.MaxDiscountCents {
+			return *code.MaxDiscountCents
+		}
+		return discount
 	case TypeFixedCents:
 		if code.Value >= subtotalCents {
 			return subtotalCents

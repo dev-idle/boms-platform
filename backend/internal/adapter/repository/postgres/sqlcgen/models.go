@@ -7,53 +7,12 @@ package sqlcgen
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-type CartLineType string
-
-const (
-	CartLineTypeProduct CartLineType = "product"
-	CartLineTypeCombo   CartLineType = "combo"
-)
-
-func (e *CartLineType) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = CartLineType(s)
-	case string:
-		*e = CartLineType(s)
-	default:
-		return fmt.Errorf("unsupported scan type for CartLineType: %T", src)
-	}
-	return nil
-}
-
-type NullCartLineType struct {
-	CartLineType CartLineType `json:"cartLineType"`
-	Valid        bool         `json:"valid"` // Valid is true if CartLineType is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullCartLineType) Scan(value interface{}) error {
-	if value == nil {
-		ns.CartLineType, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.CartLineType.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullCartLineType) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.CartLineType), nil
-}
 
 type DiscountType string
 
@@ -97,13 +56,57 @@ func (ns NullDiscountType) Value() (driver.Value, error) {
 	return string(ns.DiscountType), nil
 }
 
+type LineType string
+
+const (
+	LineTypeProduct LineType = "product"
+	LineTypeCombo   LineType = "combo"
+)
+
+func (e *LineType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = LineType(s)
+	case string:
+		*e = LineType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for LineType: %T", src)
+	}
+	return nil
+}
+
+type NullLineType struct {
+	LineType LineType `json:"lineType"`
+	Valid    bool     `json:"valid"` // Valid is true if LineType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullLineType) Scan(value interface{}) error {
+	if value == nil {
+		ns.LineType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.LineType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullLineType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.LineType), nil
+}
+
 type OrderStatus string
 
 const (
-	OrderStatusPending   OrderStatus = "pending"
-	OrderStatusConfirmed OrderStatus = "confirmed"
-	OrderStatusCancelled OrderStatus = "cancelled"
-	OrderStatusFulfilled OrderStatus = "fulfilled"
+	OrderStatusPending      OrderStatus = "pending"
+	OrderStatusConfirmed    OrderStatus = "confirmed"
+	OrderStatusInProduction OrderStatus = "in_production"
+	OrderStatusReady        OrderStatus = "ready"
+	OrderStatusFulfilled    OrderStatus = "fulfilled"
+	OrderStatusCancelled    OrderStatus = "cancelled"
 )
 
 func (e *OrderStatus) Scan(src interface{}) error {
@@ -203,14 +206,15 @@ type Cart struct {
 }
 
 type CartItem struct {
-	ID        uuid.UUID     `db:"id" json:"id"`
-	CartID    uuid.UUID     `db:"cart_id" json:"cartId"`
-	LineType  CartLineType  `db:"line_type" json:"lineType"`
-	ProductID uuid.NullUUID `db:"product_id" json:"productId"`
-	ComboID   uuid.NullUUID `db:"combo_id" json:"comboId"`
-	Quantity  int32         `db:"quantity" json:"quantity"`
-	CreatedAt time.Time     `db:"created_at" json:"createdAt"`
-	UpdatedAt time.Time     `db:"updated_at" json:"updatedAt"`
+	ID            uuid.UUID       `db:"id" json:"id"`
+	CartID        uuid.UUID       `db:"cart_id" json:"cartId"`
+	LineType      LineType        `db:"line_type" json:"lineType"`
+	ProductID     uuid.NullUUID   `db:"product_id" json:"productId"`
+	ComboID       uuid.NullUUID   `db:"combo_id" json:"comboId"`
+	Quantity      int32           `db:"quantity" json:"quantity"`
+	Configuration json.RawMessage `db:"configuration" json:"configuration"`
+	CreatedAt     time.Time       `db:"created_at" json:"createdAt"`
+	UpdatedAt     time.Time       `db:"updated_at" json:"updatedAt"`
 }
 
 type Category struct {
@@ -246,19 +250,20 @@ type CustomerProfile struct {
 }
 
 type DiscountCode struct {
-	ID            uuid.UUID     `db:"id" json:"id"`
-	Code          string        `db:"code" json:"code"`
-	DiscountType  DiscountType  `db:"discount_type" json:"discountType"`
-	Value         int64         `db:"value" json:"value"`
-	MinOrderCents sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
-	MaxUses       sql.NullInt32 `db:"max_uses" json:"maxUses"`
-	UsedCount     int32         `db:"used_count" json:"usedCount"`
-	StartsAt      time.Time     `db:"starts_at" json:"startsAt"`
-	EndsAt        time.Time     `db:"ends_at" json:"endsAt"`
-	IsActive      bool          `db:"is_active" json:"isActive"`
-	CreatedAt     time.Time     `db:"created_at" json:"createdAt"`
-	UpdatedAt     time.Time     `db:"updated_at" json:"updatedAt"`
-	DeletedAt     sql.NullTime  `db:"deleted_at" json:"deletedAt"`
+	ID               uuid.UUID     `db:"id" json:"id"`
+	Code             string        `db:"code" json:"code"`
+	DiscountType     DiscountType  `db:"discount_type" json:"discountType"`
+	Value            int64         `db:"value" json:"value"`
+	MinOrderCents    sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
+	MaxUses          sql.NullInt32 `db:"max_uses" json:"maxUses"`
+	MaxDiscountCents sql.NullInt64 `db:"max_discount_cents" json:"maxDiscountCents"`
+	UsedCount        int32         `db:"used_count" json:"usedCount"`
+	StartsAt         time.Time     `db:"starts_at" json:"startsAt"`
+	EndsAt           time.Time     `db:"ends_at" json:"endsAt"`
+	IsActive         bool          `db:"is_active" json:"isActive"`
+	CreatedAt        time.Time     `db:"created_at" json:"createdAt"`
+	UpdatedAt        time.Time     `db:"updated_at" json:"updatedAt"`
+	DeletedAt        sql.NullTime  `db:"deleted_at" json:"deletedAt"`
 }
 
 type Order struct {
@@ -270,22 +275,24 @@ type Order struct {
 	TotalCents           int64          `db:"total_cents" json:"totalCents"`
 	DiscountCodeID       uuid.NullUUID  `db:"discount_code_id" json:"discountCodeId"`
 	DiscountCodeSnapshot sql.NullString `db:"discount_code_snapshot" json:"discountCodeSnapshot"`
+	PickupAt             sql.NullTime   `db:"pickup_at" json:"pickupAt"`
 	CreatedAt            time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt            time.Time      `db:"updated_at" json:"updatedAt"`
 }
 
 type OrderItem struct {
-	ID             uuid.UUID     `db:"id" json:"id"`
-	OrderID        uuid.UUID     `db:"order_id" json:"orderId"`
-	LineType       CartLineType  `db:"line_type" json:"lineType"`
-	ProductID      uuid.NullUUID `db:"product_id" json:"productId"`
-	ComboID        uuid.NullUUID `db:"combo_id" json:"comboId"`
-	Name           string        `db:"name" json:"name"`
-	Slug           string        `db:"slug" json:"slug"`
-	Quantity       int32         `db:"quantity" json:"quantity"`
-	UnitPriceCents int64         `db:"unit_price_cents" json:"unitPriceCents"`
-	LineTotalCents int64         `db:"line_total_cents" json:"lineTotalCents"`
-	CreatedAt      time.Time     `db:"created_at" json:"createdAt"`
+	ID             uuid.UUID       `db:"id" json:"id"`
+	OrderID        uuid.UUID       `db:"order_id" json:"orderId"`
+	LineType       LineType        `db:"line_type" json:"lineType"`
+	ProductID      uuid.NullUUID   `db:"product_id" json:"productId"`
+	ComboID        uuid.NullUUID   `db:"combo_id" json:"comboId"`
+	Configuration  json.RawMessage `db:"configuration" json:"configuration"`
+	Name           string          `db:"name" json:"name"`
+	Slug           string          `db:"slug" json:"slug"`
+	Quantity       int32           `db:"quantity" json:"quantity"`
+	UnitPriceCents int64           `db:"unit_price_cents" json:"unitPriceCents"`
+	LineTotalCents int64           `db:"line_total_cents" json:"lineTotalCents"`
+	CreatedAt      time.Time       `db:"created_at" json:"createdAt"`
 }
 
 type Product struct {
@@ -295,7 +302,7 @@ type Product struct {
 	Slug        string         `db:"slug" json:"slug"`
 	Description sql.NullString `db:"description" json:"description"`
 	PriceCents  int64          `db:"price_cents" json:"priceCents"`
-	IsAvailable bool           `db:"is_available" json:"isAvailable"`
+	IsActive    bool           `db:"is_active" json:"isActive"`
 	CreatedAt   time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updatedAt"`
 	DeletedAt   sql.NullTime   `db:"deleted_at" json:"deletedAt"`

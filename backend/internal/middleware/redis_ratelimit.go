@@ -131,5 +131,15 @@ func ManagerWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig)
 			return "rl:user:" + uid.String() + ":manager_write"
 		}
 		return "rl:ip:" + c.IP() + ":manager_write"
-	}, cfg.AdminWriteMax, cfg.AdminWriteWindow, true)
+	}, cfg.ManagerWriteMax, cfg.ManagerWriteWindow, true)
+}
+
+// OrderWriteRateLimit limits order mutations (checkout, status transitions) per user.
+func OrderWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":order_write"
+		}
+		return "rl:ip:" + c.IP() + ":order_write"
+	}, cfg.OrderWriteMax, cfg.OrderWriteWindow, true)
 }

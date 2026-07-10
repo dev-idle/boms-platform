@@ -98,6 +98,7 @@ func main() {
 	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo)
 	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool)
 	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, auditLogger, zlog)
+	bakerOrderUC := usecase.NewBakerOrderUsecase(orderRepo, auditLogger, zlog)
 
 	if err := bootstrap.EnsureDevAdmin(rootCtx, cfg, userRepo, adminProfileRepo, hasher, pgPool); err != nil {
 		zlog.Fatal("seed_admin", zap.Error(err))
@@ -115,6 +116,7 @@ func main() {
 	cartHandler := v1.NewCartHandler(cartUC)
 	orderHandler := v1.NewOrderHandler(orderUC)
 	staffOrderHandler := v1.NewStaffOrderHandler(staffOrderUC)
+	bakerOrderHandler := v1.NewBakerOrderHandler(bakerOrderUC)
 
 	var asynqClose func() error
 	if cfg.Asynq.Enabled {
@@ -197,7 +199,7 @@ func main() {
 	customerCart.Delete("/discount", cartHandler.RemoveDiscount)
 
 	customerOrders := customerSessionGroup(apiV1, "/orders", tokenSigner, sessionStore, passwordChanged)
-	customerOrders.Post("/checkout", orderHandler.Checkout)
+	customerOrders.Post("/checkout", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), orderHandler.Checkout)
 	customerOrders.Get("", orderHandler.List)
 	customerOrders.Get("/:id", orderHandler.Get)
 
@@ -249,7 +251,17 @@ func main() {
 	)
 	staffOrders.Get("/orders", staffOrderHandler.List)
 	staffOrders.Get("/orders/:id", staffOrderHandler.Get)
-	staffOrders.Patch("/orders/:id/status", staffOrderHandler.PatchStatus)
+	staffOrders.Patch("/orders/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.PatchStatus)
+
+	bakerOrders := apiV1.Group(
+		"/baker",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleBaker),
+		passwordChanged,
+	)
+	bakerOrders.Get("/production", bakerOrderHandler.List)
+	bakerOrders.Get("/production/:id", bakerOrderHandler.Get)
+	bakerOrders.Patch("/production/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), bakerOrderHandler.PatchStatus)
 
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 	go func() {

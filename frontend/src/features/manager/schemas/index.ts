@@ -40,7 +40,7 @@ export const managerProductSchema = z.object({
   slug: catalogSlugSchema,
   description: z.string().nullable().optional(),
   price_cents: z.number().int().min(0),
-  is_available: z.boolean(),
+  is_active: z.boolean(),
   image_urls: productImageUrlsResponseSchema,
   created_at: z.string(),
   updated_at: z.string(),
@@ -57,7 +57,7 @@ export const productFormSchema = z.object({
     .optional()
     .nullable(),
   price_cents: z.coerce.number().int().min(0, "Price must be zero or greater"),
-  is_available: z.boolean(),
+  is_active: z.boolean(),
   image_urls: productImageUrlsSchema,
 });
 
@@ -161,6 +161,7 @@ export const managerDiscountCodeSchema = z.object({
   value: z.number().int().min(1),
   min_order_cents: z.number().int().min(0).nullable().optional(),
   max_uses: z.number().int().min(1).nullable().optional(),
+  max_discount_cents: z.number().int().min(1).nullable().optional(),
   used_count: z.number().int().min(0),
   starts_at: apiDateTimeSchema,
   ends_at: apiDateTimeSchema,
@@ -197,6 +198,12 @@ export const discountCodeFormSchema = z
       .min(1)
       .optional()
       .nullable(),
+    max_discount_cents: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .nullable(),
     starts_at: apiDateTimeSchema,
     ends_at: apiDateTimeSchema,
     is_active: z.boolean(),
@@ -212,6 +219,15 @@ export const discountCodeFormSchema = z
     {
       message: "Percent must be between 1 and 100",
       path: ["value"],
+    },
+  )
+  .refine(
+    (data) =>
+      data.discount_type !== DISCOUNT_TYPE.fixedCents ||
+      data.max_discount_cents == null,
+    {
+      message: "Max discount cap applies to percent discounts only",
+      path: ["max_discount_cents"],
     },
   );
 

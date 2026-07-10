@@ -70,6 +70,10 @@ type RateLimitRedisConfig struct {
 	AuthLogoutWindow      time.Duration
 	AdminWriteMax         int
 	AdminWriteWindow      time.Duration
+	ManagerWriteMax       int
+	ManagerWriteWindow    time.Duration
+	OrderWriteMax         int
+	OrderWriteWindow      time.Duration
 	ManagerMediaMax       int
 	ManagerMediaWindow    time.Duration
 	AuthUserMax           int
@@ -234,18 +238,22 @@ func Load() (*Config, error) {
 			WindowDuration: v.GetDuration("rate_limit.window"),
 		},
 		RateRedis: RateLimitRedisConfig{
-			AuthAttemptMax:    v.GetInt("rate_limit.redis.auth_attempt_max"),
-			AuthAttemptWindow: v.GetDuration("rate_limit.redis.auth_attempt_window"),
-			AuthRefreshMax:    v.GetInt("rate_limit.redis.auth_refresh_max"),
-			AuthRefreshWindow: v.GetDuration("rate_limit.redis.auth_refresh_window"),
-			AuthLogoutMax:     v.GetInt("rate_limit.redis.auth_logout_max"),
-			AuthLogoutWindow:  v.GetDuration("rate_limit.redis.auth_logout_window"),
-			AdminWriteMax:     v.GetInt("rate_limit.redis.admin_write_max"),
-			AdminWriteWindow:  v.GetDuration("rate_limit.redis.admin_write_window"),
-			ManagerMediaMax:   v.GetInt("rate_limit.redis.manager_media_max"),
+			AuthAttemptMax:     v.GetInt("rate_limit.redis.auth_attempt_max"),
+			AuthAttemptWindow:  v.GetDuration("rate_limit.redis.auth_attempt_window"),
+			AuthRefreshMax:     v.GetInt("rate_limit.redis.auth_refresh_max"),
+			AuthRefreshWindow:  v.GetDuration("rate_limit.redis.auth_refresh_window"),
+			AuthLogoutMax:      v.GetInt("rate_limit.redis.auth_logout_max"),
+			AuthLogoutWindow:   v.GetDuration("rate_limit.redis.auth_logout_window"),
+			AdminWriteMax:      v.GetInt("rate_limit.redis.admin_write_max"),
+			AdminWriteWindow:   v.GetDuration("rate_limit.redis.admin_write_window"),
+			ManagerWriteMax:    v.GetInt("rate_limit.redis.manager_write_max"),
+			ManagerWriteWindow: v.GetDuration("rate_limit.redis.manager_write_window"),
+			OrderWriteMax:      v.GetInt("rate_limit.redis.order_write_max"),
+			OrderWriteWindow:   v.GetDuration("rate_limit.redis.order_write_window"),
+			ManagerMediaMax:    v.GetInt("rate_limit.redis.manager_media_max"),
 			ManagerMediaWindow: v.GetDuration("rate_limit.redis.manager_media_window"),
-			AuthUserMax:       v.GetInt("rate_limit.redis.auth_user_max"),
-			AuthUserWindow:    v.GetDuration("rate_limit.redis.auth_user_window"),
+			AuthUserMax:        v.GetInt("rate_limit.redis.auth_user_max"),
+			AuthUserWindow:     v.GetDuration("rate_limit.redis.auth_user_window"),
 		},
 		Postgres: PostgresConfig{
 			URL:                v.GetString("postgres.url"),
@@ -347,6 +355,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.redis.auth_logout_window", time.Minute)
 	v.SetDefault("rate_limit.redis.admin_write_max", 30)
 	v.SetDefault("rate_limit.redis.admin_write_window", time.Minute)
+	v.SetDefault("rate_limit.redis.manager_write_max", 30)
+	v.SetDefault("rate_limit.redis.manager_write_window", time.Minute)
+	v.SetDefault("rate_limit.redis.order_write_max", 20)
+	v.SetDefault("rate_limit.redis.order_write_window", time.Minute)
 	v.SetDefault("rate_limit.redis.manager_media_max", 20)
 	v.SetDefault("rate_limit.redis.manager_media_window", time.Minute)
 	v.SetDefault("rate_limit.redis.auth_user_max", 60)
@@ -533,6 +545,8 @@ func (c RateLimitRedisConfig) validate() error {
 		{"rate_limit.redis.auth_refresh", c.AuthRefreshMax, c.AuthRefreshWindow},
 		{"rate_limit.redis.auth_logout", c.AuthLogoutMax, c.AuthLogoutWindow},
 		{"rate_limit.redis.admin_write", c.AdminWriteMax, c.AdminWriteWindow},
+		{"rate_limit.redis.manager_write", c.ManagerWriteMax, c.ManagerWriteWindow},
+		{"rate_limit.redis.order_write", c.OrderWriteMax, c.OrderWriteWindow},
 		{"rate_limit.redis.manager_media", c.ManagerMediaMax, c.ManagerMediaWindow},
 		{"rate_limit.redis.auth_user", c.AuthUserMax, c.AuthUserWindow},
 	}

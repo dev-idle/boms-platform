@@ -6,6 +6,12 @@ import { DashboardShell, type DashboardNavItem } from "./dashboard-shell";
 
 const BAKER_NAV_ITEMS: readonly DashboardNavItem[] = [
   {
+    href: ROUTE.baker.production,
+    icon: "orders",
+    label: "Production",
+    match: "prefix",
+  },
+  {
     href: ROUTE.baker.account.profile,
     icon: "profile",
     label: "Profile",
@@ -21,7 +27,7 @@ export function BakerShell({ children }: BakerShellProps) {
   return (
     <DashboardShell
       ariaLabel="Baker"
-      homeHref={ROUTE.baker.account.profile}
+      homeHref={ROUTE.baker.production}
       navItems={BAKER_NAV_ITEMS}
       roleLabel="Baker"
     >

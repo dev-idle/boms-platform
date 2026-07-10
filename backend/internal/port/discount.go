@@ -13,8 +13,9 @@ type CreateDiscountCodeParams struct {
 	DiscountType  domaindiscount.Type
 	Value         int64
 	MinOrderCents *int64
-	MaxUses       *int32
-	StartsAt      time.Time
+	MaxUses          *int32
+	MaxDiscountCents *int64
+	StartsAt         time.Time
 	EndsAt        time.Time
 	IsActive      bool
 }
@@ -25,8 +26,9 @@ type UpdateDiscountCodeParams struct {
 	DiscountType  domaindiscount.Type
 	Value         int64
 	MinOrderCents *int64
-	MaxUses       *int32
-	StartsAt      time.Time
+	MaxUses          *int32
+	MaxDiscountCents *int64
+	StartsAt         time.Time
 	EndsAt        time.Time
 	IsActive      bool
 }

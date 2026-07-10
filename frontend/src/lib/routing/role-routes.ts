@@ -39,7 +39,7 @@ export function homeRouteForRole(role: UserRole): string {
     case USER_ROLE.staff:
       return ROUTE.staff.account.profile;
     case USER_ROLE.baker:
-      return ROUTE.baker.account.profile;
+      return ROUTE.baker.production;
     case USER_ROLE.manager:
       return ROUTE.manager.dashboard;
     case USER_ROLE.admin:

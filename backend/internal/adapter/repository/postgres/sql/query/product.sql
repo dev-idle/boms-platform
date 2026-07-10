@@ -1,10 +1,10 @@
 -- name: CreateProduct :one
-INSERT INTO products (category_id, name, slug, description, price_cents, is_available)
+INSERT INTO products (category_id, name, slug, description, price_cents, is_active)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at;
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at;
 
 -- name: GetProductByID :one
-SELECT id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at
+SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
 FROM products
 WHERE id = $1
   AND deleted_at IS NULL;
@@ -17,7 +17,7 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.is_available,
+    p.is_active,
     p.created_at,
     p.updated_at,
     p.deleted_at,
@@ -34,11 +34,11 @@ SET category_id  = $2,
     slug         = $4,
     description  = $5,
     price_cents  = $6,
-    is_available = $7,
+    is_active    = $7,
     updated_at   = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, category_id, name, slug, description, price_cents, is_available, created_at, updated_at, deleted_at;
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at;
 
 -- name: SoftDeleteProduct :execrows
 UPDATE products
@@ -55,7 +55,7 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
-    p.is_available,
+    p.is_active,
     p.created_at,
     p.updated_at,
     p.deleted_at,
@@ -102,7 +102,7 @@ SELECT
 FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 WHERE p.deleted_at IS NULL
-  AND p.is_available = true
+  AND p.is_active = true
   AND (
     sqlc.narg('category_id')::uuid IS NULL
     OR p.category_id = sqlc.narg('category_id')::uuid
@@ -120,7 +120,7 @@ SELECT count(*)::bigint AS count
 FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 WHERE p.deleted_at IS NULL
-  AND p.is_available = true
+  AND p.is_active = true
   AND (
     sqlc.narg('category_id')::uuid IS NULL
     OR p.category_id = sqlc.narg('category_id')::uuid
@@ -145,7 +145,7 @@ FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 WHERE p.id = ANY(sqlc.arg('product_ids')::uuid[])
   AND p.deleted_at IS NULL
-  AND p.is_available = true;
+  AND p.is_active = true;
 
 -- name: CatalogGetProductByID :one
 SELECT
@@ -161,4 +161,4 @@ FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 WHERE p.id = $1
   AND p.deleted_at IS NULL
-  AND p.is_available = true;
+  AND p.is_active = true;

@@ -280,9 +280,10 @@ func (a *AuthUsecase) LogoutHybrid(
 func (a *AuthUsecase) revokeSessionBestEffort(ctx context.Context, userID, sessionID string, source LogoutSource) {
 	_ = a.sessionStore.Delete(ctx, userID, sessionID)
 	if a.log != nil {
+		// session_id is intentionally omitted: session identifiers are bearer-adjacent
+		// secrets and must not reach log sinks. user_id is enough for audit correlation.
 		a.log.Info("auth_logout",
 			zap.String("user_id", userID),
-			zap.String("session_id", sessionID),
 			zap.String("auth_source", string(source)),
 		)
 	}

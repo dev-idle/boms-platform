@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"time"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
 	"github.com/boms/backend/internal/dto"
@@ -36,7 +37,11 @@ func NewOrderUsecase(
 	return &OrderUsecase{orders: orders, carts: carts, discount: discount, cartUC: cartUC, tx: tx}
 }
 
-func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID) (*dto.OrderResponse, error) {
+func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt time.Time) (*dto.OrderResponse, error) {
+	if err := domainorder.ValidatePickupAt(pickupAt, time.Now()); err != nil {
+		return nil, err
+	}
+
 	var created *domainorder.Order
 	err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		cart, lines, discountCode, totals, err := u.cartUC.pricedCartForCheckout(txCtx, userID)
@@ -60,6 +65,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID) (*dto.Ord
 			TotalCents:           totals.TotalCents,
 			DiscountCodeID:       discountCodeID,
 			DiscountCodeSnapshot: discountSnapshot,
+			PickupAt:             &pickupAt,
 		})
 		if err != nil {
 			return err
@@ -70,6 +76,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID) (*dto.Ord
 			params := port.CreateOrderItemParams{
 				OrderID:        order.ID,
 				LineType:       line.Item.LineType,
+				Configuration:  line.Item.Configuration,
 				Name:           line.Name,
 				Slug:           line.Slug,
 				Quantity:       line.Item.Quantity,
@@ -136,6 +143,7 @@ func (u *OrderUsecase) List(
 			Status:     string(order.Status),
 			TotalCents: order.TotalCents,
 			ItemCount:  itemCounts[order.ID],
+			PickupAt:   order.PickupAt,
 			CreatedAt:  order.CreatedAt,
 		})
 	}
@@ -165,6 +173,7 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		DiscountCents:        order.DiscountCents,
 		TotalCents:           order.TotalCents,
 		DiscountCodeSnapshot: order.DiscountCodeSnapshot,
+		PickupAt:             order.PickupAt,
 		Items:                mapOrderItemsToDTO(items),
 		CreatedAt:            order.CreatedAt,
 		UpdatedAt:            order.UpdatedAt,

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -25,4 +26,11 @@ func optionalUUID(id *uuid.UUID) uuid.NullUUID {
 		return uuid.NullUUID{}
 	}
 	return uuid.NullUUID{UUID: *id, Valid: true}
+}
+
+func optionalTime(t *time.Time) sql.NullTime {
+	if t == nil {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{Time: *t, Valid: true}
 }

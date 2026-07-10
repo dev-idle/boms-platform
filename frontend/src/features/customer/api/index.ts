@@ -10,6 +10,7 @@ import {
   addCartItemInputSchema,
   applyCartDiscountInputSchema,
   cartSchema,
+  checkoutInputSchema,
   orderSchema,
   orderSummarySchema,
   ordersListFilterSchema,
@@ -17,6 +18,7 @@ import {
   type AddCartItemInput,
   type ApplyCartDiscountInput,
   type Cart,
+  type CheckoutInput,
   type Order,
   type OrdersListFilterInput,
   type OrdersListResult,
@@ -78,10 +80,12 @@ export async function removeCartDiscount(): Promise<Cart> {
   });
 }
 
-export async function checkoutCart(): Promise<Order> {
+export async function checkoutCart(input: CheckoutInput): Promise<Order> {
+  const body = checkoutInputSchema.parse(input);
   return browserRequest<Order>("/api/v1/orders/checkout", {
     method: "POST",
     schema: orderSchema,
+    json: body,
   });
 }
 

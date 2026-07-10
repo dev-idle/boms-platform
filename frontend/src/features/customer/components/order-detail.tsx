@@ -10,9 +10,11 @@ import {
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
+import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useOrder } from "../hooks";
+import { OrderProgressStepper } from "./order-progress-stepper";
 
 type OrderDetailProps = {
   orderId: string;
@@ -50,11 +52,18 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
           <p className="text-caption">
             Placed {formatDateTime(order.created_at)}
           </p>
+          {order.pickup_at ? (
+            <p className="text-caption">
+              Pickup {formatPickupDateTime(order.pickup_at)}
+            </p>
+          ) : null}
           <StatusPill
             label={formatOrderStatusLabel(order.status)}
             variant={orderStatusToPillVariant(order.status)}
           />
         </div>
+
+        <OrderProgressStepper status={order.status} />
 
         {order.discount_code_snapshot ? (
           <p className="text-caption">

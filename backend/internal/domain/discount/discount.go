@@ -24,9 +24,10 @@ type Code struct {
 	Code           string
 	DiscountType   Type
 	Value          int64
-	MinOrderCents  *int64
-	MaxUses        *int32
-	UsedCount      int32
+	MinOrderCents    *int64
+	MaxUses          *int32
+	MaxDiscountCents *int64
+	UsedCount        int32
 	StartsAt       time.Time
 	EndsAt         time.Time
 	IsActive       bool

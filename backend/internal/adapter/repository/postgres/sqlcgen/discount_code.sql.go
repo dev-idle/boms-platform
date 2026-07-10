@@ -20,11 +20,12 @@ INSERT INTO discount_codes (
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     starts_at,
     ends_at,
     is_active
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING
     id,
     code,
@@ -32,6 +33,7 @@ RETURNING
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -42,14 +44,15 @@ RETURNING
 `
 
 type CreateDiscountCodeParams struct {
-	Code          string        `db:"code" json:"code"`
-	DiscountType  DiscountType  `db:"discount_type" json:"discountType"`
-	Value         int64         `db:"value" json:"value"`
-	MinOrderCents sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
-	MaxUses       sql.NullInt32 `db:"max_uses" json:"maxUses"`
-	StartsAt      time.Time     `db:"starts_at" json:"startsAt"`
-	EndsAt        time.Time     `db:"ends_at" json:"endsAt"`
-	IsActive      bool          `db:"is_active" json:"isActive"`
+	Code             string        `db:"code" json:"code"`
+	DiscountType     DiscountType  `db:"discount_type" json:"discountType"`
+	Value            int64         `db:"value" json:"value"`
+	MinOrderCents    sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
+	MaxUses          sql.NullInt32 `db:"max_uses" json:"maxUses"`
+	MaxDiscountCents sql.NullInt64 `db:"max_discount_cents" json:"maxDiscountCents"`
+	StartsAt         time.Time     `db:"starts_at" json:"startsAt"`
+	EndsAt           time.Time     `db:"ends_at" json:"endsAt"`
+	IsActive         bool          `db:"is_active" json:"isActive"`
 }
 
 // CreateDiscountCode
@@ -60,11 +63,12 @@ type CreateDiscountCodeParams struct {
 //	    value,
 //	    min_order_cents,
 //	    max_uses,
+//	    max_discount_cents,
 //	    starts_at,
 //	    ends_at,
 //	    is_active
 //	)
-//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 //	RETURNING
 //	    id,
 //	    code,
@@ -72,6 +76,7 @@ type CreateDiscountCodeParams struct {
 //	    value,
 //	    min_order_cents,
 //	    max_uses,
+//	    max_discount_cents,
 //	    used_count,
 //	    starts_at,
 //	    ends_at,
@@ -86,6 +91,7 @@ func (q *Queries) CreateDiscountCode(ctx context.Context, arg CreateDiscountCode
 		arg.Value,
 		arg.MinOrderCents,
 		arg.MaxUses,
+		arg.MaxDiscountCents,
 		arg.StartsAt,
 		arg.EndsAt,
 		arg.IsActive,
@@ -98,6 +104,7 @@ func (q *Queries) CreateDiscountCode(ctx context.Context, arg CreateDiscountCode
 		&i.Value,
 		&i.MinOrderCents,
 		&i.MaxUses,
+		&i.MaxDiscountCents,
 		&i.UsedCount,
 		&i.StartsAt,
 		&i.EndsAt,
@@ -117,6 +124,7 @@ SELECT
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -138,6 +146,7 @@ WHERE code = $1
 //	    value,
 //	    min_order_cents,
 //	    max_uses,
+//	    max_discount_cents,
 //	    used_count,
 //	    starts_at,
 //	    ends_at,
@@ -158,6 +167,7 @@ func (q *Queries) GetDiscountCodeByCode(ctx context.Context, code string) (Disco
 		&i.Value,
 		&i.MinOrderCents,
 		&i.MaxUses,
+		&i.MaxDiscountCents,
 		&i.UsedCount,
 		&i.StartsAt,
 		&i.EndsAt,
@@ -177,6 +187,7 @@ SELECT
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -198,6 +209,7 @@ WHERE id = $1
 //	    value,
 //	    min_order_cents,
 //	    max_uses,
+//	    max_discount_cents,
 //	    used_count,
 //	    starts_at,
 //	    ends_at,
@@ -218,6 +230,7 @@ func (q *Queries) GetDiscountCodeByID(ctx context.Context, id uuid.UUID) (Discou
 		&i.Value,
 		&i.MinOrderCents,
 		&i.MaxUses,
+		&i.MaxDiscountCents,
 		&i.UsedCount,
 		&i.StartsAt,
 		&i.EndsAt,
@@ -243,6 +256,7 @@ RETURNING
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -267,6 +281,7 @@ RETURNING
 //	    value,
 //	    min_order_cents,
 //	    max_uses,
+//	    max_discount_cents,
 //	    used_count,
 //	    starts_at,
 //	    ends_at,
@@ -284,6 +299,7 @@ func (q *Queries) IncrementDiscountCodeUsedCount(ctx context.Context, id uuid.UU
 		&i.Value,
 		&i.MinOrderCents,
 		&i.MaxUses,
+		&i.MaxDiscountCents,
 		&i.UsedCount,
 		&i.StartsAt,
 		&i.EndsAt,
@@ -303,6 +319,7 @@ SELECT
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -335,6 +352,7 @@ type ManagerListDiscountCodesParams struct {
 //	    value,
 //	    min_order_cents,
 //	    max_uses,
+//	    max_discount_cents,
 //	    used_count,
 //	    starts_at,
 //	    ends_at,
@@ -366,6 +384,7 @@ func (q *Queries) ManagerListDiscountCodes(ctx context.Context, arg ManagerListD
 			&i.Value,
 			&i.MinOrderCents,
 			&i.MaxUses,
+			&i.MaxDiscountCents,
 			&i.UsedCount,
 			&i.StartsAt,
 			&i.EndsAt,
@@ -438,15 +457,16 @@ func (q *Queries) SoftDeleteDiscountCode(ctx context.Context, id uuid.UUID) (int
 
 const updateDiscountCode = `-- name: UpdateDiscountCode :one
 UPDATE discount_codes
-SET code            = $2,
-    discount_type   = $3,
-    value           = $4,
-    min_order_cents = $5,
-    max_uses        = $6,
-    starts_at       = $7,
-    ends_at         = $8,
-    is_active       = $9,
-    updated_at      = now()
+SET code               = $2,
+    discount_type      = $3,
+    value              = $4,
+    min_order_cents    = $5,
+    max_uses           = $6,
+    max_discount_cents = $7,
+    starts_at          = $8,
+    ends_at            = $9,
+    is_active          = $10,
+    updated_at         = now()
 WHERE id = $1
   AND deleted_at IS NULL
 RETURNING
@@ -456,6 +476,7 @@ RETURNING
     value,
     min_order_cents,
     max_uses,
+    max_discount_cents,
     used_count,
     starts_at,
     ends_at,
@@ -466,29 +487,31 @@ RETURNING
 `
 
 type UpdateDiscountCodeParams struct {
-	ID            uuid.UUID     `db:"id" json:"id"`
-	Code          string        `db:"code" json:"code"`
-	DiscountType  DiscountType  `db:"discount_type" json:"discountType"`
-	Value         int64         `db:"value" json:"value"`
-	MinOrderCents sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
-	MaxUses       sql.NullInt32 `db:"max_uses" json:"maxUses"`
-	StartsAt      time.Time     `db:"starts_at" json:"startsAt"`
-	EndsAt        time.Time     `db:"ends_at" json:"endsAt"`
-	IsActive      bool          `db:"is_active" json:"isActive"`
+	ID               uuid.UUID     `db:"id" json:"id"`
+	Code             string        `db:"code" json:"code"`
+	DiscountType     DiscountType  `db:"discount_type" json:"discountType"`
+	Value            int64         `db:"value" json:"value"`
+	MinOrderCents    sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
+	MaxUses          sql.NullInt32 `db:"max_uses" json:"maxUses"`
+	MaxDiscountCents sql.NullInt64 `db:"max_discount_cents" json:"maxDiscountCents"`
+	StartsAt         time.Time     `db:"starts_at" json:"startsAt"`
+	EndsAt           time.Time     `db:"ends_at" json:"endsAt"`
+	IsActive         bool          `db:"is_active" json:"isActive"`
 }
 
 // UpdateDiscountCode
 //
 //	UPDATE discount_codes
-//	SET code            = $2,
-//	    discount_type   = $3,
-//	    value           = $4,
-//	    min_order_cents = $5,
-//	    max_uses        = $6,
-//	    starts_at       = $7,
-//	    ends_at         = $8,
-//	    is_active       = $9,
-//	    updated_at      = now()
+//	SET code               = $2,
+//	    discount_type      = $3,
+//	    value              = $4,
+//	    min_order_cents    = $5,
+//	    max_uses           = $6,
+//	    max_discount_cents = $7,
+//	    starts_at          = $8,
+//	    ends_at            = $9,
+//	    is_active          = $10,
+//	    updated_at         = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 //	RETURNING
@@ -498,6 +521,7 @@ type UpdateDiscountCodeParams struct {
 //	    value,
 //	    min_order_cents,
 //	    max_uses,
+//	    max_discount_cents,
 //	    used_count,
 //	    starts_at,
 //	    ends_at,
@@ -513,6 +537,7 @@ func (q *Queries) UpdateDiscountCode(ctx context.Context, arg UpdateDiscountCode
 		arg.Value,
 		arg.MinOrderCents,
 		arg.MaxUses,
+		arg.MaxDiscountCents,
 		arg.StartsAt,
 		arg.EndsAt,
 		arg.IsActive,
@@ -525,6 +550,7 @@ func (q *Queries) UpdateDiscountCode(ctx context.Context, arg UpdateDiscountCode
 		&i.Value,
 		&i.MinOrderCents,
 		&i.MaxUses,
+		&i.MaxDiscountCents,
 		&i.UsedCount,
 		&i.StartsAt,
 		&i.EndsAt,

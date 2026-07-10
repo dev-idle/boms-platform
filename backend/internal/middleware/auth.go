@@ -193,7 +193,8 @@ func writeMiddlewareError(c *fiber.Ctx, e *apperrors.AppError) error {
 // Resolution order (zero DB hits on the hot path):
 //  1. Session meta already loaded by RequireAuthWithSession (zero extra I/O).
 //  2. Session store lookup (single Redis GET) — used after RequireAuth-only chains.
-//  3. Falls through to allow when no session context is available; route still requires auth.
+//  3. Fails closed (internal error) when no session context is available: this middleware
+//     must only be chained after RequireAuthWithSession.
 //
 // The flag is set at session creation/rotation and reset when ChangePassword revokes all sessions,
 // so the cached value is always at most one refresh cycle stale.
@@ -209,11 +210,12 @@ func RequirePasswordChanged(sessions port.SessionStore) fiber.Handler {
 			}
 			return c.Next()
 		}
-		// Invariant: mutating routes use RequireAuthWithSession so session meta is in Locals.
-		// This branch only runs for mis-wired routes; allow through rather than block reads without Redis.
+		// Invariant: routes chaining this middleware use RequireAuthWithSession, so session
+		// meta is already in Locals. Reaching this branch means the route is mis-wired —
+		// fail closed rather than silently skip the password-change gate.
 		sessionID, hasSession := GetSessionID(c)
 		if !hasSession || sessions == nil {
-			return c.Next()
+			return writeMiddlewareError(c, apperrors.ErrInternal)
 		}
 		ctx := c.UserContext()
 		if ctx == nil {

@@ -33,7 +33,7 @@ func (r *ProductRepository) Create(ctx context.Context, params port.CreateProduc
 		Slug:        params.Slug,
 		Description: optionalString(params.Description),
 		PriceCents:  params.PriceCents,
-		IsAvailable: params.IsAvailable,
+		IsActive: params.IsActive,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create product")
@@ -57,7 +57,7 @@ func (r *ProductRepository) Update(ctx context.Context, params port.UpdateProduc
 		Slug:        params.Slug,
 		Description: optionalString(params.Description),
 		PriceCents:  params.PriceCents,
-		IsAvailable: params.IsAvailable,
+		IsActive: params.IsActive,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update product")
@@ -230,7 +230,7 @@ func mapManagerListProductsRow(row sqlcgen.ManagerListProductsRow) port.ManagerL
 		row.Slug,
 		row.Description,
 		row.PriceCents,
-		row.IsAvailable,
+		row.IsActive,
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.DeletedAt,
@@ -246,7 +246,7 @@ func mapManagerGetProductRow(row sqlcgen.ManagerGetProductByIDRow) port.ManagerL
 		row.Slug,
 		row.Description,
 		row.PriceCents,
-		row.IsAvailable,
+		row.IsActive,
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.DeletedAt,
@@ -261,7 +261,7 @@ func mapManagerJoinedProduct(
 	slug string,
 	description sql.NullString,
 	priceCents int64,
-	isAvailable bool,
+	isActive bool,
 	createdAt time.Time,
 	updatedAt time.Time,
 	deletedAt sql.NullTime,
@@ -273,7 +273,7 @@ func mapManagerJoinedProduct(
 		Name:        name,
 		Slug:        slug,
 		PriceCents:  priceCents,
-		IsAvailable: isAvailable,
+		IsActive: isActive,
 		CreatedAt:   createdAt,
 		UpdatedAt:   updatedAt,
 	}
@@ -298,7 +298,7 @@ func mapProduct(row sqlcgen.Product) *domainproduct.Product {
 		Name:        row.Name,
 		Slug:        row.Slug,
 		PriceCents:  row.PriceCents,
-		IsAvailable: row.IsAvailable,
+		IsActive: row.IsActive,
 		CreatedAt:   row.CreatedAt,
 		UpdatedAt:   row.UpdatedAt,
 	}

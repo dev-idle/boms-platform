@@ -25,7 +25,7 @@ describe("resolvePostAuthDestination", () => {
   it("rejects next outside the role namespace", () => {
     expect(
       resolvePostAuthDestination(USER_ROLE.baker, { next: "/admin" }),
-    ).toBe(ROUTE.baker.account.profile);
+    ).toBe(ROUTE.baker.production);
   });
 
   it("prioritizes forced password change over next and home", () => {

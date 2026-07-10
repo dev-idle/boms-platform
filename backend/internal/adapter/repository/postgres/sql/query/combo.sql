@@ -75,7 +75,7 @@ SELECT
     p.slug AS product_slug,
     p.price_cents
 FROM combo_items ci
-INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_available = true
+INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
 INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
 WHERE ci.combo_id = ANY(sqlc.arg('combo_ids')::uuid[])
 ORDER BY ci.combo_id ASC, p.name ASC;
@@ -112,7 +112,7 @@ WHERE c.deleted_at IS NULL
   AND EXISTS (
     SELECT 1
     FROM combo_items ci
-    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_available = true
+    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
     INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
     WHERE ci.combo_id = c.id
   )
@@ -129,7 +129,7 @@ WHERE c.deleted_at IS NULL
   AND EXISTS (
     SELECT 1
     FROM combo_items ci
-    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_available = true
+    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
     INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
     WHERE ci.combo_id = c.id
   );
@@ -145,7 +145,7 @@ WHERE c.id = ANY(sqlc.arg('combo_ids')::uuid[])
   AND EXISTS (
     SELECT 1
     FROM combo_items ci
-    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_available = true
+    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
     INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
     WHERE ci.combo_id = c.id
   );
@@ -165,4 +165,4 @@ FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
 WHERE p.id = ANY(sqlc.arg('product_ids')::uuid[])
   AND p.deleted_at IS NULL
-  AND p.is_available = true;
+  AND p.is_active = true;

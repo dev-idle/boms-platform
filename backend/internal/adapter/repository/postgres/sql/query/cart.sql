@@ -19,36 +19,36 @@ SET discount_code_id = NULL, updated_at = now()
 WHERE id = $1;
 
 -- name: ListCartItemsByCartID :many
-SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items
 WHERE cart_id = $1
 ORDER BY created_at ASC;
 
 -- name: GetCartItemByID :one
-SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items
 WHERE cart_id = $1 AND id = $2;
 
 -- name: GetCartItemByProduct :one
-SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items
 WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2;
 
 -- name: GetCartItemByCombo :one
-SELECT id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at
+SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items
 WHERE cart_id = $1 AND line_type = 'combo' AND combo_id = $2;
 
 -- name: CreateCartItem :one
 INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at;
+RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at;
 
 -- name: UpdateCartItemQuantity :one
 UPDATE cart_items
 SET quantity = $3, updated_at = now()
 WHERE cart_id = $1 AND id = $2
-RETURNING id, cart_id, line_type, product_id, combo_id, quantity, created_at, updated_at;
+RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at;
 
 -- name: DeleteCartItem :execrows
 DELETE FROM cart_items

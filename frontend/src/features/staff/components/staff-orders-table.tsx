@@ -19,6 +19,7 @@ import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pa
 import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { formatDateTime } from "@/lib/validation/datetime";
+import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useStaffOrders } from "../hooks";
@@ -30,6 +31,8 @@ const STATUS_FILTERS: Array<{ value: OrderStatus | undefined; label: string }> =
   { value: undefined, label: "All" },
   { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
+  { value: "in_production", label: "In production" },
+  { value: "ready", label: "Ready" },
   { value: "fulfilled", label: "Fulfilled" },
   { value: "cancelled", label: "Cancelled" },
 ];
@@ -71,6 +74,7 @@ export function StaffOrdersTable() {
             <tr>
               <th>Order</th>
               <th>Customer</th>
+              <th>Pickup</th>
               <th>Placed</th>
               <th>Total</th>
               <th className="db-table-status">Status</th>
@@ -79,7 +83,7 @@ export function StaffOrdersTable() {
           </thead>
           <tbody>
             <DashboardTableStateRows
-              columnCount={6}
+              columnCount={7}
               emptyFilteredMessage="No orders match this filter."
               entityLabel="orders"
               hasActiveFilter={status !== undefined}
@@ -105,6 +109,11 @@ export function StaffOrdersTable() {
                         ) : null}
                       </div>
                     </td>
+                    <td className="text-muted">
+                      {order.pickup_at
+                        ? formatPickupDateTime(order.pickup_at)
+                        : "Not scheduled"}
+                    </td>
                     <td className="text-muted">{formatDateTime(order.created_at)}</td>
                     <td className="db-table-cell-primary text-tabular">
                       {formatPriceCents(order.total_cents)}
@@ -127,7 +136,7 @@ export function StaffOrdersTable() {
                 ))
               : null}
             <DashboardTablePagePlaceholders
-              columnCount={6}
+              columnCount={7}
               count={pagePlaceholderCount}
             />
           </tbody>

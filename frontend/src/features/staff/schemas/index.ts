@@ -6,6 +6,8 @@ import { apiDateTimeSchema } from "@/lib/validation/datetime";
 export const orderStatusSchema = z.enum([
   "pending",
   "confirmed",
+  "in_production",
+  "ready",
   "cancelled",
   "fulfilled",
 ]);
@@ -34,6 +36,7 @@ export const staffOrderSummarySchema = z.object({
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
   customer: staffOrderCustomerSchema,
+  pickup_at: apiDateTimeSchema.nullable().optional(),
   created_at: apiDateTimeSchema,
 });
 
@@ -44,6 +47,7 @@ export const staffOrderSchema = z.object({
   discount_cents: z.number().int().min(0),
   total_cents: z.number().int().min(0),
   discount_code_snapshot: z.string().nullable().optional(),
+  pickup_at: apiDateTimeSchema.nullable().optional(),
   items: z.array(staffOrderItemSchema),
   customer: staffOrderCustomerSchema,
   created_at: apiDateTimeSchema,
@@ -57,7 +61,7 @@ export const staffOrdersListFilterSchema = z.object({
 });
 
 export const patchStaffOrderStatusInputSchema = z.object({
-  status: z.enum(["confirmed", "cancelled", "fulfilled"]),
+  status: z.enum(["confirmed", "fulfilled", "cancelled"]),
 });
 
 export type OrderStatus = z.infer<typeof orderStatusSchema>;

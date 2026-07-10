@@ -105,7 +105,7 @@ func (r *CartRepository) GetItemByCombo(ctx context.Context, cartID, comboID uui
 }
 
 func (r *CartRepository) CreateItem(ctx context.Context, params port.CreateCartItemParams) (*domaincart.Item, error) {
-	lineType, err := mapCartLineTypeToSQL(params.LineType)
+	lineType, err := mapLineTypeToSQL(params.LineType)
 	if err != nil {
 		return nil, err
 	}
@@ -184,12 +184,16 @@ func mapCart(row sqlcgen.Cart) *domaincart.Cart {
 
 func mapCartItem(row sqlcgen.CartItem) domaincart.Item {
 	item := domaincart.Item{
-		ID:        row.ID,
-		CartID:    row.CartID,
-		LineType:  mapCartLineTypeFromSQL(row.LineType),
-		Quantity:  row.Quantity,
-		CreatedAt: row.CreatedAt,
-		UpdatedAt: row.UpdatedAt,
+		ID:            row.ID,
+		CartID:        row.CartID,
+		LineType:      mapLineTypeFromSQL(row.LineType),
+		Quantity:      row.Quantity,
+		Configuration: row.Configuration,
+		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
+	}
+	if len(item.Configuration) == 0 {
+		item.Configuration = domaincart.EmptyConfiguration
 	}
 	if row.ProductID.Valid {
 		id := row.ProductID.UUID
@@ -202,22 +206,22 @@ func mapCartItem(row sqlcgen.CartItem) domaincart.Item {
 	return item
 }
 
-func mapCartLineTypeToSQL(t domaincart.LineType) (sqlcgen.CartLineType, error) {
+func mapLineTypeToSQL(t domaincart.LineType) (sqlcgen.LineType, error) {
 	switch t {
 	case domaincart.LineTypeProduct:
-		return sqlcgen.CartLineTypeProduct, nil
+		return sqlcgen.LineTypeProduct, nil
 	case domaincart.LineTypeCombo:
-		return sqlcgen.CartLineTypeCombo, nil
+		return sqlcgen.LineTypeCombo, nil
 	default:
-		return "", apperrors.Errorf("unsupported cart line type: %s", t)
+		return "", apperrors.Errorf("unsupported line type: %s", t)
 	}
 }
 
-func mapCartLineTypeFromSQL(t sqlcgen.CartLineType) domaincart.LineType {
+func mapLineTypeFromSQL(t sqlcgen.LineType) domaincart.LineType {
 	switch t {
-	case sqlcgen.CartLineTypeProduct:
+	case sqlcgen.LineTypeProduct:
 		return domaincart.LineTypeProduct
-	case sqlcgen.CartLineTypeCombo:
+	case sqlcgen.LineTypeCombo:
 		return domaincart.LineTypeCombo
 	default:
 		return domaincart.LineType(t)

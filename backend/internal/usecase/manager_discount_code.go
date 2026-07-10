@@ -38,7 +38,7 @@ func (u *ManagerDiscountCodeUsecase) Create(
 	actorRole domainuser.Role,
 	req dto.CreateDiscountCodeRequest,
 ) (*dto.DiscountCodeResponse, error) {
-	params, err := parseDiscountCodeRequest(req.Code, req.DiscountType, req.Value, req.MinOrderCents, req.MaxUses, req.StartsAt, req.EndsAt, req.IsActive, nil)
+	params, err := parseDiscountCodeRequest(req.Code, req.DiscountType, req.Value, req.MinOrderCents, req.MaxUses, req.MaxDiscountCents, req.StartsAt, req.EndsAt, req.IsActive, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (u *ManagerDiscountCodeUsecase) Update(
 	}
 	before := toDiscountCodeResponse(beforeEntity)
 
-	params, err := parseDiscountCodeRequest(req.Code, req.DiscountType, req.Value, req.MinOrderCents, req.MaxUses, req.StartsAt, req.EndsAt, req.IsActive, &beforeEntity.UsedCount)
+	params, err := parseDiscountCodeRequest(req.Code, req.DiscountType, req.Value, req.MinOrderCents, req.MaxUses, req.MaxDiscountCents, req.StartsAt, req.EndsAt, req.IsActive, &beforeEntity.UsedCount)
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +123,9 @@ func (u *ManagerDiscountCodeUsecase) Update(
 		DiscountType:  params.DiscountType,
 		Value:         params.Value,
 		MinOrderCents: params.MinOrderCents,
-		MaxUses:       params.MaxUses,
-		StartsAt:      params.StartsAt,
+		MaxUses:          params.MaxUses,
+		MaxDiscountCents: params.MaxDiscountCents,
+		StartsAt:         params.StartsAt,
 		EndsAt:        params.EndsAt,
 		IsActive:      params.IsActive,
 	}
@@ -175,6 +176,7 @@ func parseDiscountCodeRequest(
 	value int64,
 	minOrderCents *int64,
 	maxUses *int32,
+	maxDiscountCents *int64,
 	startsAt, endsAt time.Time,
 	isActive bool,
 	usedCount *int32,
@@ -196,13 +198,17 @@ func parseDiscountCodeRequest(
 	if maxUses != nil && usedCount != nil && *maxUses < *usedCount {
 		return port.CreateDiscountCodeParams{}, apperrors.ErrValidation.WithDetail("max_uses", "cannot be less than used count")
 	}
+	if discountType == domaindiscount.TypeFixedCents && maxDiscountCents != nil {
+		return port.CreateDiscountCodeParams{}, apperrors.ErrValidation.WithDetail("max_discount_cents", "only allowed for percent discounts")
+	}
 
 	return port.CreateDiscountCodeParams{
-		Code:          code,
-		DiscountType:  discountType,
-		Value:         value,
-		MinOrderCents: minOrderCents,
-		MaxUses:       maxUses,
+		Code:             code,
+		DiscountType:     discountType,
+		Value:            value,
+		MinOrderCents:    minOrderCents,
+		MaxUses:          maxUses,
+		MaxDiscountCents: maxDiscountCents,
 		StartsAt:      startsAt,
 		EndsAt:        endsAt,
 		IsActive:      isActive,
@@ -230,8 +236,9 @@ func toDiscountCodeResponse(code *domaindiscount.Code) *dto.DiscountCodeResponse
 		DiscountType:  string(code.DiscountType),
 		Value:         code.Value,
 		MinOrderCents: code.MinOrderCents,
-		MaxUses:       code.MaxUses,
-		UsedCount:     code.UsedCount,
+		MaxUses:          code.MaxUses,
+		MaxDiscountCents: code.MaxDiscountCents,
+		UsedCount:        code.UsedCount,
 		StartsAt:      code.StartsAt,
 		EndsAt:        code.EndsAt,
 		IsActive:      code.IsActive,

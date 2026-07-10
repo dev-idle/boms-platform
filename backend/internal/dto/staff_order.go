@@ -9,12 +9,13 @@ type StaffOrderCustomerResponse struct {
 }
 
 type StaffOrderSummaryResponse struct {
-	ID            string                     `json:"id"`
-	Status        string                     `json:"status"`
-	TotalCents    int64                      `json:"total_cents"`
-	ItemCount     int32                      `json:"item_count"`
-	Customer      StaffOrderCustomerResponse `json:"customer"`
-	CreatedAt     time.Time                  `json:"created_at"`
+	ID         string                     `json:"id"`
+	Status     string                     `json:"status"`
+	TotalCents int64                      `json:"total_cents"`
+	ItemCount  int32                      `json:"item_count"`
+	Customer   StaffOrderCustomerResponse `json:"customer"`
+	PickupAt   *time.Time                 `json:"pickup_at,omitempty"`
+	CreatedAt  time.Time                  `json:"created_at"`
 }
 
 type StaffOrderResponse struct {
@@ -24,6 +25,7 @@ type StaffOrderResponse struct {
 	DiscountCents        int64                      `json:"discount_cents"`
 	TotalCents           int64                      `json:"total_cents"`
 	DiscountCodeSnapshot *string                    `json:"discount_code_snapshot,omitempty"`
+	PickupAt             *time.Time                 `json:"pickup_at,omitempty"`
 	Items                []OrderItemResponse        `json:"items"`
 	Customer             StaffOrderCustomerResponse `json:"customer"`
 	CreatedAt            time.Time                  `json:"created_at"`
@@ -31,5 +33,5 @@ type StaffOrderResponse struct {
 }
 
 type PatchStaffOrderStatusRequest struct {
-	Status string `json:"status" validate:"required,oneof=confirmed cancelled fulfilled"`
+	Status string `json:"status" validate:"required,oneof=confirmed fulfilled cancelled"`
 }

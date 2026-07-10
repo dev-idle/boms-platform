@@ -1,10 +1,14 @@
 package cart
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// EmptyConfiguration is the default JSON object for cart line configuration.
+var EmptyConfiguration = json.RawMessage(`{}`)
 
 // LineType identifies whether a cart line references a product or combo.
 type LineType string
@@ -34,7 +38,8 @@ type Item struct {
 	LineType  LineType
 	ProductID *uuid.UUID
 	ComboID   *uuid.UUID
-	Quantity  int32
-	CreatedAt time.Time
+	Quantity       int32
+	Configuration  json.RawMessage
+	CreatedAt      time.Time
 	UpdatedAt time.Time
 }

@@ -81,7 +81,7 @@ func (u *ManagerProductUsecase) Create(
 			Slug:        slug,
 			Description: req.Description,
 			PriceCents:  req.PriceCents,
-			IsAvailable: req.IsAvailable,
+			IsActive: req.IsActive,
 		})
 		if createErr != nil {
 			if errors.Is(createErr, apperrors.ErrConflict) {
@@ -210,7 +210,7 @@ func (u *ManagerProductUsecase) Update(
 			Slug:        slug,
 			Description: req.Description,
 			PriceCents:  req.PriceCents,
-			IsAvailable: req.IsAvailable,
+			IsActive: req.IsActive,
 		})
 		if updateErr != nil {
 			if errors.Is(updateErr, apperrors.ErrConflict) {
@@ -314,7 +314,7 @@ func toProductResponse(product *domainproduct.Product, categoryName string, imag
 		Slug:         product.Slug,
 		Description:  product.Description,
 		PriceCents:   product.PriceCents,
-		IsAvailable:  product.IsAvailable,
+		IsActive:     product.IsActive,
 		ImageURLs:    imageURLs,
 		CreatedAt:    product.CreatedAt,
 		UpdatedAt:    product.UpdatedAt,
@@ -327,7 +327,7 @@ func toProductAuditFromResponse(resp *dto.ProductResponse) map[string]any {
 		"name":         resp.Name,
 		"slug":         resp.Slug,
 		"price_cents":  resp.PriceCents,
-		"is_available": resp.IsAvailable,
+		"is_active":    resp.IsActive,
 		"image_urls":   resp.ImageURLs,
 	}
 }
@@ -341,7 +341,7 @@ func toProductAudit(product *domainproduct.Product, imageURLs []string) map[stri
 		out["name"] = product.Name
 		out["slug"] = product.Slug
 		out["price_cents"] = product.PriceCents
-		out["is_available"] = product.IsAvailable
+		out["is_active"] = product.IsActive
 	}
 	return out
 }

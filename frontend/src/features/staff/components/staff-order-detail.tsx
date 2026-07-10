@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
+import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 
@@ -32,6 +33,10 @@ function nextStatusActions(
         { label: "Cancel order", status: "cancelled" },
       ];
     case "confirmed":
+      return [{ label: "Cancel order", status: "cancelled" }];
+    case "in_production":
+      return [{ label: "Cancel order", status: "cancelled" }];
+    case "ready":
       return [
         { label: "Mark fulfilled", status: "fulfilled" },
         { label: "Cancel order", status: "cancelled" },
@@ -78,6 +83,11 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
             <p className="text-sm text-muted">
               Placed {formatDateTime(order.created_at)}
             </p>
+            {order.pickup_at ? (
+              <p className="text-sm text-muted">
+                Pickup {formatPickupDateTime(order.pickup_at)}
+              </p>
+            ) : null}
             <StatusPill
               label={formatOrderStatusLabel(order.status)}
               variant={orderStatusToPillVariant(order.status)}

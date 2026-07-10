@@ -14,6 +14,7 @@ import { ROUTE } from "@/constants/routes";
 import { STOREFRONT_NAV_COPY } from "@/constants/storefront-nav-copy";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/validation/datetime";
+import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useOrders } from "../hooks";
@@ -73,6 +74,9 @@ export function OrderList() {
                 <p className="storefront-order-card__meta text-caption">
                   {formatDateTime(order.created_at)} · {order.item_count} item
                   {order.item_count === 1 ? "" : "s"}
+                  {order.pickup_at
+                    ? ` · Pickup ${formatPickupDateTime(order.pickup_at)}`
+                    : ""}
                 </p>
               </div>
               <span className="storefront-order-card__cta" aria-hidden="true">

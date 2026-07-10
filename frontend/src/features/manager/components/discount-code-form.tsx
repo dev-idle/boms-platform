@@ -58,6 +58,7 @@ const DISCOUNT_CODE_FORM_FIELDS = [
   "value",
   "min_order_cents",
   "max_uses",
+  "max_discount_cents",
   "starts_at",
   "ends_at",
   "is_active",
@@ -78,6 +79,7 @@ export function DiscountCodeForm({
       ...(discountCode ? { value: discountCode.value } : {}),
       min_order_cents: discountCode?.min_order_cents ?? null,
       max_uses: discountCode?.max_uses ?? null,
+      max_discount_cents: discountCode?.max_discount_cents ?? null,
       starts_at: discountCode?.starts_at ?? defaultStartsAt(),
       ends_at: discountCode?.ends_at ?? defaultEndsAt(),
       is_active: discountCode?.is_active ?? true,
@@ -159,6 +161,10 @@ export function DiscountCodeForm({
                       ) {
                         form.setValue("value", 100, { shouldValidate: true });
                       }
+                    } else {
+                      form.setValue("max_discount_cents", null, {
+                        shouldValidate: true,
+                      });
                     }
                   }}
                   value={field.value}
@@ -240,6 +246,29 @@ export function DiscountCodeForm({
             </FormItem>
           )}
         />
+
+        {isPercent ? (
+          <FormField
+            control={form.control}
+            name="max_discount_cents"
+            render={({ field }) => (
+              <FormItem>
+                <FieldControl
+                  hint={FORM_FIELD_HINT.discountMaxDiscountCents}
+                  label="Maximum discount (cents)"
+                  optional
+                >
+                  <OptionalIntegerFieldInput
+                    min={1}
+                    {...field}
+                    value={field.value ?? null}
+                  />
+                </FieldControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         <div className="dashboard-datetime-grid grid gap-4 sm:grid-cols-2">
           <FormField

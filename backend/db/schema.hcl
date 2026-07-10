@@ -337,7 +337,7 @@ table "products" {
     type = bigint
     null = false
   }
-  column "is_available" {
+  column "is_active" {
     type    = boolean
     null    = false
     default = true
@@ -521,6 +521,11 @@ table "combo_items" {
     null    = false
     default = sql("now()")
   }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
   primary_key {
     columns = [column.id]
   }
@@ -570,6 +575,10 @@ table "discount_codes" {
   }
   column "max_uses" {
     type = int
+    null = true
+  }
+  column "max_discount_cents" {
+    type = bigint
     null = true
   }
   column "used_count" {
@@ -637,16 +646,22 @@ table "discount_codes" {
   check "discount_codes_used_within_max_check" {
     expr = "max_uses IS NULL OR used_count <= max_uses"
   }
+  check "discount_codes_max_discount_cents_check" {
+    expr = "max_discount_cents IS NULL OR max_discount_cents >= 1"
+  }
+  check "discount_codes_max_discount_percent_only_check" {
+    expr = "discount_type = 'percent' OR max_discount_cents IS NULL"
+  }
 }
 
-enum "cart_line_type" {
+enum "line_type" {
   schema = schema.public
   values = ["product", "combo"]
 }
 
 enum "order_status" {
   schema = schema.public
-  values = ["pending", "confirmed", "cancelled", "fulfilled"]
+  values = ["pending", "confirmed", "in_production", "ready", "fulfilled", "cancelled"]
 }
 
 table "carts" {
@@ -705,7 +720,7 @@ table "cart_items" {
     null = false
   }
   column "line_type" {
-    type = enum.cart_line_type
+    type = enum.line_type
     null = false
   }
   column "product_id" {
@@ -719,6 +734,11 @@ table "cart_items" {
   column "quantity" {
     type = int
     null = false
+  }
+  column "configuration" {
+    type    = jsonb
+    null    = false
+    default = sql("'{}'::jsonb")
   }
   column "created_at" {
     type    = timestamptz
@@ -806,6 +826,10 @@ table "orders" {
     type = text
     null = true
   }
+  column "pickup_at" {
+    type = timestamptz
+    null = true
+  }
   column "created_at" {
     type    = timestamptz
     null    = false
@@ -838,6 +862,10 @@ table "orders" {
       desc   = true
     }
   }
+  index "orders_production_pickup_idx" {
+    columns = [column.status, column.pickup_at]
+    where   = "status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)"
+  }
   check "orders_subtotal_cents_check" {
     expr = "subtotal_cents >= 0"
   }
@@ -864,7 +892,7 @@ table "order_items" {
     null = false
   }
   column "line_type" {
-    type = enum.cart_line_type
+    type = enum.line_type
     null = false
   }
   column "product_id" {
@@ -874,6 +902,11 @@ table "order_items" {
   column "combo_id" {
     type = uuid
     null = true
+  }
+  column "configuration" {
+    type    = jsonb
+    null    = false
+    default = sql("'{}'::jsonb")
   }
   column "name" {
     type = text

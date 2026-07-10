@@ -26,6 +26,7 @@ import {
   ordersListFilterSchema,
   type AddCartItemInput,
   type ApplyCartDiscountInput,
+  type CheckoutInput,
   type OrdersListFilterInput,
   type UpdateCartItemInput,
 } from "../schemas";
@@ -119,7 +120,7 @@ export function useRemoveCartDiscount() {
 export function useCheckoutCart() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: checkoutCart,
+    mutationFn: (input: CheckoutInput) => checkoutCart(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerQueryKeys.cart });
       queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });

@@ -6,9 +6,10 @@ INSERT INTO orders (
   discount_cents,
   total_cents,
   discount_code_id,
-  discount_code_snapshot
+  discount_code_snapshot,
+  pickup_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING
   id,
   user_id,
@@ -18,6 +19,7 @@ RETURNING
   total_cents,
   discount_code_id,
   discount_code_snapshot,
+  pickup_at,
   created_at,
   updated_at;
 
@@ -31,6 +33,7 @@ SELECT
   total_cents,
   discount_code_id,
   discount_code_snapshot,
+  pickup_at,
   created_at,
   updated_at
 FROM orders
@@ -46,6 +49,7 @@ SELECT
   total_cents,
   discount_code_id,
   discount_code_snapshot,
+  pickup_at,
   created_at,
   updated_at
 FROM orders
@@ -64,19 +68,21 @@ INSERT INTO order_items (
   line_type,
   product_id,
   combo_id,
+  configuration,
   name,
   slug,
   quantity,
   unit_price_cents,
   line_total_cents
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING
   id,
   order_id,
   line_type,
   product_id,
   combo_id,
+  configuration,
   name,
   slug,
   quantity,
@@ -97,6 +103,7 @@ SELECT
   line_type,
   product_id,
   combo_id,
+  configuration,
   name,
   slug,
   quantity,
@@ -117,6 +124,7 @@ SELECT
   o.total_cents,
   o.discount_code_id,
   o.discount_code_snapshot,
+  o.pickup_at,
   o.created_at,
   o.updated_at,
   u.email AS customer_email,
@@ -150,6 +158,7 @@ SELECT
   o.total_cents,
   o.discount_code_id,
   o.discount_code_snapshot,
+  o.pickup_at,
   o.created_at,
   o.updated_at,
   u.email AS customer_email,
@@ -174,5 +183,50 @@ RETURNING
   total_cents,
   discount_code_id,
   discount_code_snapshot,
+  pickup_at,
   created_at,
   updated_at;
+
+-- name: BakerListProductionOrders :many
+SELECT
+  o.id,
+  o.user_id,
+  o.status,
+  o.subtotal_cents,
+  o.discount_cents,
+  o.total_cents,
+  o.discount_code_id,
+  o.discount_code_snapshot,
+  o.pickup_at,
+  o.created_at,
+  o.updated_at,
+  u.email AS customer_email,
+  cp.display_name AS customer_display_name
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+WHERE o.status IN (
+    'confirmed'::order_status,
+    'in_production'::order_status,
+    'ready'::order_status
+  )
+  AND (
+    sqlc.narg('status')::order_status IS NULL
+    OR o.status = sqlc.narg('status')::order_status
+  )
+ORDER BY o.pickup_at ASC NULLS LAST, o.created_at ASC
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: BakerListProductionOrdersCount :one
+SELECT COUNT(*)::bigint AS count
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE o.status IN (
+    'confirmed'::order_status,
+    'in_production'::order_status,
+    'ready'::order_status
+  )
+  AND (
+    sqlc.narg('status')::order_status IS NULL
+    OR o.status = sqlc.narg('status')::order_status
+  );

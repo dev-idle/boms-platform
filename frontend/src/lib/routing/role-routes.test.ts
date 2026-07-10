@@ -16,7 +16,7 @@ describe("homeRouteForRole", () => {
     expect(homeRouteForRole(USER_ROLE.customer)).toBe(ROUTE.products);
     expect(homeRouteForRole(USER_ROLE.admin)).toBe(ROUTE.admin.dashboard);
     expect(homeRouteForRole(USER_ROLE.staff)).toBe(ROUTE.staff.account.profile);
-    expect(homeRouteForRole(USER_ROLE.baker)).toBe(ROUTE.baker.account.profile);
+    expect(homeRouteForRole(USER_ROLE.baker)).toBe(ROUTE.baker.production);
     expect(homeRouteForRole(USER_ROLE.manager)).toBe(ROUTE.manager.dashboard);
   });
 });
@@ -39,6 +39,7 @@ describe("isPathAllowedForRole", () => {
     expect(isPathAllowedForRole("/baker/account/profile", USER_ROLE.baker)).toBe(
       true,
     );
+    expect(isPathAllowedForRole("/baker/production", USER_ROLE.baker)).toBe(true);
     expect(isPathAllowedForRole("/baker-evil", USER_ROLE.baker)).toBe(false);
     expect(isPathAllowedForRole("/admin/users", USER_ROLE.customer)).toBe(
       false,

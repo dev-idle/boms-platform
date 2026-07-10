@@ -10,6 +10,7 @@ export const PAGE_TITLES = {
   forgotPassword: "Forgot Password",
   cart: "Cart",
   orders: "Orders",
+  production: "Production",
   orderDetail: "Order Detail",
   account: "Account",
   profile: "Profile",

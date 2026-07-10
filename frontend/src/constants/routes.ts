@@ -5,7 +5,7 @@
  *   - Public:   /, /login, /register, /forgot-password, /products, /products/:id
  *   - Customer: /cart, /orders, /customer/account/*
  *   - Staff:    /staff/orders, /staff/orders/:id, /staff/account/*
- *   - Baker:    /baker/account/*
+ *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/account/*
  *   - Admin:    /admin, /admin/users, /admin/account/*
@@ -36,6 +36,8 @@ export const ROUTE = {
     },
   },
   baker: {
+    production: "/baker/production",
+    productionDetail: (id: string) => `/baker/production/${id}`,
     account: {
       profile: "/baker/account/profile",
       password: "/baker/account/password",

@@ -35,7 +35,7 @@ export function orderStatusToPillVariant(status: string): StatusPillVariant {
       return "pending";
     case "confirmed":
       return "confirmed";
-    case "in_progress":
+    case "in_production":
       return "in_progress";
     case "ready":
       return "ready";

@@ -36,14 +36,15 @@ func (r *DiscountCodeRepository) Create(
 		return nil, err
 	}
 	row, err := r.q(ctx).CreateDiscountCode(ctx, sqlcgen.CreateDiscountCodeParams{
-		Code:          params.Code,
-		DiscountType:  discountType,
-		Value:         params.Value,
-		MinOrderCents: optionalInt64(params.MinOrderCents),
-		MaxUses:       optionalInt32(params.MaxUses),
-		StartsAt:      params.StartsAt,
-		EndsAt:        params.EndsAt,
-		IsActive:      params.IsActive,
+		Code:             params.Code,
+		DiscountType:     discountType,
+		Value:            params.Value,
+		MinOrderCents:    optionalInt64(params.MinOrderCents),
+		MaxUses:          optionalInt32(params.MaxUses),
+		MaxDiscountCents: optionalInt64(params.MaxDiscountCents),
+		StartsAt:         params.StartsAt,
+		EndsAt:           params.EndsAt,
+		IsActive:         params.IsActive,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create discount code")
@@ -88,15 +89,16 @@ func (r *DiscountCodeRepository) Update(
 		return nil, err
 	}
 	row, err := r.q(ctx).UpdateDiscountCode(ctx, sqlcgen.UpdateDiscountCodeParams{
-		ID:            params.ID,
-		Code:          params.Code,
-		DiscountType:  discountType,
-		Value:         params.Value,
-		MinOrderCents: optionalInt64(params.MinOrderCents),
-		MaxUses:       optionalInt32(params.MaxUses),
-		StartsAt:      params.StartsAt,
-		EndsAt:        params.EndsAt,
-		IsActive:      params.IsActive,
+		ID:               params.ID,
+		Code:             params.Code,
+		DiscountType:     discountType,
+		Value:            params.Value,
+		MinOrderCents:    optionalInt64(params.MinOrderCents),
+		MaxUses:          optionalInt32(params.MaxUses),
+		MaxDiscountCents: optionalInt64(params.MaxDiscountCents),
+		StartsAt:         params.StartsAt,
+		EndsAt:           params.EndsAt,
+		IsActive:         params.IsActive,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update discount code")
@@ -168,6 +170,9 @@ func mapDiscountCode(row sqlcgen.DiscountCode) (*domaindiscount.Code, error) {
 	}
 	if row.MaxUses.Valid {
 		c.MaxUses = &row.MaxUses.Int32
+	}
+	if row.MaxDiscountCents.Valid {
+		c.MaxDiscountCents = &row.MaxDiscountCents.Int64
 	}
 	if row.DeletedAt.Valid {
 		c.DeletedAt = &row.DeletedAt.Time

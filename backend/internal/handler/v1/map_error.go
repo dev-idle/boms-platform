@@ -100,6 +100,8 @@ func writeMapUsecaseError(c *fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, domainorder.ErrInvalidStatusTransition):
 		return writeAppError(c, apperrors.ErrInvalidOrderStatusTransition)
+	case errors.Is(err, domainorder.ErrInvalidPickupAt):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("pickup_at", "pickup time is outside the allowed window"))
 	}
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {

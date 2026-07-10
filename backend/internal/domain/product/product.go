@@ -14,7 +14,7 @@ type Product struct {
 	Slug        string
 	Description *string
 	PriceCents  int64
-	IsAvailable bool
+	IsActive bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   *time.Time

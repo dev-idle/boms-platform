@@ -19,3 +19,19 @@ sql:
         emit_sql_as_comment: true
         json_tags_case_style: "camel"
         omit_unused_structs: true
+        overrides:
+          - db_type: "citext"
+            go_type: "string"
+          - db_type: "citext"
+            nullable: true
+            go_type: "string"
+          - db_type: "pg_catalog.citext"
+            go_type: "string"
+          - db_type: "pg_catalog.citext"
+            nullable: true
+            go_type: "string"
+          - db_type: "public.citext"
+            go_type: "string"
+          - db_type: "public.citext"
+            nullable: true
+            go_type: "string"

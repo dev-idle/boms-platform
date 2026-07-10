@@ -192,7 +192,7 @@ features/<slice>/
 | Public | `/`, `/login`, `/register` |
 | Customer | `/products`, `/cart`, `/orders`, `/customer/account/{profile,password,delete}` |
 | Staff | `/staff/orders`, `/staff/orders/{id}`, `/staff/account/{profile,password}` |
-| Baker | `/baker/account/{profile,password}` |
+| Baker | `/baker/production`, `/baker/production/:id`, `/baker/account/{profile,password}` |
 | Manager | `/manager`, `/manager/categories`, `/manager/products`, `/manager/account/{profile,password}` |
 | Admin | `/admin`, `/admin/users`, `/admin/users/{new,[id]}`, `/admin/account/profile` (profile + password) |
 
@@ -232,7 +232,7 @@ features/<slice>/
 | Password attack | Argon2id (params from config); timing-safe dummy hash on login |
 | Replay | request-id propagation; refresh rotation |
 | CSRF | SameSite=Lax cookie, internal proxy secret on inbound headers, sanitize `X-User-Role`, `X-Request-ID`, `X-Auth-Hint` |
-| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) |
+| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout + staff/baker status (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) |
 | RBAC | `RequireRole(Admin)` on `/admin/*`; admin can't modify self; staff self-update only fills `full_name`, `phone` |
 | Forced password change | `must_change_password` flag → `RequirePasswordChanged` middleware blocks all routes except `/me` GET and `/me/password` PATCH |
 | Audit | All admin mutations write to `audit_logs` with actor/target/before/after |
@@ -311,11 +311,18 @@ BOMS is a **bakery pickup** flow, not delivery or shipping.
 | **Fulfillment** | Customer orders for **in-store / counter pickup** at the bakery. |
 | **No Address module** | No `addresses` table, no shipping/delivery address on profile or orders, no geocoding, no carrier integration. **Do not add** unless this document is updated first. |
 | **Customer profile** | `customer_profiles`: `display_name`, `phone` (+ account `email` on `users`). Phone is contact info for pickup coordination — **not** a delivery address. |
-| **Checkout / orders** | `orders` stores pricing, discount snapshot, status, line items — **no** `shipping_address`, `delivery_*`, or `pickup_slot` columns in the current schema. |
+| **Checkout / orders** | `orders`: pricing, discount snapshot, `status`, required `pickup_at` at checkout (8:00–18:00 bakery local, 2h lead, 14d max), line items with `configuration` jsonb — **no** shipping/delivery address fields. |
 | **Storefront `BRAND.addressLine`** | Static marketing copy for footer “Visit us” (`constants/brand.ts`) — the **bakery location**, not per-customer data. |
 | **Marketing copy** | UI may say “pickup” but must not imply saved delivery addresses or ship-to-door unless a feature is implemented. |
 
-**Staff workflow:** `staff` updates order status (`pending` → … → `ready`) for counter handoff; no driver/dispatch role.
+**Order status (schema v2):** `pending` → `confirmed` → `in_production` → `ready` → `fulfilled` | `cancelled`.
+
+| Role | Allowed transitions |
+|------|---------------------|
+| **Staff** | `pending`→`confirmed`\|`cancelled`; `confirmed`\|`in_production`→`cancelled`; `ready`→`fulfilled`\|`cancelled` |
+| **Baker** | `confirmed`→`in_production`; `in_production`→`ready` — `GET/PATCH /api/v1/baker/production/*` |
+
+**Staff workflow:** counter confirm/cancel and handoff when `ready`; kitchen progress is baker-owned.
 
 ---
 
@@ -372,6 +379,7 @@ CI must run backend tests + frontend typecheck, lint, test, and build. Productio
 | Asynq queue | client only | add `cmd/worker` + task definitions |
 | WebSocket | n/a | add `internal/adapter/websocket/` when needed |
 | Server actions | DAL ready | wire mutations from RSC pages |
-| Pickup time slot | not in schema | optional future: `pickup_at` on `orders` — still **no** delivery addresses |
+| Pickup time | `orders.pickup_at` (required at checkout) | still **no** delivery addresses |
+| Custom line config | `cart_items.configuration`, `order_items.configuration` jsonb | custom cake templates/inquiries later |
 
 Adding a feature SHOULD follow this spec; deviations require updating this document.

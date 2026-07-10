@@ -76,6 +76,7 @@ func (u *StaffOrderUsecase) List(
 			TotalCents: row.Order.TotalCents,
 			ItemCount:  itemCounts[row.Order.ID],
 			Customer:   toStaffOrderCustomer(&row),
+			PickupAt:   row.Order.PickupAt,
 			CreatedAt:  row.Order.CreatedAt,
 		})
 	}
@@ -115,7 +116,7 @@ func (u *StaffOrderUsecase) PatchStatus(
 		}
 		return nil, err
 	}
-	if !domainorder.CanTransition(beforeRow.Order.Status, targetStatus) {
+	if !domainorder.CanStaffTransition(beforeRow.Order.Status, targetStatus) {
 		return nil, domainorder.ErrInvalidStatusTransition
 	}
 
@@ -161,6 +162,7 @@ func toStaffOrderResponse(row *port.StaffOrderListRow, items []domainorder.Item)
 		DiscountCents:        row.Order.DiscountCents,
 		TotalCents:           row.Order.TotalCents,
 		DiscountCodeSnapshot: row.Order.DiscountCodeSnapshot,
+		PickupAt:             row.Order.PickupAt,
 		Items:                mapOrderItemsToDTO(items),
 		Customer:             toStaffOrderCustomer(row),
 		CreatedAt:            row.Order.CreatedAt,

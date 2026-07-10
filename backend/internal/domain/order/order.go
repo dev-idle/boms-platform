@@ -1,6 +1,7 @@
 package order
 
 import (
+	"encoding/json"
 	"time"
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
@@ -11,15 +12,17 @@ import (
 type Status string
 
 const (
-	StatusPending   Status = "pending"
-	StatusConfirmed Status = "confirmed"
-	StatusCancelled Status = "cancelled"
-	StatusFulfilled Status = "fulfilled"
+	StatusPending      Status = "pending"
+	StatusConfirmed    Status = "confirmed"
+	StatusInProduction Status = "in_production"
+	StatusReady        Status = "ready"
+	StatusCancelled    Status = "cancelled"
+	StatusFulfilled    Status = "fulfilled"
 )
 
 func (s Status) Valid() bool {
 	switch s {
-	case StatusPending, StatusConfirmed, StatusCancelled, StatusFulfilled:
+	case StatusPending, StatusConfirmed, StatusInProduction, StatusReady, StatusCancelled, StatusFulfilled:
 		return true
 	default:
 		return false
@@ -36,6 +39,7 @@ type Order struct {
 	TotalCents           int64
 	DiscountCodeID       *uuid.UUID
 	DiscountCodeSnapshot *string
+	PickupAt             *time.Time
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 }
@@ -47,6 +51,7 @@ type Item struct {
 	LineType       domaincart.LineType
 	ProductID      *uuid.UUID
 	ComboID        *uuid.UUID
+	Configuration  json.RawMessage
 	Name           string
 	Slug           string
 	Quantity       int32

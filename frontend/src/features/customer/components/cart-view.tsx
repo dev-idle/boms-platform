@@ -8,9 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import { ROUTE } from "@/constants/routes";
+import { PICKUP_COPY } from "@/constants/pickup";
 import { STOREFRONT_NAV_COPY } from "@/constants/storefront-nav-copy";
 import { isApiError } from "@/lib/errors";
 import { formatPriceCents } from "@/lib/validation/catalog";
+import {
+  bakeryPickupISOFromLocalInput,
+  defaultPickupLocalInputValue,
+  isPickupLocalValueValid,
+} from "@/lib/validation/pickup";
 
 import {
   useApplyCartDiscount,
@@ -21,6 +27,7 @@ import {
   useUpdateCartItem,
 } from "../hooks";
 import type { CartItem } from "../schemas";
+import { PickupSlotPicker } from "./pickup-slot-picker";
 
 function CartLineItem({ item }: { item: CartItem }) {
   const updateItem = useUpdateCartItem(item.id);
@@ -89,6 +96,9 @@ export function CartView() {
   const removeDiscount = useRemoveCartDiscount();
   const checkout = useCheckoutCart();
   const [discountCode, setDiscountCode] = useState("");
+  const [pickupLocalValue, setPickupLocalValue] = useState(() =>
+    defaultPickupLocalInputValue(),
+  );
 
   if (cartQuery.isPending) {
     return <InlineLoadingState className="storefront-customer-loading" />;
@@ -106,6 +116,13 @@ export function CartView() {
   if (!cart) {
     return null;
   }
+
+  const isPickupValid = isPickupLocalValueValid(pickupLocalValue);
+  const pickupError = !pickupLocalValue
+    ? PICKUP_COPY.required
+    : !isPickupValid
+      ? PICKUP_COPY.outsideWindow
+      : null;
 
   return (
     <div className="storefront-cart">
@@ -184,21 +201,42 @@ export function CartView() {
                 </span>
               </div>
 
+              <div className="storefront-cart-summary__pickup">
+                <PickupSlotPicker
+                  disabled={checkout.isPending}
+                  value={pickupLocalValue}
+                  onChange={setPickupLocalValue}
+                />
+              </div>
+
               <div className="storefront-cart-summary__checkout">
                 <Button
                   className="storefront-cart-summary__checkout-btn"
-                  disabled={!cart.checkout_ready || checkout.isPending}
-                  type="button"
-                  onClick={() =>
-                    checkout.mutate(undefined, {
-                      onSuccess: (order) => {
-                        router.push(ROUTE.orderDetail(order.id));
-                      },
-                    })
+                  disabled={
+                    !cart.checkout_ready || checkout.isPending || !isPickupValid
                   }
+                  type="button"
+                  onClick={() => {
+                    if (!isPickupValid) {
+                      return;
+                    }
+                    checkout.mutate(
+                      { pickup_at: bakeryPickupISOFromLocalInput(pickupLocalValue) },
+                      {
+                        onSuccess: (order) => {
+                          router.push(ROUTE.orderDetail(order.id));
+                        },
+                      },
+                    );
+                  }}
                 >
                   {checkout.isPending ? "Placing order…" : "Checkout"}
                 </Button>
+                {pickupError ? (
+                  <p className="storefront-cart-summary__pickup-error text-caption">
+                    {pickupError}
+                  </p>
+                ) : null}
               </div>
             </div>
           </aside>

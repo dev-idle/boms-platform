@@ -115,7 +115,7 @@ export function ManagerProductsTable() {
                     {formatPriceCents(product.price_cents)}
                   </td>
                   <td className="db-table-status">
-                    <CatalogAvailabilityPill available={product.is_available} />
+                    <CatalogAvailabilityPill available={product.is_active} />
                   </td>
                   <td className="db-table-detail">
                     <DashboardTableRowActions>

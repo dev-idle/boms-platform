@@ -94,7 +94,7 @@ SELECT
     cp.display_name,
     COALESCE(sp.full_name, ap.full_name, '') AS full_name,
     COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
-    sp.employee_code
+    COALESCE(sp.employee_code, ''::citext) AS employee_code
 FROM users u
 LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 LEFT JOIN staff_profiles sp ON sp.user_id = u.id
@@ -132,7 +132,7 @@ type AdminListRow struct {
 	DisplayName        sql.NullString `db:"display_name" json:"displayName"`
 	FullName           string         `db:"full_name" json:"fullName"`
 	Phone              sql.NullString `db:"phone" json:"phone"`
-	EmployeeCode       sql.NullString `db:"employee_code" json:"employeeCode"`
+	EmployeeCode       string         `db:"employee_code" json:"employeeCode"`
 }
 
 // AdminList
@@ -149,7 +149,7 @@ type AdminListRow struct {
 //	    cp.display_name,
 //	    COALESCE(sp.full_name, ap.full_name, '') AS full_name,
 //	    COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
-//	    sp.employee_code
+//	    COALESCE(sp.employee_code, ''::citext) AS employee_code
 //	FROM users u
 //	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 //	LEFT JOIN staff_profiles sp ON sp.user_id = u.id

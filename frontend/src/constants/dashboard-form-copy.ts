@@ -14,6 +14,7 @@ export const FORM_FIELD_HINT = {
   comboItems: "Each product once. Add two products, or one product with quantity at least 2.",
   discountMaxUses: "Leave empty for unlimited uses.",
   discountMinOrderCents: "Minimum cart total in cents. Leave empty for no minimum.",
+  discountMaxDiscountCents: "Cap percent discounts in cents. Leave empty for no cap.",
   discountPercentOff: "Whole number from 1 to 100.",
   operationalEmployeeCode: "Permanent staff ID. Assigned at creation.",
   productImageUrlFallback: "Maximum 5 HTTPS image URLs.",

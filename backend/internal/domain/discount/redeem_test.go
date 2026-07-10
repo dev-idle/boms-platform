@@ -7,6 +7,19 @@ import (
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 )
 
+func TestComputeDiscountCents_percentCapsAtMax(t *testing.T) {
+	t.Parallel()
+	max := int64(200)
+	code := &domaindiscount.Code{
+		DiscountType:     domaindiscount.TypePercent,
+		Value:            50,
+		MaxDiscountCents: &max,
+	}
+	if got := domaindiscount.ComputeDiscountCents(code, 1000); got != 200 {
+		t.Fatalf("ComputeDiscountCents() = %d, want 200", got)
+	}
+}
+
 func TestComputeDiscountCents_percent(t *testing.T) {
 	t.Parallel()
 	code := &domaindiscount.Code{

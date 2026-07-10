@@ -2,6 +2,8 @@ package port
 
 import (
 	"context"
+	"encoding/json"
+	"time"
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainorder "github.com/boms/backend/internal/domain/order"
@@ -16,6 +18,7 @@ type CreateOrderParams struct {
 	TotalCents           int64
 	DiscountCodeID       *uuid.UUID
 	DiscountCodeSnapshot *string
+	PickupAt             *time.Time
 }
 
 type CreateOrderItemParams struct {
@@ -23,6 +26,7 @@ type CreateOrderItemParams struct {
 	LineType       domaincart.LineType
 	ProductID      *uuid.UUID
 	ComboID        *uuid.UUID
+	Configuration  json.RawMessage
 	Name           string
 	Slug           string
 	Quantity       int32
@@ -48,6 +52,12 @@ type StaffOrderListRow struct {
 	CustomerDisplayName *string
 }
 
+type BakerListOrdersParams struct {
+	Status *domainorder.Status
+	Limit  int32
+	Offset int32
+}
+
 type UpdateOrderStatusParams struct {
 	OrderID    uuid.UUID
 	FromStatus domainorder.Status
@@ -62,6 +72,8 @@ type OrderRepository interface {
 	ListCountByUser(ctx context.Context, userID uuid.UUID) (int64, error)
 	StaffList(ctx context.Context, params StaffListOrdersParams) ([]StaffOrderListRow, error)
 	StaffListCount(ctx context.Context, status *domainorder.Status) (int64, error)
+	BakerListProduction(ctx context.Context, params BakerListOrdersParams) ([]StaffOrderListRow, error)
+	BakerListProductionCount(ctx context.Context, status *domainorder.Status) (int64, error)
 	UpdateStatus(ctx context.Context, params UpdateOrderStatusParams) (*domainorder.Order, error)
 	CreateItems(ctx context.Context, items []CreateOrderItemParams) error
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domainorder.Item, error)

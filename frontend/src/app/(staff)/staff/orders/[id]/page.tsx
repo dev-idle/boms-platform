@@ -1,5 +1,5 @@
 import { StaffOrderDetail } from "@/features/staff";
-import { staffOrderDetailBreadcrumbItems } from "@/features/staff/lib/staff-breadcrumbs";
+import { staffOrderDetailBreadcrumbItems } from "@/features/staff";
 
 import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";

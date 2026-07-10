@@ -21,15 +21,21 @@ type OrderResponse struct {
 	DiscountCents        int64               `json:"discount_cents"`
 	TotalCents           int64               `json:"total_cents"`
 	DiscountCodeSnapshot *string             `json:"discount_code_snapshot,omitempty"`
+	PickupAt             *time.Time          `json:"pickup_at,omitempty"`
 	Items                []OrderItemResponse `json:"items"`
 	CreatedAt            time.Time           `json:"created_at"`
 	UpdatedAt            time.Time           `json:"updated_at"`
 }
 
 type OrderSummaryResponse struct {
-	ID            string    `json:"id"`
-	Status        string    `json:"status"`
-	TotalCents    int64     `json:"total_cents"`
-	ItemCount     int32     `json:"item_count"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID         string     `json:"id"`
+	Status     string     `json:"status"`
+	TotalCents int64      `json:"total_cents"`
+	ItemCount  int32      `json:"item_count"`
+	PickupAt   *time.Time `json:"pickup_at,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
+type CheckoutRequest struct {
+	PickupAt time.Time `json:"pickup_at" validate:"required"`
 }
