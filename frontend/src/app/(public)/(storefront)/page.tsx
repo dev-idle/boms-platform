@@ -5,6 +5,7 @@ import { StorefrontHome } from "@/features/catalog/components/storefront-home";
 import {
   dalListCatalogCategories,
   dalListCatalogProducts,
+  STOREFRONT_CATEGORY_PAGE_SIZE,
 } from "@/lib/dal/catalog";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 
@@ -17,7 +18,7 @@ export default async function HomePage() {
   await connection();
 
   const [categories, products] = await Promise.all([
-    dalListCatalogCategories(8).catch(() => []),
+    dalListCatalogCategories(STOREFRONT_CATEGORY_PAGE_SIZE).catch(() => []),
     dalListCatalogProducts(1, 8).catch(() => []),
   ]);
 

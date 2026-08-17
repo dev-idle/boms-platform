@@ -16,31 +16,32 @@ export function HomeCategories({ categories }: HomeCategoriesProps) {
   return (
     <section
       aria-labelledby="home-categories-heading"
-      className="storefront-section bg-mint"
+      className="storefront-section border-t border-border bg-bg"
     >
       <div className="storefront-container">
-        <div className="reveal flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2
-              className="text-h2"
-              id="home-categories-heading"
-            >
-              Browse by category
-            </h2>
-            <p className="mt-3 text-sm text-muted">
-              From morning viennoiserie to celebration cakes.
-            </p>
-          </div>
+        <div className="text-center">
+          <h2 className="text-h2" id="home-categories-heading">
+            Shop <span className="italic text-matcha-500">by category</span>
+          </h2>
+          <p className="mt-2 text-sm text-muted">
+            From morning viennoiserie to celebration cakes.
+          </p>
         </div>
 
-        <ul className="reveal reveal-delay-1 mt-10 flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="storefront-category-grid mt-8">
           {categories.map((category) => (
-            <li key={category.id} className="shrink-0">
+            <li key={category.id}>
               <Link
-                className="inline-flex min-h-11 items-center rounded-full border border-border bg-surface px-5 py-3 text-sm font-medium text-ink transition-[background-color,box-shadow,color] duration-standard ease-default hover:bg-mint hover:text-matcha-500"
+                className="storefront-category-tile"
                 href={buildCatalogBrowseHref({ category: category.id, page: 1 })}
               >
-                {category.name}
+                <span className="storefront-category-tile__name">
+                  {category.name}
+                </span>
+                <span className="storefront-category-tile__cta">
+                  Shop now
+                  <span aria-hidden="true">→</span>
+                </span>
               </Link>
             </li>
           ))}

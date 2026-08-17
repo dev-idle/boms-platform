@@ -89,7 +89,7 @@ export function ProductDetail({
 
       <article className="catalog-detail__layout">
         <div className="catalog-detail__gallery">
-          <div className="overflow-hidden rounded-card bg-mint shadow-rest">
+          <div className="overflow-hidden rounded-card border border-border bg-mint">
             {heroUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are external manager-provided links
               <img

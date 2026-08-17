@@ -5,19 +5,25 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import {
   CartIcon,
-  HeartIcon,
   SearchIcon,
   UserIcon,
 } from "@/components/icons/storefront-icons";
 import { ROUTE } from "@/constants/routes";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
+
+import type { CatalogCategory } from "@/lib/schemas/catalog";
 import { StorefrontAccountMenu } from "./storefront-account-menu";
+import { StorefrontHeaderNav } from "./storefront-header-nav";
 import { StorefrontHeaderSearch } from "./storefront-header-search";
 import { StorefrontIconButton } from "./storefront-icon-button";
 import { useStorefrontSearchPanel } from "./use-storefront-search-panel";
 
-export function StorefrontHeader() {
+type StorefrontHeaderProps = {
+  categories: CatalogCategory[];
+};
+
+export function StorefrontHeader({ categories }: StorefrontHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchPanelId = useId();
@@ -69,10 +75,6 @@ export function StorefrontHeader() {
               <SearchIcon />
             </StorefrontIconButton>
 
-            <StorefrontIconButton href={ROUTE.products} label="Favorites">
-              <HeartIcon />
-            </StorefrontIconButton>
-
             <StorefrontIconButton href={ROUTE.cart} label="Cart">
               <CartIcon />
             </StorefrontIconButton>
@@ -87,6 +89,8 @@ export function StorefrontHeader() {
           </div>
         </div>
       </div>
+
+      <StorefrontHeaderNav categories={categories} />
 
       <div
         className={cn(

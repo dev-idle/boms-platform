@@ -2789,19 +2789,4 @@
     border-radius: var(--radius-input);
   }
 
-  .reveal {
-    animation: reveal-up var(--duration-page) var(--ease-luxury) both;
-  }
-
-  .reveal-delay-1 {
-    animation-delay: 60ms;
-  }
-
-  .reveal-delay-2 {
-    animation-delay: 120ms;
-  }
-
-  .reveal-delay-3 {
-    animation-delay: 180ms;
-  }
 }

@@ -26,25 +26,6 @@ export function SearchIcon({ className }: IconProps) {
   );
 }
 
-export function HeartIcon({ className }: IconProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={cn("storefront-icon", className)}
-      fill="none"
-      height="24"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.65"
-      viewBox={STOREFRONT_ICON_VIEWBOX}
-      width="24"
-    >
-      <path d="M12 20.5s-6.5-4.35-8.5-8.25C1.9 8.9 3.4 5.5 6.6 5c1.55-.25 3.05.45 4.05 1.75.95-1.3 2.45-2 4-1.75 3.2.5 4.7 3.9 3.1 7.25-2 3.9-8.5 8.25-8.5 8.25z" />
-    </svg>
-  );
-}
-
 export function CartIcon({ className }: IconProps) {
   return (
     <svg

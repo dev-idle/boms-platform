@@ -7,3 +7,6 @@ export const BRAND = {
   contactPhone: "(555) 123-4567",
   addressLine: "123 Greige Lane",
 } as const;
+
+/** `tel:` target derived once — topbar and footer must dial the same number. */
+export const BRAND_PHONE_TEL_HREF = `tel:${BRAND.contactPhone.replace(/\D/g, "")}`;

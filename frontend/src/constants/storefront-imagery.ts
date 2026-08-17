@@ -24,9 +24,6 @@ const VANILLA_CREAM_CHOUX_PHOTO = "photo-1707578365452-56abc4c38873";
 /** Pistachio profiteroles on a white plate — bright outdoor, high-key. */
 const PISTACHIO_PROFITEROLES_PHOTO = "photo-1749280446565-7c6728609f0e";
 
-/** White-glazed eclair — cream/vanilla choux, bright food styling. */
-const VANILLA_ECLAIR_PHOTO = "photo-1774119711073-36b8cc2490a2";
-
 /** Berry patisserie display — product grid only; red accent kept small in frame. */
 const BERRY_PATISSERIE_PHOTO = "photo-1488477181946-6428a0291777";
 
@@ -49,31 +46,12 @@ function unsplashImageUrl(photoId: string, { width, height }: UnsplashCrop): str
 }
 
 export const STOREFRONT_HERO_IMAGE_URL = HERO_MATCHA_CREAM_PUFFS_PATH;
-export const AUTH_PATISSERIE_IMAGE_URL = HERO_MATCHA_CREAM_PUFFS_PATH;
-export const STOREFRONT_MATCHA_PRODUCT_IMAGE_URL = HERO_MATCHA_CREAM_PUFFS_PATH;
-
-export const STOREFRONT_BRAND_STORY_IMAGE_URL = unsplashImageUrl(VANILLA_ECLAIR_PHOTO, {
-  width: 900,
-  height: 900,
-});
-
-export const STOREFRONT_VANILLA_CHOUX_PRODUCT_IMAGE_URL = unsplashImageUrl(
-  VANILLA_CREAM_CHOUX_PHOTO,
-  { width: 960 },
-);
-export const STOREFRONT_PISTACHIO_PRODUCT_IMAGE_URL = unsplashImageUrl(
-  PISTACHIO_PROFITEROLES_PHOTO,
-  { width: 960 },
-);
-export const STOREFRONT_BERRY_PRODUCT_IMAGE_URL = unsplashImageUrl(BERRY_PATISSERIE_PHOTO, {
-  width: 960,
-});
 
 const CATALOG_FALLBACK_IMAGES = [
-  STOREFRONT_MATCHA_PRODUCT_IMAGE_URL,
-  STOREFRONT_PISTACHIO_PRODUCT_IMAGE_URL,
-  STOREFRONT_VANILLA_CHOUX_PRODUCT_IMAGE_URL,
-  STOREFRONT_BERRY_PRODUCT_IMAGE_URL,
+  HERO_MATCHA_CREAM_PUFFS_PATH,
+  unsplashImageUrl(PISTACHIO_PROFITEROLES_PHOTO, { width: 720 }),
+  unsplashImageUrl(VANILLA_CREAM_CHOUX_PHOTO, { width: 720 }),
+  unsplashImageUrl(BERRY_PATISSERIE_PHOTO, { width: 720 }),
 ] as const;
 
 /** Rotating high-key fallbacks when a catalog item has no manager-provided image. */

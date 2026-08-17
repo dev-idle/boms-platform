@@ -106,8 +106,11 @@
   --duration-standard: 200ms;
   --duration-page: 300ms;
 
-  /* Layout — keep storefront + auth header heights in sync */
-  --storefront-header-height: 4.5rem;
+  /* Layout — sticky header = toolbar + category nav rows.
+     Keep --storefront-header-height literal (no calc): scroll-offset JS parses it. */
+  --storefront-toolbar-height: 4.25rem;
+  --storefront-nav-height: 2.75rem;
+  --storefront-header-height: 7rem;
   --storefront-anchor-gap: 3.5rem;
   --storefront-combos-anchor-gap: 1.75rem;
 
@@ -142,6 +145,7 @@
 
 @media (min-width: 64rem) {
   :root {
-    --storefront-header-height: 4.75rem;
+    --storefront-toolbar-height: 4.5rem;
+    --storefront-header-height: 7.25rem;
   }
 }

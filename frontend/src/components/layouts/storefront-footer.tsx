@@ -1,26 +1,43 @@
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
-import { BRAND } from "@/constants/brand";
+import { BRAND, BRAND_PHONE_TEL_HREF } from "@/constants/brand";
 import { ROUTE } from "@/constants/routes";
+import { CATALOG_COMBOS_HEADING_ID } from "@/features/catalog/lib/scroll-to-storefront-anchor";
+import { CUSTOM_CAKE_BROWSE_HREF } from "@/features/catalog/lib/storefront-links";
+
+const FOOTER_SHOP_LINKS = [
+  { label: "All products", href: ROUTE.products },
+  { label: "Combos", href: `${ROUTE.products}#${CATALOG_COMBOS_HEADING_ID}` },
+  { label: "Custom cakes", href: CUSTOM_CAKE_BROWSE_HREF },
+] as const;
 
 export function StorefrontFooter() {
   return (
-    <footer className="relative overflow-hidden bg-mint">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-8 bottom-0 select-none opacity-[0.04]"
-      >
-        <BrandLogo className="scale-[2.5] origin-bottom-right" linked={false} size="lg" />
-      </div>
-
-      <div className="storefront-container relative py-16 sm:py-20">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+    <footer className="border-t border-border bg-bg">
+      <div className="storefront-container py-10 sm:py-12">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <BrandLogo linked={false} size="md" />
             <p className="text-body mt-3">
               {BRAND.tagline}
             </p>
+          </div>
+
+          <div>
+            <p className="text-body font-medium text-ink">Shop</p>
+            <ul className="text-body mt-2 space-y-1">
+              {FOOTER_SHOP_LINKS.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    className="transition-colors duration-standard ease-default hover:text-matcha-500"
+                    href={link.href}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div>
@@ -38,7 +55,7 @@ export function StorefrontFooter() {
               <p>
                 <a
                   className="transition-colors duration-standard ease-default hover:text-matcha-500"
-                  href={`tel:${BRAND.contactPhone.replace(/\D/g, "")}`}
+                  href={BRAND_PHONE_TEL_HREF}
                 >
                   {BRAND.contactPhone}
                 </a>
@@ -56,7 +73,7 @@ export function StorefrontFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-4 pt-8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-caption">
             © {BRAND.name}. All rights reserved.
           </p>
