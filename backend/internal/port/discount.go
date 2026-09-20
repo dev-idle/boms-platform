@@ -9,28 +9,28 @@ import (
 )
 
 type CreateDiscountCodeParams struct {
-	Code          string
-	DiscountType  domaindiscount.Type
-	Value         int64
-	MinOrderCents *int64
+	Code             string
+	DiscountType     domaindiscount.Type
+	Value            int64
+	MinOrderCents    *int64
 	MaxUses          *int32
 	MaxDiscountCents *int64
 	StartsAt         time.Time
-	EndsAt        time.Time
-	IsActive      bool
+	EndsAt           time.Time
+	IsActive         bool
 }
 
 type UpdateDiscountCodeParams struct {
-	ID            uuid.UUID
-	Code          string
-	DiscountType  domaindiscount.Type
-	Value         int64
-	MinOrderCents *int64
+	ID               uuid.UUID
+	Code             string
+	DiscountType     domaindiscount.Type
+	Value            int64
+	MinOrderCents    *int64
 	MaxUses          *int32
 	MaxDiscountCents *int64
 	StartsAt         time.Time
-	EndsAt        time.Time
-	IsActive      bool
+	EndsAt           time.Time
+	IsActive         bool
 }
 
 type ManagerListDiscountCodesParams struct {

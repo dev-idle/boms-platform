@@ -1,6 +1,7 @@
 package discount_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -52,7 +53,7 @@ func TestValidateRedeemable_minOrder(t *testing.T) {
 		EndsAt:        now.Add(time.Hour),
 		MinOrderCents: &min,
 	}
-	if err := domaindiscount.ValidateRedeemable(code, now, 500); err != domaindiscount.ErrMinOrderNotMet {
+	if err := domaindiscount.ValidateRedeemable(code, now, 500); !errors.Is(err, domaindiscount.ErrMinOrderNotMet) {
 		t.Fatalf("ValidateRedeemable() = %v, want ErrMinOrderNotMet", err)
 	}
 }

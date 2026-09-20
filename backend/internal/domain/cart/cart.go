@@ -33,13 +33,13 @@ type Cart struct {
 
 // Item is a single cart line (product or combo reference + quantity).
 type Item struct {
-	ID        uuid.UUID
-	CartID    uuid.UUID
-	LineType  LineType
-	ProductID *uuid.UUID
-	ComboID   *uuid.UUID
-	Quantity       int32
-	Configuration  json.RawMessage
-	CreatedAt      time.Time
-	UpdatedAt time.Time
+	ID            uuid.UUID
+	CartID        uuid.UUID
+	LineType      LineType
+	ProductID     *uuid.UUID
+	ComboID       *uuid.UUID
+	Quantity      int32
+	Configuration json.RawMessage
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }

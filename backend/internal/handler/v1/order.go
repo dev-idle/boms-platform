@@ -2,8 +2,8 @@ package v1
 
 import (
 	"github.com/boms/backend/internal/dto"
-	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/middleware"
+	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
 	"github.com/boms/backend/internal/shared/utils"
 	sharevalidator "github.com/boms/backend/internal/shared/validator"

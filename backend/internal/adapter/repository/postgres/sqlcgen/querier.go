@@ -7,6 +7,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	"github.com/google/uuid"
 )
@@ -433,7 +434,8 @@ type Querier interface {
 	//    created_at,
 	//    updated_at
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
-	//CreateOrderItem
+	// One round trip for every checkout line: the items arrive as a JSON array and
+	// Postgres casts each field to the column type (constraints still apply per row).
 	//
 	//  INSERT INTO order_items (
 	//    order_id,
@@ -447,21 +449,30 @@ type Querier interface {
 	//    unit_price_cents,
 	//    line_total_cents
 	//  )
-	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-	//  RETURNING
-	//    id,
-	//    order_id,
-	//    line_type,
-	//    product_id,
-	//    combo_id,
-	//    configuration,
-	//    name,
-	//    slug,
-	//    quantity,
-	//    unit_price_cents,
-	//    line_total_cents,
-	//    created_at
-	CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderItem, error)
+	//  SELECT
+	//    item.order_id,
+	//    item.line_type,
+	//    item.product_id,
+	//    item.combo_id,
+	//    item.configuration,
+	//    item.name,
+	//    item.slug,
+	//    item.quantity,
+	//    item.unit_price_cents,
+	//    item.line_total_cents
+	//  FROM jsonb_to_recordset($1::jsonb) AS item (
+	//    order_id uuid,
+	//    line_type line_type,
+	//    product_id uuid,
+	//    combo_id uuid,
+	//    configuration jsonb,
+	//    name text,
+	//    slug text,
+	//    quantity integer,
+	//    unit_price_cents bigint,
+	//    line_total_cents bigint
+	//  )
+	CreateOrderItems(ctx context.Context, items json.RawMessage) (int64, error)
 	//CreateProduct
 	//
 	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_active)
@@ -527,6 +538,13 @@ type Querier interface {
 	//  FROM carts
 	//  WHERE user_id = $1
 	GetCartByUserID(ctx context.Context, userID uuid.UUID) (Cart, error)
+	// Checkout locks the cart row so concurrent checkouts of one cart run one at a time.
+	//
+	//  SELECT id, user_id, discount_code_id, created_at, updated_at
+	//  FROM carts
+	//  WHERE user_id = $1
+	//  FOR UPDATE
+	GetCartByUserIDForUpdate(ctx context.Context, userID uuid.UUID) (Cart, error)
 	//GetCartItemByCombo
 	//
 	//  SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
@@ -969,6 +987,29 @@ type Querier interface {
 	//      OR p.slug ILIKE '%' || $2::text || '%'
 	//    )
 	ManagerListProductsCount(ctx context.Context, arg ManagerListProductsCountParams) (int64, error)
+	//NextEmployeeCode
+	//
+	//  SELECT
+	//    (
+	//      'EMP-' || lpad(
+	//        (
+	//          SELECT COALESCE(
+	//            MAX(
+	//              CASE
+	//                WHEN employee_code::text ~ '^EMP-[0-9]+$' THEN
+	//                  NULLIF(regexp_replace(employee_code::text, '^EMP-0*', ''), '')::bigint
+	//              END
+	//            ),
+	//            0
+	//          ) + 1
+	//          FROM staff_profiles
+	//        )::text,
+	//        5,
+	//        '0'
+	//      )
+	//    )::text AS next_code
+	//  FROM (SELECT pg_advisory_xact_lock(8734211)) AS lock
+	NextEmployeeCode(ctx context.Context) (string, error)
 	//SetCartDiscountCodeID
 	//
 	//  UPDATE carts

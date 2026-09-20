@@ -14,12 +14,23 @@ linters:
     - sqlclosecheck
     - bodyclose
     - noctx
+    - errorlint # wrapped errors compared with errors.Is/As
+    - copyloopvar # Go 1.22+ loop variables need no copies
+    - unconvert
+    - nilerr
     # Security (OWASP-style static analysis for Go)
     - gosec
   settings:
     gosec:
       excludes:
         - G104 # overlaps with errcheck on non-test code
+  exclusions:
+    paths:
+      - internal/adapter/repository/postgres/sqlcgen
+
+formatters:
+  enable:
+    - gofmt
   exclusions:
     paths:
       - internal/adapter/repository/postgres/sqlcgen

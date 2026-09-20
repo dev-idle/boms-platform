@@ -3,8 +3,8 @@ package v1
 import (
 	"errors"
 
-	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincart "github.com/boms/backend/internal/domain/cart"
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
@@ -52,6 +52,8 @@ func writeMapUsecaseError(c *fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrEmployeeCodeExists)
 	case errors.Is(err, domainuser.ErrCannotModifySelf):
 		return writeAppError(c, apperrors.ErrCannotModifySelf)
+	case errors.Is(err, domainuser.ErrCannotModifyAdmin):
+		return writeAppError(c, apperrors.ErrCannotModifyAdmin)
 	case errors.Is(err, domainuser.ErrInvalidRoleTransition):
 		return writeAppError(c, apperrors.ErrInvalidRoleTransition)
 	case errors.Is(err, domaincategory.ErrNotFound):

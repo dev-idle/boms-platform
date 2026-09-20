@@ -167,6 +167,14 @@ func main() {
 	adminRead.Get("/:id/activity", adminUserHandler.ListActivity)
 	adminRead.Get("/:id", adminUserHandler.Get)
 
+	adminEmployeeCodes := apiV1.Group(
+		"/admin/employee-codes",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleAdmin),
+		passwordChanged,
+	)
+	adminEmployeeCodes.Get("/next", adminUserHandler.GetNextEmployeeCode)
+
 	adminWrite := apiV1.Group(
 		"/admin/users",
 		middleware.RequireAuthWithSession(tokenSigner, sessionStore),

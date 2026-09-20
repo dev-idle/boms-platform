@@ -319,15 +319,6 @@ func TestAuthUsecase_RefreshUserSoftDeleted(t *testing.T) {
 	sessions.AssertNotCalled(t, "Rotate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
-func TestAuthUsecase_LogoutIdempotent(t *testing.T) {
-	t.Parallel()
-	sessions := new(mockSessionStore)
-	uc := newAuthUC(t, new(mockUserRepo), new(mockCustomerProfileRepo), sessions, new(mockHasher), new(mockSigner))
-
-	sessions.On("Delete", mock.Anything, "u1", "s1").Return(nil)
-	require.NoError(t, uc.Logout(context.Background(), "u1", "s1"))
-}
-
 func TestAuthUsecase_LoginSuccess(t *testing.T) {
 	t.Parallel()
 	users := new(mockUserRepo)

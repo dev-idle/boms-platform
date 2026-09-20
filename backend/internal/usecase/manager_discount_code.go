@@ -118,16 +118,16 @@ func (u *ManagerDiscountCodeUsecase) Update(
 		return nil, err
 	}
 	updateParams := port.UpdateDiscountCodeParams{
-		ID:            id,
-		Code:          params.Code,
-		DiscountType:  params.DiscountType,
-		Value:         params.Value,
-		MinOrderCents: params.MinOrderCents,
+		ID:               id,
+		Code:             params.Code,
+		DiscountType:     params.DiscountType,
+		Value:            params.Value,
+		MinOrderCents:    params.MinOrderCents,
 		MaxUses:          params.MaxUses,
 		MaxDiscountCents: params.MaxDiscountCents,
 		StartsAt:         params.StartsAt,
-		EndsAt:        params.EndsAt,
-		IsActive:      params.IsActive,
+		EndsAt:           params.EndsAt,
+		IsActive:         params.IsActive,
 	}
 
 	updated, err := u.codes.Update(ctx, updateParams)
@@ -209,9 +209,9 @@ func parseDiscountCodeRequest(
 		MinOrderCents:    minOrderCents,
 		MaxUses:          maxUses,
 		MaxDiscountCents: maxDiscountCents,
-		StartsAt:      startsAt,
-		EndsAt:        endsAt,
-		IsActive:      isActive,
+		StartsAt:         startsAt,
+		EndsAt:           endsAt,
+		IsActive:         isActive,
 	}, nil
 }
 
@@ -231,19 +231,19 @@ func validateDiscountValue(discountType domaindiscount.Type, value int64) error 
 
 func toDiscountCodeResponse(code *domaindiscount.Code) *dto.DiscountCodeResponse {
 	return &dto.DiscountCodeResponse{
-		ID:            code.ID.String(),
-		Code:          code.Code,
-		DiscountType:  string(code.DiscountType),
-		Value:         code.Value,
-		MinOrderCents: code.MinOrderCents,
+		ID:               code.ID.String(),
+		Code:             code.Code,
+		DiscountType:     string(code.DiscountType),
+		Value:            code.Value,
+		MinOrderCents:    code.MinOrderCents,
 		MaxUses:          code.MaxUses,
 		MaxDiscountCents: code.MaxDiscountCents,
 		UsedCount:        code.UsedCount,
-		StartsAt:      code.StartsAt,
-		EndsAt:        code.EndsAt,
-		IsActive:      code.IsActive,
-		CreatedAt:     code.CreatedAt,
-		UpdatedAt:     code.UpdatedAt,
+		StartsAt:         code.StartsAt,
+		EndsAt:           code.EndsAt,
+		IsActive:         code.IsActive,
+		CreatedAt:        code.CreatedAt,
+		UpdatedAt:        code.UpdatedAt,
 	}
 }
 

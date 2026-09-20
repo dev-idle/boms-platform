@@ -35,11 +35,11 @@ type CartDiscountResponse struct {
 }
 
 type CartResponse struct {
-	ID             string                `json:"id"`
-	Items          []CartItemResponse    `json:"items"`
-	SubtotalCents  int64                 `json:"subtotal_cents"`
-	Discount       *CartDiscountResponse `json:"discount,omitempty"`
-	DiscountCents  int64                 `json:"discount_cents"`
-	TotalCents     int64                 `json:"total_cents"`
-	CheckoutReady  bool                  `json:"checkout_ready"`
+	ID            string                `json:"id"`
+	Items         []CartItemResponse    `json:"items"`
+	SubtotalCents int64                 `json:"subtotal_cents"`
+	Discount      *CartDiscountResponse `json:"discount,omitempty"`
+	DiscountCents int64                 `json:"discount_cents"`
+	TotalCents    int64                 `json:"total_cents"`
+	CheckoutReady bool                  `json:"checkout_ready"`
 }

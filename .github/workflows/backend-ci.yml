@@ -50,7 +50,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           # v1.x does not support Go 1.26 (see go.mod toolchain); v2.9+ does.
-          version: v2.12.2
+          version: v2.13.2
           working-directory: backend
           args: --timeout=4m
 

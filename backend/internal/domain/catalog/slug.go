@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	ErrInvalidSlug = errors.New("invalid catalog slug")
-	slugPattern    = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
-	slugSeparator  = regexp.MustCompile(`[^a-z0-9]+`)
+	ErrInvalidSlug  = errors.New("invalid catalog slug")
+	slugPattern     = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+	slugSeparator   = regexp.MustCompile(`[^a-z0-9]+`)
 	stripDiacritics = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)))
 )
 

@@ -12,7 +12,7 @@ import (
 	"github.com/boms/backend/internal/shared/utils"
 )
 
-// EnsureDevAdmin creates the sole boot-time default account (admin only) when configured.
+// EnsureDevAdmin creates configured development admin accounts at boot.
 // Other roles are never auto-seeded — create them via register (customer) or admin UI (operational roles).
 func EnsureDevAdmin(
 	ctx context.Context,
@@ -25,8 +25,25 @@ func EnsureDevAdmin(
 	if cfg == nil || strings.ToLower(cfg.App.Env) != "development" {
 		return nil
 	}
-	email := utils.NormalizeEmail(cfg.Seed.DevAdminEmail)
-	password := strings.TrimSpace(cfg.Seed.DevAdminPassword)
+
+	for _, seed := range cfg.Seed.DevAdmins() {
+		if err := ensureDevAdminOne(ctx, users, admins, hasher, tx, seed); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureDevAdminOne(
+	ctx context.Context,
+	users port.UserRepository,
+	admins port.AdminProfileRepository,
+	hasher port.PasswordHasher,
+	tx port.TxManager,
+	seed config.DevAdminSeed,
+) error {
+	email := utils.NormalizeEmail(seed.Email)
+	password := strings.TrimSpace(seed.Password)
 	if email == "" || password == "" {
 		return nil
 	}
@@ -44,8 +61,8 @@ func EnsureDevAdmin(
 			}
 			_, err = admins.Create(ctx, port.UpsertAdminProfileParams{
 				UserID:   existing.ID,
-				FullName: cfg.Seed.DevAdminFullName,
-				Phone:    normalizeSeedPhone(cfg.Seed.DevAdminPhone),
+				FullName: seed.FullName,
+				Phone:    normalizeSeedPhone(seed.Phone),
 			})
 			return err
 		}
@@ -71,8 +88,8 @@ func EnsureDevAdmin(
 		}
 		_, err = admins.Create(txCtx, port.UpsertAdminProfileParams{
 			UserID:   user.ID,
-			FullName: cfg.Seed.DevAdminFullName,
-			Phone:    normalizeSeedPhone(cfg.Seed.DevAdminPhone),
+			FullName: seed.FullName,
+			Phone:    normalizeSeedPhone(seed.Phone),
 		})
 		return err
 	})

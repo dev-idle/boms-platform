@@ -1,2 +1,11 @@
-# Atlas migration checksums are sensitive to line endings; keep LF for CI (Linux) parity.
-backend/migrations/** text eol=lf
+# LF everywhere, independent of each developer's core.autocrlf (matches .editorconfig).
+# gofmt, Atlas checksums and CI (Linux) all expect LF.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

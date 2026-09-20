@@ -1,4 +1,4 @@
-.PHONY: help tidy build run dev test lint fmt vet clean docker-up docker-down sqlc sqlc-vet sqlc-check ci \
+.PHONY: help tidy build run dev test lint fmt vet clean docker-up docker-down seed sqlc sqlc-vet sqlc-check ci \
 	atlas-install atlas-diff atlas-validate atlas-apply atlas-hash
 
 APP_NAME := boms-api
@@ -43,6 +43,9 @@ docker-up: ## Redis (Postgres = Neon in .env)
 
 docker-down: ## Stop Redis
 	docker compose -f scripts/docker-compose.dev.yml down
+
+seed: ## Seed the development catalog (idempotent; requires .env)
+	go run ./cmd/seed
 
 sqlc: ## sqlc generate
 	$(SQLC) generate

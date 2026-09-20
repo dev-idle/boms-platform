@@ -13,7 +13,7 @@ type CreateProductParams struct {
 	Slug        string
 	Description *string
 	PriceCents  int64
-	IsActive bool
+	IsActive    bool
 }
 
 type UpdateProductParams struct {
@@ -23,7 +23,7 @@ type UpdateProductParams struct {
 	Slug        string
 	Description *string
 	PriceCents  int64
-	IsActive bool
+	IsActive    bool
 }
 
 type ManagerListProductsParams struct {

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -190,26 +191,59 @@ func (r *OrderRepository) UpdateStatus(
 	return mapOrder(row), nil
 }
 
+// orderItemRecord is one element of the JSON array CreateOrderItems expands with
+// jsonb_to_recordset; field names must match that query's column definition list.
+type orderItemRecord struct {
+	OrderID        uuid.UUID        `json:"order_id"`
+	LineType       sqlcgen.LineType `json:"line_type"`
+	ProductID      *uuid.UUID       `json:"product_id"`
+	ComboID        *uuid.UUID       `json:"combo_id"`
+	Configuration  json.RawMessage  `json:"configuration"`
+	Name           string           `json:"name"`
+	Slug           string           `json:"slug"`
+	Quantity       int32            `json:"quantity"`
+	UnitPriceCents int64            `json:"unit_price_cents"`
+	LineTotalCents int64            `json:"line_total_cents"`
+}
+
+// CreateItems inserts all order lines in a single statement.
 func (r *OrderRepository) CreateItems(ctx context.Context, items []port.CreateOrderItemParams) error {
+	if len(items) == 0 {
+		return nil
+	}
+	records := make([]orderItemRecord, 0, len(items))
 	for _, item := range items {
-		lineType, err := mapLineTypeToSQL(domaincart.LineType(item.LineType))
+		lineType, err := mapLineTypeToSQL(item.LineType)
 		if err != nil {
 			return err
 		}
-		if _, err := r.q(ctx).CreateOrderItem(ctx, sqlcgen.CreateOrderItemParams{
+		configuration := item.Configuration
+		if len(configuration) == 0 {
+			configuration = json.RawMessage(`{}`)
+		}
+		records = append(records, orderItemRecord{
 			OrderID:        item.OrderID,
 			LineType:       lineType,
-			ProductID:      optionalUUID(item.ProductID),
-			ComboID:        optionalUUID(item.ComboID),
-			Configuration:  item.Configuration,
+			ProductID:      item.ProductID,
+			ComboID:        item.ComboID,
+			Configuration:  configuration,
 			Name:           item.Name,
 			Slug:           item.Slug,
 			Quantity:       item.Quantity,
 			UnitPriceCents: item.UnitPriceCents,
 			LineTotalCents: item.LineTotalCents,
-		}); err != nil {
-			return mapRepoError(err, "create order item")
-		}
+		})
+	}
+	payload, err := json.Marshal(records)
+	if err != nil {
+		return apperrors.Errorf("encode order items: %w", err)
+	}
+	inserted, err := r.q(ctx).CreateOrderItems(ctx, payload)
+	if err != nil {
+		return mapRepoError(err, "create order items")
+	}
+	if inserted != int64(len(records)) {
+		return apperrors.Errorf("create order items: inserted %d of %d", inserted, len(records))
 	}
 	return nil
 }

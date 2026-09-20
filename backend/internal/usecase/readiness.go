@@ -41,7 +41,6 @@ func (r *Readiness) Execute(ctx context.Context) dto.ReadinessResponse {
 		if res == nil {
 			continue
 		}
-		res := res
 		g.Go(func() error {
 			err := res.Ping(gctx)
 			ok := err == nil

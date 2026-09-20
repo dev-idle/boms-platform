@@ -90,22 +90,16 @@ func (u *AdminUserUsecase) CreateOperationalUser(
 			MustChangePassword: true,
 		})
 		if createErr != nil {
+			if errors.Is(createErr, apperrors.ErrConflict) {
+				return ErrEmailExists
+			}
 			return createErr
 		}
 		user = created
 
 		switch role.ProfileType() {
 		case "staff":
-			employeeCode, prepErr := parseStaffSeed(req.EmployeeCode)
-			if prepErr != nil {
-				return prepErr
-			}
-			_, createErr = u.staff.Create(txCtx, port.UpsertStaffProfileParams{
-				UserID:       user.ID,
-				FullName:     req.FullName,
-				Phone:        req.Phone,
-				EmployeeCode: employeeCode,
-			})
+			createErr = u.createStaffProfile(txCtx, user.ID, req.FullName, req.Phone, req.EmployeeCode)
 			return createErr
 		case "admin":
 			_, createErr = u.admins.Create(txCtx, port.UpsertAdminProfileParams{
@@ -124,21 +118,14 @@ func (u *AdminUserUsecase) CreateOperationalUser(
 		return nil, err
 	}
 
-	listRows, _, err := u.users.AdminList(ctx, port.AdminListUsersParams{
-		Search: user.Email,
-		Limit:  1,
-		Offset: 0,
-	})
+	created, err := u.getAdminUserResponse(ctx, user.ID)
 	if err != nil {
 		return nil, err
-	}
-	if len(listRows) == 0 {
-		return nil, apperrors.ErrNotFound
 	}
 
 	u.logAudit(ctx, domainuser.AuditActionAdminCreatedUser, actorID, actorRole, &user.ID, "user", nil, map[string]any{"role": req.Role})
 	return &dto.CreateOperationalUserResponse{
-		User:         mapAdminListItem(listRows[0]),
+		User:         *created,
 		TempPassword: tempPassword,
 	}, nil
 }
@@ -261,20 +248,11 @@ func (u *AdminUserUsecase) UpdateRole(
 				UserID: targetID,
 			})
 		case "staff":
-			employeeCode, prepErr := parseStaffSeed(req.EmployeeCode)
-			if prepErr != nil {
-				return prepErr
-			}
 			fullName := req.FullName
 			if fullName == "" {
 				fullName = strings.Split(target.Email, "@")[0]
 			}
-			_, getErr = u.staff.Create(txCtx, port.UpsertStaffProfileParams{
-				UserID:       targetID,
-				FullName:     fullName,
-				Phone:        req.Phone,
-				EmployeeCode: employeeCode,
-			})
+			getErr = u.createStaffProfile(txCtx, targetID, fullName, req.Phone, req.EmployeeCode)
 		case "admin":
 			fullName := req.FullName
 			if fullName == "" {
@@ -312,6 +290,9 @@ func (u *AdminUserUsecase) UpdateRole(
 func (u *AdminUserUsecase) Enable(ctx context.Context, actorID uuid.UUID, actorRole domainuser.Role, targetID uuid.UUID) error {
 	if actorID == targetID {
 		return domainuser.ErrCannotModifySelf
+	}
+	if err := u.rejectAdminAccountMutation(ctx, targetID); err != nil {
+		return err
 	}
 	if err := u.users.Restore(ctx, targetID); err != nil {
 		return err
@@ -370,6 +351,9 @@ func (u *AdminUserUsecase) Disable(ctx context.Context, actorID uuid.UUID, actor
 	if actorID == targetID {
 		return domainuser.ErrCannotModifySelf
 	}
+	if err := u.rejectAdminAccountMutation(ctx, targetID); err != nil {
+		return err
+	}
 	if err := u.users.SoftDelete(ctx, targetID); err != nil {
 		return err
 	}
@@ -384,6 +368,9 @@ func (u *AdminUserUsecase) RevokeSessions(ctx context.Context, actorID uuid.UUID
 	if actorID == targetID {
 		return domainuser.ErrCannotModifySelf
 	}
+	if err := u.rejectAdminAccountMutation(ctx, targetID); err != nil {
+		return err
+	}
 	if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
 		return err
 	}
@@ -393,6 +380,14 @@ func (u *AdminUserUsecase) RevokeSessions(ctx context.Context, actorID uuid.UUID
 
 func (u *AdminUserUsecase) Get(ctx context.Context, userID uuid.UUID) (*dto.AdminUserResponse, error) {
 	return u.getAdminUserResponse(ctx, userID)
+}
+
+func (u *AdminUserUsecase) PreviewNextEmployeeCode(ctx context.Context) (*dto.NextEmployeeCodeResponse, error) {
+	code, err := u.staff.NextEmployeeCode(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.NextEmployeeCodeResponse{EmployeeCode: code}, nil
 }
 
 func (u *AdminUserUsecase) List(
@@ -492,6 +487,17 @@ func isOperationalRoleChangeTarget(role domainuser.Role) bool {
 	}
 }
 
+func (u *AdminUserUsecase) rejectAdminAccountMutation(ctx context.Context, targetID uuid.UUID) error {
+	target, err := u.users.AdminGetByID(ctx, targetID)
+	if err != nil {
+		return err
+	}
+	if target.Role.IsAdmin() {
+		return domainuser.ErrCannotModifyAdmin
+	}
+	return nil
+}
+
 func parseAdminListRoleFilter(raw string) (*domainuser.Role, error) {
 	trimmed := strings.TrimSpace(strings.ToLower(raw))
 	if trimmed == "" {
@@ -506,11 +512,36 @@ func parseAdminListRoleFilter(raw string) (*domainuser.Role, error) {
 	}
 }
 
-func parseStaffSeed(employeeCode *string) (string, error) {
-	if employeeCode == nil || strings.TrimSpace(*employeeCode) == "" {
-		return "", apperrors.ErrValidation.WithDetail("employee_code", "required for staff roles")
+func (u *AdminUserUsecase) createStaffProfile(
+	ctx context.Context,
+	userID uuid.UUID,
+	fullName string,
+	phone *string,
+	requestedCode *string,
+) error {
+	// No retry on conflict: a failed statement aborts the surrounding transaction, and
+	// NextEmployeeCode already serializes allocation with a transaction-scoped advisory lock.
+	employeeCode, err := u.resolveStaffEmployeeCode(ctx, requestedCode)
+	if err != nil {
+		return err
 	}
-	return strings.TrimSpace(*employeeCode), nil
+	_, err = u.staff.Create(ctx, port.UpsertStaffProfileParams{
+		UserID:       userID,
+		FullName:     fullName,
+		Phone:        phone,
+		EmployeeCode: employeeCode,
+	})
+	return err
+}
+
+func (u *AdminUserUsecase) resolveStaffEmployeeCode(ctx context.Context, requested *string) (string, error) {
+	if requested != nil {
+		code := strings.TrimSpace(*requested)
+		if code != "" {
+			return code, nil
+		}
+	}
+	return u.staff.NextEmployeeCode(ctx)
 }
 
 func (u *AdminUserUsecase) logAudit(ctx context.Context, action domainuser.AuditAction, actorID uuid.UUID, actorRole domainuser.Role, targetID *uuid.UUID, targetType string, before, after any) {

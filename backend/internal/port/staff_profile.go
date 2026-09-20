@@ -19,4 +19,5 @@ type StaffProfileRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*domainprofile.Staff, error)
 	UpdateByUserID(ctx context.Context, params UpsertStaffProfileParams) (*domainprofile.Staff, error)
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
+	NextEmployeeCode(ctx context.Context) (string, error)
 }

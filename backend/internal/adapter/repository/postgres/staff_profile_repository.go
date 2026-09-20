@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domainprofile "github.com/boms/backend/internal/domain/profile"
@@ -57,6 +58,14 @@ func (r *StaffProfileRepository) UpdateByUserID(ctx context.Context, params port
 		return nil, mapStaffError(err, "update staff profile")
 	}
 	return mapStaffProfile(row), nil
+}
+
+func (r *StaffProfileRepository) NextEmployeeCode(ctx context.Context) (string, error) {
+	code, err := r.q(ctx).NextEmployeeCode(ctx)
+	if err != nil {
+		return "", mapStaffError(err, "next employee code")
+	}
+	return strings.TrimSpace(code), nil
 }
 
 func (r *StaffProfileRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {

@@ -47,8 +47,8 @@ type StaffListOrdersParams struct {
 }
 
 type StaffOrderListRow struct {
-	Order              domainorder.Order
-	CustomerEmail      string
+	Order               domainorder.Order
+	CustomerEmail       string
 	CustomerDisplayName *string
 }
 

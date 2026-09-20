@@ -378,7 +378,9 @@ func (u *CartUsecase) pricedCartForCheckout(ctx context.Context, userID uuid.UUI
 	cartTotals,
 	error,
 ) {
-	cart, err := u.carts.GetByUserID(ctx, userID)
+	// Row lock: a second concurrent checkout waits here, then finds the cart emptied
+	// by the first and fails with ErrEmpty instead of creating a duplicate order.
+	cart, err := u.carts.GetByUserIDForUpdate(ctx, userID)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
 			return nil, nil, nil, cartTotals{}, domaincart.ErrEmpty

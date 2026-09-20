@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -85,7 +86,7 @@ func (s *SessionStore) Get(ctx context.Context, userID, sessionID string) (domai
 	key := sessionKey(userID, sessionID)
 	raw, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
-		if err == goredis.Nil {
+		if errors.Is(err, goredis.Nil) {
 			return domainsession.SessionMeta{}, apperrors.ErrNotFound
 		}
 		return domainsession.SessionMeta{}, fmt.Errorf("get session: %w", err)

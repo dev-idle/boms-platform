@@ -91,6 +91,58 @@ func (q *Queries) GetStaffProfileByUserID(ctx context.Context, userID uuid.UUID)
 	return i, err
 }
 
+const nextEmployeeCode = `-- name: NextEmployeeCode :one
+SELECT
+  (
+    'EMP-' || lpad(
+      (
+        SELECT COALESCE(
+          MAX(
+            CASE
+              WHEN employee_code::text ~ '^EMP-[0-9]+$' THEN
+                NULLIF(regexp_replace(employee_code::text, '^EMP-0*', ''), '')::bigint
+            END
+          ),
+          0
+        ) + 1
+        FROM staff_profiles
+      )::text,
+      5,
+      '0'
+    )
+  )::text AS next_code
+FROM (SELECT pg_advisory_xact_lock(8734211)) AS lock
+`
+
+// NextEmployeeCode
+//
+//	SELECT
+//	  (
+//	    'EMP-' || lpad(
+//	      (
+//	        SELECT COALESCE(
+//	          MAX(
+//	            CASE
+//	              WHEN employee_code::text ~ '^EMP-[0-9]+$' THEN
+//	                NULLIF(regexp_replace(employee_code::text, '^EMP-0*', ''), '')::bigint
+//	            END
+//	          ),
+//	          0
+//	        ) + 1
+//	        FROM staff_profiles
+//	      )::text,
+//	      5,
+//	      '0'
+//	    )
+//	  )::text AS next_code
+//	FROM (SELECT pg_advisory_xact_lock(8734211)) AS lock
+func (q *Queries) NextEmployeeCode(ctx context.Context) (string, error) {
+	row := q.db.QueryRowContext(ctx, nextEmployeeCode)
+	var next_code string
+	err := row.Scan(&next_code)
+	return next_code, err
+}
+
 const updateStaffProfileByUserID = `-- name: UpdateStaffProfileByUserID :one
 UPDATE staff_profiles
 SET full_name = $2,

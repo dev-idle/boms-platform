@@ -24,7 +24,7 @@ type MeStaffProfileResponse struct {
 	Type         string  `json:"type"`
 	FullName     string  `json:"full_name"`
 	Phone        *string `json:"phone,omitempty"`
-	EmployeeCode string `json:"employee_code"`
+	EmployeeCode string  `json:"employee_code"`
 }
 
 type MeAdminProfileResponse struct {

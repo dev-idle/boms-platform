@@ -240,14 +240,6 @@ const (
 	LogoutSourceNone LogoutSource = "none"
 )
 
-// Logout removes a single session (idempotent — missing key is OK).
-func (a *AuthUsecase) Logout(ctx context.Context, userID, sessionID string) error {
-	if err := a.sessionStore.Delete(ctx, userID, sessionID); err != nil {
-		return apperrors.Errorf("delete session: %w", err)
-	}
-	return nil
-}
-
 // LogoutHybrid best-effort idempotent logout: Bearer path takes priority over refresh cookie.
 // Always safe to call; never returns an error (handler responds 204 regardless).
 func (a *AuthUsecase) LogoutHybrid(
@@ -278,8 +270,13 @@ func (a *AuthUsecase) LogoutHybrid(
 }
 
 func (a *AuthUsecase) revokeSessionBestEffort(ctx context.Context, userID, sessionID string, source LogoutSource) {
-	_ = a.sessionStore.Delete(ctx, userID, sessionID)
+	err := a.sessionStore.Delete(ctx, userID, sessionID)
 	if a.log != nil {
+		if err != nil {
+			// Logout stays best-effort (the cookie is cleared regardless); record the failure
+			// so a revoked-looking session that is still live in Redis is observable.
+			a.log.Warn("auth_logout_revoke_failed", zap.String("user_id", userID), zap.Error(err))
+		}
 		// session_id is intentionally omitted: session identifiers are bearer-adjacent
 		// secrets and must not reach log sinks. user_id is enough for audit correlation.
 		a.log.Info("auth_logout",
@@ -287,32 +284,4 @@ func (a *AuthUsecase) revokeSessionBestEffort(ctx context.Context, userID, sessi
 			zap.String("auth_source", string(source)),
 		)
 	}
-}
-
-// ChangePassword verifies the old password, updates the hash, and revokes all sessions.
-func (a *AuthUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldPwd, newPwd string) error {
-	user, err := a.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, apperrors.ErrNotFound) {
-			return ErrUserNotFound
-		}
-		return apperrors.Errorf("get user: %w", err)
-	}
-	if err := a.hasher.Verify(user.PasswordHash, oldPwd); err != nil {
-		return apperrors.ErrInvalidCredentials
-	}
-	hash, err := a.hasher.Hash(newPwd)
-	if err != nil {
-		return apperrors.Errorf("hash password: %w", err)
-	}
-	if err := a.userRepo.UpdatePassword(ctx, userID, hash); err != nil {
-		return apperrors.Errorf("update password: %w", err)
-	}
-	if err := a.userRepo.ClearMustChangePassword(ctx, userID); err != nil && !errors.Is(err, apperrors.ErrNotFound) {
-		return apperrors.Errorf("clear must-change-password: %w", err)
-	}
-	if err := a.sessionStore.DeleteAllForUser(ctx, userID.String()); err != nil {
-		return apperrors.Errorf("revoke sessions: %w", err)
-	}
-	return nil
 }

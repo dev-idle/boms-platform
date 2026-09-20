@@ -101,11 +101,9 @@ Canonical implementation: `GET /admin/users` (`handler/v1/admin_user.go`, `useca
 | Feature defaults & max `page_size` | `usecase/*_list_page.go` (int32 const + derived query default string; e.g. admin: 20 / 100) |
 | SQL `LIMIT`/`OFFSET` | `port.*Params` as `int32`; usecase returns effective page values for `OKPaginated` meta |
 
-**Rules:** normalize once in usecase (zero-trust); handler does not duplicate clamp; never `strconv.Atoi` → `int` → `int32` for SQL limits. Admin list excludes soft-deleted users (`deleted_at IS NULL`). Agent detail: `.cursor/rules/backend-pagination-query.mdc` (local).
+**Rules:** normalize once in usecase (zero-trust); handler does not duplicate clamp; never `strconv.Atoi` → `int` → `int32` for SQL limits. Admin list excludes soft-deleted users (`deleted_at IS NULL`).
 
-**Handler errors:** map usecase failures with `handler/v1/writeMapUsecaseError` — see `.cursor/rules/backend-handler-errors.mdc` (local).
-
-**Agent / local dev:** `.cursor/rules/backend-overview.mdc` is the BE entry point (links security, pagination, hexagonal, testing). `.cursor/` is per-developer (often gitignored).
+**Handler errors:** map usecase failures with `handler/v1/writeMapUsecaseError`; repositories map pgx errors with `mapRepoError`; bind/validation failures use `writeValidationError`.
 
 ---
 
@@ -122,13 +120,15 @@ frontend/src/
 │   ├── (baker)/                 # /baker/account/*
 │   ├── (manager)/               # /manager, /manager/categories, /manager/products, /combos, /discount-codes, /account/*
 │   └── (admin)/admin/           # /admin, /admin/users, /admin/account/*
-├── features/                    # Feature slices (auth | user | admin | manager | staff | customer)
+├── features/                    # Feature slices (auth | user | admin | manager | staff | baker | customer | catalog)
 │   ├── auth/                    # api/, schemas/, hooks/, components/, lib/, provider/
 │   ├── user/                    # api/, schemas/, types/, hooks/, components/
 │   ├── admin/                   # api/, schemas/, types/, hooks/, components/
 │   ├── manager/                 # catalog CRUD → /api/v1/manager/*
 │   ├── staff/                   # order queue → /api/v1/staff/orders/*
-│   └── customer/                # catalog browse → /api/v1/catalog/*
+│   ├── baker/                   # production queue → /api/v1/baker/production/*
+│   ├── customer/                # cart, checkout, orders → /api/v1/cart/*, /orders/*
+│   └── catalog/                 # storefront browse → /api/v1/catalog/*
 ├── components/
 │   ├── ui/                      # Primitives (button, input, form, confirm-dialog)
 │   └── layouts/                 # dashboard-shell.tsx, staff/manager/baker/admin-shell.tsx
@@ -183,8 +183,6 @@ features/<slice>/
 
 **Rules:** no `features/index.ts` meta-barrel; `app/` pages stay thin; RBAC gates are UX — backend enforces roles.
 
-**Agent / local dev:** `.cursor/rules/frontend-overview.mdc` is the FE entry point (links security, performance, FSD, data, testing). `.cursor/` is per-developer (often gitignored).
-
 ### URL conventions (canonical from `constants/routes.ts`)
 
 | Audience | URLs |
@@ -196,7 +194,7 @@ features/<slice>/
 | Manager | `/manager`, `/manager/categories`, `/manager/products`, `/manager/account/{profile,password}` |
 | Admin | `/admin`, `/admin/users`, `/admin/users/{new,[id]}`, `/admin/account/profile` (profile + password) |
 
-**Rule:** one role = one namespace. Each role may only access its own URL prefix (enforced by FE `RoleGate` + post-login redirect). Only `admin` is seeded in development (`bootstrap.EnsureDevAdmin`). No mixing of `/dashboard/*` with `/admin/*`. Agent/dev canonical detail: `.cursor/rules/roles.mdc` (local, not committed).
+**Rule:** one role = one namespace. Each role may only access its own URL prefix (enforced by FE `RoleGate` + post-login redirect). Only `admin` is seeded in development (`bootstrap.EnsureDevAdmin`). No mixing of `/dashboard/*` with `/admin/*`.
 
 ### Naming conventions
 
@@ -293,9 +291,10 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Admin user CRUD | `features/admin` (FE) + `usecase/admin_user` (BE) |
 | Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` + `manager_combo` + `manager_discount_code` (BE) |
 | Product images (Cloudinary) | `lib/cloudinary/*` + `components/ui/catalog-image-list-field` (FE) + `usecase/manager_media` + `service/cloudinary` (BE) |
-| Customer catalog browse | `features/customer` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
+| Storefront catalog browse | `features/catalog` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
 | Customer cart & checkout | `features/customer` (FE) + `usecase/cart` + `usecase/order` (BE) — `/cart/*`, `/orders/*` (session + server pricing; **pickup-only**, see below) |
 | Staff order queue | `features/staff` (FE) + `usecase/staff_order` (BE) — `/staff/orders/*` (list, detail, status transitions) |
+| Baker production queue | `features/baker` (FE) + `usecase/baker_order` (BE) — `/baker/production/*` (list, detail, kitchen transitions) |
 | Audit logs | `service/auditlogger` (BE only) |
 | Profile entity dispatch | `service/profilesvc` (BE) |
 | Routes table | `constants/routes.ts` (FE) |

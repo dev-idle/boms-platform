@@ -62,7 +62,9 @@ SELECT COUNT(*)::bigint AS count
 FROM orders
 WHERE user_id = $1;
 
--- name: CreateOrderItem :one
+-- name: CreateOrderItems :execrows
+-- One round trip for every checkout line: the items arrive as a JSON array and
+-- Postgres casts each field to the column type (constraints still apply per row).
 INSERT INTO order_items (
   order_id,
   line_type,
@@ -75,20 +77,29 @@ INSERT INTO order_items (
   unit_price_cents,
   line_total_cents
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING
-  id,
-  order_id,
-  line_type,
-  product_id,
-  combo_id,
-  configuration,
-  name,
-  slug,
-  quantity,
-  unit_price_cents,
-  line_total_cents,
-  created_at;
+SELECT
+  item.order_id,
+  item.line_type,
+  item.product_id,
+  item.combo_id,
+  item.configuration,
+  item.name,
+  item.slug,
+  item.quantity,
+  item.unit_price_cents,
+  item.line_total_cents
+FROM jsonb_to_recordset(sqlc.arg('items')::jsonb) AS item (
+  order_id uuid,
+  line_type line_type,
+  product_id uuid,
+  combo_id uuid,
+  configuration jsonb,
+  name text,
+  slug text,
+  quantity integer,
+  unit_price_cents bigint,
+  line_total_cents bigint
+);
 
 -- name: SumOrderItemQuantitiesByOrderIDs :many
 SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count

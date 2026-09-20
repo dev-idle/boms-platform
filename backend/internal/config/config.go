@@ -14,20 +14,20 @@ import (
 // Config holds all runtime configuration. Keep fields explicit—avoid map[string]any
 // for application settings so validation stays compile-time friendly.
 type Config struct {
-	App      AppConfig
-	HTTP     HTTPConfig
-	CORS     CORSConfig
-	Rate     RateLimitConfig
-	RateRedis RateLimitRedisConfig
-	Postgres PostgresConfig
-	Redis    RedisConfig
-	Asynq    AsynqConfig
-	Log      LogConfig
-	JWT      JWTConfig
-	Session  SessionConfig
-	Cookie   CookieConfig
-	Argon2   Argon2Config
-	Seed     SeedConfig
+	App        AppConfig
+	HTTP       HTTPConfig
+	CORS       CORSConfig
+	Rate       RateLimitConfig
+	RateRedis  RateLimitRedisConfig
+	Postgres   PostgresConfig
+	Redis      RedisConfig
+	Asynq      AsynqConfig
+	Log        LogConfig
+	JWT        JWTConfig
+	Session    SessionConfig
+	Cookie     CookieConfig
+	Argon2     Argon2Config
+	Seed       SeedConfig
 	Cloudinary CloudinaryConfig
 }
 
@@ -62,22 +62,22 @@ type RateLimitConfig struct {
 
 // RateLimitRedisConfig tunes Redis sliding-window limiters on auth and admin routes.
 type RateLimitRedisConfig struct {
-	AuthAttemptMax        int
-	AuthAttemptWindow     time.Duration
-	AuthRefreshMax        int
-	AuthRefreshWindow     time.Duration
-	AuthLogoutMax         int
-	AuthLogoutWindow      time.Duration
-	AdminWriteMax         int
-	AdminWriteWindow      time.Duration
-	ManagerWriteMax       int
-	ManagerWriteWindow    time.Duration
-	OrderWriteMax         int
-	OrderWriteWindow      time.Duration
-	ManagerMediaMax       int
-	ManagerMediaWindow    time.Duration
-	AuthUserMax           int
-	AuthUserWindow        time.Duration
+	AuthAttemptMax     int
+	AuthAttemptWindow  time.Duration
+	AuthRefreshMax     int
+	AuthRefreshWindow  time.Duration
+	AuthLogoutMax      int
+	AuthLogoutWindow   time.Duration
+	AdminWriteMax      int
+	AdminWriteWindow   time.Duration
+	ManagerWriteMax    int
+	ManagerWriteWindow time.Duration
+	OrderWriteMax      int
+	OrderWriteWindow   time.Duration
+	ManagerMediaMax    int
+	ManagerMediaWindow time.Duration
+	AuthUserMax        int
+	AuthUserWindow     time.Duration
 }
 
 type PostgresConfig struct {
@@ -146,13 +146,14 @@ type SeedConfig struct {
 	DevAdminPassword string
 	DevAdminFullName string
 	DevAdminPhone    string
+	DevAdminExtras   []DevAdminSeed
 }
 
 // CloudinaryConfig holds signed-upload credentials (API secret stays server-side only).
 type CloudinaryConfig struct {
-	CloudName  string
-	APIKey     string
-	APISecret  string
+	CloudName    string
+	APIKey       string
+	APISecret    string
 	UploadFolder string
 }
 
@@ -207,6 +208,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	argon2KeyLength, err := uint32FromInt("argon2.key_length", v.GetInt("argon2.key_length"))
+	if err != nil {
+		return nil, err
+	}
+
+	devAdminExtras, err := parseDevAdminExtras(v.GetString("seed.dev_admin_extras"))
 	if err != nil {
 		return nil, err
 	}
@@ -310,6 +316,7 @@ func Load() (*Config, error) {
 			DevAdminPassword: v.GetString("seed.dev_admin_password"),
 			DevAdminFullName: v.GetString("seed.dev_admin_full_name"),
 			DevAdminPhone:    v.GetString("seed.dev_admin_phone"),
+			DevAdminExtras:   devAdminExtras,
 		},
 		Cloudinary: CloudinaryConfig{
 			CloudName:    v.GetString("cloudinary.cloud_name"),
@@ -410,6 +417,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("seed.dev_admin_password", "")
 	v.SetDefault("seed.dev_admin_full_name", "Development Admin")
 	v.SetDefault("seed.dev_admin_phone", "")
+	v.SetDefault("seed.dev_admin_extras", "")
 
 	v.SetDefault("cloudinary.cloud_name", "")
 	v.SetDefault("cloudinary.api_key", "")
@@ -488,6 +496,11 @@ func (c *Config) Validate() error {
 	}
 	if strings.TrimSpace(c.Seed.DevAdminEmail) != "" && strings.TrimSpace(c.Seed.DevAdminPassword) == "" {
 		return errors.New("seed.dev_admin_password is required when seed.dev_admin_email is set")
+	}
+	for _, admin := range c.Seed.DevAdmins() {
+		if strings.TrimSpace(admin.Email) != "" && strings.TrimSpace(admin.Password) == "" {
+			return errors.New("seed dev admin password is required when email is set")
+		}
 	}
 
 	env := strings.ToLower(strings.TrimSpace(c.App.Env))

@@ -3,6 +3,13 @@ SELECT id, user_id, discount_code_id, created_at, updated_at
 FROM carts
 WHERE user_id = $1;
 
+-- name: GetCartByUserIDForUpdate :one
+-- Checkout locks the cart row so concurrent checkouts of one cart run one at a time.
+SELECT id, user_id, discount_code_id, created_at, updated_at
+FROM carts
+WHERE user_id = $1
+FOR UPDATE;
+
 -- name: CreateCart :one
 INSERT INTO carts (user_id)
 VALUES ($1)

@@ -261,7 +261,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 	return i, err
 }
 
-const createOrderItem = `-- name: CreateOrderItem :one
+const createOrderItems = `-- name: CreateOrderItems :execrows
 INSERT INTO order_items (
   order_id,
   line_type,
@@ -274,36 +274,33 @@ INSERT INTO order_items (
   unit_price_cents,
   line_total_cents
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING
-  id,
-  order_id,
-  line_type,
-  product_id,
-  combo_id,
-  configuration,
-  name,
-  slug,
-  quantity,
-  unit_price_cents,
-  line_total_cents,
-  created_at
+SELECT
+  item.order_id,
+  item.line_type,
+  item.product_id,
+  item.combo_id,
+  item.configuration,
+  item.name,
+  item.slug,
+  item.quantity,
+  item.unit_price_cents,
+  item.line_total_cents
+FROM jsonb_to_recordset($1::jsonb) AS item (
+  order_id uuid,
+  line_type line_type,
+  product_id uuid,
+  combo_id uuid,
+  configuration jsonb,
+  name text,
+  slug text,
+  quantity integer,
+  unit_price_cents bigint,
+  line_total_cents bigint
+)
 `
 
-type CreateOrderItemParams struct {
-	OrderID        uuid.UUID       `db:"order_id" json:"orderId"`
-	LineType       LineType        `db:"line_type" json:"lineType"`
-	ProductID      uuid.NullUUID   `db:"product_id" json:"productId"`
-	ComboID        uuid.NullUUID   `db:"combo_id" json:"comboId"`
-	Configuration  json.RawMessage `db:"configuration" json:"configuration"`
-	Name           string          `db:"name" json:"name"`
-	Slug           string          `db:"slug" json:"slug"`
-	Quantity       int32           `db:"quantity" json:"quantity"`
-	UnitPriceCents int64           `db:"unit_price_cents" json:"unitPriceCents"`
-	LineTotalCents int64           `db:"line_total_cents" json:"lineTotalCents"`
-}
-
-// CreateOrderItem
+// One round trip for every checkout line: the items arrive as a JSON array and
+// Postgres casts each field to the column type (constraints still apply per row).
 //
 //	INSERT INTO order_items (
 //	  order_id,
@@ -317,49 +314,35 @@ type CreateOrderItemParams struct {
 //	  unit_price_cents,
 //	  line_total_cents
 //	)
-//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-//	RETURNING
-//	  id,
-//	  order_id,
-//	  line_type,
-//	  product_id,
-//	  combo_id,
-//	  configuration,
-//	  name,
-//	  slug,
-//	  quantity,
-//	  unit_price_cents,
-//	  line_total_cents,
-//	  created_at
-func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderItem, error) {
-	row := q.db.QueryRowContext(ctx, createOrderItem,
-		arg.OrderID,
-		arg.LineType,
-		arg.ProductID,
-		arg.ComboID,
-		arg.Configuration,
-		arg.Name,
-		arg.Slug,
-		arg.Quantity,
-		arg.UnitPriceCents,
-		arg.LineTotalCents,
-	)
-	var i OrderItem
-	err := row.Scan(
-		&i.ID,
-		&i.OrderID,
-		&i.LineType,
-		&i.ProductID,
-		&i.ComboID,
-		&i.Configuration,
-		&i.Name,
-		&i.Slug,
-		&i.Quantity,
-		&i.UnitPriceCents,
-		&i.LineTotalCents,
-		&i.CreatedAt,
-	)
-	return i, err
+//	SELECT
+//	  item.order_id,
+//	  item.line_type,
+//	  item.product_id,
+//	  item.combo_id,
+//	  item.configuration,
+//	  item.name,
+//	  item.slug,
+//	  item.quantity,
+//	  item.unit_price_cents,
+//	  item.line_total_cents
+//	FROM jsonb_to_recordset($1::jsonb) AS item (
+//	  order_id uuid,
+//	  line_type line_type,
+//	  product_id uuid,
+//	  combo_id uuid,
+//	  configuration jsonb,
+//	  name text,
+//	  slug text,
+//	  quantity integer,
+//	  unit_price_cents bigint,
+//	  line_total_cents bigint
+//	)
+func (q *Queries) CreateOrderItems(ctx context.Context, items json.RawMessage) (int64, error) {
+	result, err := q.db.ExecContext(ctx, createOrderItems, items)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const getOrderByIDForUser = `-- name: GetOrderByIDForUser :one

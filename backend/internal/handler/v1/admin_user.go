@@ -52,6 +52,15 @@ func (h *AdminUserHandler) ListActivity(c *fiber.Ctx) error {
 	return response.OKPaginated(c, items, int(page), int(pageSize), total)
 }
 
+func (h *AdminUserHandler) GetNextEmployeeCode(c *fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	out, err := h.usecase.PreviewNextEmployeeCode(c.UserContext())
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OK(c, out)
+}
+
 func (h *AdminUserHandler) List(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	page := utils.ParseQueryInt32(c.Query("page", "1"), 1)

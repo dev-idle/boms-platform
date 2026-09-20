@@ -23,6 +23,8 @@ type UpdateCartItemQuantityParams struct {
 
 type CartRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*domaincart.Cart, error)
+	// GetByUserIDForUpdate row-locks the cart; call it only inside a transaction.
+	GetByUserIDForUpdate(ctx context.Context, userID uuid.UUID) (*domaincart.Cart, error)
 	CreateForUser(ctx context.Context, userID uuid.UUID) (*domaincart.Cart, error)
 	SetDiscountCodeID(ctx context.Context, cartID uuid.UUID, discountCodeID *uuid.UUID) error
 	ClearDiscountCode(ctx context.Context, cartID uuid.UUID) error

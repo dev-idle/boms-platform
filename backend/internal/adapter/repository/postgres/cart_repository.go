@@ -33,6 +33,18 @@ func (r *CartRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*do
 	return mapCart(row), nil
 }
 
+// GetByUserIDForUpdate locks the cart row until the surrounding transaction ends.
+func (r *CartRepository) GetByUserIDForUpdate(ctx context.Context, userID uuid.UUID) (*domaincart.Cart, error) {
+	if txFromContext(ctx) == nil {
+		return nil, apperrors.Errorf("get cart for update: requires a transaction")
+	}
+	row, err := r.q(ctx).GetCartByUserIDForUpdate(ctx, userID)
+	if err != nil {
+		return nil, mapRepoError(err, "get cart by user for update")
+	}
+	return mapCart(row), nil
+}
+
 func (r *CartRepository) CreateForUser(ctx context.Context, userID uuid.UUID) (*domaincart.Cart, error) {
 	row, err := r.q(ctx).CreateCart(ctx, userID)
 	if err != nil {

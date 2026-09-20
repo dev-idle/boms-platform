@@ -171,6 +171,32 @@ func (q *Queries) GetCartByUserID(ctx context.Context, userID uuid.UUID) (Cart, 
 	return i, err
 }
 
+const getCartByUserIDForUpdate = `-- name: GetCartByUserIDForUpdate :one
+SELECT id, user_id, discount_code_id, created_at, updated_at
+FROM carts
+WHERE user_id = $1
+FOR UPDATE
+`
+
+// Checkout locks the cart row so concurrent checkouts of one cart run one at a time.
+//
+//	SELECT id, user_id, discount_code_id, created_at, updated_at
+//	FROM carts
+//	WHERE user_id = $1
+//	FOR UPDATE
+func (q *Queries) GetCartByUserIDForUpdate(ctx context.Context, userID uuid.UUID) (Cart, error) {
+	row := q.db.QueryRowContext(ctx, getCartByUserIDForUpdate, userID)
+	var i Cart
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.DiscountCodeID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getCartItemByCombo = `-- name: GetCartItemByCombo :one
 SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items

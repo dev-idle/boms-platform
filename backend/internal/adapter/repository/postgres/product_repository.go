@@ -33,7 +33,7 @@ func (r *ProductRepository) Create(ctx context.Context, params port.CreateProduc
 		Slug:        params.Slug,
 		Description: optionalString(params.Description),
 		PriceCents:  params.PriceCents,
-		IsActive: params.IsActive,
+		IsActive:    params.IsActive,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create product")
@@ -57,7 +57,7 @@ func (r *ProductRepository) Update(ctx context.Context, params port.UpdateProduc
 		Slug:        params.Slug,
 		Description: optionalString(params.Description),
 		PriceCents:  params.PriceCents,
-		IsActive: params.IsActive,
+		IsActive:    params.IsActive,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update product")
@@ -268,14 +268,14 @@ func mapManagerJoinedProduct(
 	categoryName string,
 ) port.ManagerListProduct {
 	p := &domainproduct.Product{
-		ID:          id,
-		CategoryID:  categoryID,
-		Name:        name,
-		Slug:        slug,
-		PriceCents:  priceCents,
-		IsActive: isActive,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
+		ID:         id,
+		CategoryID: categoryID,
+		Name:       name,
+		Slug:       slug,
+		PriceCents: priceCents,
+		IsActive:   isActive,
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
 	}
 	if description.Valid {
 		desc := description.String
@@ -293,14 +293,14 @@ func mapManagerJoinedProduct(
 
 func mapProduct(row sqlcgen.Product) *domainproduct.Product {
 	p := &domainproduct.Product{
-		ID:          row.ID,
-		CategoryID:  row.CategoryID,
-		Name:        row.Name,
-		Slug:        row.Slug,
-		PriceCents:  row.PriceCents,
-		IsActive: row.IsActive,
-		CreatedAt:   row.CreatedAt,
-		UpdatedAt:   row.UpdatedAt,
+		ID:         row.ID,
+		CategoryID: row.CategoryID,
+		Name:       row.Name,
+		Slug:       row.Slug,
+		PriceCents: row.PriceCents,
+		IsActive:   row.IsActive,
+		CreatedAt:  row.CreatedAt,
+		UpdatedAt:  row.UpdatedAt,
 	}
 	if row.Description.Valid {
 		desc := row.Description.String
