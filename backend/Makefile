@@ -3,6 +3,15 @@
 
 APP_NAME := boms-api
 MAIN_PKG := ./cmd/api
+
+# go.mod's `toolchain` line is a MINIMUM, not a pin: GOTOOLCHAIN=auto upgrades to a
+# newer installed Go and never downgrades to an older one. A machine running a newer
+# Go therefore builds and lints against a stdlib that golangci-lint — itself built on
+# the pinned major — cannot parse, and the linter panics instead of reporting.
+# setup-go resolves this same version from go.mod in CI, so pinning it here gives
+# local and CI one compiler. Keep in step with the `toolchain` line in go.mod.
+GOTOOLCHAIN ?= go1.26.8
+export GOTOOLCHAIN
 SQLC   := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 ATLAS  ?= atlas
 ATLAS_DEV_URL ?= docker://postgres/16/dev?search_path=public
