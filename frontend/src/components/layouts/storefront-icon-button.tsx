@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { forwardRef, type ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -10,24 +10,20 @@ type StorefrontIconButtonProps = {
   href?: string;
   onClick?: () => void;
   pressed?: boolean;
+  ref?: Ref<HTMLButtonElement>;
   "aria-controls"?: string;
 };
 
-export const StorefrontIconButton = forwardRef<
-  HTMLButtonElement,
-  StorefrontIconButtonProps
->(function StorefrontIconButton(
-  {
-    label,
-    className,
-    children,
-    href,
-    onClick,
-    pressed,
-    "aria-controls": ariaControls,
-  },
+export function StorefrontIconButton({
+  label,
+  className,
+  children,
+  href,
+  onClick,
+  pressed,
   ref,
-) {
+  "aria-controls": ariaControls,
+}: StorefrontIconButtonProps) {
   const classes = cn(
     "storefront-header-icon",
     pressed && "storefront-header-icon-pressed",
@@ -56,4 +52,4 @@ export const StorefrontIconButton = forwardRef<
       {children}
     </button>
   );
-});
+}

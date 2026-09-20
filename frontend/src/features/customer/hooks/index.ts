@@ -32,8 +32,6 @@ import {
 } from "../schemas";
 import { customerQueryKeys } from "./query-options";
 
-export { customerQueryKeys } from "./query-options";
-
 function cartMutationErrorMessage(error: unknown, fallback: string): string {
   if (isApiError(error)) {
     return error.message;
@@ -41,10 +39,17 @@ function cartMutationErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export function useCart() {
+type UseCartOptions = {
+  /** Skip fetch when false — use on public chrome for guests (avoids 401 → login redirect). */
+  enabled?: boolean;
+};
+
+export function useCart(options: UseCartOptions = {}) {
+  const { enabled = true } = options;
   return useQuery({
     queryKey: customerQueryKeys.cart,
     queryFn: getCart,
+    enabled,
   });
 }
 

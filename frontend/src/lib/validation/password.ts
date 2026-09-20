@@ -3,7 +3,7 @@ import { z } from "zod";
 import { fieldErrorFromTag } from "./messages";
 
 export const PASSWORD_MIN_LENGTH = 8;
-export const PASSWORD_MAX_LENGTH = 128;
+const PASSWORD_MAX_LENGTH = 128;
 
 /** Aligned with backend `password_complexity` (`unicode.IsLetter` + `unicode.IsDigit`). */
 const LETTER_PATTERN = /\p{L}/u;

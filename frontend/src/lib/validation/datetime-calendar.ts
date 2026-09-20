@@ -144,3 +144,24 @@ export function buildHour12Options(): number[] {
 export function formatMinuteLabel(minute: number): string {
   return String(minute).padStart(2, "0");
 }
+
+/** Stable key for a calendar day (`YYYY-M-D`, month 0-based) — used to find its button. */
+export function calendarDayKey(day: Pick<CalendarCell, "day" | "month" | "year">): string {
+  return `${day.year}-${day.month}-${day.day}`;
+}
+
+/** Full spoken date for a day button, e.g. "Wednesday, September 16, 2026". */
+export function formatCalendarDayLabel(cell: CalendarCell): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(cell.year, cell.month, cell.day));
+}
+
+/** Moves the draft date by whole days, keeping its time; month and year roll over. */
+export function shiftDraftDays(parts: LocalDatetimeParts, days: number): LocalDatetimeParts {
+  const moved = new Date(parts.year, parts.month, parts.day + days);
+  return { ...parts, year: moved.getFullYear(), month: moved.getMonth(), day: moved.getDate() };
+}

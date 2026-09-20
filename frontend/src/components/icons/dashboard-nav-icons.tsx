@@ -27,7 +27,7 @@ function IconBase({
   );
 }
 
-export function DashboardIcon({ className }: IconProps) {
+function DashboardIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
       <rect height="7" rx="1" width="7" x="3" y="3" />
@@ -38,7 +38,7 @@ export function DashboardIcon({ className }: IconProps) {
   );
 }
 
-export function UsersIcon({ className }: IconProps) {
+function UsersIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -48,7 +48,7 @@ export function UsersIcon({ className }: IconProps) {
   );
 }
 
-export function OrdersIcon({ className }: IconProps) {
+function OrdersIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
       <path d="M9 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4" />
@@ -58,7 +58,7 @@ export function OrdersIcon({ className }: IconProps) {
   );
 }
 
-export function CategoriesIcon({ className }: IconProps) {
+function CategoriesIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
       <path d="M4 7h16M4 12h10M4 17h14" />
@@ -66,7 +66,7 @@ export function CategoriesIcon({ className }: IconProps) {
   );
 }
 
-export function ProductsIcon({ className }: IconProps) {
+function ProductsIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -75,7 +75,7 @@ export function ProductsIcon({ className }: IconProps) {
   );
 }
 
-export function CombosIcon({ className }: IconProps) {
+function CombosIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
       <path d="m7.5 4.27 9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8z" />
@@ -84,7 +84,7 @@ export function CombosIcon({ className }: IconProps) {
   );
 }
 
-export function DiscountsIcon({ className }: IconProps) {
+function DiscountsIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
@@ -93,7 +93,7 @@ export function DiscountsIcon({ className }: IconProps) {
   );
 }
 
-export function ProfileIcon({ className }: IconProps) {
+function ProfileIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -102,7 +102,7 @@ export function ProfileIcon({ className }: IconProps) {
   );
 }
 
-export function PasswordIcon({ className }: IconProps) {
+function PasswordIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
       <rect height="11" rx="2" width="18" x="3" y="11" />
@@ -120,7 +120,7 @@ export function LogOutIcon({ className }: IconProps) {
   );
 }
 
-export const DASHBOARD_NAV_ICONS = {
+const DASHBOARD_NAV_ICONS = {
   categories: CategoriesIcon,
   combos: CombosIcon,
   dashboard: DashboardIcon,

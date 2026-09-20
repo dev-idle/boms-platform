@@ -5,20 +5,20 @@ import { USER_ROLE } from "@/constants/roles";
 const optionalNullableStringSchema = z.string().optional().nullable();
 
 /** GET /api/v1/me profile shapes (shared contract; used by auth store + user feature). */
-export const customerProfileSchema = z.object({
+const customerProfileSchema = z.object({
   type: z.literal("customer"),
   display_name: optionalNullableStringSchema,
   phone: optionalNullableStringSchema,
 });
 
-export const staffProfileSchema = z.object({
+const staffProfileSchema = z.object({
   type: z.literal("staff"),
   full_name: z.string(),
   phone: optionalNullableStringSchema,
   employee_code: z.string(),
 });
 
-export const adminProfileSchema = z.object({
+const adminProfileSchema = z.object({
   type: z.literal("admin"),
   full_name: z.string(),
   phone: optionalNullableStringSchema,
@@ -68,5 +68,3 @@ export const meSchema = z.discriminatedUnion("role", [
 
 export type Me = z.infer<typeof meSchema>;
 export type CustomerProfile = z.infer<typeof customerProfileSchema>;
-export type StaffProfile = z.infer<typeof staffProfileSchema>;
-export type AdminProfile = z.infer<typeof adminProfileSchema>;

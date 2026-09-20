@@ -19,6 +19,7 @@ export const ApiErrorCode = {
   Conflict: "conflict",
   EmailExists: "email_exists",
   CannotModifySelf: "cannot_modify_self",
+  CannotModifyAdmin: "cannot_modify_admin",
   InvalidRoleTransition: "invalid_role_transition",
   EmployeeCodeExists: "employee_code_exists",
   CategoryHasProducts: "category_has_products",
@@ -97,6 +98,10 @@ export class ApiError extends Error {
 
   isCannotModifySelf(): boolean {
     return this.code === ApiErrorCode.CannotModifySelf;
+  }
+
+  isCannotModifyAdmin(): boolean {
+    return this.code === ApiErrorCode.CannotModifyAdmin;
   }
 
   isInvalidRoleTransition(): boolean {

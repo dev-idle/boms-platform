@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import type { Me } from "../types";
+import type { Me } from "@/lib/schemas/me";
 
 import { userQueryKeys } from "../hooks/query-options";
 

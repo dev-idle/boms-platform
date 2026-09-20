@@ -13,7 +13,11 @@ export function AdminAccountProfileView() {
       description="Your admin account details and password."
       title={PAGE_TITLES.profile}
     >
-      <DashboardProfileSection id="admin-profile-details" title="Account details">
+      <DashboardProfileSection
+        id="admin-profile-details"
+        title="Account details"
+        variant="plain"
+      >
         <AdminAccountProfileForm />
       </DashboardProfileSection>
 
@@ -21,6 +25,7 @@ export function AdminAccountProfileView() {
         description="Changing your password signs out all active sessions."
         id="admin-profile-password"
         title="Password"
+        variant="plain"
       >
         <ChangePasswordForm />
       </DashboardProfileSection>

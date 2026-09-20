@@ -10,7 +10,7 @@ type DashboardFormPageProps = {
   title: string;
 };
 
-/** Standard shell for dashboard create/edit routes. */
+/** Archetype D shell for dashboard create/edit routes — one 640px column. */
 export function DashboardFormPage({
   breadcrumbItems,
   children,
@@ -24,7 +24,7 @@ export function DashboardFormPage({
         description={description}
         title={title}
       />
-      <div className="dashboard-page-body">{children}</div>
+      <div className="dashboard-profile-column">{children}</div>
     </div>
   );
 }

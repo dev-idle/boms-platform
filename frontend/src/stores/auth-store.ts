@@ -4,9 +4,9 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import type { UserRole } from "@/constants/roles";
 import type { Me } from "@/lib/schemas/me";
 
-export type AuthStatus = "idle" | "authenticated" | "unauthenticated";
+type AuthStatus = "idle" | "authenticated" | "unauthenticated";
 
-export type UserSummary = {
+type UserSummary = {
   email: string;
   role: UserRole;
 };

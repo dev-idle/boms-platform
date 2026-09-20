@@ -1,21 +1,23 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
+import { orderStatusSchema } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
-export const bakerOrderStatusSchema = z.enum([
+/** The production queue only ever holds these states. */
+const bakerOrderStatusSchema = orderStatusSchema.extract([
   "confirmed",
   "in_production",
   "ready",
 ]);
 
-export const bakerOrderCustomerSchema = z.object({
+const bakerOrderCustomerSchema = z.object({
   user_id: z.string().uuid(),
   email: z.string().min(1),
   display_name: z.string().nullable().optional(),
 });
 
-export const bakerOrderItemSchema = z.object({
+const bakerOrderItemSchema = z.object({
   id: z.string().uuid(),
   line_type: z.enum(["product", "combo"]),
   product_id: z.string().uuid().nullable().optional(),
@@ -62,7 +64,7 @@ export const patchBakerOrderStatusInputSchema = z.object({
 });
 
 export type BakerOrderStatus = z.infer<typeof bakerOrderStatusSchema>;
-export type BakerOrderSummary = z.infer<typeof bakerOrderSummarySchema>;
+type BakerOrderSummary = z.infer<typeof bakerOrderSummarySchema>;
 export type BakerOrder = z.infer<typeof bakerOrderSchema>;
 export type BakerOrdersListFilterInput = z.infer<typeof bakerOrdersListFilterSchema>;
 export type PatchBakerOrderStatusInput = z.infer<typeof patchBakerOrderStatusInputSchema>;

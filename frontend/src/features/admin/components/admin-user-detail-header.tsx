@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
+import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { roleDisplayLabel } from "@/constants/roles";
 import { adminUserDetailBreadcrumbItems } from "../lib/admin-breadcrumbs";
 import { adminUserDisplayName } from "../lib/user-display";
@@ -42,7 +43,8 @@ export function AdminUserDetailHeader({ actions, user }: AdminUserDetailHeaderPr
 
   return (
     <DashboardPageHeader
-      breadcrumbItems={adminUserDetailBreadcrumbItems()}
+      breadcrumbItems={adminUserDetailBreadcrumbItems(displayName)}
+      eyebrow={DASHBOARD_PAGE_EYEBROW.accountsAccess}
       meta={
         <div className="admin-user-detail-lead-row">
           <p className="dashboard-page-lead admin-user-detail-lead">

@@ -17,7 +17,9 @@ import {
   DashboardTableRowActions,
 } from "@/components/ui/dashboard-table-actions";
 import { EntityActivePill } from "@/components/ui/status-pill";
+import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { DASHBOARD_TABLE_PAGE_SIZE, DASHBOARD_TABLE_COLUMN_LABEL } from "@/constants/dashboard-table";
+import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolbar-meta";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -65,11 +67,12 @@ export function ManagerCombosTable() {
     <div className="dashboard-page-stack">
       <DashboardPageHeader
         actions={
-          <Link href={ROUTE.manager.combosNew}>
-            <Button type="button">New combo</Button>
-          </Link>
+          <Button asChild>
+            <Link href={ROUTE.manager.combosNew}>+ New combo</Link>
+          </Button>
         }
         description="Bundle products with promotional pricing and time windows."
+        eyebrow={DASHBOARD_PAGE_EYEBROW.promotions}
         title={PAGE_TITLES.combos}
       />
 
@@ -81,10 +84,16 @@ export function ManagerCombosTable() {
             placeholder="Search name or slug"
             value={input}
           />
+          {pagination ? (
+            <DashboardTableToolbarMeta>
+              {pagination.total}{" "}
+              {pagination.total === 1 ? "combo" : "combos"}
+            </DashboardTableToolbarMeta>
+          ) : null}
         </div>
 
         <DashboardTableWrap refetching={refetching}>
-          <table className="db-table db-table--catalog db-table--comfortable">
+          <table className="db-table db-table--catalog">
             <thead>
               <tr>
                 <th>Name</th>

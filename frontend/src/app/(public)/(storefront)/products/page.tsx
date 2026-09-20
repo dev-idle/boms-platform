@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 
-import { ProductCatalog } from "@/features/catalog/components/product-catalog";
+import { ProductCatalog, ProductCatalogLoading } from "@/features/catalog";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 
 import { ComboCatalogSection } from "./combo-catalog-section";
+
+export const instant = true;
 
 export const metadata = pageTitle(
   PAGE_TITLES.shop,
@@ -12,7 +14,7 @@ export const metadata = pageTitle(
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<ProductCatalogLoading />}>
       <ProductCatalog />
       <ComboCatalogSection />
     </Suspense>

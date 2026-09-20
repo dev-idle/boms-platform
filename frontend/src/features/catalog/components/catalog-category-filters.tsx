@@ -11,6 +11,7 @@ type CatalogCategoryFiltersProps = {
   showCombosLink?: boolean;
 };
 
+/** Vertical category list for the products page sidebar. */
 export function CatalogCategoryFilters({
   categories,
   selectedCategoryId,
@@ -22,22 +23,24 @@ export function CatalogCategoryFilters({
   }
 
   return (
-    <nav aria-label="Menu" className="catalog-menu__nav">
-      <ul className="catalog-menu__list">
+    <nav aria-label="Category filters" className="catalog-sidebar__nav">
+      <p className="catalog-sidebar__label">Category</p>
+      <ul className="catalog-sidebar__list">
         {categories.length > 0 ? (
           <li>
             <button
               aria-current={
-                selectedCategoryId === undefined ? "page" : undefined
+                selectedCategoryId === undefined ? "true" : undefined
               }
               className={cn(
-                "catalog-menu__link",
-                selectedCategoryId === undefined && "catalog-menu__link--active",
+                "catalog-sidebar__link",
+                selectedCategoryId === undefined &&
+                  "catalog-sidebar__link--active",
               )}
               onClick={() => onSelectCategory(undefined)}
               type="button"
             >
-              All
+              All products
             </button>
           </li>
         ) : null}
@@ -45,12 +48,12 @@ export function CatalogCategoryFilters({
           <li key={category.id}>
             <button
               aria-current={
-                selectedCategoryId === category.id ? "page" : undefined
+                selectedCategoryId === category.id ? "true" : undefined
               }
               className={cn(
-                "catalog-menu__link",
+                "catalog-sidebar__link",
                 selectedCategoryId === category.id &&
-                  "catalog-menu__link--active",
+                  "catalog-sidebar__link--active",
               )}
               onClick={() => onSelectCategory(category.id)}
               type="button"
@@ -61,7 +64,7 @@ export function CatalogCategoryFilters({
         ))}
         {showCombosLink ? (
           <li>
-            <CatalogCombosMenuLink />
+            <CatalogCombosMenuLink className="catalog-sidebar__link catalog-sidebar__link--anchor" />
           </li>
         ) : null}
       </ul>

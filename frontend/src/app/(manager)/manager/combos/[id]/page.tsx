@@ -37,7 +37,11 @@ export default function ManagerEditComboPage({ params }: PageProps) {
       description="Update bundle items, pricing, and availability window."
       title={PAGE_TITLES.editCombo}
     >
-      <DashboardProfileSection id="manager-combo-form" title="Combo details">
+      <DashboardProfileSection
+        id="manager-combo-form"
+        title="Combo details"
+        variant="plain"
+      >
         <ComboForm
           combo={comboQuery.data}
           mode="edit"

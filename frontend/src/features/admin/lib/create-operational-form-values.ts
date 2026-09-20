@@ -7,5 +7,4 @@ export const CREATE_OPERATIONAL_INITIAL: CreateOperationalInput = {
   role: USER_ROLE.staff,
   full_name: "",
   phone: null,
-  employee_code: "",
 };

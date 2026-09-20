@@ -17,7 +17,11 @@ export default function ManagerNewProductPage() {
       description="Add an item to the customer storefront catalog."
       title={PAGE_TITLES.newProduct}
     >
-      <DashboardProfileSection id="manager-product-form" title="Product details">
+      <DashboardProfileSection
+        id="manager-product-form"
+        title="Product details"
+        variant="plain"
+      >
         <ProductForm
           mode="create"
           onSuccess={() => router.push(ROUTE.manager.products)}

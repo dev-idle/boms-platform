@@ -1,8 +1,11 @@
 "use client";
 
+import { Fragment } from "react";
+
 import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
 import { cn } from "@/lib/utils";
 
+import { isAdminAccountManagementLocked } from "../lib/account-management";
 import type { AdminUser } from "../schemas";
 
 type AdminUserDetailActionsProps = {
@@ -60,37 +63,44 @@ export function AdminUserDetailActions({
 }: AdminUserDetailActionsProps) {
   const actionsPending = accountPending || resetPending;
   const showReset = canResetPassword(user);
+  const accountLocked = isAdminAccountManagementLocked(user);
 
-  return (
-    <div className="dashboard-inline-actions">
-      {user.disabled ? (
-        <InlineAction
-          disabled={actionsPending}
-          onClick={onEnable}
-          pendingLabel={accountPending ? "Enabling…" : undefined}
-          tone="accent"
-        >
-          Enable account
-        </InlineAction>
-      ) : (
-        <InlineAction
-          disabled={actionsPending}
-          onClick={onDisable}
-          pendingLabel={accountPending ? "Disabling…" : undefined}
-          tone="danger"
-        >
-          Disable account
-        </InlineAction>
-      )}
+  // §"Inline action groups take a hairline between members": three uppercase text
+  // actions in a row read as one run, so a 1px rule divides them. Building the list
+  // first is what lets the separators land only BETWEEN rendered members.
+  const actions = [
+    !accountLocked ? (
+        user.disabled ? (
+          <InlineAction
+            disabled={actionsPending}
+            onClick={onEnable}
+            pendingLabel={accountPending ? "Enabling…" : undefined}
+            tone="accent"
+          >
+            Enable account
+          </InlineAction>
+        ) : (
+          <InlineAction
+            disabled={actionsPending}
+            onClick={onDisable}
+            pendingLabel={accountPending ? "Disabling…" : undefined}
+            tone="danger"
+          >
+            Disable account
+          </InlineAction>
+        )
+      ) : null,
+    !accountLocked ? (
       <InlineAction
-        disabled={actionsPending}
-        onClick={onRevokeSessions}
-        tone="warning"
-      >
-        Revoke all sessions
+          disabled={actionsPending}
+          onClick={onRevokeSessions}
+          tone="warning"
+        >
+          Revoke all sessions
       </InlineAction>
-      {showReset ? (
-        <InlineAction
+    ) : null,
+    showReset ? (
+      <InlineAction
           disabled={actionsPending || user.disabled}
           onClick={onResetPassword}
           pendingLabel={resetPending ? "Generating…" : undefined}
@@ -101,9 +111,21 @@ export function AdminUserDetailActions({
           }
           tone="accent"
         >
-          Reset password
-        </InlineAction>
-      ) : null}
+        Reset password
+      </InlineAction>
+    ) : null,
+  ].filter(Boolean);
+
+  return (
+    <div className="dashboard-inline-actions">
+      {actions.map((action, index) => (
+        <Fragment key={index}>
+          {index > 0 ? (
+            <span aria-hidden className="dashboard-inline-actions__sep" />
+          ) : null}
+          {action}
+        </Fragment>
+      ))}
     </div>
   );
 }

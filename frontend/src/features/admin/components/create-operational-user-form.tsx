@@ -10,7 +10,6 @@ import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ASSIGNABLE_OPERATIONAL_ROLES, roleDisplayLabel } from "@/constants/roles";
-import { FORM_FIELD_HINT } from "@/constants/dashboard-form-copy";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
@@ -18,6 +17,7 @@ import { useCreateOperational } from "../hooks";
 import { CREATE_OPERATIONAL_INITIAL } from "../lib/create-operational-form-values";
 import { createOperationalSchema, type CreateOperationalInput } from "../schemas";
 
+import { OperationalEmployeeCodeField } from "./operational-employee-code-field";
 import { TempPasswordModal } from "./temp-password-modal";
 
 const CREATE_OPERATIONAL_FORM_FIELDS = [
@@ -25,7 +25,6 @@ const CREATE_OPERATIONAL_FORM_FIELDS = [
   "role",
   "full_name",
   "phone",
-  "employee_code",
 ] as const;
 
 export function CreateOperationalUserForm() {
@@ -43,10 +42,8 @@ export function CreateOperationalUserForm() {
           toast.error("Failed to create user");
           return;
         }
-        if (error.isEmployeeCodeExists()) {
-          form.setError("employee_code", {
-            message: "This employee code is already in use",
-          });
+        if (error.isEmailExists()) {
+          form.setError("email", { message: "An account with this email already exists" });
           return;
         }
         if (error.hasValidationDetails()) {
@@ -70,6 +67,9 @@ export function CreateOperationalUserForm() {
           noValidate
           onSubmit={form.handleSubmit(onSubmit)}
         >
+          {/* Read-only identifier first, then the fields the admin edits. */}
+          <OperationalEmployeeCodeField />
+
           <FormField
             control={form.control}
             name="email"
@@ -136,27 +136,6 @@ export function CreateOperationalUserForm() {
                     onChange={(event) =>
                       field.onChange(event.target.value || null)
                     }
-                  />
-                </FieldControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="employee_code"
-            render={({ field }) => (
-              <FormItem>
-                <FieldControl
-                  hint={FORM_FIELD_HINT.operationalEmployeeCode}
-                  hintId="create-operational-employee-code-hint"
-                  label="Employee code"
-                >
-                  <Input
-                    autoComplete="off"
-                    placeholder="EMP-001"
-                    {...field}
                   />
                 </FieldControl>
                 <FormMessage />

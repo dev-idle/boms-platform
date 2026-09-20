@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
+import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { cn } from "@/lib/utils";
 
 type DashboardAccountProfileLayoutProps = {
@@ -9,7 +10,7 @@ type DashboardAccountProfileLayoutProps = {
   title: string;
 };
 
-/** Shared profile page chrome for internal dashboard roles. */
+/** Archetype D — self-service profile: header, then a single 640px column of sections. */
 export function DashboardAccountProfileLayout({
   children,
   description,
@@ -17,8 +18,12 @@ export function DashboardAccountProfileLayout({
 }: DashboardAccountProfileLayoutProps) {
   return (
     <div className="dashboard-page-stack">
-      <DashboardPageHeader description={description} title={title} />
-      <div className="dashboard-page-body">{children}</div>
+      <DashboardPageHeader
+        description={description}
+        eyebrow={DASHBOARD_PAGE_EYEBROW.account}
+        title={title}
+      />
+      <div className="dashboard-profile-column">{children}</div>
     </div>
   );
 }
@@ -28,24 +33,26 @@ type DashboardProfileSectionProps = {
   description?: string;
   id: string;
   title: string;
-  variant?: "default" | "flush-feed" | "flush-table";
+  /**
+   * `card` — bordered panel (manager forms, order summaries).
+   * `plain` — archetype C/D section: display heading, sections divided by a hairline.
+   */
+  variant?: "card" | "plain";
 };
 
-/** Section card for dashboard forms, tables, and detail panels. */
 export function DashboardProfileSection({
   children,
   description,
   id,
   title,
-  variant = "default",
+  variant = "card",
 }: DashboardProfileSectionProps) {
   return (
     <section
       aria-labelledby={id}
       className={cn(
         "dashboard-profile-section",
-        variant === "flush-table" && "dashboard-profile-section--flush-table",
-        variant === "flush-feed" && "dashboard-profile-section--flush-feed",
+        variant === "plain" && "dashboard-profile-section--plain",
       )}
     >
       <header className="dashboard-profile-section-header">

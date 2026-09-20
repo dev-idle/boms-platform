@@ -9,6 +9,7 @@ import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
 import { isApiError } from "@/lib/errors";
+import { PASSWORD_MIN_LENGTH } from "@/lib/validation/password";
 import { applyFormFieldErrors } from "@/lib/validation";
 
 import {
@@ -93,7 +94,10 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
           name="new_password"
           render={({ field }) => (
             <FormItem>
-              <FieldControl label="New password">
+              <FieldControl
+                hint={`At least ${PASSWORD_MIN_LENGTH} characters.`}
+                label="New password"
+              >
                 <PasswordInput autoComplete="new-password" {...field} />
               </FieldControl>
               <FormMessage />
@@ -119,6 +123,7 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
             idleLabel="Change password"
             isPending={mutation.isPending}
             pendingLabel="Changing…"
+            variant="outline"
           />
         </div>
       </form>

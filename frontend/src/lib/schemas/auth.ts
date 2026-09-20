@@ -7,5 +7,3 @@ export const refreshResponseSchema = z.object({
   expires_in: z.number().int().positive(),
   must_change_password: z.boolean().optional(),
 });
-
-export type RefreshResponse = z.infer<typeof refreshResponseSchema>;

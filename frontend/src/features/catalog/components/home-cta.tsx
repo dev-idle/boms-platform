@@ -7,20 +7,29 @@ import { CUSTOM_CAKE_BROWSE_HREF } from "../lib/storefront-links";
 
 export function HomeCta() {
   return (
-    <section className="storefront-section border-t border-border bg-bg">
-      <div className="storefront-container text-center">
-        <h2 className="text-h2">Planning a celebration?</h2>
-        <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-muted sm:text-base">
-          Custom cakes and party trays available for advance order. Browse our
-          menu and check out when you are ready for pickup.
-        </p>
-        <div className="mt-7 flex flex-wrap justify-center gap-2.5">
-          <Button asChild showArrow size="lg">
-            <Link href={ROUTE.products}>Order for pickup</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href={CUSTOM_CAKE_BROWSE_HREF}>Custom cakes</Link>
-          </Button>
+    <section aria-labelledby="home-cta-heading" className="storefront-cta">
+      <div className="storefront-container">
+        <div className="storefront-cta__inner">
+          <div className="storefront-cta__copy">
+            <p className="storefront-cta__eyebrow">Bespoke</p>
+            <h2 className="storefront-cta__heading" id="home-cta-heading">
+              Planning something
+              <br />
+              worth celebrating?
+            </h2>
+            <p className="storefront-cta__lead">
+              Bespoke cakes and party trays by advance order. Pick the design,
+              pick the time — we handle the rest.
+            </p>
+          </div>
+          <div className="storefront-cta__actions">
+            <Button asChild showArrow size="lg">
+              <Link href={CUSTOM_CAKE_BROWSE_HREF}>Start a custom order</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href={ROUTE.products}>Speak to a baker</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </section>

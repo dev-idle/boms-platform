@@ -32,17 +32,16 @@ export function CartIcon({ className }: IconProps) {
       aria-hidden="true"
       className={cn("storefront-icon", className)}
       fill="none"
-      height="24"
+      height="18"
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="1.65"
+      strokeWidth="1.4"
       viewBox={STOREFRONT_ICON_VIEWBOX}
-      width="24"
+      width="18"
     >
-      <path d="M6 3 3.5 6.5v12.75A1.75 1.75 0 0 0 5.25 21h13.5A1.75 1.75 0 0 0 20.5 19.25V6.5L18 3" />
-      <path d="M3.5 6.5h17" />
-      <path d="M15.75 6.5a3.75 3.75 0 0 1-7.5 0" />
+      <path d="M6.5 8h11l1.2 11.2a1.6 1.6 0 0 1-1.6 1.8H6.9a1.6 1.6 0 0 1-1.6-1.8L6.5 8Z" />
+      <path d="M9.2 8V6.6a2.8 2.8 0 0 1 5.6 0V8" />
     </svg>
   );
 }
@@ -87,6 +86,23 @@ export function CloseIcon({ className }: IconProps) {
   );
 }
 
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={cn("size-[0.875rem]", className)}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.75"
+      viewBox="0 0 24 24"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 export function UserIcon({ className }: IconProps) {
   return (
     <svg
@@ -106,7 +122,6 @@ export function UserIcon({ className }: IconProps) {
     </svg>
   );
 }
-
 export function SignOutIcon({ className }: IconProps) {
   return (
     <svg

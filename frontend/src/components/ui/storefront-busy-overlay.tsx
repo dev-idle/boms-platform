@@ -4,7 +4,7 @@ import { LoadingIndicator } from "./loading-state";
 
 const STOREFRONT_BUSY_DOTS = 6;
 
-export function StorefrontBusyIndicator() {
+function StorefrontBusyIndicator() {
   return (
     <>
       <span className="sr-only">{LOADING_MESSAGE}</span>

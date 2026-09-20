@@ -3,28 +3,33 @@
 import type { RefObject } from "react";
 import { useEffect } from "react";
 
-type UseStorefrontSearchPanelOptions = {
+type UseStorefrontHeaderPanelOptions = {
   open: boolean;
   onClose: () => void;
   panelRef: RefObject<HTMLDivElement | null>;
   toggleRef: RefObject<HTMLButtonElement | null>;
-  inputRef: RefObject<HTMLInputElement | null>;
+  /** Focused when the panel opens; omit for panels that are only links. */
+  focusRef?: RefObject<HTMLElement | null>;
+  /** Second element that counts as inside the panel, e.g. the suggestion list. */
+  satelliteRef?: RefObject<HTMLElement | null>;
 };
 
-export function useStorefrontSearchPanel({
+/** Escape, outside-click and open-focus behaviour shared by the header panels. */
+export function useStorefrontHeaderPanel({
   open,
   onClose,
   panelRef,
   toggleRef,
-  inputRef,
-}: UseStorefrontSearchPanelOptions) {
+  focusRef,
+  satelliteRef,
+}: UseStorefrontHeaderPanelOptions) {
   useEffect(() => {
     if (!open) {
       return;
     }
 
     const frame = window.requestAnimationFrame(() => {
-      inputRef.current?.focus();
+      focusRef?.current?.focus();
     });
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -38,7 +43,7 @@ export function useStorefrontSearchPanel({
       window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open, onClose, inputRef]);
+  }, [open, onClose, focusRef]);
 
   useEffect(() => {
     if (!open) {
@@ -59,6 +64,10 @@ export function useStorefrontSearchPanel({
         return;
       }
 
+      if (satelliteRef?.current?.contains(target)) {
+        return;
+      }
+
       onClose();
     };
 
@@ -70,5 +79,5 @@ export function useStorefrontSearchPanel({
       window.clearTimeout(timer);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [open, onClose, panelRef, toggleRef]);
+  }, [open, onClose, panelRef, satelliteRef, toggleRef]);
 }

@@ -16,6 +16,7 @@ import { isApiError } from "@/lib/errors";
 import { useRemountingFormSnapshot } from "@/lib/hooks/use-remounting-form-snapshot";
 import { applyFormFieldErrors } from "@/lib/validation";
 
+import { OperationalEmployeeCodeField } from "./operational-employee-code-field";
 import { useUpdateRole } from "../hooks";
 import {
   adminUserToRoleFormValues,
@@ -27,12 +28,14 @@ import {
 } from "../schemas";
 
 type AdminUserDetailRoleFormBodyProps = {
+  assignedEmployeeCode?: string | null;
   userId: string;
   initialValues: UpdateRoleInput;
   onSaved: (values: UpdateRoleInput) => void;
 };
 
 function AdminUserDetailRoleFormBody({
+  assignedEmployeeCode,
   userId,
   initialValues,
   onSaved,
@@ -68,9 +71,6 @@ function AdminUserDetailRoleFormBody({
           phone: pendingRoleValues.phone?.trim()
             ? pendingRoleValues.phone.trim()
             : null,
-          employee_code: pendingRoleValues.employee_code?.trim()
-            ? pendingRoleValues.employee_code.trim()
-            : null,
         },
       },
       {
@@ -89,7 +89,6 @@ function AdminUserDetailRoleFormBody({
               "role",
               "full_name",
               "phone",
-              "employee_code",
             ]);
             setConfirmRole(false);
             return;
@@ -101,11 +100,6 @@ function AdminUserDetailRoleFormBody({
           }
           if (error.isInvalidRoleTransition()) {
             toast.error("This role change is not allowed.");
-            setConfirmRole(false);
-            return;
-          }
-          if (error.isEmployeeCodeExists()) {
-            toast.error("That employee code is already in use.");
             setConfirmRole(false);
             return;
           }
@@ -123,6 +117,9 @@ function AdminUserDetailRoleFormBody({
           noValidate
           onSubmit={form.handleSubmit(requestRoleSubmit)}
         >
+            {/* Read-only identifier first, then the fields the admin edits. */}
+            <OperationalEmployeeCodeField assignedCode={assignedEmployeeCode} />
+
             <FormField
               control={form.control}
               name="role"
@@ -175,24 +172,6 @@ function AdminUserDetailRoleFormBody({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="employee_code"
-              render={({ field }) => (
-                <FormItem>
-                  <FieldControl label="Employee code">
-                    <Input
-                      autoComplete="off"
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value || null)}
-                    />
-                  </FieldControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="dashboard-profile-form-actions">
               <DashboardFormSaveButton
                 idleLabel="Update role"
@@ -220,11 +199,13 @@ function AdminUserDetailRoleFormBody({
 }
 
 type AdminUserDetailRoleFormProps = {
+  assignedEmployeeCode?: string | null;
   userId: string;
   initialSnapshot: UpdateRoleInput;
 };
 
 function AdminUserDetailRoleForm({
+  assignedEmployeeCode,
   userId,
   initialSnapshot,
 }: AdminUserDetailRoleFormProps) {
@@ -234,6 +215,7 @@ function AdminUserDetailRoleForm({
   return (
     <AdminUserDetailRoleFormBody
       key={formKey}
+      assignedEmployeeCode={assignedEmployeeCode}
       initialValues={snapshot}
       onSaved={commitSnapshot}
       userId={userId}
@@ -252,6 +234,7 @@ export function AdminUserDetailRoleTab({ userId, user }: AdminUserDetailRoleTabP
   return (
     <AdminUserDetailRoleForm
       key={`${user.id}-${user.updated_at}`}
+      assignedEmployeeCode={user.employee_code}
       initialSnapshot={initialSnapshot}
       userId={userId}
     />

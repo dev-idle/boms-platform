@@ -1,6 +1,6 @@
 "use client";
 
-import { ProductDetail } from "@/features/catalog/components/product-detail";
+import { ProductDetail } from "@/features/catalog";
 import { ProductPurchaseActions } from "@/features/customer";
 import type { CatalogProduct } from "@/lib/schemas/catalog";
 

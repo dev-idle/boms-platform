@@ -1,7 +1,13 @@
-export { CatalogPagination } from "./catalog-pagination";
-export { CatalogSearchForm } from "./catalog-search-form";
 export { ComboCatalog } from "./combo-catalog";
-export { ProductCard } from "./product-card";
+export { HomeCategories } from "./home-categories";
+export { HomeCategoryGrid } from "./home-category-grid";
+export { HomeCategoryGridSkeleton } from "./home-category-grid-skeleton";
+export { HomeCta } from "./home-cta";
+export { HomeFeaturedProductGrid } from "./home-featured-product-grid";
+export { HomeFeaturedProductGridSkeleton } from "./home-featured-product-grid-skeleton";
+export { HomeFeaturedProducts } from "./home-featured-products";
+export { HomeHero } from "./home-hero";
+export { HomeUspStrip } from "./home-usp-strip";
 export { ProductCatalog } from "./product-catalog";
+export { ProductCatalogLoading } from "./product-catalog-loading";
 export { ProductDetail } from "./product-detail";
-export { StorefrontHome } from "./storefront-home";

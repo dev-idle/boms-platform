@@ -60,7 +60,11 @@ export function OperationalAccountProfileView({
       description={copy.description}
       title={PAGE_TITLES.profile}
     >
-      <DashboardProfileSection id={copy.profileSectionId} title="Account details">
+      <DashboardProfileSection
+        id={copy.profileSectionId}
+        title="Account details"
+        variant="plain"
+      >
         <OperationalAccountProfileForm
           expectedRole={role}
           roleLabel={copy.roleLabel}
@@ -71,6 +75,7 @@ export function OperationalAccountProfileView({
         description="Changing your password signs out all active sessions."
         id={copy.passwordSectionId}
         title="Password"
+        variant="plain"
       >
         <ChangePasswordForm />
       </DashboardProfileSection>

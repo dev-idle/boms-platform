@@ -1,151 +1,128 @@
-/* Choux Matcha v3 — primitive design tokens (SSOT). */
+/* Choux Premium — primitive design tokens (SSOT). */
 
 :root {
-  /* Neutrals — porcelain + espresso ink */
-  --color-bg: #fbfaf9;
+  /* ---- Ink (text only) ---- */
+  --color-ink: #1b1714;
+  --color-ink-2: #4a423b;
+  --color-muted: #6f675e;
+
+  /* ---- Paper (backgrounds only) ---- */
   --color-surface: #ffffff;
-  --color-mint: #e9f1e7;
-  --color-border: #ece9e6;
-  --color-ink: #3a2e27;
-  --color-ink-2: #6b6056;
-  --color-muted: #8f857c;
+  --color-bg: #fbfaf8;
+  --color-paper-3: #f2efe9;
+  --color-paper-4: #f4f1ec;
 
-  /* Matcha — primary (actions only) */
-  --color-matcha-100: #e9f1e7;
-  --color-matcha-200: #d5e0d1;
-  --color-matcha-300: #afc4a9;
-  --color-matcha-500: #4e7d5b;
-  --color-matcha-600: #426b4e;
-  --color-matcha-700: #375a42;
+  /* ---- Line (borders only) — the step encodes importance ---- */
+  --color-line-strong: #cec8be;
+  --color-line: #dcd7cd;
+  --color-border: #e4e0da;
+  --color-line-soft: #ebe7e1;
+  --color-line-sage: #b9c8b5;
 
-  /* Gold — value accent (brass, tuned to matcha) */
-  --color-gold-100: #f2eddc;
-  --color-gold-500: #b9a266;
-  --color-gold-700: #857440;
+  /* ---- Matcha (primary action / brand) ---- */
+  --color-matcha-100: #edf2ec;
+  --color-matcha-500: #23402f;
+  --color-matcha-600: #1c3526;
+  --color-matcha-700: #1a3024;
 
-  /* Dashboard — single internal theme (staff / baker / manager / admin) */
-  --color-db-bg: #faf9f8;
+  /* ---- Brass (value accent) — step is chosen by background, not taste ---- */
+  --color-brass: #7d6432;
+  --color-brass-on-dark: #c9b183;
+
+  /* ---- Dashboard shell ---- */
+  --color-db-bg: #fbfaf8;
   --color-db-surface: #ffffff;
-  --color-db-border: #ece9e7;
-  --color-db-row: #f4f2f0;
-  --color-db-ink: #2e2722;
-  --color-db-muted: #756d66;
-  --color-db-accent: #3e5c47;
-  --color-db-accent-hover: #335040;
-  --color-db-accent-soft: #e9f0ea;
+  /* Panel edge — one step above --color-border. */
+  --color-db-border: #e0dbd2;
+  --color-db-row: var(--color-bg);
+  --color-db-ink: #1b1714;
+  --color-db-muted: #6f675e;
+  --color-db-accent: #23402f;
 
-  /* Order status pills (semantic — dashboard only) */
-  --color-status-pending-bg: #f2eddc;
-  --color-status-pending-fg: #857440;
-  --color-status-confirmed-bg: #e8eef4;
-  --color-status-confirmed-fg: #4a6584;
-  --color-status-in-progress-bg: #f4ece3;
-  --color-status-in-progress-fg: #85593a;
-  --color-status-ready-bg: #e4f0eb;
-  --color-status-ready-fg: #2c6e5a;
-  --color-status-completed-bg: #efedeb;
-  --color-status-completed-fg: #5f5852;
-  --color-status-cancelled-bg: #f7e3e3;
-  --color-status-cancelled-fg: #a03939;
+  /* ---- Dashboard sidebar (light — composes existing ramps) ---- */
+  --color-db-sidebar-bg: var(--color-bg);
+  --color-db-sidebar-border: var(--color-border);
+  --color-db-sidebar-active-bg: var(--color-matcha-100);
+  --color-db-sidebar-rail: var(--color-matcha-500);
+  --color-db-sidebar-hover: var(--color-paper-4);
+  --color-db-sidebar-ink: var(--color-ink);
+  --color-db-sidebar-muted: var(--color-muted);
 
-  /* Semantic — danger split from primary, success hue offset from matcha */
+  /* ---- Status: 6px dot + micro-label, never a filled pill ---- */
+  --color-status-pending: #7d6432;
+  --color-status-confirmed: #4a6584;
+  --color-status-in-progress: #85593a;
+  --color-status-ready: #2c6e5a;
+  --color-status-completed: #6f675e;
+  --color-status-cancelled: #a03939;
+
+  /* ---- Semantic ---- */
   --color-success: #2c6e5a;
-  --color-success-bg: #e4f0eb;
-  --color-warning: #ad7b40;
-  --color-warning-bg: #f8f0e6;
-  --color-danger: #c44545;
-  --color-danger-bg: #f7e3e3;
+  --color-warning: #85593a;
+  --color-warning-hover: #6b4529;
+  --color-danger: #a03939;
   --color-danger-text: #a03939;
-  --color-info: #4a6584;
-  --color-info-bg: #edf1f6;
+  /* Hover ground for a destructive ROW; #a03939 on it = 5.92:1. */
+  --color-danger-tint: #f9efed;
 
-  /* Shape */
-  --radius-card: 16px;
-  --radius-modal: 20px;
-  --radius-input: 12px;
-  --radius-button: 11px;
+  /* ---- Disabled control: one step everywhere (3.06:1 on white). Not
+     --color-muted, which is live secondary text. ---- */
+  --color-disabled: #9c9286;
 
-  /* Button — atelier matcha primary + porcelain secondary (storefront) */
-  --btn-accent-fill: color-mix(in srgb, var(--color-surface) 94%, var(--color-mint));
-  --btn-accent-fill-hover: color-mix(in srgb, var(--color-mint) 58%, var(--color-surface));
-  --btn-accent-line: color-mix(in srgb, var(--color-ink) 10%, var(--color-border));
-  --btn-accent-line-hover: color-mix(in srgb, var(--color-matcha-500) 34%, var(--color-border));
-  --btn-accent-text: var(--color-matcha-700);
-  --btn-accent-text-active: var(--color-matcha-600);
-  --btn-satin-gradient: var(--color-matcha-500);
-  --btn-satin-active-bg: var(--color-matcha-600);
-  --btn-primary-text: color-mix(in srgb, #fff 92%, var(--color-mint));
-  --btn-primary-line: color-mix(in srgb, var(--color-matcha-600) 40%, transparent);
-  --btn-primary-line-hover: color-mix(in srgb, var(--color-matcha-700) 48%, transparent);
-  --btn-shadow-primary:
-    inset 0 1px 0 rgb(255 255 255 / 0.24),
-    0 1px 2px color-mix(in srgb, var(--color-matcha-800) 9%, transparent);
-  --btn-shadow-primary-hover:
-    inset 0 1px 0 rgb(255 255 255 / 0.3),
-    0 2px 6px color-mix(in srgb, var(--color-matcha-800) 11%, transparent);
-  --btn-shadow-primary-active:
-    inset 0 1px 2px rgb(78 125 91 / 0.22),
-    0 1px 1px color-mix(in srgb, var(--color-matcha-800) 6%, transparent);
-  --btn-shadow-outline-rest:
-    inset 0 1px 0 rgb(255 255 255 / 0.76),
-    0 1px 0 rgb(255 255 255 / 0.55);
-  --btn-shadow-outline-hover: 0 3px 12px rgb(58 46 39 / 0.045);
-  --btn-letter-spacing: 0.05em;
-  --btn-letter-spacing-lg: 0.052em;
+  /* ---- Shape — geometry is square by default; the pill is for status dots only ---- */
+  --radius-pill: 999px;
 
-  /* Depth — espresso tint */
-  --shadow-rest: 0 1px 3px rgb(58 46 39 / 0.05);
-  --shadow-hover: 0 8px 24px rgb(58 46 39 / 0.07);
-  --shadow-modal:
-    0 1px 2px rgb(58 46 39 / 0.03),
-    0 8px 24px rgb(58 46 39 / 0.08),
-    0 24px 48px rgb(58 46 39 / 0.1);
-  /* Motion */
+  /* ---- Elevation: one shadow, overlays only. Panels use borders. ---- */
+  --shadow-overlay: 0 24px 64px rgb(27 23 20 / 0.1);
+
+  /* ---- Motion ---- */
   --ease-luxury: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-micro: 150ms;
   --duration-standard: 200ms;
   --duration-page: 300ms;
 
-  /* Layout — sticky header = toolbar + category nav rows.
+  /* ---- Type: micro-label is the only small-label style ---- */
+  --label-size: 0.6875rem;
+  --label-size-sm: 0.625rem;
+  --label-weight: 600;
+  --label-tracking: 0.16em;
+  --label-tracking-sm: 0.22em;
+
+  /* ---- Layout — nav merged into the toolbar row.
      Keep --storefront-header-height literal (no calc): scroll-offset JS parses it. */
-  --storefront-toolbar-height: 4.25rem;
-  --storefront-nav-height: 2.75rem;
-  --storefront-header-height: 7rem;
+  --storefront-toolbar-height: 5.75rem;
+  --storefront-header-height: 5.75rem;
   --storefront-anchor-gap: 3.5rem;
   --storefront-combos-anchor-gap: 1.75rem;
+  --storefront-gutter: 3.5rem;
+  --storefront-container: 82.5rem;
 
-  /* Field chrome — porcelain inputs (SSOT) */
-  --field-bg: color-mix(in srgb, var(--color-surface) 88%, var(--color-mint));
-  --field-bg-focus: color-mix(in srgb, var(--color-surface) 94%, var(--color-mint));
-  --field-bg-disabled: color-mix(in srgb, var(--color-mint) 32%, var(--color-surface));
-  --field-bg-readonly: color-mix(in srgb, var(--color-mint) 18%, var(--color-surface));
-  --field-border-readonly: color-mix(in srgb, var(--color-border) 82%, transparent);
-  --field-text-readonly: color-mix(in srgb, var(--color-muted) 90%, var(--color-ink));
-  --field-border: color-mix(in srgb, var(--color-matcha-200) 40%, var(--color-border));
-  --field-border-hover: color-mix(in srgb, var(--color-matcha-300) 55%, var(--color-border));
+  /* ---- Fields: underline, not box ---- */
+  --field-bg: transparent;
+  --field-bg-focus: transparent;
+  --field-bg-disabled: var(--color-paper-3);
+  --field-bg-readonly: transparent;
+  --field-border: var(--color-line-strong);
+  --field-border-hover: var(--color-ink-2);
   --field-border-focus: var(--color-matcha-500);
-  --field-frame-focus: color-mix(in srgb, var(--color-matcha-300) 38%, transparent);
-  --field-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.72);
-  --field-label-active: var(--color-matcha-600);
+  --field-border-readonly: var(--color-border);
+  --field-text-readonly: var(--color-muted);
+  --field-label-active: var(--color-ink);
   --field-caret: var(--color-matcha-500);
-  --field-placeholder: color-mix(in srgb, var(--color-muted) 62%, transparent);
+  /* Ground behind a transparent field — repaints browser autofill. */
+  --field-autofill-ground: var(--color-bg);
+  /* Placeholders are real text: the old #A89F93 tint measured 2.48:1 and failed AA. */
+  --field-placeholder: var(--color-muted);
 
-  /* Control scale — customer default; dashboard overrides in [data-theme="dashboard"] */
-  --field-control-height: 2.75rem;
-  --field-control-font-size: 0.9375rem;
-  --field-control-padding-inline: 0.875rem;
-  --password-field-toggle-affordance: 1.875rem;
-  --password-field-toggle-hit: 2.25rem;
-  --password-field-toggle-icon: 1.125rem;
-  --btn-control-min-height: 2.75rem;
+  /* ---- Control scale — storefront default; dashboard overrides in themes.css ---- */
+  --field-control-height: 2.625rem;
+  --field-control-font-size: 1rem;
+  --field-control-padding-inline: 0.125rem;
+  --password-field-toggle-hit: 2.75rem;
+  /* Trailing clear/close button in a search field — icon-only, so always Tier A. */
+  --search-action-hit: 2.75rem;
+  --btn-control-min-height: 3.25rem;
   --btn-control-min-width: 2.75rem;
-  --btn-control-font-size: 0.875rem;
-  --btn-control-padding-inline: 1.375rem;
-}
-
-@media (min-width: 64rem) {
-  :root {
-    --storefront-toolbar-height: 4.5rem;
-    --storefront-header-height: 7.25rem;
-  }
+  --btn-control-font-size: 0.75rem;
+  --btn-control-padding-inline: 2.125rem;
 }

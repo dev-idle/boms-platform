@@ -41,8 +41,10 @@ export function BrandMark({ className, size }: BrandMarkProps) {
       {BRAND_MARK_PATHS.map((path, index) => (
         <path
           key={BRAND_MARK_PATH_PARTS[index]}
+          // Stroke is owned by `.brand-mark-part` so theme scopes can retint the
+          // mark; a Tailwind stroke utility would sit in a later layer and win.
           className={cn(
-            "brand-mark-part stroke-matcha-500",
+            "brand-mark-part",
             `brand-mark-${BRAND_MARK_PATH_PARTS[index]}`,
           )}
           d={path}

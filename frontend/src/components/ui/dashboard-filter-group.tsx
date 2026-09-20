@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-export type DashboardFilterOption<T extends string | undefined> = {
+type DashboardFilterOption<T extends string | undefined> = {
   label: string;
   value: T;
 };

@@ -16,7 +16,7 @@ import {
   listCatalogProducts,
 } from "../api";
 
-export const catalogQueryKeys = {
+const catalogQueryKeys = {
   categoriesRoot: ["catalog", "categories"] as const,
   categories: (filter: CatalogCategoriesListFilterInput) =>
     [...catalogQueryKeys.categoriesRoot, filter] as const,

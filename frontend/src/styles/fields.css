@@ -1,10 +1,14 @@
 /* -----------------------------------------------------------------------------
    Field system — unlayered SSOT for Input, Select, search chrome.
+
+   Contract: underline, not a box. A field is a 42px control on a transparent
+   ground with a single bottom hairline; the hairline colour carries hover,
+   focus and error.
    ----------------------------------------------------------------------------- */
 
 .field-control {
   display: grid;
-  gap: 0.375rem;
+  gap: 0.625rem;
 }
 
 .field-control-label-block {
@@ -13,12 +17,105 @@
   gap: 0.125rem;
 }
 
-/* Dashboard form hints + publish switch — scoped; unlayered with field-control. */
-[data-theme="dashboard"] .form-field-hint {
-  color: var(--color-db-muted);
-  font-size: 0.75rem;
-  line-height: 1.35;
+.field-control-label-row {
+  align-items: baseline;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+/* Persistent help under a control — both themes. */
+.form-field-hint {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  line-height: 1.6;
   margin: 0;
+}
+
+/* Readonly field group: values the user cannot change, grouped
+   with the reason stated once. A <dl>, never readonly inputs. */
+/* The ground stays; what was wrong was that its 24px padding pushed the group's
+   label and every dt 24px off the left edge the surrounding field labels share.
+   Bleeding the ground outward by exactly the padding puts the text back on that edge
+   while the tint still reads as one block. The max() floor keeps the bleed inside
+   the page gutter, so it can never cause a horizontal scroll on a narrow screen. */
+/* Framed, matching .dashboard-profile-section — the Profile summary panel on the
+   user detail screen, where the reader has already met this treatment. Same surface,
+   same border step, same padding, so the two read as one component in two places.
+   The border is what makes the padded indent legible as a container edge; white
+   alone sits only 4.3pp above the page ground (1.04:1) and could not do it. */
+.field-readonly-group {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 1.25rem 1.5rem;
+}
+
+/* The dashboard panel edge is one step above --color-border (01-FOUNDATION §1.4). */
+[data-theme="dashboard"] .field-readonly-group {
+  border-color: var(--color-db-border);
+  padding: var(--db-card-padding);
+}
+
+.field-readonly-group__label {
+  color: var(--color-muted);
+  font-size: var(--label-size-sm);
+  font-weight: var(--label-weight);
+  letter-spacing: 0.2em;
+  line-height: 1.4;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.field-readonly-group__list {
+  align-items: baseline;
+  column-gap: 1.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  margin: 1.125rem 0 0;
+  row-gap: 1.125rem;
+}
+
+.field-readonly-group__row {
+  display: contents;
+}
+
+
+.field-readonly-group__row dt {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+
+.field-readonly-group__row dd {
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.field-readonly-group__row dd.field-readonly-group__value--code {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.field-readonly-group__reason {
+  border-top: 1px solid var(--color-border);
+  color: var(--color-ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  margin: 1.125rem 0 0;
+  padding-top: 1rem;
+}
+
+.field-readonly-group__reason strong {
+  color: var(--color-ink);
+  font-weight: 400;
+}
+
+@media (max-width: 30rem) {
+  .field-readonly-group__row {
+    gap: 0.25rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 [data-theme="dashboard"] .form-toggle-row {
@@ -41,7 +138,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.25rem;
   min-width: 0;
 }
 
@@ -50,49 +147,39 @@
 }
 
 [data-theme="dashboard"] .field-control--toggle {
-  border-top: 1px solid color-mix(in srgb, var(--color-db-border) 72%, transparent);
+  border-top: 1px solid var(--color-line-soft);
   padding-top: var(--db-space-4);
 }
 
 [data-theme="dashboard"] .form-toggle-row-label {
   color: var(--color-db-ink);
   cursor: pointer;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 400;
-  letter-spacing: 0.01em;
-  line-height: 1.35;
+  line-height: 1.4;
   margin: 0;
 }
 
+/* Square switch — the pill radius is reserved for status dots and avatars. */
 [data-theme="dashboard"] .form-publish-switch {
   align-items: center;
-  background-color: color-mix(
-    in srgb,
-    var(--color-db-muted) 16%,
-    var(--color-db-surface)
-  );
-  border: none;
-  border-radius: 9999px;
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--color-db-border) 80%, transparent);
+  background-color: var(--color-paper-3);
+  border: 1px solid var(--color-line);
   cursor: pointer;
   display: inline-flex;
   flex-shrink: 0;
   height: 1.5rem;
   padding: 0.125rem;
   position: relative;
-  transition: background-color var(--duration-standard) var(--ease-luxury);
+  transition:
+    background-color var(--duration-standard) var(--ease-luxury),
+    border-color var(--duration-standard) var(--ease-luxury);
   width: 2.5rem;
 }
 
 [data-theme="dashboard"] .form-publish-switch--on {
   background-color: var(--color-db-accent);
-  box-shadow: none;
-}
-
-[data-theme="dashboard"] .form-publish-switch:focus-visible {
-  outline: 2px solid var(--color-db-accent-soft);
-  outline-offset: 2px;
+  border-color: var(--color-db-accent);
 }
 
 [data-theme="dashboard"] .form-publish-switch:disabled {
@@ -102,13 +189,11 @@
 
 [data-theme="dashboard"] .form-publish-switch-thumb {
   background-color: var(--color-db-surface);
-  border-radius: 9999px;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-db-ink) 12%, transparent);
   display: block;
-  height: 1.25rem;
+  height: 1.125rem;
   transform: translateX(0);
   transition: transform var(--duration-standard) var(--ease-luxury);
-  width: 1.25rem;
+  width: 1.125rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -119,19 +204,6 @@
 
 [data-theme="dashboard"] .form-publish-switch--on .form-publish-switch-thumb {
   transform: translateX(1rem);
-}
-
-[data-theme="dashboard"] .catalog-image-field {
-  width: 100%;
-}
-
-[data-theme="dashboard"] .catalog-image-field--uploading {
-  opacity: 0.85;
-}
-
-[data-theme="dashboard"] .catalog-image-field--disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
 }
 
 [data-theme="dashboard"] .catalog-image-field-row {
@@ -200,9 +272,12 @@
   opacity: 0.55;
 }
 
+/* One bordered list with line-soft between rows — never a stack of four-sided
+   boxes. */
 [data-theme="dashboard"] .catalog-image-list-items {
+  background-color: var(--color-db-surface);
+  border: 1px solid var(--color-db-border);
   display: grid;
-  gap: var(--db-space-3);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -210,20 +285,15 @@
 
 [data-theme="dashboard"] .catalog-image-list-item {
   align-items: center;
-  background-color: color-mix(in srgb, var(--color-db-row) 30%, var(--color-db-surface));
-  border-radius: var(--radius-input);
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
   display: flex;
   gap: var(--db-space-3);
   justify-content: space-between;
-  padding: var(--db-space-2) var(--db-space-3);
+  padding: var(--db-space-3) var(--db-space-4);
   width: 100%;
 }
 
-[data-theme="dashboard"] .catalog-image-list-item--primary {
-  background-color: color-mix(in srgb, var(--color-db-accent-soft) 10%, var(--color-db-surface));
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--color-db-accent) 8%, var(--color-db-border));
+[data-theme="dashboard"] .catalog-image-list-item + .catalog-image-list-item {
+  border-top: 1px solid var(--color-line-soft);
 }
 
 [data-theme="dashboard"] .catalog-image-list-item-main {
@@ -243,63 +313,57 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.25rem;
   justify-content: center;
   min-width: 0;
 }
 
 [data-theme="dashboard"] .catalog-image-list-primary-label {
   align-self: flex-start;
-  background-color: color-mix(in srgb, var(--color-db-accent-soft) 28%, var(--color-db-surface));
-  border-radius: calc(var(--radius-input) / 2);
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--color-db-accent) 12%, var(--color-db-border));
-  color: color-mix(in srgb, var(--color-db-accent-hover) 58%, var(--color-db-muted));
+  color: var(--color-brass);
   display: inline-block;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  padding: 0.125rem 0.375rem;
+  font-size: var(--label-size-sm);
+  font-weight: var(--label-weight);
+  letter-spacing: var(--label-tracking-sm);
+  line-height: 1.4;
+  text-transform: uppercase;
 }
 
 [data-theme="dashboard"] .catalog-image-list-order {
   align-items: center;
-  background-color: var(--color-db-surface);
-  border-radius: calc(var(--radius-input) / 2);
-  bottom: -0.125rem;
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
-  color: var(--color-db-muted);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  bottom: 0;
+  color: var(--color-muted);
   display: inline-flex;
-  font-size: 0.625rem;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: var(--label-size-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
   height: 1.125rem;
   justify-content: center;
   line-height: 1;
   min-width: 1.125rem;
-  padding-inline: 0.1875rem;
+  padding-inline: 0.25rem;
   position: absolute;
-  right: -0.125rem;
+  right: 0;
 }
 
 [data-theme="dashboard"] .catalog-image-list-order--primary {
-  background-color: color-mix(in srgb, var(--color-db-accent-soft) 36%, var(--color-db-surface));
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--color-db-accent) 18%, var(--color-db-border));
-  color: color-mix(in srgb, var(--color-db-accent-hover) 62%, var(--color-db-muted));
-  font-weight: 600;
+  background-color: var(--color-matcha-500);
+  border-color: var(--color-matcha-500);
+  color: var(--theme-on-primary);
 }
 
-[data-theme="dashboard"] .catalog-image-list-thumb-wrap--primary .catalog-image-list-thumb {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--color-db-accent) 24%, var(--color-db-border)),
-    0 0 0 2px color-mix(in srgb, var(--color-db-accent-soft) 48%, transparent);
+[data-theme="dashboard"]
+  .catalog-image-list-thumb-wrap--primary
+  .catalog-image-list-thumb {
+  border-color: var(--color-matcha-500);
 }
 
 [data-theme="dashboard"] .catalog-image-list-thumb {
-  background-color: var(--color-db-surface);
-  border-radius: var(--radius-input);
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
+  background-color: var(--color-matcha-100);
+  border: 1px solid var(--color-line);
   display: block;
   flex-shrink: 0;
   height: 3rem;
@@ -308,7 +372,6 @@
 }
 
 [data-theme="dashboard"] .catalog-image-list-thumb--empty {
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
   display: inline-block;
 }
 
@@ -328,39 +391,33 @@
   width: min(100%, 28rem);
 }
 
+/* Opacity-only pulse — no shimmer sweep, no gradient. */
 [data-theme="dashboard"] .catalog-image-preview-frame--loading {
-  animation: skeleton-shimmer 1.8s ease-in-out infinite;
-  background: linear-gradient(
-    90deg,
-    var(--color-db-row) 0%,
-    color-mix(in srgb, var(--color-db-surface) 88%, var(--color-db-row)) 50%,
-    var(--color-db-row) 100%
-  );
-  background-size: 200% 100%;
-  border-radius: var(--radius-input);
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+  background-color: var(--color-paper-3);
+  border: 1px solid var(--color-db-border);
 }
 
 [data-theme="dashboard"] .catalog-image-preview-frame--loaded {
-  border-radius: var(--radius-input);
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
+  border: 1px solid var(--color-db-border);
   overflow: hidden;
 }
 
 [data-theme="dashboard"] .catalog-image-preview-frame--error {
-  background-color: color-mix(in srgb, var(--color-db-row) 35%, var(--color-db-surface));
-  border-radius: var(--radius-input);
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
+  background-color: var(--color-db-row);
+  border: 1px solid var(--color-db-border);
 }
 
-[data-theme="dashboard"] .catalog-image-preview-frame--error .catalog-image-preview-status {
+[data-theme="dashboard"]
+  .catalog-image-preview-frame--error
+  .catalog-image-preview-status {
   padding-inline: var(--db-space-4);
 }
 
 [data-theme="dashboard"] .catalog-image-preview-status {
   color: var(--color-db-muted);
   font-size: 0.8125rem;
-  line-height: 1.4;
+  line-height: 1.6;
   margin: 0;
   padding: var(--db-space-4);
   text-align: center;
@@ -404,6 +461,10 @@
   flex: 1 1 auto;
 }
 
+/* -----------------------------------------------------------------------------
+   Label
+   ----------------------------------------------------------------------------- */
+
 .field-control label {
   cursor: text;
   transition: color var(--duration-standard) var(--ease-luxury);
@@ -415,9 +476,9 @@
 
 .field-label-optional {
   color: var(--color-muted);
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  margin-inline-start: 0.3125rem;
+  font-weight: var(--label-weight);
+  letter-spacing: var(--label-tracking);
+  margin-inline-start: 0.5rem;
 }
 
 .field-control:not(.field-control--readonly):hover label,
@@ -425,34 +486,35 @@
   color: var(--field-label-active);
 }
 
-.field-control:not(.field-control--readonly):hover
-  .field-chrome:not(:disabled):not(:read-only):not(:focus):not(:focus-visible),
-.field-control:not(.field-control--readonly):has(.password-field-toggle:hover)
-  .field-chrome:not(:disabled):not(:read-only):not(:focus):not(:focus-visible) {
-  border-color: var(--field-border-hover);
-}
-
-.field-chrome:focus-within:not([readonly]):not(.field-chrome--readonly) {
-  background-color: var(--field-bg-focus);
-  border-color: var(--field-border-focus);
-  box-shadow: var(--field-inset-highlight), 0 0 0 1px var(--field-frame-focus);
-}
-
 .field-control:not(.field-control--readonly):has(.password-field-toggle:hover) label {
   color: var(--field-label-active);
 }
 
+.field-control--readonly:hover label,
+.field-control--readonly:focus-within label {
+  color: var(--color-muted);
+}
+
+[data-theme="dashboard"] .field-control--readonly:hover label,
+[data-theme="dashboard"] .field-control--readonly:focus-within label,
+[data-theme="dashboard"] .dashboard-profile-section .field-control--readonly label {
+  color: var(--color-db-muted);
+}
+
+/* -----------------------------------------------------------------------------
+   Control — underline chrome
+   ----------------------------------------------------------------------------- */
+
 .field-chrome {
   background-color: var(--field-bg);
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-input);
-  box-shadow: var(--field-inset-highlight);
+  border: none;
+  border-bottom: 1px solid var(--field-border);
   caret-color: var(--field-caret);
   color: var(--color-ink);
   display: block;
   font-size: var(--field-control-font-size);
   height: var(--field-control-height);
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   line-height: 1.25;
   min-height: var(--field-control-height);
   outline: none;
@@ -460,26 +522,61 @@
   transition:
     background-color var(--duration-standard) var(--ease-luxury),
     border-color var(--duration-standard) var(--ease-luxury),
-    box-shadow var(--duration-standard) var(--ease-luxury),
     color var(--duration-standard) var(--ease-luxury);
   width: 100%;
 }
 
+/* The clickable box must equal the visible box: a bare input in a centred grid
+   row shrink-wraps to ~19px and leaves dead bands above and below. */
+.field-control input.field-chrome,
+.field-control select.field-chrome,
+.field-control .field-select-trigger {
+  align-self: stretch;
+  height: 100%;
+}
+
 .field-chrome::placeholder {
   color: var(--field-placeholder);
-  letter-spacing: 0.015em;
+}
+
+/* Browser autofill paints a blue box with an !important UA background that
+   background-color cannot override. An inset shadow in the field's ground colour
+   repaints it — it draws a fill, not elevation, so the no-shadow rule holds. */
+.field-chrome:is(:autofill, :-webkit-autofill) {
+  -webkit-text-fill-color: var(--color-ink);
+  box-shadow: inset 0 0 0 100vmax var(--field-autofill-ground);
+  caret-color: var(--field-caret);
+}
+
+.dashboard-profile-section,
+.storefront-cart-summary,
+.app-dialog-panel {
+  --field-autofill-ground: var(--color-surface);
 }
 
 .field-chrome:hover:not(:disabled):not(:read-only):not(:focus):not(:focus-visible) {
-  border-color: var(--field-border-hover);
+  border-bottom-color: var(--field-border-hover);
+}
+
+.field-control:not(.field-control--readonly):hover
+  .field-chrome:not(:disabled):not(:read-only):not(:focus):not(:focus-visible),
+.field-control:not(.field-control--readonly):has(.password-field-toggle:hover)
+  .field-chrome:not(:disabled):not(:read-only):not(:focus):not(:focus-visible) {
+  border-bottom-color: var(--field-border-hover);
+}
+
+/* Focus deepens the hairline; the width never changes, so the baseline holds. */
+.field-chrome:focus:not([readonly]):not(.field-chrome--readonly),
+.field-chrome:focus-visible:not([readonly]):not(.field-chrome--readonly),
+.field-chrome:focus-within:not([readonly]):not(.field-chrome--readonly) {
+  background-color: var(--field-bg-focus);
+  border-bottom-color: var(--field-border-focus);
 }
 
 .field-chrome--readonly,
 .field-chrome[readonly] {
   background-color: var(--field-bg-readonly);
-  border-color: var(--field-border-readonly);
-  border-style: dashed;
-  box-shadow: none;
+  border-bottom-color: var(--field-border-readonly);
   color: var(--field-text-readonly);
   cursor: default;
   transition: none;
@@ -494,20 +591,8 @@
 .field-control--readonly:hover .field-chrome,
 .field-control--readonly:focus-within .field-chrome {
   background-color: var(--field-bg-readonly);
-  border-color: var(--field-border-readonly);
-  box-shadow: none;
+  border-bottom-color: var(--field-border-readonly);
   color: var(--field-text-readonly);
-}
-
-.field-control--readonly:hover label,
-.field-control--readonly:focus-within label {
-  color: var(--color-muted);
-}
-
-[data-theme="dashboard"] .field-control--readonly:hover label,
-[data-theme="dashboard"] .field-control--readonly:focus-within label,
-[data-theme="dashboard"] .dashboard-profile-section .field-control--readonly label {
-  color: var(--color-db-muted);
 }
 
 [data-theme="dashboard"] .field-chrome--readonly,
@@ -516,34 +601,179 @@
   font-variant-numeric: tabular-nums;
 }
 
-.field-chrome:focus:not([readonly]):not(.field-chrome--readonly),
-.field-chrome:focus-visible:not([readonly]):not(.field-chrome--readonly) {
-  background-color: var(--field-bg-focus);
-  border-color: var(--field-border-focus);
-  box-shadow: var(--field-inset-highlight), 0 0 0 1px var(--field-frame-focus);
-}
-
 .field-chrome[aria-invalid="true"] {
-  border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border));
+  border-bottom-color: var(--color-danger);
 }
 
 .field-chrome[aria-invalid="true"]:focus,
 .field-chrome[aria-invalid="true"]:focus-visible {
-  background-color: color-mix(in srgb, var(--color-danger-bg) 22%, var(--field-bg-focus));
-  border-color: color-mix(in srgb, var(--color-danger) 80%, var(--color-border));
-  box-shadow: var(--field-inset-highlight),
-    0 0 0 1px color-mix(in srgb, var(--color-danger) 22%, transparent);
+  background-color: var(--field-bg-focus);
+  border-bottom-color: var(--color-danger);
 }
+
+.field-chrome:disabled {
+  background-color: var(--field-bg-disabled);
+  border-bottom-color: var(--color-line);
+  color: var(--color-muted);
+  cursor: not-allowed;
+  opacity: 1;
+  padding-inline: 0.75rem;
+}
+
+[data-theme="dashboard"] .field-chrome--integer {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-theme="dashboard"] .field-chrome--integer::-webkit-inner-spin-button,
+[data-theme="dashboard"] .field-chrome--integer::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Toolbar / table search — same underline mechanics, dashboard scale. */
+.field-chrome--inline {
+  background-color: transparent;
+  border-bottom-color: var(--field-border);
+}
+
+.field-chrome--inline:hover:not(:disabled):not(:focus):not(:focus-visible) {
+  border-bottom-color: var(--field-border-hover);
+}
+
+.field-chrome--inline:focus,
+.field-chrome--inline:focus-visible {
+  background-color: transparent;
+  border-bottom-color: var(--field-border-focus);
+}
+
+/* -----------------------------------------------------------------------------
+   Search chrome — one contract for every search box, dashboard and storefront.
+
+   Same underline as a field, plus a fixed 22px glyph column and a 40px trailing
+   action column, so the glyph sits next to the text and the action sits at the
+   end of a line that never stretches past 24rem.
+   ----------------------------------------------------------------------------- */
+
+.search-field {
+  inline-size: 100%;
+  max-inline-size: 24rem;
+}
+
+.search-field__box {
+  align-items: center;
+  background-color: var(--field-bg);
+  border-bottom: 1px solid var(--field-border);
+  column-gap: 0.625rem;
+  display: grid;
+  grid-template-columns: 1.375rem minmax(0, 1fr) var(--search-action-hit);
+  min-height: var(--field-control-height);
+  transition: border-color var(--duration-micro) var(--ease-luxury);
+  width: 100%;
+}
+
+.search-field__box:hover {
+  border-bottom-color: var(--field-border-hover);
+}
+
+.search-field__box:focus-within {
+  background-color: var(--field-bg-focus);
+  border-bottom-color: var(--field-border-focus);
+}
+
+.search-field__leading {
+  align-items: center;
+  color: var(--color-muted);
+  display: inline-flex;
+  justify-content: center;
+  transition: color var(--duration-micro) var(--ease-luxury);
+}
+
+.search-field__box:hover .search-field__leading,
+.search-field__box:focus-within .search-field__leading {
+  color: var(--field-label-active);
+}
+
+.search-field__glyph {
+  block-size: 1rem;
+  display: block;
+  inline-size: 1rem;
+}
+
+/* The clickable box must equal the visible box: a bare input in a centred grid
+   row shrink-wraps and leaves dead bands above and below. */
+.search-field__input {
+  align-self: stretch;
+  background: transparent;
+  border: none;
+  caret-color: var(--field-caret);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--field-control-font-size);
+  height: 100%;
+  letter-spacing: 0;
+  line-height: 1.25;
+  min-width: 0;
+  outline: none;
+  padding: 0;
+  width: 100%;
+}
+
+.search-field__input::placeholder {
+  color: var(--field-placeholder);
+}
+
+.search-field__input::-webkit-search-cancel-button,
+.search-field__input::-webkit-search-decoration {
+  appearance: none;
+  display: none;
+}
+
+/* Icon-only, so Tier A in both themes even though the field row is only 42px: the
+   box is centred on the row and overhangs it by a pixel or two, which costs nothing
+   because it is transparent. The margin lands the 14px glyph 4px from the field
+   edge, matching the 3px the leading glyph keeps on the other side — half the
+   button's dead space, minus the 4px we want to keep. */
+.search-field__action {
+  align-items: center;
+  align-self: center;
+  background: transparent;
+  block-size: var(--search-action-hit);
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  display: inline-flex;
+  inline-size: var(--search-action-hit);
+  justify-content: center;
+  justify-self: end;
+  margin-inline-end: calc((var(--search-action-hit) - 0.875rem) / -2 + 0.25rem);
+  padding: 0;
+  transition: color var(--duration-micro) var(--ease-luxury);
+}
+
+.search-field__action:hover {
+  color: var(--color-ink);
+}
+
+/* Nothing to clear yet: the slot stays, the control goes. */
+.search-field__action--idle {
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* -----------------------------------------------------------------------------
+   Password
+   ----------------------------------------------------------------------------- */
 
 .password-field {
   position: relative;
   width: 100%;
 }
 
+/* Reserve room for the widest toggle word ("Hide") plus its padding. */
 .password-field-input {
-  padding-inline-end: calc(
-    var(--password-field-toggle-hit) + var(--field-control-padding-inline) * 0.5
-  );
+  padding-inline-end: 3.5rem;
 }
 
 /* Chromium / WebKit — mask without flipping input type (caret-safe). */
@@ -569,129 +799,56 @@
   visibility: hidden;
 }
 
+/* Text toggle: micro-label, ink-2 at rest, matcha on hover (Tier A height). */
 .password-field-toggle {
   align-items: center;
   background: transparent;
   border: none;
-  color: var(--color-muted);
+  color: var(--color-ink-2);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
+  font-size: var(--label-size-sm);
+  font-weight: var(--label-weight);
   height: var(--password-field-toggle-hit);
-  justify-content: center;
+  letter-spacing: 0.18em;
   margin: 0;
-  padding: 0;
+  padding: 0 0.5rem;
   position: absolute;
-  right: 0.375rem;
-  top: 50%;
+  right: 0;
+  text-transform: uppercase;
+  top: calc(var(--field-control-height) / 2);
   transform: translateY(-50%);
-  transition: color var(--duration-standard) var(--ease-luxury);
-  width: var(--password-field-toggle-hit);
+  transition: color var(--duration-micro) var(--ease-luxury);
 }
 
-.password-field-toggle::before {
-  background-color: transparent;
-  border-radius: 999px;
-  content: "";
-  height: var(--password-field-toggle-affordance);
-  left: 50%;
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  transition: background-color var(--duration-standard) var(--ease-luxury);
-  width: var(--password-field-toggle-affordance);
-}
-
-.password-field-toggle:hover:not(:disabled),
-.password-field-toggle[aria-pressed="true"]:not(:disabled) {
-  color: var(--color-ink);
-}
-
-.password-field-toggle:hover:not(:disabled)::before,
-.password-field-toggle[aria-pressed="true"]:not(:disabled)::before {
-  background-color: color-mix(in srgb, var(--color-ink) 6%, transparent);
-}
-
-.password-field-toggle:focus-visible {
-  color: var(--color-ink);
-  outline: none;
-}
-
-.password-field-toggle:focus-visible::before {
-  background-color: color-mix(in srgb, var(--color-ink) 6%, transparent);
-  outline: 2px solid var(--field-border-focus);
-  outline-offset: 1px;
+.password-field-toggle:hover:not(:disabled) {
+  color: var(--color-matcha-500);
 }
 
 .password-field-toggle:disabled {
+  color: var(--color-disabled);
   cursor: not-allowed;
-  opacity: 0.45;
 }
 
-.password-field-toggle-icon {
-  display: block;
-  flex-shrink: 0;
-  height: var(--password-field-toggle-icon);
-  margin: 0;
-  position: relative;
-  width: var(--password-field-toggle-icon);
-  z-index: 1;
-}
+/* -----------------------------------------------------------------------------
+   Select
+   ----------------------------------------------------------------------------- */
 
-.field-control:focus-within .password-field-toggle {
-  color: var(--field-label-active);
-}
-
-.field-chrome:disabled {
-  background-color: var(--field-bg-disabled);
-  border-color: var(--color-border);
-  box-shadow: none;
-  color: var(--color-muted);
-  cursor: not-allowed;
-  opacity: 1;
-}
-
-[data-theme="dashboard"] .field-chrome--integer {
-  -moz-appearance: textfield;
-  appearance: textfield;
-  font-variant-numeric: tabular-nums;
-}
-
-[data-theme="dashboard"] .field-chrome--integer::-webkit-inner-spin-button,
-[data-theme="dashboard"] .field-chrome--integer::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* Toolbar / table search — neutral surface, same chrome mechanics */
-.field-chrome--inline {
-  background-color: var(--color-surface);
-  border-color: var(--color-border);
-}
-
-.field-chrome--inline:hover:not(:disabled):not(:focus):not(:focus-visible) {
-  border-color: color-mix(in srgb, var(--color-ink) 6%, var(--color-border));
-}
-
-.field-chrome--inline:focus,
-.field-chrome--inline:focus-visible {
-  background-color: var(--field-bg-focus);
-  border-color: var(--field-border-focus);
-}
-
+/* Inline SVG data URIs cannot read custom properties; these two literals
+   mirror --color-muted (#6F675E) and --color-matcha-500 (#23402F). */
 .field-chrome--select {
-  --field-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6056' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --field-chevron-active: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234E7D5B' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --field-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236F675E' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --field-chevron-active: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2323402F' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   appearance: none;
   background-image: var(--field-chevron);
-  background-position: right 0.75rem center;
+  background-position: right 0.125rem center;
   background-repeat: no-repeat;
   background-size: 1rem;
-  padding-inline-end: 2.5rem;
+  padding-inline-end: 1.75rem;
 }
 
 .field-chrome--select:focus,
 .field-chrome--select:focus-visible {
-  background-color: var(--field-bg-focus);
   background-image: var(--field-chevron-active);
 }
 
@@ -702,7 +859,7 @@
   display: flex;
   gap: 0.5rem;
   justify-content: space-between;
-  padding-inline-end: 0.625rem;
+  padding-inline-end: 0.125rem;
   text-align: left;
 }
 
@@ -717,23 +874,9 @@
 }
 
 .field-select-trigger.field-chrome--select[data-state="open"] {
-  background-color: var(--field-bg-focus);
-  border-color: var(--field-border-focus);
-  box-shadow: var(--field-inset-highlight);
+  border-bottom-color: var(--field-border-focus);
   position: relative;
   z-index: 61;
-}
-
-.field-select-trigger.field-select-trigger--menu-bottom[data-state="open"] {
-  border-bottom-color: transparent;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.field-select-trigger.field-select-trigger--menu-top[data-state="open"] {
-  border-top-color: transparent;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
 }
 
 .field-select-value {
@@ -770,10 +913,12 @@
   transform: rotate(180deg);
 }
 
+/* A popover is an overlay, so it is the one place a shadow is legal. The edge stays at
+   --color-border: the shadow already separates it from the page. */
 .field-select-content {
-  background-color: var(--field-bg-focus);
-  border: 1px solid var(--field-border-focus);
-  box-shadow: var(--field-inset-highlight);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-overlay);
   overflow: hidden;
   transform-origin: var(--radix-select-content-transform-origin);
   width: var(--radix-select-trigger-width);
@@ -782,21 +927,11 @@
 
 .field-select-content[data-side="bottom"] {
   animation: field-select-reveal-down var(--duration-standard) var(--ease-luxury);
-  border-bottom-left-radius: var(--radius-input);
-  border-bottom-right-radius: var(--radius-input);
-  border-top: none;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
   margin-top: -1px;
 }
 
 .field-select-content[data-side="top"] {
   animation: field-select-reveal-up var(--duration-standard) var(--ease-luxury);
-  border-bottom: none;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  border-top-left-radius: var(--radius-input);
-  border-top-right-radius: var(--radius-input);
   margin-bottom: -1px;
 }
 
@@ -805,25 +940,24 @@
   padding: 0.25rem;
 }
 
+/* Items sit 2px apart (the sidebar nav rhythm) so states never touch. */
 .field-select-tray {
   display: flex;
   flex-direction: column;
-  gap: 0.0625rem;
+  gap: 0.125rem;
 }
 
 .field-select-item {
   align-items: center;
-  border-radius: 0.3125rem;
   color: var(--color-ink-2);
   cursor: pointer;
   display: flex;
   font-size: var(--field-control-font-size);
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-weight: 400;
   line-height: 1.25;
-  min-height: 2rem;
+  min-height: 2.5rem;
   outline: none;
-  padding: 0.375rem 0.625rem;
+  padding: 0.5rem 0.75rem;
   transition:
     background-color var(--duration-standard) var(--ease-luxury),
     color var(--duration-standard) var(--ease-luxury);
@@ -838,32 +972,20 @@
 }
 
 .field-select-item[data-highlighted]:not([data-state="checked"]) {
-  background-color: color-mix(in srgb, var(--color-mint) 42%, var(--field-bg-focus));
+  background-color: var(--color-paper-4);
   color: var(--color-ink);
 }
 
+/* A listbox selection is quiet: matcha tint + ink. A solid matcha bar — or a
+   rail — inside a popover overpowers the field it belongs to. */
 .field-select-item[data-state="checked"] {
-  background-color: color-mix(in srgb, var(--color-matcha-200) 22%, var(--field-bg-focus));
-  color: var(--field-label-active);
-}
-
-[data-theme="dashboard"] .field-select-content {
-  background-color: var(--field-bg-focus);
-  border-color: var(--field-border-focus);
+  background-color: var(--color-matcha-100);
+  color: var(--color-ink);
+  font-weight: 500;
 }
 
 [data-theme="dashboard"] .field-select-item {
   color: var(--color-db-muted);
-}
-
-[data-theme="dashboard"] .field-select-item[data-highlighted]:not([data-state="checked"]) {
-  background-color: color-mix(in srgb, var(--color-db-row) 72%, var(--color-db-surface));
-  color: var(--color-db-ink);
-}
-
-[data-theme="dashboard"] .field-select-item[data-state="checked"] {
-  background-color: color-mix(in srgb, var(--color-matcha-200) 18%, var(--color-db-surface));
-  color: var(--color-db-ink);
 }
 
 @keyframes field-select-reveal-down {
@@ -889,163 +1011,3 @@
     transform: scaleY(1);
   }
 }
-
-/* Dashboard — denser controls; beats Tailwind size utilities on Button */
-[data-theme="dashboard"] .btn-chrome {
-  font-size: var(--btn-control-font-size);
-  font-weight: 500;
-  height: var(--btn-control-min-height);
-  letter-spacing: 0.01em;
-  min-height: var(--btn-control-min-height);
-  min-width: var(--btn-control-min-width);
-  padding-inline: var(--btn-control-padding-inline);
-  transition:
-    background-color var(--duration-standard) var(--ease-luxury),
-    box-shadow var(--duration-standard) var(--ease-luxury),
-    color var(--duration-standard) var(--ease-luxury);
-}
-
-[data-theme="dashboard"] .btn-chrome:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-db-accent) 40%, transparent);
-  outline-offset: 2px;
-}
-
-/* Dashboard primary — flat accent (no satin, no gradient, no lift) */
-[data-theme="dashboard"] .btn-primary {
-  background: var(--color-db-accent);
-  box-shadow: none;
-  color: var(--theme-on-primary);
-  text-shadow: none;
-}
-
-[data-theme="dashboard"] .btn-primary::before {
-  display: none;
-}
-
-[data-theme="dashboard"] .btn-primary:hover:not(:disabled) {
-  background: var(--color-db-accent-hover);
-  box-shadow: none;
-  color: var(--theme-on-primary);
-  transform: none;
-}
-
-[data-theme="dashboard"] .btn-primary:active:not(:disabled) {
-  background: var(--color-db-accent-hover);
-  box-shadow: none;
-  color: var(--theme-on-primary);
-  transform: none;
-}
-
-[data-theme="dashboard"] .btn-primary:disabled {
-  background: var(--color-db-row);
-  color: var(--color-db-muted);
-}
-
-/* Dashboard secondary — neutral hairline (accent reserved for primary) */
-[data-theme="dashboard"] .btn-variant-outline {
-  border: none;
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
-  color: var(--color-db-muted);
-}
-
-[data-theme="dashboard"] .btn-variant-outline:hover:not(:disabled) {
-  background-color: var(--color-db-row);
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
-  color: var(--color-db-ink);
-}
-
-[data-theme="dashboard"] .btn-variant-outline:active:not(:disabled) {
-  background-color: var(--color-db-row);
-  box-shadow: inset 0 0 0 1px var(--color-db-border);
-}
-
-[data-theme="dashboard"] .btn-variant-warning {
-  background: var(--color-warning);
-  box-shadow: none;
-  color: #fff;
-}
-
-[data-theme="dashboard"] .btn-variant-warning:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-warning) 88%, var(--color-db-ink));
-  box-shadow: none;
-  color: #fff;
-}
-
-[data-theme="dashboard"] .btn-variant-warning:active:not(:disabled) {
-  background: color-mix(in srgb, var(--color-warning) 82%, var(--color-db-ink));
-  box-shadow: none;
-}
-
-[data-theme="dashboard"] .btn-variant-warning:disabled {
-  background: var(--color-db-row);
-  color: var(--color-db-muted);
-}
-
-[data-theme="dashboard"] .btn-variant-destructive {
-  background: var(--color-danger);
-  box-shadow: none;
-  color: var(--theme-on-primary);
-}
-
-[data-theme="dashboard"] .btn-variant-destructive:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-danger) 88%, var(--color-db-ink));
-  box-shadow: none;
-  color: var(--theme-on-primary);
-}
-
-[data-theme="dashboard"] .btn-variant-destructive:active:not(:disabled) {
-  background: color-mix(in srgb, var(--color-danger) 82%, var(--color-db-ink));
-  box-shadow: none;
-  color: var(--theme-on-primary);
-}
-
-[data-theme="dashboard"] .btn-variant-destructive:disabled {
-  background: var(--color-db-row);
-  color: var(--color-db-muted);
-}
-
-[data-theme="dashboard"] .app-dialog-footer-actions .btn-variant-ghost {
-  color: var(--color-db-muted);
-}
-
-[data-theme="dashboard"] .app-dialog-footer-actions .btn-variant-ghost:hover:not(:disabled) {
-  background-color: var(--color-db-row);
-  color: var(--color-db-ink);
-}
-
-[data-theme="dashboard"] .app-dialog-panel--confirm .app-dialog-header {
-  gap: var(--db-space-2);
-  padding: var(--db-space-6) var(--db-space-6) 0;
-}
-
-[data-theme="dashboard"] .app-dialog-panel--confirm .app-dialog-description {
-  color: var(--color-db-muted);
-  font-size: 0.8125rem;
-  line-height: 1.55;
-}
-
-[data-theme="dashboard"] .app-dialog-panel--confirm .app-dialog-footer {
-  padding: var(--db-space-5) var(--db-space-6) var(--db-space-6);
-}
-
-[data-theme="dashboard"] .app-dialog-panel--confirm .app-dialog-title {
-  font-family: var(--font-body);
-  font-size: 1rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
-[data-theme="dashboard"] .app-dialog-footer-actions {
-  gap: var(--db-space-2);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-

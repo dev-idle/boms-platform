@@ -9,7 +9,11 @@ import {
   type FieldArrayWithId,
 } from "react-hook-form";
 
-import { DashboardTableAddButton, DashboardTableDeleteButton } from "@/components/ui/dashboard-table-actions";
+import {
+  DashboardAddIcon,
+  DashboardDeleteIcon,
+} from "@/components/icons/dashboard-ui-icons";
+import { DashboardIconAction } from "@/components/ui/dashboard-icon-action";
 import { FormFieldHint } from "@/components/ui/form-field-hint";
 import { FORM_FIELD_HINT } from "@/constants/dashboard-form-copy";
 import {
@@ -150,10 +154,13 @@ export function ComboFormItemsSection({
                   )}
                 />
                 <div className="combo-form-items__actions">
-                  <DashboardTableDeleteButton
+                  <DashboardIconAction
                     label={`Remove ${productName}`}
                     onClick={() => remove(index)}
-                  />
+                    tone="danger"
+                  >
+                    <DashboardDeleteIcon className="db-icon-action__icon" />
+                  </DashboardIconAction>
                 </div>
               </li>
             );
@@ -181,13 +188,15 @@ export function ComboFormItemsSection({
           />
         </div>
         <div className="combo-form-items__actions">
-          <DashboardTableAddButton
+          <DashboardIconAction
             label="Add product to bundle"
             onClick={handleAddProduct}
             onMouseDown={(event) => {
               event.preventDefault();
             }}
-          />
+          >
+            <DashboardAddIcon className="db-icon-action__icon" />
+          </DashboardIconAction>
         </div>
       </div>
 

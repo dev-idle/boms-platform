@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { StorefrontAuthShell } from "@/components/layouts/storefront-auth-shell";
-import { AuthLayoutFrame } from "@/features/auth/components/auth-layout-frame";
+import { AuthLayoutFrame } from "@/features/auth";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (

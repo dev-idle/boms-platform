@@ -8,7 +8,7 @@ import { useMe } from "../hooks";
 import { fullNamePhoneSnapshotFromProfile } from "../lib/profile-form-values";
 
 import { FullNamePhoneSelfProfileForm } from "./full-name-phone-self-profile-form";
-import { ReadonlyAccountEmailField } from "./readonly-account-email-field";
+import { AccountIdentityGroup } from "./account-identity-group";
 
 export function AdminAccountProfileForm() {
   const me = useMe();
@@ -29,7 +29,7 @@ export function AdminAccountProfileForm() {
         me.data.profile.phone,
       )}
     >
-      <ReadonlyAccountEmailField email={me.data.email} />
+      <AccountIdentityGroup email={me.data.email} variant="admin" />
     </FullNamePhoneSelfProfileForm>
   );
 }

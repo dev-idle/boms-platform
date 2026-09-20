@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
-import { InlineLoadingState } from "@/components/ui/loading-state";
 import { StorefrontAsyncPanel } from "@/components/ui/storefront-async-panel";
+import { StorefrontPageHeader } from "@/components/layouts/storefront-page-header";
 
 import { catalogProductFallbackImageUrl } from "@/constants/storefront-imagery";
 
@@ -16,11 +16,14 @@ import {
   useCatalogProducts,
 } from "../hooks";
 import { CatalogCategoryFilters } from "./catalog-category-filters";
-import { CatalogMenuPanel } from "./catalog-menu-panel";
 import { CatalogPagination } from "./catalog-pagination";
 import { ProductCard } from "./product-card";
+import { ProductCatalogLoading } from "./product-catalog-loading";
 
 const PRODUCTS_PAGE_SIZE = 24;
+
+const CATALOG_PAGE_LEAD =
+  "Everything we bake today, in one place. Availability updates through the morning as each batch leaves the oven.";
 
 export function ProductCatalog() {
   const {
@@ -58,22 +61,21 @@ export function ProductCatalog() {
     productsInitialLoading;
 
   if (catalogInitialLoading) {
-    return (
-      <div className="catalog-page">
-        <h1 className="sr-only">Shop</h1>
-        <div className="storefront-container catalog-page__loading-shell">
-          <InlineLoadingState className="catalog-page__loading" />
-        </div>
-      </div>
-    );
+    return <ProductCatalogLoading />;
   }
 
   return (
     <div className="catalog-page">
-      <h1 className="sr-only">Shop</h1>
+      <div className="storefront-container catalog-page__intro">
+        <StorefrontPageHeader
+          eyebrow="The collection"
+          lead={CATALOG_PAGE_LEAD}
+          title="All products"
+        />
+      </div>
 
-      <div className="storefront-container catalog-page__layout">
-        <CatalogMenuPanel>
+      <div className="storefront-container catalog-page__body">
+        <aside aria-label="Filters" className="catalog-sidebar">
           {categoriesQuery.isError ? (
             <p className="text-sm text-error">Failed to load categories.</p>
           ) : (
@@ -84,14 +86,16 @@ export function ProductCatalog() {
               showCombosLink={showCombosLink}
             />
           )}
-        </CatalogMenuPanel>
+        </aside>
 
         <div className="catalog-page__content">
-          {showResultsMeta ? (
-            <p className="catalog-page__mobile-count">
-              {pagination.total}
+          <div className="catalog-page__toolbar">
+            <p className="catalog-page__count">
+              {showResultsMeta
+                ? `${pagination.total} ${pagination.total === 1 ? "product" : "products"}`
+                : null}
             </p>
-          ) : null}
+          </div>
 
           {activeSearch ? (
             <p className="catalog-page__search-note">
@@ -110,11 +114,11 @@ export function ProductCatalog() {
                 <p className="text-sm text-error">Failed to load products.</p>
               ) : products.length === 0 ? (
                 <div className="catalog-empty-state">
-                  <p className="text-empty-title">
+                  <h2 className="text-empty-title">
                     {hasActiveFilters
                       ? "No products match your filters"
                       : "No products available"}
-                  </p>
+                  </h2>
                   <p className="catalog-empty-state__hint text-caption">
                     {hasActiveFilters
                       ? "Try another category or clear filters."

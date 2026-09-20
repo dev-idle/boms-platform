@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { StorefrontBrowseLink } from "@/components/layouts/storefront-browse-link";
+import { SignOutIcon } from "@/components/icons/storefront-icons";
 import {
   isStorefrontCustomerNavActive,
   STOREFRONT_CUSTOMER_NAV,
 } from "@/constants/storefront-customer-nav";
 import { STOREFRONT_NAV_COPY } from "@/constants/storefront-nav-copy";
 import { ROUTE } from "@/constants/routes";
+import { useLogout } from "@/features/auth";
 import { cn } from "@/lib/utils";
 
 type StorefrontCustomerLayoutProps = {
@@ -34,6 +36,7 @@ export function StorefrontCustomerLayout({
 }: StorefrontCustomerLayoutProps) {
   const pathname = usePathname();
   const backNav = customerBackNavForPath(pathname);
+  const logout = useLogout();
 
   return (
     <div className="storefront-customer-layout">
@@ -63,6 +66,24 @@ export function StorefrontCustomerLayout({
             );
           })}
         </ul>
+
+        {/* Sign out sits where it does in the dashboard sidebar: under the nav, behind a
+            hairline, so it never reads as one more destination. */}
+        <div className="storefront-customer-nav__footer">
+          <button
+            className="storefront-customer-nav__link storefront-customer-nav__signout"
+            disabled={logout.isPending}
+            onClick={() => logout.mutate()}
+            type="button"
+          >
+            <span aria-hidden="true" className="storefront-customer-nav__icon">
+              <SignOutIcon className="storefront-customer-nav__icon-svg" />
+            </span>
+            <span className="storefront-customer-nav__label">
+              {logout.isPending ? "Signing out…" : "Sign out"}
+            </span>
+          </button>
+        </div>
       </nav>
 
       <div className="storefront-customer-main">

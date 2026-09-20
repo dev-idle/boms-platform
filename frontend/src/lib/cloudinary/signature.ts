@@ -10,7 +10,7 @@ import { CLOUDINARY_UPLOAD_COPY } from "./messages";
 
 const CLOUDINARY_UPLOAD_API_HOST = "api.cloudinary.com";
 
-export const cloudinaryUploadSignatureSchema = z.object({
+const cloudinaryUploadSignatureSchema = z.object({
   allowed_formats: z.string().min(1),
   api_key: z.string().min(1),
   cloud_name: z.string().min(1),

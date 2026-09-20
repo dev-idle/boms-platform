@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const apiErrorBodySchema = z.object({
+const apiErrorBodySchema = z.object({
   code: z.string(),
   message: z.string(),
   details: z.record(z.string()).optional(),

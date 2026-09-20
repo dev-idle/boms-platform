@@ -25,7 +25,7 @@ export function StorefrontBrowseLink({
       <span aria-hidden="true" className="auth-page-exit-icon">
         ←
       </span>
-      <span className="auth-page-exit-label">{children}</span>
+      {children}
     </Link>
   );
 

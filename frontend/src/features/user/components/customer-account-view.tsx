@@ -4,6 +4,7 @@ import { StorefrontAccountSection } from "@/components/layouts/storefront-accoun
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 import { ChangePasswordForm } from "./change-password-form";
+import { CustomerAccountSignedInAs } from "./customer-account-signed-in-as";
 import { CustomerAccountProfileForm } from "./customer-account-profile-form";
 import { DeleteAccountCard } from "./delete-account-card";
 
@@ -12,11 +13,14 @@ export function CustomerAccountView() {
   return (
     <div className="storefront-customer-section storefront-customer-section--account">
       <StorefrontPageHeader
+        eyebrow="Your account"
         lead="Manage your contact details, password, and account preferences in one place."
         title={PAGE_TITLES.account}
       />
 
-      <div className="storefront-account-sections">
+      <CustomerAccountSignedInAs />
+
+      <div>
         <StorefrontAccountSection
           id={CUSTOMER_ACCOUNT_SECTION.profile}
           title="Profile"

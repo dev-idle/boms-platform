@@ -22,8 +22,14 @@ export function useCatalogCategories(
   return useQuery(catalogCategoriesQueryOptions(input));
 }
 
-export function useCatalogProducts(input: CatalogProductsListFilterInput) {
-  return useQuery(catalogProductsQueryOptions(input));
+export function useCatalogProducts(
+  input: CatalogProductsListFilterInput,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    ...catalogProductsQueryOptions(input),
+    enabled: options?.enabled ?? true,
+  });
 }
 
 export function useCatalogProduct(

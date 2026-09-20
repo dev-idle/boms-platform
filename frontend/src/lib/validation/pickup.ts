@@ -107,3 +107,12 @@ export function formatPickupDateTime(iso: string): string {
     timeZone: PICKUP_RULES.timeZone,
   }).format(new Date(iso));
 }
+
+/** Wall-clock pickup time for kitchen queue rows — tabular, no date. */
+export function formatPickupWallTime(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: PICKUP_RULES.timeZone,
+  }).format(new Date(iso));
+}

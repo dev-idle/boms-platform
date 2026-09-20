@@ -23,7 +23,7 @@ type RoleGateProps = {
  * Single gate per role layout: blocks UI until session matches role + namespace.
  * Wrong role or cross-namespace path → own home (never another role's area).
  */
-export function RoleGate({ allowedRole, children }: RoleGateProps) {
+function RoleGate({ allowedRole, children }: RoleGateProps) {
   const hydrated = useAuthHydrated();
   const status = useAuthStore((state) => state.status);
   const logoutIntent = useAuthStore((state) => state.logoutIntent);

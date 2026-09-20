@@ -13,7 +13,7 @@ import { changePassword, deleteAccount, updateProfile } from "../api";
 import { type ChangePasswordInput, type UpdateSelfProfileInput } from "../schemas/index";
 import { meQueryOptions, userQueryKeys } from "./query-options";
 
-export { meQueryOptions, userQueryKeys } from "./query-options";
+export { userQueryKeys } from "./query-options";
 
 export function useMe() {
   const status = useAuthStore((state) => state.status);

@@ -23,8 +23,6 @@ import {
 } from "../schemas";
 import { staffQueryKeys } from "./query-options";
 
-export { staffQueryKeys } from "./query-options";
-
 const defaultOrdersFilter: StaffOrdersListFilterInput = {
   page: 1,
   page_size: 20,

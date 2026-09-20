@@ -12,12 +12,6 @@ const ADMIN_NAV_ITEMS: readonly DashboardNavItem[] = [
     match: "exact",
   },
   { href: ROUTE.admin.users, icon: "users", label: "Users", match: "prefix" },
-  {
-    href: ROUTE.admin.account.profile,
-    icon: "profile",
-    label: "Profile",
-    match: "prefix",
-  },
 ] as const;
 
 type AdminShellProps = {
@@ -27,9 +21,10 @@ type AdminShellProps = {
 export function AdminShell({ children }: AdminShellProps) {
   return (
     <DashboardShell
-      ariaLabel="Admin"
+      accountHref={ROUTE.admin.account.root}
       homeHref={ROUTE.admin.dashboard}
       navItems={ADMIN_NAV_ITEMS}
+      profileHref={ROUTE.admin.account.profile}
       roleLabel="Admin"
     >
       {children}

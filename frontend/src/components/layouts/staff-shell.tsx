@@ -6,12 +6,6 @@ import { DashboardShell, type DashboardNavItem } from "./dashboard-shell";
 
 const STAFF_NAV_ITEMS: readonly DashboardNavItem[] = [
   { href: ROUTE.staff.orders, icon: "orders", label: "Orders", match: "prefix" },
-  {
-    href: ROUTE.staff.account.profile,
-    icon: "profile",
-    label: "Profile",
-    match: "prefix",
-  },
 ] as const;
 
 type StaffShellProps = {
@@ -21,9 +15,10 @@ type StaffShellProps = {
 export function StaffShell({ children }: StaffShellProps) {
   return (
     <DashboardShell
-      ariaLabel="Staff"
+      accountHref={ROUTE.staff.account.root}
       homeHref={ROUTE.staff.orders}
       navItems={STAFF_NAV_ITEMS}
+      profileHref={ROUTE.staff.account.profile}
       roleLabel="Staff"
     >
       {children}

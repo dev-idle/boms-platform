@@ -4,7 +4,7 @@ import type {
   CustomerSelfProfileFormValues,
   FullNamePhoneSelfProfileFormValues,
 } from "../schemas/index";
-import type { CustomerProfile, Me } from "../types";
+import type { CustomerProfile, Me } from "@/lib/schemas/me";
 
 function fieldValueOrEmpty(value: string | null | undefined): string {
   return value ?? "";
@@ -14,7 +14,7 @@ function patchOptionalString(value: string): string {
   return value.trim();
 }
 
-export function fullNamePhoneFormDefaults(
+function fullNamePhoneFormDefaults(
   fullName: string,
   phone: string | null | undefined,
 ): FullNamePhoneSelfProfileFormValues {
@@ -42,7 +42,7 @@ export function normalizeFullNamePhoneFormValues(
   };
 }
 
-export function customerProfileFormDefaults(
+function customerProfileFormDefaults(
   profile: Pick<CustomerProfile, "display_name" | "phone">,
 ): CustomerSelfProfileFormValues {
   return {

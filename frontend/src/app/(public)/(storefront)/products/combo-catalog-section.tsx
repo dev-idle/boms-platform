@@ -1,6 +1,6 @@
 "use client";
 
-import { ComboCatalog } from "@/features/catalog/components/combo-catalog";
+import { ComboCatalog } from "@/features/catalog";
 import { ProductPurchaseActions } from "@/features/customer";
 
 /** Composes catalog combos with customer cart actions (FSD boundary at app layer). */

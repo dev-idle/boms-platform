@@ -23,8 +23,6 @@ import {
 } from "../schemas";
 import { bakerQueryKeys } from "./query-options";
 
-export { bakerQueryKeys } from "./query-options";
-
 const defaultOrdersFilter: BakerOrdersListFilterInput = {
   page: 1,
   page_size: 20,

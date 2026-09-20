@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -9,19 +10,20 @@ import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { loginHrefWithNext } from "@/lib/validate-next";
+import { loginHrefWithNext, validateNext } from "@/lib/validate-next";
 import { isApiError } from "@/lib/errors";
-import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
 import { useRegister } from "../hooks";
+import { AUTH_FORM_COPY } from "../lib/auth-form-copy";
 import { registerSchema, type RegisterInput } from "../schemas";
-import { AuthInlineLink } from "./auth-inline-link";
 import { AuthFormShell } from "./auth-form-shell";
 import { AuthPasswordChecklist } from "./auth-password-checklist";
 
-export function RegisterForm({ next }: { next?: string }) {
+/** Reads `next` from the URL — render it inside <Suspense>. */
+export function RegisterForm() {
   const registerMutation = useRegister();
+  const next = validateNext(useSearchParams().get("next")) ?? undefined;
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -66,14 +68,13 @@ export function RegisterForm({ next }: { next?: string }) {
 
   return (
     <AuthFormShell
-      description="Create your account to order for pickup."
-      footer={
-        <p className="auth-page-switch">
-          Already have an account?{" "}
-          <AuthInlineLink href={loginHrefWithNext(next)}>Sign in</AuthInlineLink>
-        </p>
-      }
-      title={PAGE_TITLES.createAccount}
+      description={AUTH_FORM_COPY.createAccount.description}
+      footer={{
+        href: loginHrefWithNext(next),
+        linkLabel: "Sign in",
+        prompt: "Already have an account?",
+      }}
+      title={AUTH_FORM_COPY.createAccount.title}
     >
       <Form {...form}>
         <form
@@ -86,7 +87,7 @@ export function RegisterForm({ next }: { next?: string }) {
             name="email"
             render={({ field }) => (
               <FormItem className="auth-field">
-                <FieldControl label="Email">
+                <FieldControl label="Email address">
                   <Input
                     autoComplete="email"
                     inputMode="email"

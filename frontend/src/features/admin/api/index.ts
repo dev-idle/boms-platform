@@ -5,6 +5,7 @@ import {
   browserRequestVoid,
   browserRequestWithMeta,
 } from "@/lib/browser-api-client";
+import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
 
 import {
   adminResetPasswordResponseSchema,
@@ -12,6 +13,7 @@ import {
   createOperationalResponseSchema,
   createOperationalSchema,
   listFilterSchema,
+  nextEmployeeCodeSchema,
   updateRoleSchema,
   adminUserActivityLogSchema,
   type AdminUser,
@@ -19,6 +21,7 @@ import {
   type CreateOperationalInput,
   type AdminResetPasswordResponse,
   type CreateOperationalResponse,
+  type NextEmployeeCode,
   type ListFilterInput,
   type UpdateRoleInput,
   type UserActivityFilterInput,
@@ -26,57 +29,6 @@ import {
   type UsersListResult,
   userActivityFilterSchema,
 } from "../schemas";
-
-const paginatedMetaSchema = z.object({
-  request_id: z.string().optional(),
-  pagination: z
-    .object({
-      page: z.number().int().min(1),
-      page_size: z.number().int().min(1),
-      total: z.number().int().min(0),
-      total_pages: z.number().int().min(1).optional(),
-    })
-    .optional(),
-});
-
-type PaginatedMeta = z.infer<typeof paginatedMetaSchema>;
-
-function resolvePaginatedResult<TEntry>(
-  result: { data: TEntry[]; meta?: unknown },
-  fallback: { page: number; page_size: number },
-): {
-  entries: TEntry[];
-  pagination: {
-    page: number;
-    page_size: number;
-    total: number;
-    total_pages: number;
-  };
-  request_id?: string;
-} {
-  const parsedMetaResult = paginatedMetaSchema.safeParse(result.meta);
-  const parsedMeta: PaginatedMeta | undefined = parsedMetaResult.success
-    ? parsedMetaResult.data
-    : undefined;
-  const rawPagination = parsedMeta?.pagination;
-
-  const page = rawPagination?.page ?? fallback.page;
-  const pageSize = rawPagination?.page_size ?? fallback.page_size;
-  const total = rawPagination?.total ?? result.data.length;
-  const totalPages =
-    rawPagination?.total_pages ?? Math.max(1, Math.ceil(total / pageSize));
-
-  return {
-    entries: result.data,
-    pagination: {
-      page,
-      page_size: pageSize,
-      total,
-      total_pages: totalPages,
-    },
-    request_id: parsedMeta?.request_id,
-  };
-}
 
 function usersPath(filter: ListFilterInput): string {
   const params = new URLSearchParams();
@@ -99,12 +51,12 @@ export async function listUsers(input: ListFilterInput): Promise<UsersListResult
     schema: z.array(adminUserSchema),
   });
 
-  const resolved = resolvePaginatedResult(result, filter);
+  const parsed = parsePaginatedList(result.data, result.meta, filter);
 
   return {
-    users: resolved.entries,
-    pagination: resolved.pagination,
-    request_id: resolved.request_id,
+    users: parsed.items,
+    pagination: parsed.pagination,
+    request_id: parsed.request_id,
   };
 }
 
@@ -114,6 +66,13 @@ export async function getUserById(id: string): Promise<AdminUser> {
   return browserRequest<AdminUser>(`/api/v1/admin/users/${parsedId}`, {
     method: "GET",
     schema: adminUserSchema,
+  });
+}
+
+export async function getNextEmployeeCode(): Promise<NextEmployeeCode> {
+  return browserRequest<NextEmployeeCode>("/api/v1/admin/employee-codes/next", {
+    method: "GET",
+    schema: nextEmployeeCodeSchema,
   });
 }
 
@@ -195,11 +154,11 @@ export async function listUserActivity(
     },
   );
 
-  const resolved = resolvePaginatedResult(result, filter);
+  const parsed = parsePaginatedList(result.data, result.meta, filter);
 
   return {
-    entries: resolved.entries,
-    pagination: resolved.pagination,
-    request_id: resolved.request_id,
+    entries: parsed.items,
+    pagination: parsed.pagination,
+    request_id: parsed.request_id,
   };
 }

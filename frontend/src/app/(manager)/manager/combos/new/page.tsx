@@ -17,7 +17,11 @@ export default function ManagerNewComboPage() {
       description="Bundle products with promotional pricing and a time window."
       title={PAGE_TITLES.newCombo}
     >
-      <DashboardProfileSection id="manager-combo-form" title="Combo details">
+      <DashboardProfileSection
+        id="manager-combo-form"
+        title="Combo details"
+        variant="plain"
+      >
         <ComboForm mode="create" onSuccess={() => router.push(ROUTE.manager.combos)} />
       </DashboardProfileSection>
     </DashboardFormPage>

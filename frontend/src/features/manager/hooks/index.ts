@@ -46,8 +46,6 @@ import {
 } from "../schemas";
 import { managerQueryKeys, MANAGER_LIST_STALE_TIME_MS } from "./query-options";
 
-export { managerQueryKeys, MANAGER_LIST_STALE_TIME_MS } from "./query-options";
-
 export function useCategories(input: CategoryListFilterInput) {
   const filter = categoryListFilterSchema.parse(input);
   return useQuery({

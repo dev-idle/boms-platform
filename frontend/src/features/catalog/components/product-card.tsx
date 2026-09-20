@@ -53,10 +53,14 @@ export function ProductCard({
               {product.category_name}
             </p>
           ) : null}
-          <h2 className="catalog-product-card__name">{product.name}</h2>
-          <p className="catalog-product-card__price text-price">
-            {formatPriceCents(product.price_cents)}
-          </p>
+          <h3 className="catalog-product-card__name">{product.name}</h3>
+          <div className="catalog-product-card__footer">
+            <p className="catalog-product-card__price text-price">
+              {formatPriceCents(product.price_cents)}
+            </p>
+            {/* The whole card links to the detail page — there is no add-to-cart here. */}
+            <span className="catalog-product-card__action">Add</span>
+          </div>
         </div>
       </Link>
     </article>

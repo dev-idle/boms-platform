@@ -21,8 +21,10 @@ export type DashboardNavItem = {
 };
 
 type DashboardShellProps = {
-  ariaLabel: string;
+  /** Account root for this role, e.g. `/admin/account` — owns the footer menu state. */
+  accountHref: string;
   homeHref: string;
+  profileHref: string;
   navItems: readonly DashboardNavItem[];
   roleLabel: string;
   children: ReactNode;
@@ -30,8 +32,9 @@ type DashboardShellProps = {
 
 /** Unified internal dashboard chrome — one theme for staff, baker, manager, admin. */
 export function DashboardShell({
-  ariaLabel,
+  accountHref,
   homeHref,
+  profileHref,
   navItems,
   roleLabel,
   children,
@@ -40,16 +43,22 @@ export function DashboardShell({
 
   return (
     <div className="dashboard-shell">
-      <aside className="dashboard-sidebar" aria-label={`${roleLabel} navigation`}>
+      {/* `data-sidebar` scopes the inset focus ring (base.css). */}
+      <aside
+        aria-label={`${roleLabel} workspace`}
+        className="dashboard-sidebar"
+        data-sidebar="dashboard"
+      >
         <div className="dashboard-sidebar-header">
           <BrandLogo
             className="dashboard-sidebar-logo"
             href={homeHref}
             size="sm"
           />
+          <p className="dashboard-sidebar-role">{roleLabel}</p>
         </div>
-        <nav className="dashboard-nav" aria-label={ariaLabel}>
-          <p className="dashboard-nav-label">Menu</p>
+        {/* No visible "Menu" heading — the named landmark serves assistive tech. */}
+        <nav aria-label="Dashboard" className="dashboard-nav">
           {navItems.map(({ href, icon, label, match }) => {
             const active = isNavItemActive(pathname, href, match);
             return (
@@ -67,7 +76,10 @@ export function DashboardShell({
             );
           })}
         </nav>
-        <DashboardSidebarFooter />
+        <DashboardSidebarFooter
+          accountHref={accountHref}
+          profileHref={profileHref}
+        />
       </aside>
       <main className="dashboard-main">
         <div className="dashboard-page">{children}</div>

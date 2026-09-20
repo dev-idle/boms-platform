@@ -14,7 +14,7 @@ function assertNeverRole(role: never): never {
   throw new Error(`Unhandled role: ${role}`);
 }
 
-export function routePrefixesForRole(role: UserRole): readonly string[] {
+function routePrefixesForRole(role: UserRole): readonly string[] {
   switch (role) {
     case USER_ROLE.customer:
       return CUSTOMER_ROUTE_PREFIXES;
@@ -44,23 +44,6 @@ export function homeRouteForRole(role: UserRole): string {
       return ROUTE.manager.dashboard;
     case USER_ROLE.admin:
       return ROUTE.admin.dashboard;
-    default:
-      return assertNeverRole(role);
-  }
-}
-
-export function profileRouteForRole(role: UserRole): string {
-  switch (role) {
-    case USER_ROLE.customer:
-      return ROUTE.customer.account.profile;
-    case USER_ROLE.staff:
-      return ROUTE.staff.account.profile;
-    case USER_ROLE.baker:
-      return ROUTE.baker.account.profile;
-    case USER_ROLE.manager:
-      return ROUTE.manager.account.profile;
-    case USER_ROLE.admin:
-      return ROUTE.admin.account.profile;
     default:
       return assertNeverRole(role);
   }

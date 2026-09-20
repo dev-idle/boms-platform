@@ -13,6 +13,7 @@ import {
   createOperational,
   disableUser,
   enableUser,
+  getNextEmployeeCode,
   getUserById,
   listUsers,
   listUserActivity,
@@ -32,8 +33,6 @@ import {
   type UserActivityFilterInput,
 } from "../schemas";
 import { adminQueryKeys } from "./query-options";
-
-export { adminQueryKeys } from "./query-options";
 
 function normalizeFilter(input: ListFilterInput): ListFilterInput {
   return listFilterSchema.parse(input);
@@ -80,6 +79,16 @@ export function useUserDetail(id: string) {
   });
 }
 
+export function useNextEmployeeCode(enabled = true) {
+  return useQuery({
+    queryKey: adminQueryKeys.nextEmployeeCode,
+    queryFn: getNextEmployeeCode,
+    enabled,
+    staleTime: 30_000,
+    retry: 2,
+  });
+}
+
 export function useCreateOperational() {
   const queryClient = useQueryClient();
   const [tempPasswordData, setTempPasswordData] =
@@ -91,6 +100,7 @@ export function useCreateOperational() {
       setTempPasswordData(data);
       hydrateUserCaches(queryClient, data.user);
       void queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.nextEmployeeCode });
       toast.success("User created");
     },
   });
@@ -110,6 +120,7 @@ export function useUpdateRole() {
     onSuccess: (user) => {
       hydrateUserCaches(queryClient, user);
       invalidateUserDetailCaches(queryClient, user.id);
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.nextEmployeeCode });
       toast.success("Role updated");
     },
   });

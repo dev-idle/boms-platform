@@ -31,6 +31,7 @@ export const ROUTE = {
     orders: "/staff/orders",
     orderDetail: (id: string) => `/staff/orders/${id}`,
     account: {
+      root: "/staff/account",
       profile: "/staff/account/profile",
       password: "/staff/account/password",
     },
@@ -39,6 +40,7 @@ export const ROUTE = {
     production: "/baker/production",
     productionDetail: (id: string) => `/baker/production/${id}`,
     account: {
+      root: "/baker/account",
       profile: "/baker/account/profile",
       password: "/baker/account/password",
     },
@@ -58,6 +60,7 @@ export const ROUTE = {
     discountCodesNew: "/manager/discount-codes/new",
     discountCodeDetail: (id: string) => `/manager/discount-codes/${id}`,
     account: {
+      root: "/manager/account",
       profile: "/manager/account/profile",
       password: "/manager/account/password",
     },
@@ -68,6 +71,7 @@ export const ROUTE = {
     usersNew: "/admin/users/new",
     userDetail: (id: string) => `/admin/users/${id}`,
     account: {
+      root: "/admin/account",
       profile: "/admin/account/profile",
       password: "/admin/account/password",
     },
@@ -78,7 +82,7 @@ export const ROUTE = {
 export const GUEST_STOREFRONT_ROUTE_PREFIXES = [ROUTE.products] as const;
 
 /** Customer session required (cart, orders, account). */
-export const CUSTOMER_PROTECTED_ROUTE_PREFIXES = [
+const CUSTOMER_PROTECTED_ROUTE_PREFIXES = [
   ROUTE.cart,
   ROUTE.orders,
   "/customer",
@@ -104,5 +108,3 @@ export const PROTECTED_ROUTE_PREFIXES = [
   ...MANAGER_ROUTE_PREFIXES,
   ...ADMIN_ROUTE_PREFIXES,
 ] as const;
-
-export type ProtectedRoutePrefix = (typeof PROTECTED_ROUTE_PREFIXES)[number];

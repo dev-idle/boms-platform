@@ -1,15 +1,13 @@
+import type { OrderStatus } from "@/lib/schemas/order";
 import { cn } from "@/lib/utils";
 
-export const STATUS_PILL_VARIANTS = [
-  "pending",
-  "confirmed",
-  "in_progress",
-  "ready",
-  "completed",
-  "cancelled",
-] as const;
-
-export type StatusPillVariant = (typeof STATUS_PILL_VARIANTS)[number];
+export type StatusPillVariant =
+  | "pending"
+  | "confirmed"
+  | "in_progress"
+  | "ready"
+  | "completed"
+  | "cancelled";
 
 type StatusPillProps = {
   variant: StatusPillVariant;
@@ -17,19 +15,21 @@ type StatusPillProps = {
   className?: string;
 };
 
-/** Semantic order-status pill — shared across internal roles. */
+/**
+ * Semantic order-status indicator — dot plus micro-label. Colour is never the
+ * only channel: the label always accompanies the dot.
+ */
 export function StatusPill({ variant, label, className }: StatusPillProps) {
   return (
-    <span
-      className={cn("status-pill", `status-pill--${variant}`, className)}
-    >
+    <span className={cn("status-pill", `status-pill--${variant}`, className)}>
+      <span aria-hidden className="status-pill__dot" />
       {label}
     </span>
   );
 }
 
 /** Map API order status strings to semantic pill variants. */
-export function orderStatusToPillVariant(status: string): StatusPillVariant {
+export function orderStatusToPillVariant(status: OrderStatus): StatusPillVariant {
   switch (status) {
     case "pending":
       return "pending";
@@ -40,12 +40,9 @@ export function orderStatusToPillVariant(status: string): StatusPillVariant {
     case "ready":
       return "ready";
     case "fulfilled":
-    case "completed":
       return "completed";
     case "cancelled":
       return "cancelled";
-    default:
-      return "pending";
   }
 }
 

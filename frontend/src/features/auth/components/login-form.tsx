@@ -1,8 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -13,26 +14,26 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
-import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
-import { registerHrefWithNext } from "@/lib/validate-next";
+import { registerHrefWithNext, validateNext } from "@/lib/validate-next";
 
+import { AUTH_FORM_COPY } from "../lib/auth-form-copy";
 import { showLoginFlashToast } from "../lib/login-flash";
 import { useLogin } from "../hooks";
 import { loginSchema, type LoginInput } from "../schemas";
-import { AuthInlineLink } from "./auth-inline-link";
 import { AuthFormShell } from "./auth-form-shell";
 
-type LoginFormProps = {
-  next?: string;
-  registered?: boolean;
-  changed?: boolean;
-};
-
-export function LoginForm({ next, registered, changed }: LoginFormProps) {
+/** Reads `next`, `registered` and `changed` from the URL — render it inside <Suspense>. */
+export function LoginForm() {
   const login = useLogin();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const next = validateNext(searchParams.get("next")) ?? undefined;
+  const registered = searchParams.get("registered") === "1";
+  const changed = searchParams.get("changed") === "1";
+  // UI-only until the refresh-cookie lifetime becomes a login option on the API;
+  // the value is deliberately not sent with the credentials.
+  const [keepSignedIn, setKeepSignedIn] = useState(true);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -91,16 +92,21 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
 
   return (
     <AuthFormShell
-      description="Enter your email and password to continue."
-      footer={
-        <p className="auth-page-switch">
-          New here?{" "}
-          <AuthInlineLink href={registerHrefWithNext(next)}>
-            Create an account
-          </AuthInlineLink>
-        </p>
+      description={AUTH_FORM_COPY.signIn.description}
+      footer={{
+        href: registerHrefWithNext(next),
+        linkLabel: "Create an account",
+        prompt: "New to Choux?",
+      }}
+      footerNote={
+        <>
+          Collecting an order only?{" "}
+          <Link className="auth-page-guest__link" href={ROUTE.products}>
+            Continue as a guest
+          </Link>
+        </>
       }
-      title={PAGE_TITLES.signIn}
+      title={AUTH_FORM_COPY.signIn.title}
     >
       <Form {...form}>
         <form
@@ -113,7 +119,7 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
             name="email"
             render={({ field }) => (
               <FormItem className="auth-field">
-                <FieldControl label="Email">
+                <FieldControl label="Email address">
                   <Input
                     autoComplete="email"
                     inputMode="email"
@@ -132,25 +138,34 @@ export function LoginForm({ next, registered, changed }: LoginFormProps) {
             name="password"
             render={({ field }) => (
               <FormItem className="auth-field">
-                <FieldControl label="Password">
+                <FieldControl
+                  label="Password"
+                  labelAction={
+                    <Link className="auth-forgot-link" href={ROUTE.forgotPassword}>
+                      Forgot?
+                    </Link>
+                  }
+                >
                   <PasswordInput
                     autoComplete="current-password"
                     placeholder="••••••••"
                     {...field}
                   />
                 </FieldControl>
-                <div className="auth-forgot-row">
-                  <AuthInlineLink
-                    className="auth-forgot-link"
-                    href={ROUTE.forgotPassword}
-                  >
-                    Forgot password?
-                  </AuthInlineLink>
-                </div>
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          <label className="auth-remember">
+            <input
+              checked={keepSignedIn}
+              className="auth-remember__input"
+              onChange={(event) => setKeepSignedIn(event.target.checked)}
+              type="checkbox"
+            />
+            Keep me signed in on this device
+          </label>
 
           {form.formState.errors.root?.message ? (
             <p className="text-caption text-error" role="alert">

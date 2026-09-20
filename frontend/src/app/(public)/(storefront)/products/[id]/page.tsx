@@ -11,6 +11,10 @@ import type { CatalogProduct } from "@/lib/schemas/catalog";
 
 import { ProductDetailPage } from "./product-detail-page";
 
+// The product must be loaded before render to answer a missing id with a real 404
+// (notFound inside a streamed boundary would ship status 200), so this route blocks.
+export const instant = false;
+
 type ProductDetailPageProps = {
   params: Promise<{ id: string }>;
 };

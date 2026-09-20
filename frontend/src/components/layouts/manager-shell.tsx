@@ -30,12 +30,6 @@ const MANAGER_NAV_ITEMS: readonly DashboardNavItem[] = [
     label: "Discount Codes",
     match: "prefix",
   },
-  {
-    href: ROUTE.manager.account.profile,
-    icon: "profile",
-    label: "Profile",
-    match: "prefix",
-  },
 ] as const;
 
 type ManagerShellProps = {
@@ -45,9 +39,10 @@ type ManagerShellProps = {
 export function ManagerShell({ children }: ManagerShellProps) {
   return (
     <DashboardShell
-      ariaLabel="Manager"
+      accountHref={ROUTE.manager.account.root}
       homeHref={ROUTE.manager.dashboard}
       navItems={MANAGER_NAV_ITEMS}
+      profileHref={ROUTE.manager.account.profile}
       roleLabel="Manager"
     >
       {children}

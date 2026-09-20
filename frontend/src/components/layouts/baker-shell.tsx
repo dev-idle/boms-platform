@@ -11,12 +11,6 @@ const BAKER_NAV_ITEMS: readonly DashboardNavItem[] = [
     label: "Production",
     match: "prefix",
   },
-  {
-    href: ROUTE.baker.account.profile,
-    icon: "profile",
-    label: "Profile",
-    match: "prefix",
-  },
 ] as const;
 
 type BakerShellProps = {
@@ -26,9 +20,10 @@ type BakerShellProps = {
 export function BakerShell({ children }: BakerShellProps) {
   return (
     <DashboardShell
-      ariaLabel="Baker"
+      accountHref={ROUTE.baker.account.root}
       homeHref={ROUTE.baker.production}
       navItems={BAKER_NAV_ITEMS}
+      profileHref={ROUTE.baker.account.profile}
       roleLabel="Baker"
     >
       {children}

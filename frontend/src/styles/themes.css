@@ -4,18 +4,13 @@
 [data-theme="storefront"] {
   --theme-bg: var(--color-bg);
   --theme-surface: var(--color-surface);
-  --theme-surface-alt: var(--color-mint);
   --theme-border: var(--color-border);
   --theme-ink: var(--color-ink);
   --theme-ink-2: var(--color-ink-2);
   --theme-muted: var(--color-muted);
-  --theme-primary: var(--color-matcha-500);
-  --theme-primary-hover: var(--color-matcha-600);
-  --theme-primary-active: var(--color-matcha-700);
-  --theme-primary-subtle: var(--color-matcha-100);
-  --theme-on-primary: var(--color-surface);
-  --theme-accent: var(--color-gold-500);
-  --theme-accent-soft: var(--color-gold-100);
+  /* #F7FAF6 on #23402F = 10.81:1 */
+  --theme-on-primary: #f7faf6;
+  --theme-accent: var(--color-brass);
 }
 
 /* =============================================================================
@@ -25,108 +20,99 @@
 [data-theme="dashboard"] {
   --theme-bg: var(--color-db-bg);
   --theme-surface: var(--color-db-surface);
-  --theme-surface-alt: var(--color-db-bg);
   --theme-border: var(--color-db-border);
   --theme-ink: var(--color-db-ink);
   --theme-ink-2: var(--color-db-muted);
   --theme-muted: var(--color-db-muted);
-  --theme-primary: var(--color-db-accent);
-  --theme-primary-hover: var(--color-db-accent-hover);
-  --theme-primary-active: var(--color-db-accent-hover);
-  --theme-primary-subtle: var(--color-db-accent-soft);
-  --theme-on-primary: var(--color-db-surface);
-  --theme-accent: var(--color-db-accent);
-  --theme-accent-soft: var(--color-db-accent-soft);
+  --theme-on-primary: #f7faf6;
+  --theme-accent: var(--color-brass);
 
-  /* Same porcelain field chrome as storefront; slightly denser scale. */
-  --field-bg: color-mix(in srgb, var(--color-db-surface) 88%, var(--color-mint));
-  --field-bg-focus: color-mix(in srgb, var(--color-db-surface) 94%, var(--color-mint));
-  --field-bg-disabled: color-mix(in srgb, var(--color-mint) 32%, var(--color-db-surface));
-  --field-bg-readonly: var(--color-db-bg);
-  --field-border-readonly: color-mix(in srgb, var(--color-db-border) 72%, transparent);
-  --field-text-readonly: color-mix(in srgb, var(--color-db-muted) 94%, var(--color-db-ink));
-  --field-border: color-mix(in srgb, var(--color-matcha-200) 40%, var(--color-db-border));
-  --field-border-hover: color-mix(in srgb, var(--color-matcha-300) 55%, var(--color-db-border));
-  --field-control-height: 2.5rem;
+  /* Fields inherit the underline treatment; only the scale differs. */
+  --field-bg: transparent;
+  --field-bg-focus: transparent;
+  --field-bg-disabled: var(--color-paper-3);
+  --field-bg-readonly: transparent;
+  --field-border: var(--color-line-strong);
+  --field-border-hover: var(--color-ink-2);
+  --field-border-readonly: var(--color-border);
+  --field-text-readonly: var(--color-muted);
+  --field-control-height: 2.625rem;
   --field-control-font-size: 0.875rem;
-  --field-control-padding-inline: 0.75rem;
-  --password-field-toggle-affordance: 1.75rem;
-  --password-field-toggle-hit: 2.125rem;
-  --password-field-toggle-icon: 1.0625rem;
-  --btn-control-min-height: 2.5rem;
+  --field-control-padding-inline: 0.125rem;
+  --password-field-toggle-hit: 2.5rem;
+  --search-action-hit: 2.5rem;
+  --btn-control-min-height: 2.875rem;
   --btn-control-min-width: 2.5rem;
-  --btn-control-font-size: 0.8125rem;
-  --btn-control-padding-inline: 1rem;
-  --radius-card: 12px;
-  --radius-input: 10px;
-  --radius-button: 11px;
+  --btn-control-font-size: 0.6875rem;
+  --btn-control-padding-inline: 1.625rem;
 
-  /* Dashboard data table — readable density without oversized chrome */
-  --db-table-row-height: 2.75rem;
-  --db-table-row-height-comfortable: 2.875rem;
-  --db-table-row-height-relaxed: 2.9375rem;
-  --db-table-header-size: 0.75rem;
-  --db-table-action-hit: 2.25rem;
+  /* Data table — rows are content-sized (no row-height token): padding, not height. */
+  --db-table-header-size: var(--label-size-sm);
+  --db-table-cell-padding-block: 1.125rem;
+  --db-table-cell-padding-inline: 1.5rem;
+  --db-table-action-hit: 2.5rem;
   --db-table-action-icon: 1.0625rem;
-  --db-table-action-radius: 0.5rem;
-  --db-table-col-icon: 4.875rem;
-  --db-table-col-revoke: 10.25rem;
-  --db-table-col-role: 8.5rem;
+  /* 76px leading icon/thumb column — the only width shared by every table. */
+  --db-table-col-lead: 4.75rem;
+  --db-table-col-status-pill: 9rem;
+  --db-table-col-actions-pair: 10.5rem;
+  --db-table-col-actions-group: 17rem;
+  --db-table-col-role: 9.25rem;
   --db-table-admin-fixed-cols: calc(
-    var(--db-table-col-role) + var(--db-table-col-icon) * 2 + var(--db-table-col-revoke)
+    var(--db-table-col-lead) + var(--db-table-col-role) +
+      var(--db-table-col-status-pill) + var(--db-table-col-actions-group)
   );
   --db-table-admin-email-share: 0.58;
   --db-table-admin-name-share: 0.42;
-  --db-filter-chip-font: 0.8125rem;
-  --db-filter-chip-height: 2rem;
-  --db-pagination-font: 0.875rem;
-  --db-pagination-hit: 2.25rem;
-  --db-pagination-icon: 0.9375rem;
-  --db-pagination-page-min: 2.25rem;
-  --db-pagination-step-width: 5rem;
 
-  /* Dashboard sidebar — primary nav + account footer */
-  --db-sidebar-eyebrow-size: 0.75rem;
-  --db-sidebar-nav-hit: 2.5rem;
+  /* Filter group = segmented control with hairline dividers */
+  --db-filter-chip-font: var(--label-size);
+  --db-filter-chip-height: 2.5rem;
+
+  /* Pagination = square 34px cells */
+  --db-pagination-font: 0.75rem;
+  --db-pagination-hit: 2.125rem;
+  --db-pagination-icon: 0.875rem;
+  --db-pagination-page-min: 2.125rem;
+  --db-pagination-step-width: 2.125rem;
+
+  /* Sidebar — light paper ground. */
+  --db-sidebar-width: 16.5rem;
+  --db-sidebar-nav-hit: 2.75rem;
   --db-sidebar-nav-icon: 1.125rem;
-  --db-sidebar-nav-font: 0.875rem;
-  --db-sidebar-avatar-size: 2rem;
-  --db-sidebar-width: 15.5rem;
-  --db-sidebar-logo-mark-size: 2.0625rem;
+  --db-sidebar-nav-font: 0.8125rem;
+  --db-sidebar-avatar-size: 2.125rem;
+  --db-sidebar-logo-mark-size: 1.875rem;
   --db-sidebar-logo-wordmark-size: 1.625rem;
-  --db-sidebar-meta-name: 0.875rem;
-  --db-sidebar-meta-email: 0.75rem;
+  --db-sidebar-meta-name: 0.8125rem;
+  --db-sidebar-meta-email: 0.6875rem;
 
-  /* Dashboard profile / settings — page shell caps width; fields fill the card */
-  /* Dashboard spacing — 4px grid + semantic rhythm (SSOT) */
+  /* Spacing — 4px grid (SSOT) */
   --db-space-1: 0.25rem;
   --db-space-2: 0.5rem;
   --db-space-3: 0.75rem;
   --db-space-4: 1rem;
   --db-space-5: 1.25rem;
   --db-space-6: 1.5rem;
-  --db-space-8: 2rem;
 
-  --db-main-padding-block-start: var(--db-space-6);
-  --db-main-padding-block-end: var(--db-space-8);
-  --db-main-padding-inline: clamp(var(--db-space-6), 3vw, var(--db-space-8));
+  --db-main-padding-block-start: 2.5rem;
+  --db-main-padding-block-end: 3.5rem;
+  --db-main-padding-inline: 3rem;
+  --db-container: 77.5rem;
 
-  --db-page-gap: var(--db-space-6);
-  --db-block-gap: var(--db-space-5);
+  --db-page-gap: 2rem;
+  --db-block-gap: 1.25rem;
 
-  --db-card-padding: var(--db-space-6);
+  --db-card-padding: 1.75rem;
   --db-card-header-gap: var(--db-space-2);
-  --db-card-header-divider-pad: var(--db-space-3);
   --db-card-header-body-gap: var(--db-space-5);
 
-  --db-form-gap: var(--db-space-4);
+  /* Proximity rule: label->control 10px, field->field 28px (ratio >= 1:2) */
+  --db-form-gap: 1.75rem;
   --db-form-actions-gap: var(--db-space-4);
+  --db-field-label-gap: 0.625rem;
 
-  --db-field-grid-row-gap: var(--db-space-4);
-  --db-field-grid-col-gap: var(--db-space-6);
-
-  --db-profile-form-max-width: 100%;
-  --db-page-title-size: clamp(1.125rem, 0.35vw + 1.05rem, 1.375rem);
+  --db-profile-form-max-width: 40rem;
+  --db-page-title-size: 2.375rem;
   --db-page-stack-gap: var(--db-page-gap);
-  --db-page-stack-gap-data: var(--db-block-gap);
 }

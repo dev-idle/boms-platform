@@ -1,18 +1,14 @@
-import { RegisterForm } from "@/features/auth";
+import { Suspense } from "react";
+
+import { AUTH_FORM_COPY, AuthFormSkeleton, RegisterForm } from "@/features/auth";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
-import { validateNext } from "@/lib/validate-next";
 
 export const metadata = pageTitle(PAGE_TITLES.createAccount);
 
-type RegisterPageProps = {
-  searchParams: Promise<{
-    next?: string;
-  }>;
-};
-
-export default async function RegisterPage({ searchParams }: RegisterPageProps) {
-  const params = await searchParams;
-  const safeNext = validateNext(params.next) ?? undefined;
-
-  return <RegisterForm next={safeNext} />;
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<AuthFormSkeleton {...AUTH_FORM_COPY.createAccount} />}>
+      <RegisterForm />
+    </Suspense>
+  );
 }

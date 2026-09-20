@@ -18,12 +18,11 @@ import { ROUTE } from "@/constants/routes";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
-import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useStaffOrders } from "../hooks";
-import type { OrderStatus } from "../schemas";
+import type { OrderStatus } from "@/lib/schemas/order";
 
 const PAGE_SIZE = DASHBOARD_STAFF_ORDERS_PAGE_SIZE;
 
@@ -39,7 +38,7 @@ const STATUS_FILTERS: Array<{ value: OrderStatus | undefined; label: string }> =
 
 export function StaffOrdersTable() {
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<OrderStatus | undefined>("pending");
+  const [status, setStatus] = useState<OrderStatus | undefined>(undefined);
   const filter = useMemo(
     () => ({ page, page_size: PAGE_SIZE, status }),
     [page, status],
@@ -56,7 +55,7 @@ export function StaffOrdersTable() {
 
   return (
     <div className="dashboard-page-body">
-      <div className="db-table-filters">
+      <div className="db-table-filters db-table-filters--end">
         <DashboardFilterGroup
           aria-label="Filter by status"
           onChange={(next) => {
@@ -69,21 +68,20 @@ export function StaffOrdersTable() {
       </div>
 
       <DashboardTableWrap refetching={refetching}>
-        <table className="db-table db-table--catalog db-table--relaxed">
+        <table className="db-table db-table--staff-orders db-table--comfortable">
           <thead>
             <tr>
               <th>Order</th>
               <th>Customer</th>
               <th>Pickup</th>
-              <th>Placed</th>
-              <th>Total</th>
+              <th className="db-table-cell-numeric">Total</th>
               <th className="db-table-status">Status</th>
-              <th className="db-table-detail">Actions</th>
+              <th className="db-table-detail">Detail</th>
             </tr>
           </thead>
           <tbody>
             <DashboardTableStateRows
-              columnCount={7}
+              columnCount={6}
               emptyFilteredMessage="No orders match this filter."
               entityLabel="orders"
               hasActiveFilter={status !== undefined}
@@ -114,8 +112,7 @@ export function StaffOrdersTable() {
                         ? formatPickupDateTime(order.pickup_at)
                         : "Not scheduled"}
                     </td>
-                    <td className="text-muted">{formatDateTime(order.created_at)}</td>
-                    <td className="db-table-cell-primary text-tabular">
+                    <td className="text-tabular">
                       {formatPriceCents(order.total_cents)}
                     </td>
                     <td className="db-table-status">
@@ -128,7 +125,9 @@ export function StaffOrdersTable() {
                       <DashboardTableRowActions>
                         <DashboardTableActionLink
                           href={ROUTE.staff.orderDetail(order.id)}
-                          label={`View order ${order.id}`}
+                          label={`Open order ${order.id}`}
+                          showArrow
+                          text="Open"
                         />
                       </DashboardTableRowActions>
                     </td>
@@ -136,7 +135,7 @@ export function StaffOrdersTable() {
                 ))
               : null}
             <DashboardTablePagePlaceholders
-              columnCount={7}
+              columnCount={6}
               count={pagePlaceholderCount}
             />
           </tbody>

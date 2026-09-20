@@ -79,10 +79,7 @@ function CartLineItem({ item }: { item: CartItem }) {
           type="button"
           onClick={() => removeItem.mutate(item.id)}
         >
-          <span aria-hidden="true" className="storefront-cart-remove__icon">
-            ×
-          </span>
-          <span>Remove</span>
+          Remove
         </button>
       </div>
     </li>
@@ -128,7 +125,10 @@ export function CartView() {
     <div className="storefront-cart">
       {cart.items.length === 0 ? (
         <div className="storefront-empty-state storefront-empty-state--card">
-          <p className="storefront-empty-state__message">Your cart is empty.</p>
+          <h2 className="text-empty-title">Your cart is empty</h2>
+          <p className="storefront-empty-state__message">
+            Browse the shop and add something freshly baked.
+          </p>
           <Button asChild variant="outline">
             <Link href={ROUTE.products}>{STOREFRONT_NAV_COPY.returnToShop}</Link>
           </Button>
@@ -169,10 +169,7 @@ export function CartView() {
                     type="button"
                     onClick={() => removeDiscount.mutate()}
                   >
-                    <span aria-hidden="true" className="storefront-cart-remove__icon">
-                      ×
-                    </span>
-                    <span>Remove code</span>
+                    Remove code
                   </button>
                 ) : null}
               </div>
@@ -180,7 +177,7 @@ export function CartView() {
           </div>
 
           <aside className="storefront-cart__aside">
-            <div className="storefront-panel storefront-cart-summary">
+            <div className="storefront-cart-summary">
               <p className="storefront-cart-summary__title">Order summary</p>
               <div className="storefront-cart-summary__row">
                 <span className="text-muted">Subtotal</span>

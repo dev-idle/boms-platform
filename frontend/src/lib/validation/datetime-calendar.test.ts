@@ -5,6 +5,7 @@ import {
   hour24To12,
   partsToIso,
   parseIsoToLocalParts,
+  shiftDraftDays,
 } from "./datetime-calendar";
 
 describe("hour12 conversion", () => {
@@ -26,5 +27,23 @@ describe("partsToIso", () => {
     const local = new Date(partsToIso(parts));
     expect(local.getHours()).toBe(parts.hour);
     expect(local.getMinutes()).toBe(parts.minute);
+  });
+});
+
+describe("shiftDraftDays", () => {
+  const base = { year: 2026, month: 0, day: 31, hour: 9, minute: 30 };
+
+  it("rolls into the next month and keeps the time", () => {
+    expect(shiftDraftDays(base, 1)).toEqual({ year: 2026, month: 1, day: 1, hour: 9, minute: 30 });
+  });
+
+  it("rolls back across a year boundary", () => {
+    expect(shiftDraftDays({ ...base, month: 0, day: 1 }, -7)).toEqual({
+      year: 2025,
+      month: 11,
+      day: 25,
+      hour: 9,
+      minute: 30,
+    });
   });
 });

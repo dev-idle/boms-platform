@@ -28,7 +28,9 @@ const isProd = process.env.NODE_ENV === "production";
 
 /**
  * Production drops `'unsafe-eval'` from `script-src` (dev keeps it for Turbopack / tooling).
- * Tighten further with nonces from `src/proxy.ts` when you eliminate remaining inline needs.
+ * `'unsafe-inline'` stays deliberately: Next.js nonces require dynamic rendering, which would
+ * disable Partial Prerendering (`cacheComponents`). XSS defence relies on React escaping, no
+ * `dangerouslySetInnerHTML` with user data, and the restrictive directives below.
  */
 function buildContentSecurityPolicy() {
   const scriptSrc = isProd
@@ -68,7 +70,12 @@ const nextConfig = {
   compress: true,
   productionBrowserSourceMaps: false,
   experimental: {
-    viewTransition: true,
+    // Instant-navigation validation only where it is achievable: storefront routes opt in with
+    // `export const instant = true`. Role areas and sign-in/register wait for the client-side
+    // session (the access token is memory-only), so they never prerender and are not opted in.
+    instantInsights: {
+      validationLevel: "manual-warning",
+    },
   },
   // Browser /api/v1/* is proxied by app/api/v1/[...path]/route.ts (BFF) so
   // X-Internal-Secret and Set-Cookie forwarding are reliable. RSC uses lib/api-client.

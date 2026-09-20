@@ -1,17 +1,15 @@
-import type { MouseEventHandler, ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 
-import {
-  DashboardAddIcon,
-  DashboardDeleteIcon,
-  DashboardEditIcon,
-} from "@/components/icons/dashboard-ui-icons";
 import { cn } from "@/lib/utils";
 
 type DashboardTableEditLinkProps = {
   className?: string;
   href: string;
+  /** Accessible name — carries the row identity (e.g. "Edit Croissant"). */
   label?: string;
+  /** Visible word. */
+  text?: string;
 };
 
 type DashboardTableDeleteButtonProps = {
@@ -19,17 +17,10 @@ type DashboardTableDeleteButtonProps = {
   disabled?: boolean;
   label?: string;
   onClick: () => void;
+  text?: string;
 };
 
-type DashboardTableAddButtonProps = {
-  className?: string;
-  disabled?: boolean;
-  label?: string;
-  onClick: () => void;
-  onMouseDown?: MouseEventHandler<HTMLButtonElement>;
-};
-
-/** Icon row actions — shared across manager, staff, and admin tables. */
+/** Text row actions — shared across manager, staff, and admin tables. */
 export function DashboardTableRowActions({
   children,
   className,
@@ -44,15 +35,15 @@ export function DashboardTableEditLink({
   className,
   href,
   label = "Edit",
+  text = "Edit",
 }: DashboardTableEditLinkProps) {
   return (
     <Link
       aria-label={label}
       className={cn("db-table-action db-table-action--edit", className)}
       href={href}
-      title={label}
     >
-      <DashboardEditIcon className="db-table-action-icon" />
+      {text}
     </Link>
   );
 }
@@ -62,6 +53,7 @@ export function DashboardTableDeleteButton({
   disabled = false,
   label = "Delete",
   onClick,
+  text = "Delete",
 }: DashboardTableDeleteButtonProps) {
   return (
     <button
@@ -69,32 +61,9 @@ export function DashboardTableDeleteButton({
       className={cn("db-table-action db-table-action--delete", className)}
       disabled={disabled}
       onClick={onClick}
-      title={label}
       type="button"
     >
-      <DashboardDeleteIcon className="db-table-action-icon" />
-    </button>
-  );
-}
-
-export function DashboardTableAddButton({
-  className,
-  disabled = false,
-  label = "Add",
-  onClick,
-  onMouseDown,
-}: DashboardTableAddButtonProps) {
-  return (
-    <button
-      aria-label={label}
-      className={cn("db-table-action db-table-action--add", className)}
-      disabled={disabled}
-      onClick={onClick}
-      onMouseDown={onMouseDown}
-      title={label}
-      type="button"
-    >
-      <DashboardAddIcon className="db-table-action-icon" />
+      {text}
     </button>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import { AppDialog, AppDialogFooterActions } from "./app-dialog";
 
@@ -53,8 +54,10 @@ export function ConfirmDialog({
       isPending={isPending}
       onClose={onCancel}
       open={open}
-      panelClassName="app-dialog-panel--confirm"
-      size="sm"
+      panelClassName={cn(
+        "app-dialog-panel--confirm",
+        confirmVariant === "destructive" && "app-dialog-panel--danger",
+      )}
       title={title}
     />
   );

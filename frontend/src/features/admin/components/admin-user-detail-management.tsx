@@ -31,6 +31,7 @@ export function AdminUserDetailManagement({
       description="Change operational role for staff, baker, or manager accounts."
       id="admin-user-role"
       title="Role"
+      variant="plain"
     >
       <AdminUserDetailRoleTab userId={userId} user={user} />
     </DashboardProfileSection>

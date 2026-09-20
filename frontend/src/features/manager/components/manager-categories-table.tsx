@@ -17,7 +17,9 @@ import {
   DashboardTableRowActions,
 } from "@/components/ui/dashboard-table-actions";
 import { EntityActivePill } from "@/components/ui/status-pill";
+import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
+import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolbar-meta";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -63,11 +65,12 @@ export function ManagerCategoriesTable() {
     <div className="dashboard-page-stack">
       <DashboardPageHeader
         actions={
-          <Link href={ROUTE.manager.categoriesNew}>
-            <Button type="button">New category</Button>
-          </Link>
+          <Button asChild>
+            <Link href={ROUTE.manager.categoriesNew}>+ New category</Link>
+          </Button>
         }
         description="Organize the product catalog for customers."
+        eyebrow={DASHBOARD_PAGE_EYEBROW.catalogue}
         title={PAGE_TITLES.categories}
       />
 
@@ -79,10 +82,16 @@ export function ManagerCategoriesTable() {
             placeholder="Search name or slug"
             value={input}
           />
+          {pagination ? (
+            <DashboardTableToolbarMeta>
+              {pagination.total}{" "}
+              {pagination.total === 1 ? "category" : "categories"}
+            </DashboardTableToolbarMeta>
+          ) : null}
         </div>
 
         <DashboardTableWrap refetching={refetching}>
-          <table className="db-table db-table--catalog db-table--categories db-table--comfortable">
+          <table className="db-table db-table--catalog db-table--categories">
             <colgroup>
               <col className="db-table-col-name" />
               <col className="db-table-col-slug" />

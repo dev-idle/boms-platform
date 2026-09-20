@@ -17,7 +17,11 @@ export default function ManagerNewCategoryPage() {
       description="Group products for customer browsing."
       title={PAGE_TITLES.newCategory}
     >
-      <DashboardProfileSection id="manager-category-form" title="Category details">
+      <DashboardProfileSection
+        id="manager-category-form"
+        title="Category details"
+        variant="plain"
+      >
         <CategoryForm
           mode="create"
           onSuccess={() => router.push(ROUTE.manager.categories)}

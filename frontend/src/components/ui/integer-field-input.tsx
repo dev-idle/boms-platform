@@ -62,24 +62,19 @@ function resolveIntegerBounds(
 }
 
 /** Dashboard integer field — clears zero on focus; native spinners hidden via `field-chrome--integer`. */
-export const IntegerFieldInput = React.forwardRef<
-  HTMLInputElement,
-  IntegerFieldInputProps
->(function IntegerFieldInput(
-  {
-    allowEmpty = false,
-    className,
-    max,
-    min = 0,
-    onBlur,
-    onChange,
-    onFocus,
-    step = 1,
-    value,
-    ...props
-  },
+export function IntegerFieldInput({
+  allowEmpty = false,
+  className,
+  max,
+  min = 0,
+  onBlur,
+  onChange,
+  onFocus,
+  step = 1,
+  value,
   ref,
-) {
+  ...props
+}: IntegerFieldInputProps) {
   const { safeMin, safeMax } = resolveIntegerBounds(min, max);
   const [draft, setDraft] = React.useState<string | null>(null);
   const displayValue =
@@ -137,8 +132,7 @@ export const IntegerFieldInput = React.forwardRef<
       value={displayValue}
     />
   );
-});
-IntegerFieldInput.displayName = "IntegerFieldInput";
+}
 
 type OptionalIntegerFieldInputProps = Omit<
   InputProps,
@@ -151,23 +145,18 @@ type OptionalIntegerFieldInputProps = Omit<
 };
 
 /** Optional integer — empty input maps to `null` (dashboard optional limits). */
-export const OptionalIntegerFieldInput = React.forwardRef<
-  HTMLInputElement,
-  OptionalIntegerFieldInputProps
->(function OptionalIntegerFieldInput(
-  {
-    className,
-    max,
-    min = 0,
-    onBlur,
-    onChange,
-    onFocus,
-    step = 1,
-    value,
-    ...props
-  },
+export function OptionalIntegerFieldInput({
+  className,
+  max,
+  min = 0,
+  onBlur,
+  onChange,
+  onFocus,
+  step = 1,
+  value,
   ref,
-) {
+  ...props
+}: OptionalIntegerFieldInputProps) {
   const { safeMin, safeMax } = resolveIntegerBounds(min, max);
   const [draft, setDraft] = React.useState<string | null>(null);
   const displayValue = draft ?? (value === null ? "" : String(value));
@@ -219,5 +208,4 @@ export const OptionalIntegerFieldInput = React.forwardRef<
       value={displayValue}
     />
   );
-});
-OptionalIntegerFieldInput.displayName = "OptionalIntegerFieldInput";
+}

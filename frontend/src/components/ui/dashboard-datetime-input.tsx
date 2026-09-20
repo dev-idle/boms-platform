@@ -18,6 +18,7 @@ export type DashboardDatetimeInputProps = {
   disabled?: boolean;
   id?: string;
   onChange: (iso: string) => void;
+  ref?: React.Ref<HTMLButtonElement>;
   value: string;
 } & Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, "aria-invalid">;
 
@@ -29,13 +30,15 @@ function isPortaledSelectTarget(target: EventTarget | null): boolean {
 }
 
 /** Dashboard datetime field — themed popover; draft commits on Set only. */
-export const DashboardDatetimeInput = React.forwardRef<
-  HTMLButtonElement,
-  DashboardDatetimeInputProps
->(function DashboardDatetimeInput(
-  { className, disabled = false, id, onChange, value, ...props },
+export function DashboardDatetimeInput({
+  className,
+  disabled = false,
+  id,
+  onChange,
+  value,
   ref,
-) {
+  ...props
+}: DashboardDatetimeInputProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const [open, setOpen] = useState(false);
@@ -49,15 +52,8 @@ export const DashboardDatetimeInput = React.forwardRef<
     parseIsoToLocalParts(value).year,
   );
 
-  useEffect(() => {
-    const next = parseIsoToLocalParts(value);
-    if (!open) {
-      setDraft(next);
-      setViewMonth(next.month);
-      setViewYear(next.year);
-    }
-  }, [open, value]);
-
+  // No value → draft sync effect: the panel only renders while open, and openPanel()
+  // re-seeds draft and view from the current value every time it opens.
   useEffect(() => {
     if (!open) {
       return;
@@ -161,5 +157,4 @@ export const DashboardDatetimeInput = React.forwardRef<
       ) : null}
     </div>
   );
-});
-DashboardDatetimeInput.displayName = "DashboardDatetimeInput";
+}

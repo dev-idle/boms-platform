@@ -37,7 +37,11 @@ export default function ManagerEditProductPage({ params }: PageProps) {
       description="Update catalog fields shown on the storefront."
       title={PAGE_TITLES.editProduct}
     >
-      <DashboardProfileSection id="manager-product-form" title="Product details">
+      <DashboardProfileSection
+        id="manager-product-form"
+        title="Product details"
+        variant="plain"
+      >
         <ProductForm
           mode="edit"
           product={productQuery.data}

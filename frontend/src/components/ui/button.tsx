@@ -5,7 +5,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /** Arrow-right for primary CTAs — minimal stroke. */
-export function ButtonArrowIcon({ className }: { className?: string }) {
+function ButtonArrowIcon({ className }: { className?: string }) {
   return (
     <svg
       aria-hidden
@@ -26,16 +26,14 @@ export function ButtonArrowIcon({ className }: { className?: string }) {
 }
 
 const buttonVariants = cva(
-  [
-    "btn-chrome inline-flex items-center justify-center gap-2 whitespace-nowrap",
-    "rounded-button font-body text-sm font-medium leading-none antialiased",
-  ].join(" "),
+  // Typography and gap belong to `.btn-chrome` — the micro-label contract is
+  // one place, not split between CVA utilities and CSS.
+  "btn-chrome inline-flex items-center justify-center whitespace-nowrap antialiased",
   {
     variants: {
       variant: {
         default: "btn-primary",
         outline: "btn-variant-outline",
-        gold: "btn-variant-gold",
         ghost: "btn-variant-ghost",
         destructive: "btn-variant-destructive",
         warning: "btn-variant-warning",
@@ -53,55 +51,56 @@ const buttonVariants = cva(
   },
 );
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+export type ButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
     /** Primary CTA arrow (hero, add-to-cart). Secondary buttons omit this. */
     showArrow?: boolean;
   };
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    { className, variant, size, asChild = false, showArrow = false, children, ...props },
-    ref,
-  ) => {
-    const classes = cn(className, buttonVariants({ variant, size }));
+export function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  showArrow = false,
+  children,
+  ...props
+}: ButtonProps) {
+  const classes = cn(buttonVariants({ variant, size }), className);
 
-    if (asChild) {
-      if (showArrow) {
-        const child = React.Children.only(children) as React.ReactElement<{
-          children?: React.ReactNode;
-        }>;
-
-        return (
-          <Slot className={classes} ref={ref} {...props}>
-            {React.cloneElement(child, {
-              children: (
-                <>
-                  {child.props.children}
-                  <ButtonArrowIcon />
-                </>
-              ),
-            })}
-          </Slot>
-        );
-      }
+  if (asChild) {
+    if (showArrow) {
+      const child = React.Children.only(children) as React.ReactElement<{
+        children?: React.ReactNode;
+      }>;
 
       return (
-        <Slot className={classes} ref={ref} {...props}>
-          {children}
+        <Slot className={classes} {...props}>
+          {React.cloneElement(child, {
+            children: (
+              <>
+                {child.props.children}
+                <ButtonArrowIcon />
+              </>
+            ),
+          })}
         </Slot>
       );
     }
 
     return (
-      <button className={classes} ref={ref} {...props}>
+      <Slot className={classes} {...props}>
         {children}
-        {showArrow ? <ButtonArrowIcon /> : null}
-      </button>
+      </Slot>
     );
-  },
-);
-Button.displayName = "Button";
+  }
 
-export { buttonVariants };
+  return (
+    <button className={classes} {...props}>
+      {children}
+      {showArrow ? <ButtonArrowIcon /> : null}
+    </button>
+  );
+}
+

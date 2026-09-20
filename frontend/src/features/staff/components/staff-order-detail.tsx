@@ -11,13 +11,14 @@ import {
   StatusPill,
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
+import type { OrderStatus } from "@/lib/schemas/order";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 
 import { usePatchStaffOrderStatus, useStaffOrder } from "../hooks";
-import type { OrderStatus, PatchStaffOrderStatusInput } from "../schemas";
+import type { PatchStaffOrderStatusInput } from "../schemas";
 
 type StaffOrderDetailProps = {
   orderId: string;

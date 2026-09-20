@@ -15,6 +15,8 @@ type FieldControlProps = {
   hint?: string;
   hintId?: string;
   label: string;
+  /** Inline action opposite the label (e.g. "Forgot?"), baseline-aligned. */
+  labelAction?: ReactNode;
   /** Renders a muted “(optional)” suffix on the field label. */
   optional?: boolean;
   variant?: "default" | "switch";
@@ -27,6 +29,7 @@ export function FieldControl({
   hint,
   hintId,
   label,
+  labelAction,
   optional = false,
   variant = "default",
 }: FieldControlProps) {
@@ -59,21 +62,28 @@ export function FieldControl({
     );
   }
 
+  const fieldLabel = (
+    <Label className={cn(error && "text-error")} htmlFor={formItemId}>
+      {label}
+      {optional ? <span className="field-label-optional">(optional)</span> : null}
+    </Label>
+  );
+
   return (
     <div className={cn("field-control", className)}>
       <div className="field-control-label-block">
-        <Label
-          className={cn(error && "text-error")}
-          htmlFor={formItemId}
-        >
-          {label}
-          {optional ? (
-            <span className="field-label-optional">(optional)</span>
-          ) : null}
-        </Label>
-        {hint ? <FormFieldHint id={resolvedHintId}>{hint}</FormFieldHint> : null}
+        {labelAction ? (
+          <div className="field-control-label-row">
+            {fieldLabel}
+            {labelAction}
+          </div>
+        ) : (
+          fieldLabel
+        )}
       </div>
       <FormControl aria-describedby={describedBy}>{children}</FormControl>
+      {/* Persistent help sits under the control — never a placeholder. */}
+      {hint ? <FormFieldHint id={resolvedHintId}>{hint}</FormFieldHint> : null}
     </div>
   );
 }

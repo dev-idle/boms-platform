@@ -7,7 +7,7 @@ import {
   isOrderCancelled,
   ORDER_PROGRESS_STEPS,
 } from "../lib/order-progress";
-import type { OrderStatus } from "../schemas";
+import type { OrderStatus } from "@/lib/schemas/order";
 
 type OrderProgressStepperProps = {
   status: OrderStatus;

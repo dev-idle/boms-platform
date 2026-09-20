@@ -1,10 +1,10 @@
 /** True only on first fetch with no cached/placeholder data yet. */
-export function isInitialQueryLoad(isPending: boolean, data: unknown): boolean {
+function isInitialQueryLoad(isPending: boolean, data: unknown): boolean {
   return isPending && data === undefined;
 }
 
 /** Background refetch — keep previous content visible under the busy overlay. */
-export function isQueryRefetching(
+function isQueryRefetching(
   isFetching: boolean,
   isPending: boolean,
   data: unknown,

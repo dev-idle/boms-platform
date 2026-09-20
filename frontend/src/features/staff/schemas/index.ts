@@ -1,24 +1,16 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
+import { orderStatusSchema } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
-export const orderStatusSchema = z.enum([
-  "pending",
-  "confirmed",
-  "in_production",
-  "ready",
-  "cancelled",
-  "fulfilled",
-]);
-
-export const staffOrderCustomerSchema = z.object({
+const staffOrderCustomerSchema = z.object({
   user_id: z.string().uuid(),
   email: z.string().min(1),
   display_name: z.string().nullable().optional(),
 });
 
-export const staffOrderItemSchema = z.object({
+const staffOrderItemSchema = z.object({
   id: z.string().uuid(),
   line_type: z.enum(["product", "combo"]),
   product_id: z.string().uuid().nullable().optional(),
@@ -64,9 +56,7 @@ export const patchStaffOrderStatusInputSchema = z.object({
   status: z.enum(["confirmed", "fulfilled", "cancelled"]),
 });
 
-export type OrderStatus = z.infer<typeof orderStatusSchema>;
-export type StaffOrderCustomer = z.infer<typeof staffOrderCustomerSchema>;
-export type StaffOrderSummary = z.infer<typeof staffOrderSummarySchema>;
+type StaffOrderSummary = z.infer<typeof staffOrderSummarySchema>;
 export type StaffOrder = z.infer<typeof staffOrderSchema>;
 export type StaffOrdersListFilterInput = z.infer<typeof staffOrdersListFilterSchema>;
 export type PatchStaffOrderStatusInput = z.infer<typeof patchStaffOrderStatusInputSchema>;

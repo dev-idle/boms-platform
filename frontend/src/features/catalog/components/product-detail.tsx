@@ -89,7 +89,7 @@ export function ProductDetail({
 
       <article className="catalog-detail__layout">
         <div className="catalog-detail__gallery">
-          <div className="overflow-hidden rounded-card border border-border bg-mint">
+          <div className="overflow-hidden border border-border bg-matcha-100">
             {heroUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are external manager-provided links
               <img
@@ -119,7 +119,7 @@ export function ProductDetail({
                     aria-current={index === heroIndex ? "true" : undefined}
                     aria-label={`Show image ${index + 1} of ${imageUrls.length}`}
                     className={cn(
-                      "overflow-hidden rounded-input border-2 bg-mint",
+                      "overflow-hidden border bg-matcha-100",
                       index === heroIndex ? "border-accent" : "border-transparent",
                     )}
                     key={`${url}-${index}`}

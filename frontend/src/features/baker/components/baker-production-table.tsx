@@ -2,23 +2,24 @@
 
 import { useMemo, useState } from "react";
 
+import { DashboardBusyIndicator } from "@/components/ui/dashboard-busy-overlay";
 import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
 import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
-import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
-import { DashboardTableRowActions } from "@/components/ui/dashboard-table-actions";
-import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import {
   formatOrderStatusLabel,
   orderStatusToPillVariant,
   StatusPill,
 } from "@/components/ui/status-pill";
-import { DASHBOARD_STAFF_ORDERS_PAGE_SIZE } from "@/constants/dashboard-table";
+import {
+  dashboardTableEmptyMessage,
+  dashboardTableErrorMessage,
+  DASHBOARD_STAFF_ORDERS_PAGE_SIZE,
+} from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
-import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
-import { formatPickupDateTime } from "@/lib/validation/pickup";
+import { formatPickupWallTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useBakerProductionOrders } from "../hooks";
@@ -33,6 +34,10 @@ const STATUS_FILTERS: Array<{ value: BakerOrderStatus | undefined; label: string
   { value: "ready", label: "Ready" },
 ];
 
+function bakerOrderItemSummary(itemCount: number): string {
+  return itemCount === 1 ? "1 item" : `${itemCount} items`;
+}
+
 export function BakerProductionTable() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<BakerOrderStatus | undefined>(undefined);
@@ -44,15 +49,11 @@ export function BakerProductionTable() {
   const { initialLoading, refetching } = getDashboardQuerySurface(ordersQuery);
   const orders = ordersQuery.data?.orders ?? [];
   const pagination = ordersQuery.data?.pagination;
-  const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
-    orders.length,
-    pagination,
-    PAGE_SIZE,
-  );
+  const hasActiveFilter = status !== undefined;
 
   return (
     <div className="dashboard-page-body">
-      <div className="db-table-filters">
+      <div className="db-table-filters db-table-filters--end">
         <DashboardFilterGroup
           aria-label="Filter by production status"
           onChange={(next) => {
@@ -65,76 +66,73 @@ export function BakerProductionTable() {
       </div>
 
       <DashboardTableWrap refetching={refetching}>
-        <table className="db-table db-table--catalog db-table--relaxed">
-          <thead>
-            <tr>
-              <th>Order</th>
-              <th>Customer</th>
-              <th>Pickup</th>
-              <th>Total</th>
-              <th className="db-table-status">Status</th>
-              <th className="db-table-detail">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <DashboardTableStateRows
-              columnCount={6}
-              emptyFilteredMessage="No production orders match this filter."
-              entityLabel="production orders"
-              hasActiveFilter={status !== undefined}
-              isEmpty={orders.length === 0}
-              isError={ordersQuery.isError}
-              initialLoading={initialLoading}
-            />
-            {!initialLoading && !ordersQuery.isError && orders.length > 0
-              ? orders.map((order) => (
-                  <tr key={order.id}>
-                    <td>
-                      <span className="text-order-code">{order.id.slice(0, 8)}</span>
-                    </td>
-                    <td>
-                      <div className="db-table-stacked-cell min-w-0">
-                        <span className="db-table-cell-primary truncate">
-                          {order.customer.display_name ?? order.customer.email}
-                        </span>
-                        {order.customer.display_name ? (
-                          <span className="truncate text-caption-dashboard text-muted">
-                            {order.customer.email}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="text-muted">
+        {initialLoading ? (
+          <div className="baker-production-empty" role="status">
+            <DashboardBusyIndicator />
+          </div>
+        ) : ordersQuery.isError ? (
+          <p className="baker-production-empty baker-production-empty--error">
+            {dashboardTableErrorMessage("production orders")}
+          </p>
+        ) : orders.length === 0 ? (
+          <p className="baker-production-empty">
+            {hasActiveFilter
+              ? "No production orders match this filter."
+              : dashboardTableEmptyMessage("production orders")}
+          </p>
+        ) : (
+          <>
+            {/* A header strip, not <thead>: the list stays a list. */}
+            <div aria-hidden className="baker-production-labels">
+              <span>Pickup</span>
+              <span>Order</span>
+              <span className="baker-production-labels__total">Total</span>
+              <span>Status</span>
+              <span />
+            </div>
+            <ul className="baker-production-list">
+              {orders.map((order) => {
+                const customerName =
+                  order.customer.display_name ?? order.customer.email;
+                return (
+                  <li key={order.id} className="baker-production-row">
+                    <p className="baker-production-row__time">
                       {order.pickup_at
-                        ? formatPickupDateTime(order.pickup_at)
-                        : "Not scheduled"}
-                    </td>
-                    <td className="db-table-cell-primary text-tabular">
+                        ? formatPickupWallTime(order.pickup_at)
+                        : "—"}
+                    </p>
+                    <div className="baker-production-row__customer">
+                      <p className="baker-production-row__name">{customerName}</p>
+                      <p className="baker-production-row__summary">
+                        {bakerOrderItemSummary(order.item_count)}
+                      </p>
+                      <p className="baker-production-row__code">
+                        {order.id.slice(0, 8)}
+                      </p>
+                    </div>
+                    <span className="baker-production-row__total">
                       {formatPriceCents(order.total_cents)}
-                    </td>
-                    <td className="db-table-status">
+                    </span>
+                    <span className="baker-production-row__status">
                       <StatusPill
                         label={formatOrderStatusLabel(order.status)}
                         variant={orderStatusToPillVariant(order.status)}
                       />
-                    </td>
-                    <td className="db-table-detail">
-                      <DashboardTableRowActions>
-                        <DashboardTableActionLink
-                          href={ROUTE.baker.productionDetail(order.id)}
-                          label={`View production order ${order.id}`}
-                        />
-                      </DashboardTableRowActions>
-                    </td>
-                  </tr>
-                ))
-              : null}
-            <DashboardTablePagePlaceholders
-              columnCount={6}
-              count={pagePlaceholderCount}
-            />
-          </tbody>
-        </table>
+                    </span>
+                    <span className="baker-production-row__open">
+                      <DashboardTableActionLink
+                        href={ROUTE.baker.productionDetail(order.id)}
+                        label={`Open production order ${order.id}`}
+                        showArrow
+                        text="Open"
+                      />
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
         <DashboardTablePagination
           disabled={ordersQuery.isFetching}
           itemLabel="orders"

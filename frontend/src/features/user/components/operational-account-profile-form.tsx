@@ -10,11 +10,10 @@ import { DashboardProfileFormSkeleton } from "@/components/ui/dashboard-profile-
 
 import { useMe } from "../hooks";
 import { fullNamePhoneSnapshotFromProfile } from "../lib/profile-form-values";
-import type { Me } from "../types";
+import type { Me } from "@/lib/schemas/me";
 
 import { FullNamePhoneSelfProfileForm } from "./full-name-phone-self-profile-form";
-import { ReadonlyAccountEmailField } from "./readonly-account-email-field";
-import { ReadonlyStaffProfileFields } from "./readonly-staff-profile-fields";
+import { AccountIdentityGroup } from "./account-identity-group";
 
 type OperationalRole = (typeof ASSIGNABLE_OPERATIONAL_ROLES)[number];
 
@@ -64,8 +63,11 @@ export function OperationalAccountProfileForm({
         profile.phone,
       )}
     >
-      <ReadonlyAccountEmailField email={me.data.email} />
-      <ReadonlyStaffProfileFields profile={profile} />
+      <AccountIdentityGroup
+        email={me.data.email}
+        employeeCode={profile.employee_code}
+        variant="operational"
+      />
     </FullNamePhoneSelfProfileForm>
   );
 }

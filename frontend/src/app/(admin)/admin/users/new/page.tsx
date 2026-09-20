@@ -15,7 +15,11 @@ export default function AdminUsersNewPage() {
       description="Create staff, baker, or manager accounts. Platform admins are created via dev seed only."
       title={PAGE_TITLES.newUser}
     >
-      <DashboardProfileSection id="admin-users-new" title="Account details">
+      <DashboardProfileSection
+        id="admin-users-new"
+        title="Account details"
+        variant="plain"
+      >
         <CreateOperationalUserForm />
       </DashboardProfileSection>
     </DashboardFormPage>

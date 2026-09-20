@@ -37,7 +37,11 @@ export default function ManagerEditCategoryPage({ params }: PageProps) {
       description="Update how this category appears in the catalog."
       title={PAGE_TITLES.editCategory}
     >
-      <DashboardProfileSection id="manager-category-form" title="Category details">
+      <DashboardProfileSection
+        id="manager-category-form"
+        title="Category details"
+        variant="plain"
+      >
         <CategoryForm
           category={categoryQuery.data}
           mode="edit"

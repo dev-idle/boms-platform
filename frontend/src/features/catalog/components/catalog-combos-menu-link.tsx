@@ -14,7 +14,7 @@ type CatalogCombosMenuLinkProps = {
 export function CatalogCombosMenuLink({ className }: CatalogCombosMenuLinkProps) {
   return (
     <a
-      className={cn("catalog-menu__link catalog-menu__link--anchor", className)}
+      className={cn("catalog-sidebar__link catalog-sidebar__link--anchor", className)}
       href={`#${CATALOG_COMBOS_HEADING_ID}`}
       onClick={(event) => {
         event.preventDefault();

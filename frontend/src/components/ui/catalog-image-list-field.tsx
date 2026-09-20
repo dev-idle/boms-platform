@@ -9,6 +9,7 @@ import {
 } from "@/components/icons/dashboard-ui-icons";
 import { AppDialog, AppDialogFooterActions } from "@/components/ui/app-dialog";
 import { Button } from "@/components/ui/button";
+import { DashboardIconAction } from "@/components/ui/dashboard-icon-action";
 import { Input } from "@/components/ui/input";
 import { CATALOG_IMAGE_FIELD_COPY } from "@/constants/dashboard-form-copy";
 import { isApiError, ApiErrorCode } from "@/lib/errors";
@@ -261,10 +262,7 @@ export function CatalogImageListField({
               return (
                 <li
                   aria-label={CATALOG_IMAGE_FIELD_COPY.imagePosition(order, value.length)}
-                  className={cn(
-                    "catalog-image-list-item",
-                    isPrimary && "catalog-image-list-item--primary",
-                  )}
+                  className="catalog-image-list-item"
                   key={`${url}-${index}`}
                 >
                   <div className="catalog-image-list-item-main">
@@ -330,38 +328,30 @@ export function CatalogImageListField({
                   >
                     <span className="catalog-image-field-action-slot">
                       {!isPrimary ? (
-                        <button
-                          aria-label={CATALOG_IMAGE_FIELD_COPY.setPrimaryImageFor(label)}
-                          className="db-table-action db-table-action--edit"
+                        <DashboardIconAction
                           disabled={isDisabled}
+                          label={CATALOG_IMAGE_FIELD_COPY.setPrimaryImageFor(label)}
                           onClick={() => handleSetPrimary(index)}
-                          title={CATALOG_IMAGE_FIELD_COPY.setPrimaryImage}
-                          type="button"
                         >
-                          <DashboardPrimaryIcon className="db-table-action-icon" />
-                        </button>
+                          <DashboardPrimaryIcon className="db-icon-action__icon" />
+                        </DashboardIconAction>
                       ) : null}
                     </span>
-                    <button
-                      aria-label={CATALOG_IMAGE_FIELD_COPY.viewImage(label)}
-                      className="db-table-action"
+                    <DashboardIconAction
                       disabled={isDisabled || !canPreview}
+                      label={CATALOG_IMAGE_FIELD_COPY.viewImage(label)}
                       onClick={() => setPreviewUrl(url)}
-                      title={CATALOG_IMAGE_FIELD_COPY.view}
-                      type="button"
                     >
-                      <DashboardViewIcon className="db-table-action-icon" />
-                    </button>
-                    <button
-                      aria-label={CATALOG_IMAGE_FIELD_COPY.remove}
-                      className="db-table-action db-table-action--delete"
+                      <DashboardViewIcon className="db-icon-action__icon" />
+                    </DashboardIconAction>
+                    <DashboardIconAction
                       disabled={isDisabled}
+                      label={CATALOG_IMAGE_FIELD_COPY.remove}
                       onClick={() => handleRemove(url)}
-                      title={CATALOG_IMAGE_FIELD_COPY.remove}
-                      type="button"
+                      tone="danger"
                     >
-                      <DashboardDeleteIcon className="db-table-action-icon" />
-                    </button>
+                      <DashboardDeleteIcon className="db-icon-action__icon" />
+                    </DashboardIconAction>
                   </div>
                 </li>
               );

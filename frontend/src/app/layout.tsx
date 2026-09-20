@@ -10,7 +10,7 @@ import { APP_THEME } from "@/constants/themes";
 import { AuthBootstrap } from "@/features/auth/server";
 import { QueryProvider } from "@/providers";
 
-import { fraunces, instrument, mono } from "./fonts";
+import { display, instrument, mono } from "./fonts";
 
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
@@ -42,7 +42,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: "#FBFAF9",
+  themeColor: "#FBF9F6",
 };
 
 export default function RootLayout({
@@ -54,7 +54,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${fraunces.variable} ${instrument.variable} ${mono.variable} h-full`}
+      className={`${display.variable} ${instrument.variable} ${mono.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col bg-bg font-body text-ink-2">
@@ -74,13 +74,13 @@ export default function RootLayout({
             toastOptions={{
               classNames: {
                 toast:
-                  "rounded-card border border-border bg-surface text-ink-2 shadow-rest",
+                  "border border-border bg-surface text-ink-2 shadow-overlay",
                 title: "text-toast-title text-ink",
                 description: "text-toast-description text-muted",
-                success: "border-l-[3px] border-l-success !rounded-l-none",
-                error: "border-l-[3px] border-l-error !rounded-l-none",
-                warning: "border-l-[3px] border-l-warning !rounded-l-none",
-                info: "border-l-[3px] border-l-info !rounded-l-none",
+                success: "border-l-[3px] border-l-success",
+                error: "border-l-[3px] border-l-error",
+                warning: "border-l-[3px] border-l-warning",
+                info: "border-l-[3px] border-l-info",
               },
             }}
           />

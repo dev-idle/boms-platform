@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import type { ZodType } from "zod";
 
 import { parseApiEnvelope, parseResponseBody } from "@/lib/api-envelope";
@@ -42,6 +43,10 @@ export class BomsApiClient {
     path: string,
     init: FiberRequestInit = {},
   ): Promise<T> {
+    // Backend reads are per-request (no-store, fresh X-Request-ID): keep them out of the
+    // prerendered shell so callers stream behind their own <Suspense> boundary.
+    await connection();
+
     const { schema, json, skipCookieForwarding, ...rest } = init;
     const env = getServerEnv();
     const headers = new Headers(rest.headers);

@@ -45,14 +45,14 @@ export function DashboardSearchField({
   const inputId = id ?? fallbackId;
 
   return (
-    <div className={cn("dashboard-search", className)} role="search">
-      <div className="dashboard-search-field">
-        <span aria-hidden className="dashboard-search-leading">
-          <SearchGlyph className="dashboard-search-glyph" />
+    <div className={cn("search-field", className)} role="search">
+      <div className="search-field__box">
+        <span aria-hidden className="search-field__leading">
+          <SearchGlyph className="search-field__glyph" />
         </span>
         <input
           autoComplete="off"
-          className="dashboard-search-input"
+          className="search-field__input"
           id={inputId}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
@@ -62,7 +62,10 @@ export function DashboardSearchField({
         />
         <button
           aria-label="Clear search"
-          className={cn("dashboard-search-clear", !value && "is-empty")}
+          className={cn(
+            "search-field__action",
+            !value && "search-field__action--idle",
+          )}
           onClick={onClear}
           tabIndex={value ? 0 : -1}
           type="button"

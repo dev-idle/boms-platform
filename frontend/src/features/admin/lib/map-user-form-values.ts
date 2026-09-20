@@ -14,6 +14,5 @@ export function adminUserToRoleFormValues(user: AdminUser): UpdateRoleInput {
     role: roleForForm,
     full_name: user.full_name ?? "",
     phone: user.phone ?? "",
-    employee_code: user.employee_code ?? "",
   };
 }

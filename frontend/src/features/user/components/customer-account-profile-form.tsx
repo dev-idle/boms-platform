@@ -21,7 +21,7 @@ import {
   customerProfileSnapshot,
   normalizeCustomerProfileFormValues,
 } from "../lib/profile-form-values";
-import { ReadonlyAccountEmailField } from "./readonly-account-email-field";
+import { AccountIdentityGroup } from "./account-identity-group";
 
 type CustomerAccountProfileFormBodyProps = {
   email: string;
@@ -70,7 +70,7 @@ function CustomerAccountProfileFormBody({
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}
       >
-        <ReadonlyAccountEmailField email={email} />
+        <AccountIdentityGroup email={email} variant="customer" />
 
         <FormField
           control={form.control}

@@ -1,51 +1,38 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
-import { buildCatalogBrowseHref } from "../lib/catalog-browse-params";
-
-import type { CatalogCategory } from "@/lib/schemas/catalog";
+import { ROUTE } from "@/constants/routes";
 
 type HomeCategoriesProps = {
-  categories: CatalogCategory[];
+  /** The category grid — streamed, see `HomeCategoryGrid`. */
+  children: ReactNode;
 };
 
-export function HomeCategories({ categories }: HomeCategoriesProps) {
-  if (categories.length === 0) {
-    return null;
-  }
-
+export function HomeCategories({ children }: HomeCategoriesProps) {
   return (
     <section
       aria-labelledby="home-categories-heading"
-      className="storefront-section border-t border-border bg-bg"
+      className="storefront-section storefront-section--tinted border-t border-border"
     >
       <div className="storefront-container">
-        <div className="text-center">
-          <h2 className="text-h2" id="home-categories-heading">
-            Shop <span className="italic text-matcha-500">by category</span>
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            From morning viennoiserie to celebration cakes.
-          </p>
+        <div className="storefront-section-header storefront-section-header--ruled">
+          <div className="storefront-section-header__copy">
+            <p className="storefront-section-header__eyebrow">Categories</p>
+            <h2
+              className="storefront-section-header__heading"
+              id="home-categories-heading"
+            >
+              From morning viennoiserie
+              <br />
+              to celebration cakes
+            </h2>
+          </div>
+          <Link className="storefront-section-header__link" href={ROUTE.products}>
+            View all →
+          </Link>
         </div>
 
-        <ul className="storefront-category-grid mt-8">
-          {categories.map((category) => (
-            <li key={category.id}>
-              <Link
-                className="storefront-category-tile"
-                href={buildCatalogBrowseHref({ category: category.id, page: 1 })}
-              >
-                <span className="storefront-category-tile__name">
-                  {category.name}
-                </span>
-                <span className="storefront-category-tile__cta">
-                  Shop now
-                  <span aria-hidden="true">→</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {children}
       </div>
     </section>
   );

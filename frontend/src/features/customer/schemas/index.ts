@@ -1,9 +1,10 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
+import { orderStatusSchema } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
-export const cartItemSchema = z.object({
+const cartItemSchema = z.object({
   id: z.string().uuid(),
   line_type: z.enum(["product", "combo"]),
   product_id: z.string().uuid().nullable().optional(),
@@ -16,7 +17,7 @@ export const cartItemSchema = z.object({
   is_available: z.boolean(),
 });
 
-export const cartDiscountSchema = z.object({
+const cartDiscountSchema = z.object({
   code: z.string().min(1),
   discount_type: z.enum(["percent", "fixed_cents"]),
   value: z.number().int().min(1),
@@ -53,20 +54,11 @@ export const applyCartDiscountInputSchema = z.object({
   code: z.string().min(3).max(64),
 });
 
-export const orderStatusSchema = z.enum([
-  "pending",
-  "confirmed",
-  "in_production",
-  "ready",
-  "cancelled",
-  "fulfilled",
-]);
-
 export const checkoutInputSchema = z.object({
   pickup_at: apiDateTimeSchema,
 });
 
-export const orderItemSchema = z.object({
+const orderItemSchema = z.object({
   id: z.string().uuid(),
   line_type: z.enum(["product", "combo"]),
   product_id: z.string().uuid().nullable().optional(),
@@ -111,9 +103,8 @@ export type AddCartItemInput = z.infer<typeof addCartItemInputSchema>;
 export type UpdateCartItemInput = z.infer<typeof updateCartItemInputSchema>;
 export type ApplyCartDiscountInput = z.infer<typeof applyCartDiscountInputSchema>;
 export type CheckoutInput = z.infer<typeof checkoutInputSchema>;
-export type OrderStatus = z.infer<typeof orderStatusSchema>;
 export type Order = z.infer<typeof orderSchema>;
-export type OrderSummary = z.infer<typeof orderSummarySchema>;
+type OrderSummary = z.infer<typeof orderSummarySchema>;
 export type OrdersListFilterInput = z.infer<typeof ordersListFilterSchema>;
 
 export type OrdersListResult = {

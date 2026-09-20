@@ -15,6 +15,7 @@ import {
   useRevokeSessions,
   useUserDetail,
 } from "../hooks";
+import { isAdminAccountManagementLocked } from "../lib/account-management";
 
 import { AdminUserAccountStatus } from "./admin-user-account-status";
 import { AdminUserActivityLog } from "./admin-user-activity-log";
@@ -47,6 +48,10 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       toast.error("You cannot perform this action on your own account.");
       return;
     }
+    if (isApiError(error) && error.isCannotModifyAdmin()) {
+      toast.error("Admin accounts cannot be disabled or have sessions revoked.");
+      return;
+    }
     toast.error(isApiError(error) ? error.message : fallback);
   }
 
@@ -60,7 +65,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
         <div className="dashboard-page-stack">
           <AdminUserDetailHeader
             actions={
-              currentUserId !== user.id ? (
+              currentUserId !== user.id && !isAdminAccountManagementLocked(user) ? (
                 <AdminUserDetailActions
                   accountPending={accountPending}
                   onDisable={() => setPendingAction("disable")}
@@ -75,12 +80,13 @@ export function AdminUserDetail({ userId }: { userId: string }) {
             user={user}
           />
 
-          <div className="dashboard-page-body">
+          {/* Archetype C: work on the left, read-only facts in the right rail. */}
+          <div className="dashboard-detail-grid">
+            <div className="dashboard-detail-grid__main">
+              <AdminUserDetailManagement user={user} userId={userId} />
+              <AdminUserActivityLog userId={userId} />
+            </div>
             <AdminUserAccountStatus user={user} />
-
-            <AdminUserDetailManagement user={user} userId={userId} />
-
-            <AdminUserActivityLog userId={userId} />
           </div>
         </div>
       )}

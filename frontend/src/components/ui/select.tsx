@@ -24,6 +24,8 @@ export type SelectProps = Omit<
   /** Applied to the portaled listbox (not scoped under the trigger parent). */
   contentClassName?: string;
   onChange?: React.ChangeEventHandler<HTMLSelectElement>;
+  /** Forwarded to the trigger so react-hook-form can focus the field. */
+  ref?: React.Ref<HTMLButtonElement>;
 };
 
 function parseSelectOptions(children: React.ReactNode): ParsedSelectOption[] {
@@ -112,145 +114,140 @@ function ChevronDownIcon({ className }: { className?: string }) {
 }
 
 /** Custom select — Radix listbox; keeps native `<option>` children for RHF compatibility. */
-export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
-  (
-    {
-      "aria-invalid": ariaInvalid,
-      children,
-      className,
-      contentClassName,
-      disabled,
-      id,
-      name,
-      onBlur,
-      onChange,
-      required,
-      value,
-    },
-    ref,
-  ) => {
-    const contentRef = React.useRef<HTMLDivElement>(null);
-    const [open, setOpen] = React.useState(false);
-    const [menuSide, setMenuSide] = React.useState<SelectMenuSide>("bottom");
-    const options = React.useMemo(() => parseSelectOptions(children), [children]);
-    const placeholderOption = options.find((option) => option.value === "");
-    const selectableOptions = options.filter((option) => option.value !== "");
-    const nativeValue =
-      value === undefined || value === null ? "" : String(value);
-    const radixValue =
-      nativeValue === "" ? SELECT_EMPTY_VALUE : nativeValue;
+export function Select({
+  "aria-invalid": ariaInvalid,
+  children,
+  className,
+  contentClassName,
+  disabled,
+  id,
+  name,
+  onBlur,
+  onChange,
+  required,
+  value,
+  ref,
+}: SelectProps) {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [open, setOpen] = React.useState(false);
+  const [menuSide, setMenuSide] = React.useState<SelectMenuSide>("bottom");
+  const options = React.useMemo(() => parseSelectOptions(children), [children]);
+  const placeholderOption = options.find((option) => option.value === "");
+  const selectableOptions = options.filter((option) => option.value !== "");
+  const nativeValue =
+    value === undefined || value === null ? "" : String(value);
+  const radixValue =
+    nativeValue === "" ? SELECT_EMPTY_VALUE : nativeValue;
 
-    useReleaseSelectScrollLock(open);
+  useReleaseSelectScrollLock(open);
 
-    React.useLayoutEffect(() => {
-      if (!open) {
-        return;
-      }
-
-      const content = contentRef.current;
-      if (!content) {
-        return;
-      }
-
-      function syncMenuSide(): void {
-        setMenuSide(readMenuSide(content));
-      }
-
-      syncMenuSide();
-
-      const observer = new MutationObserver(syncMenuSide);
-      observer.observe(content, {
-        attributeFilter: ["data-side"],
-        attributes: true,
-      });
-
-      return () => {
-        observer.disconnect();
-      };
-    }, [open, selectableOptions.length]);
-
-    function handleValueChange(nextValue: string): void {
-      const emitted =
-        nextValue === SELECT_EMPTY_VALUE ? "" : nextValue;
-      onChange?.({
-        target: { name: name ?? "", value: emitted },
-        currentTarget: { name: name ?? "", value: emitted },
-      } as React.ChangeEvent<HTMLSelectElement>);
+  React.useLayoutEffect(() => {
+    if (!open) {
+      return;
     }
 
-    return (
-      <SelectPrimitive.Root
-        disabled={disabled}
-        name={name}
-        onOpenChange={setOpen}
-        onValueChange={handleValueChange}
-        open={open}
-        required={required}
-        value={radixValue}
-      >
-        <div className="field-select">
-          <SelectPrimitive.Trigger
-            ref={ref}
-            aria-invalid={ariaInvalid}
-            aria-required={required ? true : undefined}
-            className={cn(
-              "field-chrome field-chrome--select field-select-trigger",
-              open && menuSide === "bottom" && "field-select-trigger--menu-bottom",
-              open && menuSide === "top" && "field-select-trigger--menu-top",
-              className,
-            )}
-            id={id}
-            onBlur={(event) => {
-              onBlur?.(event as unknown as React.FocusEvent<HTMLSelectElement>);
-            }}
-          >
-            <SelectPrimitive.Value
-              className="field-select-value"
-              placeholder={placeholderOption?.label ?? "Select…"}
-            />
-            <SelectPrimitive.Icon asChild>
-              <ChevronDownIcon className="field-select-chevron" />
-            </SelectPrimitive.Icon>
-          </SelectPrimitive.Trigger>
+    const content = contentRef.current;
+    if (!content) {
+      return;
+    }
 
-          <SelectPrimitive.Portal>
-            <SelectPrimitive.Content
-              ref={contentRef}
-              align="start"
-              avoidCollisions
-              className={cn("field-select-content", contentClassName)}
-              collisionPadding={8}
-              position="popper"
-              side="bottom"
-              sideOffset={0}
-            >
-              <SelectPrimitive.Viewport className="field-select-viewport">
-                <div className="field-select-tray">
+    function syncMenuSide(): void {
+      setMenuSide(readMenuSide(content));
+    }
+
+    syncMenuSide();
+
+    const observer = new MutationObserver(syncMenuSide);
+    observer.observe(content, {
+      attributeFilter: ["data-side"],
+      attributes: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [open, selectableOptions.length]);
+
+  function handleValueChange(nextValue: string): void {
+    const emitted =
+      nextValue === SELECT_EMPTY_VALUE ? "" : nextValue;
+    onChange?.({
+      target: { name: name ?? "", value: emitted },
+      currentTarget: { name: name ?? "", value: emitted },
+    } as React.ChangeEvent<HTMLSelectElement>);
+  }
+
+  return (
+    <SelectPrimitive.Root
+      disabled={disabled}
+      name={name}
+      onOpenChange={setOpen}
+      onValueChange={handleValueChange}
+      open={open}
+      required={required}
+      value={radixValue}
+    >
+      <div className="field-select">
+        <SelectPrimitive.Trigger
+          ref={ref}
+          aria-invalid={ariaInvalid}
+          aria-required={required ? true : undefined}
+          className={cn(
+            "field-chrome field-chrome--select field-select-trigger",
+            open && menuSide === "bottom" && "field-select-trigger--menu-bottom",
+            open && menuSide === "top" && "field-select-trigger--menu-top",
+            className,
+          )}
+          id={id}
+          onBlur={(event) => {
+            onBlur?.(event as unknown as React.FocusEvent<HTMLSelectElement>);
+          }}
+        >
+          <SelectPrimitive.Value
+            className="field-select-value"
+            placeholder={placeholderOption?.label ?? "Select…"}
+          />
+          <SelectPrimitive.Icon asChild>
+            <ChevronDownIcon className="field-select-chevron" />
+          </SelectPrimitive.Icon>
+        </SelectPrimitive.Trigger>
+
+        <SelectPrimitive.Portal>
+          <SelectPrimitive.Content
+            ref={contentRef}
+            align="start"
+            avoidCollisions
+            className={cn("field-select-content", contentClassName)}
+            collisionPadding={8}
+            position="popper"
+            side="bottom"
+            sideOffset={0}
+          >
+            <SelectPrimitive.Viewport className="field-select-viewport">
+              <div className="field-select-tray">
+                <SelectPrimitive.Item
+                  className="sr-only"
+                  value={SELECT_EMPTY_VALUE}
+                >
+                  <SelectPrimitive.ItemText>
+                    {placeholderOption?.label ?? "Select…"}
+                  </SelectPrimitive.ItemText>
+                </SelectPrimitive.Item>
+                {selectableOptions.map((option) => (
                   <SelectPrimitive.Item
-                    className="sr-only"
-                    value={SELECT_EMPTY_VALUE}
+                    key={option.value}
+                    className="field-select-item"
+                    disabled={option.disabled}
+                    value={option.value}
                   >
-                    <SelectPrimitive.ItemText>
-                      {placeholderOption?.label ?? "Select…"}
-                    </SelectPrimitive.ItemText>
+                    <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                   </SelectPrimitive.Item>
-                  {selectableOptions.map((option) => (
-                    <SelectPrimitive.Item
-                      key={option.value}
-                      className="field-select-item"
-                      disabled={option.disabled}
-                      value={option.value}
-                    >
-                      <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
-                    </SelectPrimitive.Item>
-                  ))}
-                </div>
-              </SelectPrimitive.Viewport>
-            </SelectPrimitive.Content>
-          </SelectPrimitive.Portal>
-        </div>
-      </SelectPrimitive.Root>
-    );
-  },
-);
-Select.displayName = "Select";
+                ))}
+              </div>
+            </SelectPrimitive.Viewport>
+          </SelectPrimitive.Content>
+        </SelectPrimitive.Portal>
+      </div>
+    </SelectPrimitive.Root>
+  );
+}

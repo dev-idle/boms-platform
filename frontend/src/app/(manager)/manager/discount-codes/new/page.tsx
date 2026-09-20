@@ -17,7 +17,11 @@ export default function ManagerNewDiscountCodePage() {
       description="Create a promotion code validated at checkout."
       title={PAGE_TITLES.newDiscountCode}
     >
-      <DashboardProfileSection id="manager-discount-code-form" title="Code details">
+      <DashboardProfileSection
+        id="manager-discount-code-form"
+        title="Code details"
+        variant="plain"
+      >
         <DiscountCodeForm
           mode="create"
           onSuccess={() => router.push(ROUTE.manager.discountCodes)}

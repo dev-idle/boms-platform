@@ -1,18 +1,21 @@
 import type { DashboardBreadcrumbItem } from "@/components/ui/dashboard-breadcrumb";
 import { ROUTE } from "@/constants/routes";
-import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
-/** Admin namespace — Users section trails (sidebar "Users" is the section root). */
+/** Admin namespace — Users trails. The root crumb matches the sidebar item ("Users"). */
+const USERS_CRUMB_LABEL = "Users";
 
 export function adminUsersBreadcrumb(
   leaf: string,
 ): DashboardBreadcrumbItem[] {
   return [
-    { label: PAGE_TITLES.users, href: ROUTE.admin.users },
+    { label: USERS_CRUMB_LABEL, href: ROUTE.admin.users },
     { label: leaf },
   ];
 }
 
-export function adminUserDetailBreadcrumbItems(): DashboardBreadcrumbItem[] {
-  return adminUsersBreadcrumb(PAGE_TITLES.breadcrumbDetail);
+/** Detail trail ends in the person, so the admin sees where they are. */
+export function adminUserDetailBreadcrumbItems(
+  displayName: string,
+): DashboardBreadcrumbItem[] {
+  return adminUsersBreadcrumb(displayName);
 }

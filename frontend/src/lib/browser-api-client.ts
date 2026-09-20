@@ -92,7 +92,7 @@ async function executeRequest<T>(
   if (response.status === 401 && !skipRefreshRetry && !isAuthLoopPath(path)) {
     if (!isRetry) {
       const { refreshNow } = await import("@/lib/auth");
-      await refreshNow();
+      await refreshNow({ redirectOnFailure: false });
       return executeRequest<T>(path, init, true);
     }
     throwApiErrorFromPayload(response.status, await parseResponseBody(response));

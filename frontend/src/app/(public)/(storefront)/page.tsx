@@ -1,26 +1,44 @@
-import { connection } from "next/server";
+import { Suspense } from "react";
 
 import { BRAND } from "@/constants/brand";
-import { StorefrontHome } from "@/features/catalog/components/storefront-home";
 import {
-  dalListCatalogCategories,
-  dalListCatalogProducts,
-  STOREFRONT_CATEGORY_PAGE_SIZE,
-} from "@/lib/dal/catalog";
+  HomeCategories,
+  HomeCategoryGridSkeleton,
+  HomeCta,
+  HomeFeaturedProductGridSkeleton,
+  HomeFeaturedProducts,
+  HomeHero,
+  HomeUspStrip,
+} from "@/features/catalog";
+import { HOME_FEATURED_PRODUCT_COUNT, STOREFRONT_CATEGORY_PAGE_SIZE } from "@/lib/dal/catalog";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
+
+import { HomeCategoryGridSection } from "./home-category-grid-section";
+import { HomeFeaturedProductGridSection } from "./home-featured-product-grid-section";
+
+export const instant = true;
 
 export const metadata = pageTitle(
   PAGE_TITLES.home,
   `Order online for pickup at ${BRAND.name}. ${BRAND.tagline}`,
 );
 
-export default async function HomePage() {
-  await connection();
-
-  const [categories, products] = await Promise.all([
-    dalListCatalogCategories(STOREFRONT_CATEGORY_PAGE_SIZE).catch(() => []),
-    dalListCatalogProducts(1, 8).catch(() => []),
-  ]);
-
-  return <StorefrontHome categories={categories} products={products} />;
+export default function HomePage() {
+  return (
+    <>
+      <HomeHero />
+      <HomeUspStrip />
+      <HomeCategories>
+        <Suspense fallback={<HomeCategoryGridSkeleton count={STOREFRONT_CATEGORY_PAGE_SIZE} />}>
+          <HomeCategoryGridSection />
+        </Suspense>
+      </HomeCategories>
+      <HomeFeaturedProducts>
+        <Suspense fallback={<HomeFeaturedProductGridSkeleton count={HOME_FEATURED_PRODUCT_COUNT} />}>
+          <HomeFeaturedProductGridSection />
+        </Suspense>
+      </HomeFeaturedProducts>
+      <HomeCta />
+    </>
+  );
 }

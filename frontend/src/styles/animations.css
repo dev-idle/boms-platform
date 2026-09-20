@@ -1,12 +1,15 @@
 /* Shared keyframes — referenced from @layer components and fields. */
 
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
+/* Skeletons pulse on opacity only: a shimmer sweep needs a gradient, and there
+   are no gradients in this design. */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
   }
 
-  100% {
-    background-position: -200% 0;
+  50% {
+    opacity: 0.55;
   }
 }
 

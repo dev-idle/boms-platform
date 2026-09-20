@@ -17,7 +17,10 @@ import {
   DashboardTableRowActions,
 } from "@/components/ui/dashboard-table-actions";
 import { CatalogAvailabilityPill } from "@/components/ui/status-pill";
+import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
+import { catalogItemInitial } from "@/features/catalog";
+import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolbar-meta";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -25,6 +28,7 @@ import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
+import { primaryCatalogProductImageUrl } from "@/lib/cloudinary/config";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useDeleteProduct, useProducts } from "../hooks";
@@ -64,11 +68,12 @@ export function ManagerProductsTable() {
     <div className="dashboard-page-stack">
       <DashboardPageHeader
         actions={
-          <Link href={ROUTE.manager.productsNew}>
-            <Button type="button">New product</Button>
-          </Link>
+          <Button asChild>
+            <Link href={ROUTE.manager.productsNew}>+ New product</Link>
+          </Button>
         }
         description="Manage items shown on the customer storefront."
+        eyebrow={DASHBOARD_PAGE_EYEBROW.catalogue}
         title={PAGE_TITLES.products}
       />
 
@@ -80,13 +85,25 @@ export function ManagerProductsTable() {
             placeholder="Search name or slug"
             value={input}
           />
+          {pagination ? (
+            <DashboardTableToolbarMeta>
+              {pagination.total}{" "}
+              {pagination.total === 1 ? "product" : "products"}
+            </DashboardTableToolbarMeta>
+          ) : null}
         </div>
 
         <DashboardTableWrap refetching={refetching}>
-          <table className="db-table db-table--catalog db-table--comfortable">
+          <table className="db-table db-table--catalog">
+            <colgroup>
+              <col className="db-table-col-thumb" />
+            </colgroup>
             <thead>
               <tr>
-                <th>Name</th>
+                <th className="db-table-cell-thumb">
+                  <span className="sr-only">Image</span>
+                </th>
+                <th>Product</th>
                 <th>Category</th>
                 <th>Price</th>
                 <th className="db-table-status">Status</th>
@@ -95,7 +112,7 @@ export function ManagerProductsTable() {
             </thead>
             <tbody>
               <DashboardTableStateRows
-                columnCount={5}
+                columnCount={6}
                 entityLabel="products"
                 hasActiveFilter={Boolean(search)}
                 isEmpty={products.length === 0}
@@ -103,8 +120,30 @@ export function ManagerProductsTable() {
                 initialLoading={initialLoading}
               />
               {!initialLoading && !query.isError && products.length > 0
-                ? products.map((product) => (
+                ? products.map((product) => {
+                  const thumbUrl = primaryCatalogProductImageUrl(
+                    product.image_urls,
+                    96,
+                  );
+                  return (
                 <tr key={product.id}>
+                  <td className="db-table-cell-thumb">
+                    <span className="db-table-thumb">
+                      {thumbUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- manager-provided catalog URL
+                        <img
+                          alt=""
+                          aria-hidden
+                          className="db-table-thumb__image"
+                          src={thumbUrl}
+                        />
+                      ) : (
+                        <span className="db-table-thumb__initial">
+                          {catalogItemInitial(product.name)}
+                        </span>
+                      )}
+                    </span>
+                  </td>
                   <td className="db-table-cell-primary">{product.name}</td>
                   <td className="text-muted">
                     {product.category_name ?? (
@@ -135,10 +174,11 @@ export function ManagerProductsTable() {
                     </DashboardTableRowActions>
                   </td>
                 </tr>
-              ))
+              );
+              })
                 : null}
               <DashboardTablePagePlaceholders
-                columnCount={5}
+                columnCount={6}
                 count={pagePlaceholderCount}
               />
             </tbody>

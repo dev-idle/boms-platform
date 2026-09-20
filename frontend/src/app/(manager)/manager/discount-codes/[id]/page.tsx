@@ -43,7 +43,11 @@ export default function ManagerEditDiscountCodePage({ params }: PageProps) {
       description="Update promotion rules and active window."
       title={PAGE_TITLES.editDiscountCode}
     >
-      <DashboardProfileSection id="manager-discount-code-form" title="Code details">
+      <DashboardProfileSection
+        id="manager-discount-code-form"
+        title="Code details"
+        variant="plain"
+      >
         <DiscountCodeForm
           discountCode={discountCodeQuery.data}
           mode="edit"

@@ -17,6 +17,9 @@ import {
  */
 export const STOREFRONT_CATEGORY_PAGE_SIZE = 8;
 
+/** Products in the home "Fresh from the oven" grid. */
+export const HOME_FEATURED_PRODUCT_COUNT = 8;
+
 /** Request-deduped: the header nav and the home page share one fetch. */
 export const dalListCatalogCategories = cache(
   async (pageSize: number): Promise<CatalogCategory[]> => {

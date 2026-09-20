@@ -19,3 +19,19 @@ export function adminUserListName(user: AdminUser): string {
   return user.full_name?.trim() || "—";
 }
 
+/** Up to two letters for the admin table avatar cell; email is the fallback. */
+export function adminUserInitials(user: AdminUser): string {
+  const name = adminUserListName(user);
+  if (name !== "—") {
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0]!.slice(0, 1)}${parts[1]!.slice(0, 1)}`.toUpperCase();
+    }
+    if (parts.length === 1) {
+      return parts[0]!.slice(0, 2).toUpperCase();
+    }
+  }
+
+  return user.email.slice(0, 2).toUpperCase();
+}
+

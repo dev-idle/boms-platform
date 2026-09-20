@@ -1,4 +1,4 @@
-import type { OrderStatus } from "../schemas";
+import type { OrderStatus } from "@/lib/schemas/order";
 
 export const ORDER_PROGRESS_STEPS = [
   { key: "pending", label: "Placed" },
@@ -7,8 +7,6 @@ export const ORDER_PROGRESS_STEPS = [
   { key: "ready", label: "Ready" },
   { key: "fulfilled", label: "Picked up" },
 ] as const satisfies ReadonlyArray<{ key: OrderStatus; label: string }>;
-
-export type OrderProgressStepKey = (typeof ORDER_PROGRESS_STEPS)[number]["key"];
 
 export function activeOrderProgressIndex(status: OrderStatus): number {
   if (status === "cancelled") {

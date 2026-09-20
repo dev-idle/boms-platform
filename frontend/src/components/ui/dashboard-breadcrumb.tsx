@@ -35,8 +35,8 @@ export function DashboardBreadcrumb({
           /
         </span>
       ) : null}
+      {/* Colour only: the sidebar item owns the page's one aria-current. */}
       <span
-        aria-current="page"
         className="dashboard-breadcrumb-current"
         title={current.label}
       >

@@ -1,19 +1,6 @@
 import { z } from "zod";
 
 import { newPasswordZodString } from "@/lib/validation/password";
-import {
-  adminProfileSchema,
-  customerProfileSchema,
-  meSchema,
-  staffProfileSchema,
-} from "@/lib/schemas/me";
-
-export {
-  adminProfileSchema,
-  customerProfileSchema,
-  meSchema,
-  staffProfileSchema,
-};
 
 const patchOptionalStringSchema = z
   .string()

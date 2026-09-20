@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useAppTheme } from "@/components/theme/theme-provider";
 
-export type AppDialogSize = "sm" | "md" | "lg";
+type AppDialogSize = "sm" | "md" | "lg";
 
 type AppDialogProps = {
   children?: ReactNode;

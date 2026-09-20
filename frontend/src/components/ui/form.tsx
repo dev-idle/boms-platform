@@ -12,7 +12,6 @@ import {
 
 import { Slot } from "@radix-ui/react-slot";
 
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 const Form = FormProvider;
@@ -87,21 +86,6 @@ function FormItem({
   );
 }
 
-function FormLabel({
-  className,
-  ...props
-}: React.ComponentPropsWithoutRef<typeof Label>) {
-  const { error, formItemId } = useFormField();
-
-  return (
-    <Label
-      className={cn(error && "text-error", className)}
-      htmlFor={formItemId}
-      {...props}
-    />
-  );
-}
-
 function FormControl({
   "aria-describedby": ariaDescribedBy,
   ...props
@@ -150,7 +134,6 @@ export {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
   useFormField,
 };
