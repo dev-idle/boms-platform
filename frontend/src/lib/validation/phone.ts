@@ -15,7 +15,10 @@ import { z } from "zod";
  * 095 is retired; the 11-digit 01x numbers moved to these prefixes in 2018.
  * When MIC assigns a new prefix, add it here, in the backend and in the cases.
  */
-const MOBILE_NUMBER = /^(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}$/;
+const MOBILE_PREFIX = "(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])";
+const MOBILE_NUMBER = new RegExp(`^${MOBILE_PREFIX}\\d{7}$`);
+/** The first digits of a number that can still become a mobile number. */
+const MOBILE_START = new RegExp(`^(?:[35789]$|${MOBILE_PREFIX})`);
 
 /** Digits in a national mobile number: a two-digit prefix and seven more. */
 export const NATIONAL_NUMBER_LENGTH = 9;
@@ -71,6 +74,25 @@ export function formatVietnamPhone(stored: string | null | undefined): string {
 
 export const PHONE_FORMAT_MESSAGE = "Enter a Vietnam mobile number";
 
+export const PHONE_LENGTH_MESSAGE = `A Vietnam mobile number has ${NATIONAL_NUMBER_LENGTH} digits after +84`;
+
+/**
+ * Why a field value is not a mobile number, naming the part to fix: a prefix no
+ * carrier uses comes first, since more digits cannot mend it; then the length.
+ */
+export function phoneFormatMessage(raw: string): string {
+  if (!PHONE_CHARACTERS.test(raw)) {
+    return PHONE_FORMAT_MESSAGE;
+  }
+  const national = nationalNumber(raw);
+  if (national !== "" && !MOBILE_START.test(national)) {
+    return `No Vietnam mobile number starts with 0${national.slice(0, 2)}`;
+  }
+  return national.length === NATIONAL_NUMBER_LENGTH
+    ? PHONE_FORMAT_MESSAGE
+    : PHONE_LENGTH_MESSAGE;
+}
+
 export const PHONE_TAKEN_MESSAGE = "This number is already on another account";
 
 /**
@@ -88,7 +110,7 @@ export function vietnamPhoneZodString() {
       }
       const stored = normalizeVietnamPhone(value);
       if (stored === null) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: PHONE_FORMAT_MESSAGE });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: phoneFormatMessage(value) });
         return z.NEVER;
       }
       return stored;

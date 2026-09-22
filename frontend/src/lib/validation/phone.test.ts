@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   PHONE_FORMAT_MESSAGE,
+  PHONE_LENGTH_MESSAGE,
   formatNationalNumber,
   formatVietnamPhone,
   nationalNumber,
   normalizeVietnamPhone,
+  phoneFormatMessage,
   vietnamPhoneZodString,
 } from "./phone";
 
@@ -93,9 +95,31 @@ describe("vietnamPhoneZodString", () => {
     expect(schema.parse(undefined)).toBeUndefined();
   });
 
-  it("rejects anything else with the format message", () => {
+  it("rejects anything else, saying what to fix", () => {
     const result = schema.safeParse("91234");
     expect(result.success).toBe(false);
-    expect(result.error?.issues[0]?.message).toBe(PHONE_FORMAT_MESSAGE);
+    expect(result.error?.issues[0]?.message).toBe(PHONE_LENGTH_MESSAGE);
+  });
+});
+
+describe("phoneFormatMessage", () => {
+  it("names a prefix no carrier uses, however many digits follow", () => {
+    expect(phoneFormatMessage("12345678")).toBe(
+      "No Vietnam mobile number starts with 012",
+    );
+    expect(phoneFormatMessage("953456789")).toBe(
+      "No Vietnam mobile number starts with 095",
+    );
+    expect(phoneFormatMessage("2")).toBe("No Vietnam mobile number starts with 02");
+  });
+
+  it("asks for the length when the prefix can still be right", () => {
+    expect(phoneFormatMessage("9")).toBe(PHONE_LENGTH_MESSAGE);
+    expect(phoneFormatMessage("91234")).toBe(PHONE_LENGTH_MESSAGE);
+    expect(phoneFormatMessage("0912 345 6789")).toBe(PHONE_LENGTH_MESSAGE);
+  });
+
+  it("falls back to the format message for text that is not a phone", () => {
+    expect(phoneFormatMessage("ext. 4412")).toBe(PHONE_FORMAT_MESSAGE);
   });
 });

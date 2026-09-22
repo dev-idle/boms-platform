@@ -70,26 +70,23 @@ export function PhoneInput({ onChange, value, ...props }: PhoneInputProps) {
         onChange={(event) => {
           const input = event.currentTarget;
           const typed = input.value;
-          // Autofill can arrive as a plain Event with no inputType.
-          const inputType = (event.nativeEvent as InputEvent).inputType ?? "";
           const digits = typed.replace(/\D/g, "");
           let digitsBeforeCaret = typed
             .slice(0, input.selectionStart ?? typed.length)
             .replace(/\D/g, "").length;
-          // Keystrokes after the fixed +84 are the national number itself — a
-          // typed 84 is a Vinaphone 084 prefix, not a country code. The one
-          // exception is a 0 typed first, the trunk prefix, which is dropped. A
-          // paste or autofill may carry +84 / 0084 and is reduced in full.
-          let next: string;
-          if (inputType === "insertText" || inputType.startsWith("delete")) {
-            const trunkZero =
-              inputType === "insertText" &&
-              digitsBeforeCaret === 1 &&
-              digits.startsWith("0");
-            next = trunkZero ? digits.slice(1) : digits;
-          } else {
-            next = nationalNumber(typed);
-          }
+          // What arrived is read from how many digits it added, never from the
+          // event type: mobile keyboards, input methods and autofill all send a
+          // whole number as one "insertText". A deletion keeps every digit left.
+          // One digit is a keystroke after the fixed +84, so only a leading 0
+          // (the trunk prefix) goes — a typed 84 is the Vinaphone 084 prefix.
+          // More at once is a number from elsewhere and may carry +84 or 0084.
+          const added = digits.length - national.length;
+          let next =
+            added < 0
+              ? digits
+              : added <= 1
+                ? digits.replace(/^0+/, "")
+                : nationalNumber(typed);
           // Growth past nine digits is not applied — React puts the controlled
           // value back. Shortening always is: a number stored before the rule
           // existed can be longer, and must still be editable down to size.
@@ -99,6 +96,7 @@ export function PhoneInput({ onChange, value, ...props }: PhoneInputProps) {
           // Digits dropped above (a trunk 0, 84 or 00) all sat in front.
           const removed = digits.length - next.length;
           // Backspace just after a group space removes no digit; take the one before.
+          const inputType = (event.nativeEvent as InputEvent).inputType;
           if (inputType === "deleteContentBackward" && next === national) {
             const at = digitsBeforeCaret - removed;
             if (at > 0) {
