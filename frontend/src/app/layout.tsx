@@ -14,7 +14,7 @@ import { QueryProvider } from "@/providers";
 import { display, instrument, mono } from "./fonts";
 
 /** One value drives both sonner's timer and the drain on the toast's bottom hairline. */
-const TOAST_DURATION_MS = 5000;
+const TOAST_DURATION_MS = 3500;
 const TOASTER_STYLE = {
   "--app-toast-duration": `${TOAST_DURATION_MS}ms`,
 } as CSSProperties;
@@ -79,7 +79,7 @@ export default function RootLayout({
             closeButton
             duration={TOAST_DURATION_MS}
             icons={{ error: <ToastErrorIcon />, success: <ToastSuccessIcon /> }}
-            position="top-center"
+            position="bottom-right"
             style={TOASTER_STYLE}
           />
         </QueryProvider>

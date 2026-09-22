@@ -8,10 +8,11 @@
    step of specificity above it, never !important. They key off sonner's data
    attributes, so the Toaster needs no classNames map.
 
-   Anatomy: a square paper card, one hairline, the overlay shadow, a thin-stroke
-   glyph and a title. Status is carried by two quiet channels — the glyph colour
-   and the card's bottom hairline, which takes the status tone and drains to the
-   left over the toast's lifetime. The drain is the auto-dismiss timer made
+   Anatomy: a square paper card, one hairline, the overlay shadow, a status tile
+   and a title. The tile — a thin-stroke glyph on a square of the status tint —
+   is the one filled shape on the card, so the toast is found at a glance from
+   the bottom-right corner where it lands. The bottom hairline takes the status
+   tone and drains to the left over the toast's lifetime. The drain is the auto-dismiss timer made
    visible; it stops while the pointer holds the stack open, exactly when sonner
    stops its own timer.
 
@@ -22,9 +23,10 @@
    ----------------------------------------------------------------------------- */
 
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  --app-toast-tint: var(--color-paper-3);
   --app-toast-tone: var(--color-line-strong);
 
-  align-items: flex-start;
+  align-items: center;
   animation: app-toast-drain var(--app-toast-duration) linear forwards;
   /* The bottom border is transparent and two 1px layers paint into its box:
      the status tone over the resting hairline. As the tone drains, the plain
@@ -50,15 +52,17 @@
   color: var(--color-ink-2);
   font-family: var(--font-body);
   gap: 0.875rem;
-  padding: 1.0625rem 3rem 1.0625rem 1.25rem;
+  padding: 0.875rem 3rem 0.875rem 0.875rem;
   transition-timing-function: var(--ease-luxury);
 }
 
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"][data-type="success"] {
+  --app-toast-tint: var(--color-matcha-100);
   --app-toast-tone: var(--color-success);
 }
 
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"][data-type="error"] {
+  --app-toast-tint: var(--color-danger-tint);
   --app-toast-tone: var(--color-danger-text);
 }
 
@@ -81,12 +85,15 @@
   }
 }
 
-/* Glyph box is one title line tall, so the glyph centres on the first line. */
+/* The glyph sits on a square of its status tint: the one filled shape on the
+   card, so the eye finds the toast and reads its outcome before the words. */
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-icon] {
+  background-color: var(--app-toast-tint);
   color: var(--app-toast-tone);
-  height: 1.25rem;
+  height: 2rem;
+  justify-content: center;
   margin: 0;
-  width: 1rem;
+  width: 2rem;
 }
 
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-icon] svg {
@@ -113,8 +120,8 @@
   line-height: 1.55;
 }
 
-/* Sonner's close is a round badge hung off the top-left corner. Here it is an
-   inline glyph at the end of the title line — no fill, no ring, ink on hover. */
+/* Sonner's close is a round badge hung off the top-left corner. Here it is a
+   glyph centred on the right edge — no fill, no ring, ink on hover. */
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button] {
   background: transparent;
   border: 0;
@@ -123,8 +130,8 @@
   height: 1.75rem;
   left: auto;
   right: 0.625rem;
-  top: 0.8125rem;
-  transform: none;
+  top: 50%;
+  transform: translateY(-50%);
   transition: color var(--duration-micro) var(--ease-luxury);
   width: 1.75rem;
 }
