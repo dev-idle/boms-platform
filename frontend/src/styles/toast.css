@@ -1,0 +1,141 @@
+/* -----------------------------------------------------------------------------
+   Toast (sonner) — unlayered, like fields.css, and for a harder reason: sonner
+   appends its own unlayered <style> to <head> at runtime. A rule inside @layer
+   loses to it on every property it sets, whatever its specificity — which is how
+   the old layered block rendered rounded, padded and shadowed by sonner instead.
+
+   Every selector is sonner's own plus the [data-sonner-toaster] ancestor: one
+   step of specificity above it, never !important. They key off sonner's data
+   attributes, so the Toaster needs no classNames map.
+
+   Anatomy: a square paper card, one hairline, the overlay shadow, a thin-stroke
+   glyph and a title. Status is carried by two quiet channels — the glyph colour
+   and the card's bottom hairline, which takes the status tone and drains to the
+   left over the toast's lifetime. The drain is the auto-dismiss timer made
+   visible; it stops while the pointer holds the stack open, exactly when sonner
+   stops its own timer.
+
+   Under reduced motion sonner sets `animation: none !important`, which leaves
+   the full status hairline standing — the right fallback, so no rule here. One
+   gap: sonner also pauses while the tab is hidden, which CSS cannot see, so a
+   toast can outlive its drain after the tab comes back.
+   ----------------------------------------------------------------------------- */
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  --app-toast-tone: var(--color-line-strong);
+
+  align-items: flex-start;
+  animation: app-toast-drain var(--app-toast-duration) linear forwards;
+  /* The bottom border is transparent and two 1px layers paint into its box:
+     the status tone over the resting hairline. As the tone drains, the plain
+     hairline shows through, so the edge is never doubled and never missing.
+     Longhands on purpose: a colour in the `background` shorthand adds a third,
+     auto-sized layer, and one non-interpolable size makes the whole list
+     animate discretely — the drain would jump at the halfway mark. */
+  background-clip: border-box;
+  background-color: var(--color-surface);
+  background-image:
+    linear-gradient(var(--app-toast-tone), var(--app-toast-tone)),
+    linear-gradient(var(--color-border), var(--color-border));
+  background-origin: border-box;
+  background-position: left bottom;
+  background-repeat: no-repeat;
+  background-size:
+    100% 1px,
+    100% 1px;
+  border: 1px solid var(--color-border);
+  border-bottom-color: transparent;
+  border-radius: 0;
+  box-shadow: var(--shadow-overlay);
+  color: var(--color-ink-2);
+  font-family: var(--font-body);
+  gap: 0.875rem;
+  padding: 1.0625rem 3rem 1.0625rem 1.25rem;
+  transition-timing-function: var(--ease-luxury);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"][data-type="success"] {
+  --app-toast-tone: var(--color-success);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"][data-type="error"] {
+  --app-toast-tone: var(--color-danger-text);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"][data-expanded="true"] {
+  animation-play-state: paused;
+}
+
+/* Sonner sets outline: 0 on the toast and our shadow replaces its focus ring; a
+   keyboard-focused toast (Alt+T, Tab) still needs the app's square ring. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"]:focus-visible {
+  outline: 2px solid var(--color-matcha-500);
+  outline-offset: 2px;
+}
+
+@keyframes app-toast-drain {
+  to {
+    background-size:
+      0% 1px,
+      100% 1px;
+  }
+}
+
+/* Glyph box is one title line tall, so the glyph centres on the first line. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-icon] {
+  color: var(--app-toast-tone);
+  height: 1.25rem;
+  margin: 0;
+  width: 1rem;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-icon] svg {
+  height: 1rem;
+  margin: 0;
+  width: 1rem;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-content] {
+  gap: 0.25rem;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-title] {
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  line-height: 1.25rem;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-description] {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+/* Sonner's close is a round badge hung off the top-left corner. Here it is an
+   inline glyph at the end of the title line — no fill, no ring, ink on hover. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button] {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--color-muted);
+  height: 1.75rem;
+  left: auto;
+  right: 0.625rem;
+  top: 0.8125rem;
+  transform: none;
+  transition: color var(--duration-micro) var(--ease-luxury);
+  width: 1.75rem;
+}
+
+[data-sonner-toaster]
+  [data-sonner-toast][data-styled="true"]:hover
+  [data-close-button]:hover {
+  background: transparent;
+  color: var(--color-ink);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button]:focus-visible {
+  box-shadow: none;
+}

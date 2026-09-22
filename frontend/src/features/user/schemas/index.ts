@@ -1,11 +1,7 @@
 import { z } from "zod";
 
 import { newPasswordZodString } from "@/lib/validation/password";
-
-const patchOptionalStringSchema = z
-  .string()
-  .trim()
-  .max(50, "Phone must be at most 50 characters");
+import { vietnamPhoneZodString } from "@/lib/validation/phone";
 
 export const updateSelfProfileSchema = z
   .object({
@@ -14,7 +10,7 @@ export const updateSelfProfileSchema = z
       .trim()
       .max(255, "Display name must be at most 255 characters")
       .optional(),
-    phone: patchOptionalStringSchema.optional(),
+    phone: vietnamPhoneZodString(),
     full_name: z
       .string()
       .trim()
@@ -23,16 +19,10 @@ export const updateSelfProfileSchema = z
   })
   .strict();
 
-const selfProfilePhoneFormField = z
-  .string()
-  .trim()
-  .max(50, "Phone must be at most 50 characters")
-  .optional();
-
 /** Admin + operational self-service profile forms (PATCH /me: full_name, phone). */
 export const fullNamePhoneSelfProfileFormSchema = z.object({
   full_name: z.string().trim().min(1, "Full name is required").max(255),
-  phone: selfProfilePhoneFormField,
+  phone: vietnamPhoneZodString(),
 });
 
 export const customerSelfProfileFormSchema = z.object({
@@ -41,7 +31,7 @@ export const customerSelfProfileFormSchema = z.object({
     .trim()
     .max(255, "Display name must be at most 255 characters")
     .optional(),
-  phone: selfProfilePhoneFormField,
+  phone: vietnamPhoneZodString(),
 });
 
 export const changePasswordSchema = z.object({

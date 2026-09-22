@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
+import { Suspense, type CSSProperties } from "react";
 import { Toaster } from "sonner";
 
 import "./globals.css";
+import { ToastErrorIcon, ToastSuccessIcon } from "@/components/icons/toast-icons";
 import { PageLoadingState } from "@/components/ui/loading-state";
 import { ThemeScope } from "@/components/theme/theme-scope";
 import { BRAND } from "@/constants/brand";
@@ -11,6 +12,12 @@ import { AuthBootstrap } from "@/features/auth/server";
 import { QueryProvider } from "@/providers";
 
 import { display, instrument, mono } from "./fonts";
+
+/** One value drives both sonner's timer and the drain on the toast's bottom hairline. */
+const TOAST_DURATION_MS = 5000;
+const TOASTER_STYLE = {
+  "--app-toast-duration": `${TOAST_DURATION_MS}ms`,
+} as CSSProperties;
 
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
@@ -70,19 +77,10 @@ export default function RootLayout({
           </Suspense>
           <Toaster
             closeButton
+            duration={TOAST_DURATION_MS}
+            icons={{ error: <ToastErrorIcon />, success: <ToastSuccessIcon /> }}
             position="top-center"
-            toastOptions={{
-              classNames: {
-                toast:
-                  "border border-border bg-surface text-ink-2 shadow-overlay",
-                title: "text-toast-title text-ink",
-                description: "text-toast-description text-muted",
-                success: "border-l-[3px] border-l-success",
-                error: "border-l-[3px] border-l-error",
-                warning: "border-l-[3px] border-l-warning",
-                info: "border-l-[3px] border-l-info",
-              },
-            }}
+            style={TOASTER_STYLE}
           />
         </QueryProvider>
       </body>

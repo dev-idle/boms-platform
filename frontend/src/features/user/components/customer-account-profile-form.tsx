@@ -99,7 +99,7 @@ function CustomerAccountProfileFormBody({
                 <Input
                   autoComplete="tel"
                   inputMode="tel"
-                  placeholder="Phone number"
+                  placeholder="0912 345 678"
                   type="tel"
                   {...field}
                   value={field.value ?? ""}

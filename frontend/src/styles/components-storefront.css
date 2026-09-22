@@ -65,20 +65,6 @@
     line-height: 1.5;
   }
 
-  .text-toast-title {
-    font-family: var(--font-body);
-    font-size: 0.875rem;
-    font-weight: 500;
-    line-height: 1.4;
-  }
-
-  .text-toast-description {
-    font-family: var(--font-body);
-    font-size: 0.8125rem;
-    font-weight: 400;
-    line-height: 1.6;
-  }
-
   /* Dashboard type scale */
   .text-page-title {
     color: var(--color-ink);
@@ -120,7 +106,11 @@
   .app-dialog-overlay {
     align-items: center;
     animation: app-dialog-overlay-in var(--duration-page) var(--ease-luxury);
-    background-color: color-mix(in srgb, var(--color-ink) 28%, transparent);
+    /* 28% left the white panel at 1.93:1 against the dimmed page — under the 3:1
+       WCAG 1.4.11 asks for a UI component against what sits behind it. 48% is the
+       first step that clears it with margin (3.30:1) without turning the scrim into
+       a blackout. */
+    background-color: color-mix(in srgb, var(--color-ink) 48%, transparent);
     display: flex;
     inset: 0;
     justify-content: center;
@@ -231,29 +221,59 @@
     }
   }
 
+  /* Value left, copy right: the band holds both, so the dialog keeps one button and
+     the filled matcha weight stays on the action that actually ends the dialog. */
   .app-dialog-code {
+    align-items: center;
     background-color: var(--color-paper-3);
     border: 1px solid var(--color-border);
     color: var(--color-ink);
+    column-gap: 1rem;
+    display: flex;
     font-family: var(--font-mono);
     font-size: 0.875rem;
+    justify-content: space-between;
     letter-spacing: 0.04em;
     line-height: 1.5;
-    padding: 0.75rem 1rem;
+    min-height: 3rem;
+    padding: 0.625rem 0.625rem 0.625rem 1rem;
     word-break: break-all;
+  }
+
+  .app-dialog-code__value {
+    min-width: 0;
+  }
+
+  /* Inline text action: accent tone, ink → matcha, 40px hit. */
+  .app-dialog-code__copy {
+    align-items: center;
+    background: transparent;
+    border: none;
+    color: var(--color-ink);
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    font-family: var(--font-body);
+    font-size: var(--label-size);
+    font-weight: var(--label-weight);
+    justify-content: center;
+    letter-spacing: var(--label-tracking);
+    line-height: 1;
+    min-height: 2.5rem;
+    padding-inline: 0.875rem;
+    text-transform: uppercase;
+    transition: color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .app-dialog-code__copy:hover,
+  .app-dialog-code__copy:focus-visible {
+    color: var(--color-matcha-500);
   }
 
   [data-theme="dashboard"] .app-dialog-code {
     background-color: var(--color-db-row);
     border-color: var(--color-db-border);
     color: var(--color-db-ink);
-  }
-
-  .app-dialog-inline-actions {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 1rem;
   }
 
   .app-dialog-checkbox {

@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { USER_ROLE } from "@/constants/roles";
+import {
+  nullableVietnamPhoneZodString,
+  vietnamPhoneZodString,
+} from "@/lib/validation/phone";
 import type { PaginatedListResult } from "@/lib/pagination/parse-paginated-list";
 
 const optionalNullableTrimmedString = (max: number, label: string) =>
@@ -28,6 +32,7 @@ export const adminUserSchema = z.object({
   updated_at: z.string(),
   display_name: optionalNullableTrimmedString(255, "Display name"),
   full_name: optionalNullableTrimmedString(255, "Full name"),
+  /* Read side stays permissive: rows written before the phone rule existed still have to render. */
   phone: optionalNullableTrimmedString(50, "Phone"),
   employee_code: optionalNullableTrimmedString(64, "Employee code"),
 });
@@ -35,7 +40,7 @@ export const adminUserSchema = z.object({
 const createOperationalBaseSchema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
   full_name: z.string().trim().min(1, "Full name is required").max(255),
-  phone: optionalNullableTrimmedString(50, "Phone"),
+  phone: nullableVietnamPhoneZodString(),
 });
 
 /** Admin API only accepts staff, baker, manager — never admin (use dev seed). */
@@ -68,7 +73,7 @@ const updateRoleBaseSchema = z.object({
     USER_ROLE.manager,
   ]),
   full_name: z.string().trim().max(255).optional(),
-  phone: z.string().trim().max(50).optional().nullable(),
+  phone: vietnamPhoneZodString(),
 });
 
 export const updateRoleSchema = updateRoleBaseSchema;

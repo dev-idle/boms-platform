@@ -35,7 +35,11 @@ export function DashboardAccountMenu({
     pathname === accountHref || pathname.startsWith(`${accountHref}/`);
 
   return (
-    <DropdownMenu.Root>
+    // Not modal: a two-item menu has no business locking page scroll and hiding the
+    // rest of the app from assistive tech. Radix still owns Esc, outside-click and
+    // focus; the page simply stays alive behind it, which is what the absence of a
+    // scrim already promises.
+    <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger
         className={cn(
           "dashboard-account-trigger",

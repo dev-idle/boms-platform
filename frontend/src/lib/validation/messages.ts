@@ -1,9 +1,12 @@
+import { PHONE_FORMAT_MESSAGE } from "./phone";
+
 const VALIDATION_TAG_MESSAGES: Record<string, string> = {
   required: "This field is required",
   email: "Enter a valid email address",
   min: "Value is too short",
   max: "Value is too long",
   password_complexity: "Password must include a letter and a number",
+  vn_phone: PHONE_FORMAT_MESSAGE,
 };
 
 export function fieldErrorFromTag(tag: string): string {

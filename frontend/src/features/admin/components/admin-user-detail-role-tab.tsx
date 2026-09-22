@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import { useRemountingFormSnapshot } from "@/lib/hooks/use-remounting-form-snapshot";
-import { applyFormFieldErrors } from "@/lib/validation";
+import { applyApiFormFieldErrors } from "@/lib/validation";
 
 import { OperationalEmployeeCodeField } from "./operational-employee-code-field";
 import { useUpdateRole } from "../hooks";
@@ -26,6 +26,8 @@ import {
   type AdminUser,
   type UpdateRoleInput,
 } from "../schemas";
+
+const ROLE_FORM_FIELDS = ["role", "full_name", "phone"] as const;
 
 type AdminUserDetailRoleFormBodyProps = {
   assignedEmployeeCode?: string | null;
@@ -53,6 +55,11 @@ function AdminUserDetailRoleFormBody({
 
   function requestRoleSubmit(values: UpdateRoleInput): void {
     setPendingRoleValues(values);
+    if (values.role === initialValues.role) {
+      // Name or phone only: nothing is created or replaced, so nothing to confirm.
+      submitRoleValues(values);
+      return;
+    }
     setConfirmRole(true);
   }
 
@@ -61,16 +68,18 @@ function AdminUserDetailRoleFormBody({
       setConfirmRole(false);
       return;
     }
+    submitRoleValues(pendingRoleValues);
+  }
 
+  function submitRoleValues(values: UpdateRoleInput): void {
     updateRole.mutate(
       {
         id: userId,
         input: {
-          role: pendingRoleValues.role,
-          full_name: pendingRoleValues.full_name?.trim() || undefined,
-          phone: pendingRoleValues.phone?.trim()
-            ? pendingRoleValues.phone.trim()
-            : null,
+          role: values.role,
+          full_name: values.full_name?.trim() || undefined,
+          // Normalized by the schema; "" clears the stored phone.
+          phone: values.phone,
         },
       },
       {
@@ -80,30 +89,16 @@ function AdminUserDetailRoleFormBody({
           setPendingRoleValues(null);
         },
         onError: (error) => {
-          if (!isApiError(error)) {
-            toast.error("Failed to update role");
-            return;
-          }
-          if (error.hasValidationDetails() && pendingRoleValues) {
-            applyFormFieldErrors(form, error.details!, [
-              "role",
-              "full_name",
-              "phone",
-            ]);
-            setConfirmRole(false);
-            return;
-          }
-          if (error.isCannotModifySelf()) {
+          setConfirmRole(false);
+          if (isApiError(error) && error.isCannotModifySelf()) {
             toast.error("You cannot change your own role.");
-            setConfirmRole(false);
             return;
           }
-          if (error.isInvalidRoleTransition()) {
+          if (isApiError(error) && error.isInvalidRoleTransition()) {
             toast.error("This role change is not allowed.");
-            setConfirmRole(false);
             return;
           }
-          toast.error(error.message);
+          applyApiFormFieldErrors(form, error, ROLE_FORM_FIELDS, "Failed to save changes");
         },
       },
     );
@@ -174,9 +169,9 @@ function AdminUserDetailRoleFormBody({
 
             <div className="dashboard-profile-form-actions">
               <DashboardFormSaveButton
-                idleLabel="Update role"
+                idleLabel="Save changes"
                 isPending={updateRole.isPending}
-                pendingLabel="Updating…"
+                pendingLabel="Saving…"
               />
             </div>
           </form>
@@ -184,7 +179,7 @@ function AdminUserDetailRoleFormBody({
 
       <ConfirmDialog
         confirmLabel="Apply role change"
-        description="This may create or replace profile records based on the target role."
+        description="They will be signed out everywhere and must sign in again. Their profile and employee code stay as they are."
         isPending={updateRole.isPending}
         onCancel={() => {
           setConfirmRole(false);

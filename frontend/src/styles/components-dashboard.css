@@ -2176,6 +2176,12 @@
     text-transform: uppercase;
   }
 
+  /* Opens a group: contact facts, then account state, then the timestamps. */
+  .admin-user-profile__group {
+    border-top: 1px solid var(--color-line-soft);
+    padding-top: 1.125rem;
+  }
+
   .admin-user-profile__facts dd {
     color: var(--color-ink);
     font-size: 0.875rem;

@@ -22,6 +22,7 @@ export const ApiErrorCode = {
   CannotModifyAdmin: "cannot_modify_admin",
   InvalidRoleTransition: "invalid_role_transition",
   EmployeeCodeExists: "employee_code_exists",
+  PhoneExists: "phone_exists",
   CategoryHasProducts: "category_has_products",
   SlugExists: "slug_exists",
   CodeExists: "code_exists",
@@ -110,6 +111,10 @@ export class ApiError extends Error {
 
   isEmployeeCodeExists(): boolean {
     return this.code === ApiErrorCode.EmployeeCodeExists;
+  }
+
+  isPhoneExists(): boolean {
+    return this.code === ApiErrorCode.PhoneExists;
   }
 
   isInvalidCredentials(): boolean {

@@ -20,11 +20,12 @@ describe("profile-form-values", () => {
   });
 
   it("builds normalized snapshots from profile fields", () => {
+    // Stored numbers are E.164; the form shows the grouping people read and type.
     expect(
-      fullNamePhoneSnapshotFromProfile("  Admin ", " 555-0100 "),
+      fullNamePhoneSnapshotFromProfile("  Admin ", "+84912345678"),
     ).toEqual({
       full_name: "Admin",
-      phone: "555-0100",
+      phone: "0912 345 678",
     });
     expect(
       customerProfileSnapshot({ display_name: "  Pat  ", phone: null }),

@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
@@ -11,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ASSIGNABLE_OPERATIONAL_ROLES, roleDisplayLabel } from "@/constants/roles";
 import { isApiError } from "@/lib/errors";
-import { applyFormFieldErrors } from "@/lib/validation";
+import { applyApiFormFieldErrors } from "@/lib/validation";
 
 import { useCreateOperational } from "../hooks";
 import { CREATE_OPERATIONAL_INITIAL } from "../lib/create-operational-form-values";
@@ -38,23 +37,16 @@ export function CreateOperationalUserForm() {
   function onSubmit(values: CreateOperationalInput): void {
     createUser.mutate(values, {
       onError: (error) => {
-        if (!isApiError(error)) {
-          toast.error("Failed to create user");
-          return;
-        }
-        if (error.isEmailExists()) {
+        if (isApiError(error) && error.isEmailExists()) {
           form.setError("email", { message: "An account with this email already exists" });
           return;
         }
-        if (error.hasValidationDetails()) {
-          applyFormFieldErrors(
-            form,
-            error.details!,
-            CREATE_OPERATIONAL_FORM_FIELDS,
-          );
-          return;
-        }
-        toast.error(error.message);
+        applyApiFormFieldErrors(
+          form,
+          error,
+          CREATE_OPERATIONAL_FORM_FIELDS,
+          "Failed to create user",
+        );
       },
     });
   }
@@ -129,7 +121,7 @@ export function CreateOperationalUserForm() {
                   <Input
                     autoComplete="tel"
                     inputMode="tel"
-                    placeholder="Phone number"
+                    placeholder="0912 345 678"
                     type="tel"
                     {...field}
                     value={field.value ?? ""}

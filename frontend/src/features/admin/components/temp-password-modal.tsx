@@ -69,22 +69,26 @@ function TempPasswordModalContent({
       size="lg"
       title="Temporary password"
     >
-      <div className="app-dialog-code">{tempPassword}</div>
-
-      <div className="app-dialog-inline-actions">
-        <Button onClick={() => void handleCopy()} type="button">
-          {copied ? "Copied" : "Copy password"}
-        </Button>
-        <label className="app-dialog-checkbox">
-          <input
-            checked={acknowledged}
-            className="app-dialog-checkbox-input"
-            onChange={(event) => setAcknowledged(event.target.checked)}
-            type="checkbox"
-          />
-          <span>I have copied the password</span>
-        </label>
+      <div className="app-dialog-code">
+        <span className="app-dialog-code__value">{tempPassword}</span>
+        <button
+          className="app-dialog-code__copy"
+          onClick={() => void handleCopy()}
+          type="button"
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
       </div>
+
+      <label className="app-dialog-checkbox">
+        <input
+          checked={acknowledged}
+          className="app-dialog-checkbox-input"
+          onChange={(event) => setAcknowledged(event.target.checked)}
+          type="checkbox"
+        />
+        <span>I have copied the password</span>
+      </label>
     </AppDialog>
   );
 }

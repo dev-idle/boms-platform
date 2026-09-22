@@ -121,7 +121,7 @@ export function useUpdateRole() {
       hydrateUserCaches(queryClient, user);
       invalidateUserDetailCaches(queryClient, user.id);
       void queryClient.invalidateQueries({ queryKey: adminQueryKeys.nextEmployeeCode });
-      toast.success("Role updated");
+      toast.success("Changes saved");
     },
   });
 }

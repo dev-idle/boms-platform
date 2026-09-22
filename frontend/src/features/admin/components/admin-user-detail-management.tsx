@@ -28,9 +28,9 @@ export function AdminUserDetailManagement({
 
   return (
     <DashboardProfileSection
-      description="Change operational role for staff, baker, or manager accounts."
+      description="The operational role for staff, baker, or manager accounts, plus the name and phone on record."
       id="admin-user-role"
-      title="Role"
+      title="Role and profile"
       variant="plain"
     >
       <AdminUserDetailRoleTab userId={userId} user={user} />
