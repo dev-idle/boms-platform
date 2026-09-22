@@ -4,11 +4,15 @@ on:
   push:
     paths:
       - "frontend/**"
+      # Shared phone cases read by src/lib/validation/phone.test.ts.
+      - "contracts/**"
       - "tsconfig.json"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     paths:
       - "frontend/**"
+      # Shared phone cases read by src/lib/validation/phone.test.ts.
+      - "contracts/**"
       - "tsconfig.json"
       - ".github/workflows/frontend-ci.yml"
 

@@ -4,10 +4,18 @@ on:
   push:
     paths:
       - "backend/**"
+      # Contract tests read these: the shared phone cases and the frontend's
+      # mirror of the error codes (internal/shared/errors/contract_test.go).
+      - "contracts/**"
+      - "frontend/src/lib/errors/api-error.ts"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
+      # Contract tests read these: the shared phone cases and the frontend's
+      # mirror of the error codes (internal/shared/errors/contract_test.go).
+      - "contracts/**"
+      - "frontend/src/lib/errors/api-error.ts"
       - ".github/workflows/backend-ci.yml"
 
 defaults:
@@ -55,7 +63,18 @@ jobs:
           args: --timeout=4m
 
       - name: go test -race
-        run: go test ./... -race -count=1
+        run: go test ./... -race -count=1 -coverprofile=coverage.out
+
+      # Coverage is reported, not gated: a threshold rewards tests written for the
+      # number. The summary shows where a change left a package untested.
+      - name: Coverage summary
+        run: |
+          {
+            echo '### Backend coverage'
+            echo '```'
+            go tool cover -func=coverage.out | tail -n 1
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: make build
         run: make build
