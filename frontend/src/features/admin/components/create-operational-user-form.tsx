@@ -7,6 +7,7 @@ import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-but
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Select } from "@/components/ui/select";
 import { ASSIGNABLE_OPERATIONAL_ROLES, roleDisplayLabel } from "@/constants/roles";
 import { isApiError } from "@/lib/errors";
@@ -118,17 +119,7 @@ export function CreateOperationalUserForm() {
             render={({ field }) => (
               <FormItem>
                 <FieldControl label="Phone" optional>
-                  <Input
-                    autoComplete="tel"
-                    inputMode="tel"
-                    placeholder="0912 345 678"
-                    type="tel"
-                    {...field}
-                    value={field.value ?? ""}
-                    onChange={(event) =>
-                      field.onChange(event.target.value || null)
-                    }
-                  />
+                  <PhoneInput {...field} />
                 </FieldControl>
                 <FormMessage />
               </FormItem>

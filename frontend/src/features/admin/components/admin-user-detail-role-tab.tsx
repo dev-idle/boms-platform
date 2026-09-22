@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { FieldControl } from "@/components/ui/field-control";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import { useRemountingFormSnapshot } from "@/lib/hooks/use-remounting-form-snapshot";
@@ -153,14 +154,7 @@ function AdminUserDetailRoleFormBody({
               render={({ field }) => (
                 <FormItem>
                   <FieldControl label="Phone" optional>
-                    <Input
-                      autoComplete="tel"
-                      inputMode="tel"
-                      type="tel"
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value || null)}
-                    />
+                    <PhoneInput {...field} />
                   </FieldControl>
                   <FormMessage />
                 </FormItem>

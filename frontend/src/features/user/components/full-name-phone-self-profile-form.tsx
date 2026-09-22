@@ -9,6 +9,7 @@ import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-but
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useRemountingFormSnapshot } from "@/lib/hooks/use-remounting-form-snapshot";
 import { applyApiFormFieldErrors } from "@/lib/validation";
 
@@ -105,14 +106,7 @@ function FullNamePhoneSelfProfileFormBody({
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Phone" optional>
-                <Input
-                  autoComplete="tel"
-                  inputMode="tel"
-                  placeholder="0912 345 678"
-                  type="tel"
-                  {...field}
-                  value={field.value ?? ""}
-                />
+                <PhoneInput {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>
