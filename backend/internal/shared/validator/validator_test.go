@@ -84,3 +84,22 @@ func TestVietnamPhone(t *testing.T) {
 func strPtr(value string) *string {
 	return &value
 }
+
+// The frontend maps details onto form fields by their JSON names, so the keys
+// must be "full_name", not the Go field "FullName".
+type profileRequest struct {
+	FullName string  `json:"full_name" validate:"required"`
+	Phone    *string `json:"phone,omitempty" validate:"omitempty,vn_phone"`
+}
+
+func TestFieldErrorsReportsJSONFieldNames(t *testing.T) {
+	t.Parallel()
+
+	err := validator.Struct(profileRequest{Phone: strPtr("0912")})
+
+	require.Error(t, err)
+	assert.Equal(t, map[string]string{
+		"full_name": "required",
+		"phone":     "vn_phone",
+	}, validator.FieldErrors(err))
+}

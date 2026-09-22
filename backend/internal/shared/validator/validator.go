@@ -3,6 +3,7 @@ package validator
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"unicode"
@@ -21,6 +22,15 @@ var (
 func V() *validator.Validate {
 	vOnce.Do(func() {
 		v = validator.New()
+		// Report fields by their JSON name — "full_name", not "FullName" — which is
+		// what the frontend maps details onto.
+		v.RegisterTagNameFunc(func(field reflect.StructField) string {
+			name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+			if name == "" || name == "-" {
+				return field.Name
+			}
+			return name
+		})
 		if err := v.RegisterValidation("password_complexity", passwordComplexity); err != nil {
 			panic(fmt.Sprintf("register password_complexity: %v", err))
 		}
@@ -93,5 +103,17 @@ func formatValidationError(err error) error {
 		b.WriteString(": ")
 		b.WriteString(fe.Tag())
 	}
-	return fmt.Errorf("validation: %s", b.String())
+	return &fieldError{summary: b.String(), errs: verrs}
 }
+
+// fieldError keeps the validator's per-field errors behind a short message.
+// Wrapping them (rather than flattening them into a string) is what lets
+// FieldErrors read them back for the response's details.
+type fieldError struct {
+	summary string
+	errs    validator.ValidationErrors
+}
+
+func (e *fieldError) Error() string { return "validation: " + e.summary }
+
+func (e *fieldError) Unwrap() error { return e.errs }
