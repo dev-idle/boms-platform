@@ -10,9 +10,12 @@
     text-align: center;
   }
 
+  /* A whole-page wait fills the viewport itself rather than its parent, so the
+     mark is dead centre whichever wrapper draws it — the root fallback inside a
+     theme scope, or a role gate straight in the body. On a reload they follow
+     one another, and the mark stays put. */
   .loading-state--page {
-    flex: 1 1 auto;
-    min-height: 40vh;
+    min-height: 100dvh;
     padding: 2.5rem 1rem;
   }
 
@@ -35,6 +38,13 @@
 
   .loading-state--page .loading-indicator {
     --loading-indicator-size: 1.75rem;
+  }
+
+  /* No reveal delay for a whole-page wait: there is nothing behind it to flash,
+     and a delay would blank the mark again at each hand-off. */
+  .loading-state--page .loading-indicator__spinner {
+    animation: none;
+    opacity: 1;
   }
 
   [data-theme="dashboard"] .loading-indicator {
