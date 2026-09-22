@@ -58,4 +58,18 @@ describe("applyApiFormFieldErrors", () => {
       message: PHONE_FORMAT_MESSAGE,
     });
   });
+
+  it("toasts a detail for a field the form does not render", () => {
+    const { form, setError } = fakeForm();
+    const disabled = new ApiError(400, {
+      code: ApiErrorCode.Validation,
+      message: "Validation failed",
+      details: { account: "user is disabled", phone: "vn_phone" },
+    });
+
+    applyApiFormFieldErrors(form, disabled, ["phone"], "Failed");
+
+    expect(setError).toHaveBeenCalledWith("phone", { message: PHONE_FORMAT_MESSAGE });
+    expect(toastError).toHaveBeenCalledWith("user is disabled");
+  });
 });
