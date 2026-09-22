@@ -1,5 +1,5 @@
 import { USER_ROLE } from "@/constants/roles";
-import { formatVietnamPhone } from "@/lib/validation/phone";
+import { nationalNumber } from "@/lib/validation/phone";
 
 import type { AdminUser, UpdateRoleInput } from "../schemas";
 
@@ -14,6 +14,6 @@ export function adminUserToRoleFormValues(user: AdminUser): UpdateRoleInput {
   return {
     role: roleForForm,
     full_name: user.full_name ?? "",
-    phone: formatVietnamPhone(user.phone),
+    phone: nationalNumber(user.phone ?? ""),
   };
 }

@@ -6,5 +6,5 @@ export const CREATE_OPERATIONAL_INITIAL: CreateOperationalInput = {
   email: "",
   role: USER_ROLE.staff,
   full_name: "",
-  phone: null,
+  phone: "",
 };

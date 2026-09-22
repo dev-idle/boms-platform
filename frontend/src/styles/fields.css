@@ -1011,3 +1011,40 @@
     transform: scaleY(1);
   }
 }
+
+/* Phone field — the fixed +84 sits inside the input box rather than beside it,
+   so the input's own underline, hover, focus and error states still draw the
+   whole control. It is set in ink, not the placeholder's muted grey, and closed
+   by a short hairline: the code reads as part of the value, never as a hint.
+   The number starts after the prefix's measured width (1.676em in Instrument
+   Sans, rounded up) plus the gaps and rule, in em so it holds at 14px and 16px. */
+.phone-input {
+  --phone-prefix-gap: 0.625rem;
+
+  position: relative;
+}
+
+.phone-input__prefix {
+  align-items: center;
+  color: var(--color-ink-2);
+  column-gap: var(--phone-prefix-gap);
+  display: flex;
+  font-size: var(--field-control-font-size);
+  inset-block: 0;
+  inset-inline-start: var(--field-control-padding-inline);
+  pointer-events: none;
+  position: absolute;
+}
+
+.phone-input__prefix::after {
+  background-color: var(--color-line);
+  block-size: 1em;
+  content: "";
+  inline-size: 1px;
+}
+
+.phone-input .field-chrome {
+  padding-inline-start: calc(
+    var(--field-control-padding-inline) + 1.7em + 2 * var(--phone-prefix-gap) + 1px
+  );
+}

@@ -61,7 +61,7 @@ func TestVietnamPhone(t *testing.T) {
 		{name: "whitespace clears", phone: strPtr("   "), wantErr: false},
 		{name: "national mobile", phone: strPtr("0912 345 678"), wantErr: false},
 		{name: "international mobile", phone: strPtr("+84912345678"), wantErr: false},
-		{name: "land line", phone: strPtr("028 3822 1234"), wantErr: false},
+		{name: "land line", phone: strPtr("028 3822 1234"), wantErr: true},
 		{name: "symbols", phone: strPtr("!!!!!!"), wantErr: true},
 		{name: "too short", phone: strPtr("0912"), wantErr: true},
 		{name: "foreign", phone: strPtr("+1 415 555 0172"), wantErr: true},

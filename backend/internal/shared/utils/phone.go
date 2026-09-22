@@ -5,44 +5,47 @@ import (
 	"strings"
 )
 
-// Vietnam numbers in the spellings people type: national (leading zero) and
-// international (+84 or 84, sometimes followed by the national zero). After the
-// prefix comes the national number, checked against the MIC numbering plan:
-//
-//   - mobile, 9 digits: an assigned carrier prefix — 32–39, 52 55 56 58 59, 70
-//     76–79, 81–89, 90–94, 96–99 — then 7 digits. 095 is retired, and the 11-digit
-//     01x numbers moved to these prefixes on 2018-09-15.
-//   - land line, 10 digits: 2, a province code (24x Hanoi, 28x Ho Chi Minh City,
-//     one per province elsewhere), then a 7-digit subscriber number.
-//
-// Service numbers (1800, 1900, 11x) and 069 are not personal phones and fail.
-// The frontend applies the same pattern (src/lib/validation/phone.ts); both are
-// tested against contracts/vietnam-phone-cases.json. When MIC assigns a new
-// prefix, add it in both places and a case to that file.
+// Vietnam mobile numbers — the only phones the bakery takes. The frontend
+// applies the same rule (src/lib/validation/phone.ts); both are tested against
+// contracts/vietnam-phone-cases.json.
 var (
-	vietnamPhonePattern = regexp.MustCompile(
-		`^(?:0|\+?840?)(` +
-			`(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}` +
-			`|2(?:0[3-9]|1[0-689]|2[0-25-9]|3[2-9]|4[2-8]|5[124-9]|6[0-39]|7[0-7]|8[2-7]|9[0-4679])\d{7}` +
-			`)$`,
-	)
-	phoneSeparatorsRegex = regexp.MustCompile(`[\s.()\-]`)
+	// A carrier prefix MIC has assigned, then seven digits. 095 is retired; the
+	// 11-digit 01x numbers moved to these prefixes in 2018. When MIC assigns a
+	// new prefix, add it here, in the frontend and in the cases.
+	mobileNumber = regexp.MustCompile(`^(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}$`)
+	// Digits and the separators people type between them; anything else is not a phone.
+	phoneCharacters = regexp.MustCompile(`^[\d\s.()+-]*$`)
+	nonDigits       = regexp.MustCompile(`\D`)
 )
 
-// NormalizeVietnamPhone returns the stored E.164 form (+84…) of a Vietnam phone
-// number and reports whether the input was one. Separators are how people type,
-// not what is stored, so they are dropped before matching.
+// nationalNumber finds the national number inside whatever was typed. `00` is
+// Vietnam's international access code and `84` the country code, so both come
+// off the front of a long number; then the trunk `0` does, since no national
+// number starts with 0. Zeros inside the number are never touched.
+func nationalNumber(phone string) string {
+	digits := strings.TrimPrefix(nonDigits.ReplaceAllString(phone, ""), "00")
+	if strings.HasPrefix(digits, "84") && len(digits) > 9 {
+		digits = digits[2:]
+	}
+	return strings.TrimLeft(digits, "0")
+}
+
+// NormalizeVietnamPhone returns the stored E.164 form (+84…) of a Vietnam mobile
+// number and reports whether the input was one.
 func NormalizeVietnamPhone(phone string) (string, bool) {
-	m := vietnamPhonePattern.FindStringSubmatch(phoneSeparatorsRegex.ReplaceAllString(phone, ""))
-	if m == nil {
+	if !phoneCharacters.MatchString(phone) {
 		return "", false
 	}
-	return "+84" + m[1], true
+	national := nationalNumber(phone)
+	if !mobileNumber.MatchString(national) {
+		return "", false
+	}
+	return "+84" + national, true
 }
 
 // NormalizeVietnamPhonePtr normalizes an optional phone from a request. nil stays
 // nil (absent) and a blank value becomes "" (a request to clear); anything else
-// must be a Vietnam number, and ok is false when it is not.
+// must be a Vietnam mobile number, and ok is false when it is not.
 func NormalizeVietnamPhonePtr(phone *string) (normalized *string, ok bool) {
 	if phone == nil {
 		return nil, true

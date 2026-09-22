@@ -1,14 +1,12 @@
 import type * as React from "react";
 
 import {
-  formatVietnamPhone,
-  normalizeVietnamPhone,
+  NATIONAL_NUMBER_LENGTH,
+  formatNationalNumber,
+  nationalNumber,
 } from "@/lib/validation/phone";
 
 import { Input } from "./input";
-
-/** Room for the longest spelling people type: `+84 0912 345 678` plus slack. */
-const PHONE_INPUT_MAX_LENGTH = 20;
 
 type PhoneInputProps = Omit<
   React.ComponentProps<"input">,
@@ -18,32 +16,101 @@ type PhoneInputProps = Omit<
   value: string | null | undefined;
 };
 
+/** Index just after the `count`-th digit of `text`, or 0 when `count` is 0. */
+function indexAfterDigits(text: string, count: number): number {
+  if (count <= 0) {
+    return 0;
+  }
+  let seen = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    if (/\d/.test(text[index]) && ++seen === count) {
+      return index + 1;
+    }
+  }
+  return text.length;
+}
+
 /**
- * The one phone field. It takes a number however it is typed and, once the field
- * loses focus, tidies a valid one into the grouping people read (`0912 345 678`).
- * It never rewrites while the caret is inside — reformatting mid-keystroke moves
- * the caret — and leaves a value it cannot read untouched, so the validation
- * message still matches what is on screen. An empty field stays "": each schema
- * decides whether that means "clear the phone" or "no phone".
+ * The one phone field: a fixed `+84`, then the national number shown in groups
+ * of three (`912 345 678`). Every change is reduced to that number, so a leading
+ * 0, a pasted `+84 …` or `0084 …` and any separators fall away as they are
+ * typed; the form only ever holds digits. Redrawing the groups would throw the
+ * caret to the end, so it is put back after the same digit.
+ *
+ * The number is nine digits and the field holds no more: a digit typed into a
+ * full field is refused before it lands, and a paste that would overflow is
+ * dropped rather than cut to a number that merely looks valid.
  */
-export function PhoneInput({ onBlur, onChange, value, ...props }: PhoneInputProps) {
+export function PhoneInput({ onChange, value, ...props }: PhoneInputProps) {
+  const national = value ?? "";
   return (
-    <Input
-      autoComplete="tel"
-      inputMode="tel"
-      maxLength={PHONE_INPUT_MAX_LENGTH}
-      placeholder="0912 345 678"
-      type="tel"
-      {...props}
-      onBlur={(event) => {
-        const stored = normalizeVietnamPhone(event.target.value);
-        if (stored) {
-          onChange(formatVietnamPhone(stored));
-        }
-        onBlur?.(event);
-      }}
-      onChange={(event) => onChange(event.target.value)}
-      value={value ?? ""}
-    />
+    <div className="phone-input">
+      <span aria-hidden className="phone-input__prefix">
+        +84
+      </span>
+      <Input
+        autoComplete="tel"
+        inputMode="tel"
+        placeholder="912 345 678"
+        type="tel"
+        {...props}
+        onBeforeInput={(event) => {
+          const input = event.currentTarget;
+          const replacing = input.selectionStart !== input.selectionEnd;
+          if (
+            national.length >= NATIONAL_NUMBER_LENGTH &&
+            !replacing &&
+            /\d/.test(event.data)
+          ) {
+            event.preventDefault();
+          }
+        }}
+        onChange={(event) => {
+          const input = event.currentTarget;
+          const typed = input.value;
+          // Autofill can arrive as a plain Event with no inputType.
+          const inputType = (event.nativeEvent as InputEvent).inputType ?? "";
+          const digits = typed.replace(/\D/g, "");
+          let digitsBeforeCaret = typed
+            .slice(0, input.selectionStart ?? typed.length)
+            .replace(/\D/g, "").length;
+          // Keystrokes after the fixed +84 are the national number itself — a
+          // typed 84 is a Vinaphone 084 prefix, not a country code. The one
+          // exception is a 0 typed first, the trunk prefix, which is dropped. A
+          // paste or autofill may carry +84 / 0084 and is reduced in full.
+          let next: string;
+          if (inputType === "insertText" || inputType.startsWith("delete")) {
+            const trunkZero =
+              inputType === "insertText" &&
+              digitsBeforeCaret === 1 &&
+              digits.startsWith("0");
+            next = trunkZero ? digits.slice(1) : digits;
+          } else {
+            next = nationalNumber(typed);
+          }
+          if (next.length > NATIONAL_NUMBER_LENGTH) {
+            // Not applied: React puts the controlled value back.
+            return;
+          }
+          // Digits dropped above (a trunk 0, 84 or 00) all sat in front.
+          const removed = digits.length - next.length;
+          // Backspace just after a group space removes no digit; take the one before.
+          if (inputType === "deleteContentBackward" && next === national) {
+            const at = digitsBeforeCaret - removed;
+            if (at > 0) {
+              next = next.slice(0, at - 1) + next.slice(at);
+              digitsBeforeCaret -= 1;
+            }
+          }
+          const caret = indexAfterDigits(
+            formatNationalNumber(next),
+            digitsBeforeCaret - removed,
+          );
+          onChange(next);
+          requestAnimationFrame(() => input.setSelectionRange(caret, caret));
+        }}
+        value={formatNationalNumber(national)}
+      />
+    </div>
   );
 }

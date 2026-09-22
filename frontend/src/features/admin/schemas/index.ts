@@ -1,10 +1,7 @@
 import { z } from "zod";
 
 import { USER_ROLE } from "@/constants/roles";
-import {
-  nullableVietnamPhoneZodString,
-  vietnamPhoneZodString,
-} from "@/lib/validation/phone";
+import { vietnamPhoneZodString } from "@/lib/validation/phone";
 import type { PaginatedListResult } from "@/lib/pagination/parse-paginated-list";
 
 const optionalNullableTrimmedString = (max: number, label: string) =>
@@ -40,7 +37,7 @@ export const adminUserSchema = z.object({
 const createOperationalBaseSchema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
   full_name: z.string().trim().min(1, "Full name is required").max(255),
-  phone: nullableVietnamPhoneZodString(),
+  phone: vietnamPhoneZodString(),
 });
 
 /** Admin API only accepts staff, baker, manager — never admin (use dev seed). */

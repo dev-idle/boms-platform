@@ -1,5 +1,5 @@
 import { USER_ROLE } from "@/constants/roles";
-import { formatVietnamPhone } from "@/lib/validation/phone";
+import { nationalNumber } from "@/lib/validation/phone";
 
 import type {
   CustomerSelfProfileFormValues,
@@ -21,7 +21,7 @@ function fullNamePhoneFormDefaults(
 ): FullNamePhoneSelfProfileFormValues {
   return {
     full_name: fullName,
-    phone: formatVietnamPhone(phone),
+    phone: nationalNumber(phone ?? ""),
   };
 }
 
@@ -48,7 +48,7 @@ function customerProfileFormDefaults(
 ): CustomerSelfProfileFormValues {
   return {
     display_name: fieldValueOrEmpty(profile.display_name),
-    phone: formatVietnamPhone(profile.phone),
+    phone: nationalNumber(profile.phone ?? ""),
   };
 }
 

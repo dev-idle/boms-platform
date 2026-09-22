@@ -1,108 +1,97 @@
 import { z } from "zod";
 
 /**
- * Vietnam phone numbers — the only kind this bakery takes.
+ * Vietnam mobile numbers — the only phones this bakery takes, since pickup
+ * contact means a phone that can receive a call or a message.
  *
- * Stored in E.164 (`+84…`) so one number has one representation, and rendered in
- * the national grouping (`0912 345 678`) because that is how a Vietnamese reader
- * scans it. Display is a pure function of the stored value. The backend applies
- * the same pattern (`internal/shared/utils/phone.go`); both are tested against
- * `contracts/vietnam-phone-cases.json`, so change the cases there first.
+ * Stored as E.164 (`+84912345678`), entered after a fixed `+84` as the nine-digit
+ * national number, shown as `+84 912 345 678`. The backend applies the same rule
+ * (`internal/shared/utils/phone.go`); both are tested against
+ * `contracts/vietnam-phone-cases.json`.
  */
 
 /**
- * National (leading 0) or international (+84 / 84, sometimes followed by the
- * national 0), then the national number, checked against the MIC numbering plan:
- *
- * - mobile, 9 digits: an assigned carrier prefix — 32–39, 52 55 56 58 59, 70
- *   76–79, 81–89, 90–94, 96–99 — then 7 digits. 095 is retired, and the 11-digit
- *   01x numbers moved to these prefixes on 2018-09-15.
- * - land line, 10 digits: 2, a province code (24x Hanoi, 28x Ho Chi Minh City,
- *   one per province elsewhere), then a 7-digit subscriber number.
- *
- * Service numbers (1800, 1900, 11x) and 069 are not personal phones and fail.
- * When MIC assigns a new prefix, add it here, in the backend pattern and as a
- * case in `contracts/vietnam-phone-cases.json`.
+ * The national number: a carrier prefix MIC has assigned, then seven digits.
+ * 095 is retired; the 11-digit 01x numbers moved to these prefixes in 2018.
+ * When MIC assigns a new prefix, add it here, in the backend and in the cases.
  */
-const MOBILE = String.raw`(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}`;
-const LAND_LINE = String.raw`2(?:0[3-9]|1[0-689]|2[0-25-9]|3[2-9]|4[2-8]|5[124-9]|6[0-39]|7[0-7]|8[2-7]|9[0-4679])\d{7}`;
-const VIETNAM_PHONE_PATTERN = new RegExp(
-  String.raw`^(?:0|\+?840?)(${MOBILE}|${LAND_LINE})$`,
-);
+const MOBILE_NUMBER = /^(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}$/;
+
+/** Digits in a national mobile number: a two-digit prefix and seven more. */
+export const NATIONAL_NUMBER_LENGTH = 9;
+
+/** Digits and the separators people type between them; anything else is not a phone. */
+const PHONE_CHARACTERS = /^[\d\s.()+-]*$/;
 
 /**
- * Hanoi (024) and Ho Chi Minh City (028) numbers are written 3-4-4, the city
- * prefix then two groups of four; every other province 4-3-4.
+ * The national number inside whatever was typed or pasted. `00` is Vietnam's
+ * international access code and `84` the country code, so both come off the
+ * front of a long number; then the trunk `0` does, since no national number
+ * starts with 0. Zeros inside the number are never touched.
  */
-const CITY_PREFIXES = new Set(["024", "028"]);
-
-/** Spaces, dots, dashes and brackets are how people type, not what we store. */
-function stripSeparators(raw: string): string {
-  return raw.replace(/[\s.()-]/g, "");
+export function nationalNumber(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("00")) {
+    digits = digits.slice(2);
+  }
+  if (digits.startsWith("84") && digits.length > 9) {
+    digits = digits.slice(2);
+  }
+  return digits.replace(/^0+/, "");
 }
 
-/** The stored form, or null when the input is not a Vietnam number. */
+/** `912345678` → `912 345 678`: groups of three, the way the number is read aloud. */
+export function formatNationalNumber(national: string): string {
+  return national.replace(/(\d{3})(?=\d)/g, "$1 ");
+}
+
+/** The stored form, or null when the input is not a Vietnam mobile number. */
 export function normalizeVietnamPhone(raw: string): string | null {
-  const match = VIETNAM_PHONE_PATTERN.exec(stripSeparators(raw));
-  return match ? `+84${match[1]}` : null;
+  if (!PHONE_CHARACTERS.test(raw)) {
+    return null;
+  }
+  const national = nationalNumber(raw);
+  return MOBILE_NUMBER.test(national) ? `+84${national}` : null;
 }
 
 /**
- * `+84912345678` → `0912 345 678`; land lines split after the area code, so
- * `+842838221234` → `028 3822 1234` and `+842363822123` → `0236 382 2123`.
- * Anything this cannot read is handed back untouched: rows written before the
- * rule existed still have to render.
+ * `+84912345678` → `+84 912 345 678`. A value this cannot read is handed back
+ * untouched: rows written before the rule existed still have to render.
  */
 export function formatVietnamPhone(stored: string | null | undefined): string {
   if (!stored) {
     return "";
   }
-
   const normalized = normalizeVietnamPhone(stored);
   if (!normalized) {
     return stored;
   }
-
-  const national = `0${normalized.slice(3)}`;
-  if (CITY_PREFIXES.has(national.slice(0, 3))) {
-    return `${national.slice(0, 3)} ${national.slice(3, 7)} ${national.slice(7)}`;
-  }
-  return `${national.slice(0, 4)} ${national.slice(4, 7)} ${national.slice(7)}`;
+  return `+84 ${formatNationalNumber(normalized.slice(3))}`;
 }
 
-export const PHONE_FORMAT_MESSAGE =
-  "Enter a Vietnam number: 10-digit mobile or 11-digit landline";
+export const PHONE_FORMAT_MESSAGE = "Enter a Vietnam mobile number";
 
 export const PHONE_TAKEN_MESSAGE = "This number is already on another account";
 
-/** Validate and normalize in one step, so no value reaches the API unchecked. */
-function toStoredPhone(value: string, ctx: z.RefinementCtx): string {
-  const stored = normalizeVietnamPhone(value);
-  if (stored === null) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: PHONE_FORMAT_MESSAGE });
-    return z.NEVER;
-  }
-  return stored;
-}
-
 /**
- * The phone field of a PATCH schema. An empty field stays "" — the API reads it
- * as "clear the phone", and an omitted field as "keep it".
+ * The phone field of every write schema. The form holds the national number;
+ * the API receives E.164. An empty field is sent as "" — a PATCH clears the
+ * stored phone, a create stores none.
  */
 export function vietnamPhoneZodString() {
   return z
     .string()
     .trim()
-    .transform((value, ctx) => (value === "" ? "" : toStoredPhone(value, ctx)))
-    .optional();
-}
-
-/** The phone field of a create schema, where an empty field means no phone. */
-export function nullableVietnamPhoneZodString() {
-  return z
-    .string()
-    .trim()
-    .nullable()
-    .transform((value, ctx) => (value ? toStoredPhone(value, ctx) : null))
+    .transform((value, ctx) => {
+      if (value === "") {
+        return "";
+      }
+      const stored = normalizeVietnamPhone(value);
+      if (stored === null) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: PHONE_FORMAT_MESSAGE });
+        return z.NEVER;
+      }
+      return stored;
+    })
     .optional();
 }

@@ -1,6 +1,7 @@
 {
-  "$comment": "One set of cases for both implementations of the Vietnam phone rule: backend/internal/shared/utils/phone.go and frontend/src/lib/validation/phone.ts. Both test suites read this file, so a change to one pattern that the other does not follow fails CI. Add cases here, not in either test. Source for prefixes and area codes: the MIC numbering plan (ITU Viet Nam allocation; en.wikipedia.org/wiki/Telephone_numbers_in_Vietnam). When MIC assigns a new prefix, add it to both patterns and a case here.",
+  "$comment": "One set of cases for both implementations of the Vietnam mobile rule: backend/internal/shared/utils/phone.go and frontend/src/lib/validation/phone.ts. Both test suites read this file, so a change to one rule that the other does not follow fails CI. Add cases here, not in either test. Prefixes follow the MIC numbering plan; when MIC assigns a new one, add it to both patterns and a case here.",
   "normalize": [
+    { "input": "912345678", "stored": "+84912345678" },
     { "input": "0912345678", "stored": "+84912345678" },
     { "input": "0912 345 678", "stored": "+84912345678" },
     { "input": "0912-345-678", "stored": "+84912345678" },
@@ -10,6 +11,10 @@
     { "input": "+84 912 345 678", "stored": "+84912345678" },
     { "input": "84912345678", "stored": "+84912345678" },
     { "input": "+84 0912 345 678", "stored": "+84912345678" },
+    { "input": "0084 912 345 678", "stored": "+84912345678" },
+    { "input": "0900 001 234", "stored": "+84900001234" },
+    { "input": "841234567", "stored": "+84841234567" },
+    { "input": "+84 841 234 567", "stored": "+84841234567" },
 
     { "input": "0321234567", "stored": "+84321234567" },
     { "input": "0391234567", "stored": "+84391234567" },
@@ -28,21 +33,16 @@
     { "input": "0901234567", "stored": "+84901234567" },
     { "input": "0941234567", "stored": "+84941234567" },
     { "input": "0961234567", "stored": "+84961234567" },
-    { "input": "0991234567", "stored": "+84991234567" },
-
-    { "input": "028 3822 1234", "stored": "+842838221234" },
-    { "input": "024 3825 3536", "stored": "+842438253536" },
-    { "input": "0236 382 2123", "stored": "+842363822123" },
-    { "input": "0203 382 1234", "stored": "+842033821234" },
-    { "input": "0299 382 1234", "stored": "+842993821234" },
-    { "input": "+84 28 3822 1234", "stored": "+842838221234" }
+    { "input": "0991234567", "stored": "+84991234567" }
   ],
   "reject": [
     "",
     "   ",
     "!!!!!!",
     "abcdefghij",
+    "0912abc345678",
     "0912",
+    "91234567",
     "09123456789",
     "+14155550172",
     "+84 12 345 678",
@@ -64,16 +64,10 @@
     "01201234567",
     "01991234567",
 
-    "0212345678",
-    "02001234567",
-    "02171234567",
-    "02301234567",
-    "02411234567",
-    "02531234567",
-    "02641234567",
-    "02781234567",
-    "02881234567",
-    "02951234567",
+    "028 3822 1234",
+    "024 3825 3536",
+    "0236 382 2123",
+    "+84 28 3822 1234",
 
     "19001234",
     "18001234",
@@ -81,9 +75,7 @@
     "0691234567"
   ],
   "display": [
-    { "stored": "+84912345678", "display": "0912 345 678" },
-    { "stored": "+842838221234", "display": "028 3822 1234" },
-    { "stored": "+842438253536", "display": "024 3825 3536" },
-    { "stored": "+842363822123", "display": "0236 382 2123" }
+    { "stored": "+84912345678", "display": "+84 912 345 678" },
+    { "stored": "+84321234567", "display": "+84 321 234 567" }
   ]
 }
