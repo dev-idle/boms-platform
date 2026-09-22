@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
-import { StorefrontAsyncPanel } from "@/components/ui/storefront-async-panel";
+import { AsyncPanel } from "@/components/ui/async-panel";
 import { StorefrontPageHeader } from "@/components/layouts/storefront-page-header";
 
 import { catalogProductFallbackImageUrl } from "@/constants/storefront-imagery";
@@ -103,7 +103,7 @@ export function ProductCatalog() {
             </p>
           ) : null}
 
-          <StorefrontAsyncPanel
+          <AsyncPanel
             className="catalog-page__results-panel"
             initialLoading={productsInitialLoading}
             overlayOnInitialLoad={false}
@@ -155,7 +155,7 @@ export function ProductCatalog() {
                 />
               ) : null}
             </section>
-          </StorefrontAsyncPanel>
+          </AsyncPanel>
         </div>
       </div>
     </div>

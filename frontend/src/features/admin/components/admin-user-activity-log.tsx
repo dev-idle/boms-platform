@@ -2,9 +2,10 @@
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
-import { DashboardAsyncPanel } from "@/components/ui/dashboard-async-panel";
+import { AsyncPanel } from "@/components/ui/async-panel";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardActivityFeedPagePlaceholders } from "@/components/ui/dashboard-activity-feed-page-placeholders";
+import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { roleDisplayLabel } from "@/constants/roles";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
@@ -13,7 +14,7 @@ import { formatDateTime } from "@/lib/validation/datetime";
 
 import { useUserActivity } from "../hooks";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 
 type AdminUserActivityLogProps = {
   userId: string;
@@ -30,10 +31,6 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
 
   const entries = activityQuery.data?.entries ?? [];
   const pagination = activityQuery.data?.pagination;
-  const totalItems = pagination?.total ?? entries.length;
-  const totalPages = pagination?.total_pages ?? 1;
-  const showPagination =
-    !initialLoading && !activityQuery.isError && totalItems > 0;
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     entries.length,
     pagination,
@@ -64,7 +61,7 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
       title="Activity log"
       variant="plain"
     >
-      <DashboardAsyncPanel
+      <AsyncPanel
         className="dashboard-activity-feed-panel"
         initialLoading={initialLoading}
         refetching={refetching}
@@ -104,20 +101,17 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
             <DashboardActivityFeedPagePlaceholders count={pagePlaceholderCount} />
           </ul>
         )}
-        {showPagination ? (
-          <DashboardTablePagination
-            className="dashboard-activity-feed-pagination"
-            disabled={refetching}
-            hideWhenSinglePage
-            itemLabel="events"
-            onPageChange={handlePageChange}
-            page={pagination?.page ?? page}
-            pageSize={pagination?.page_size ?? PAGE_SIZE}
-            totalItems={totalItems}
-            totalPages={totalPages}
-          />
-        ) : null}
-      </DashboardAsyncPanel>
+        <DashboardTablePagination
+          className="dashboard-activity-feed-pagination"
+          disabled={refetching}
+          itemLabel="events"
+          onPageChange={handlePageChange}
+          page={pagination?.page ?? page}
+          pageSize={pagination?.page_size ?? PAGE_SIZE}
+          totalItems={pagination?.total ?? entries.length}
+          totalPages={pagination?.total_pages ?? 1}
+        />
+      </AsyncPanel>
     </DashboardProfileSection>
   );
 }

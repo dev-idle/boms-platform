@@ -544,18 +544,6 @@
     width: 100%;
   }
 
-  .db-table-loading-cell {
-    padding-block: 0;
-    vertical-align: middle;
-  }
-
-  .db-table-loading-indicator {
-    align-items: center;
-    display: flex;
-    justify-content: center;
-    min-height: 3.5rem;
-  }
-
   [data-theme="dashboard"] .catalog-image-field-actions .db-table-action {
     flex-shrink: 0;
   }
@@ -664,40 +652,6 @@
     border: 1px solid var(--color-db-border);
     min-width: 0;
     width: 100%;
-  }
-
-  .dashboard-async-panel {
-    position: relative;
-  }
-
-  .dashboard-async-panel.is-initial-loading {
-    min-height: 11rem;
-  }
-
-  .dashboard-async-panel.is-initial-loading>:not(.dashboard-async-panel__overlay) {
-    pointer-events: none;
-    visibility: hidden;
-  }
-
-  .dashboard-async-panel__overlay {
-    align-items: center;
-    display: flex;
-    inset: 0;
-    justify-content: center;
-    position: absolute;
-    z-index: 2;
-  }
-
-  .dashboard-async-panel.is-refetching .dashboard-async-panel__overlay {
-    background-color: var(--color-surface);
-  }
-
-  .dashboard-async-panel.is-refetching .dashboard-async-panel__overlay {
-    background-color: color-mix(in srgb, var(--color-surface) 58%, transparent);
-  }
-
-  .dashboard-async-panel.is-refetching {
-    pointer-events: none;
   }
 
   .dashboard-activity-feed-status {
@@ -2237,12 +2191,6 @@
     letter-spacing: var(--label-tracking);
     line-height: 1.4;
     text-transform: uppercase;
-  }
-
-  /* Skeletons pulse on opacity only — there are no gradients in this design. */
-  .skeleton {
-    animation: skeleton-pulse 1.6s ease-in-out infinite;
-    background-color: var(--color-paper-3);
   }
 
   /* Manager catalog — 52px square thumb in the 76px lead column. */

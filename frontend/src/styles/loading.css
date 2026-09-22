@@ -20,19 +20,6 @@
     padding: 2.5rem 0;
   }
 
-  .loading-state--compact {
-    gap: 0.5rem;
-    padding: 0.75rem 0;
-  }
-
-  .loading-state__message {
-    color: var(--color-muted);
-    font-size: 0.8125rem;
-    line-height: 1.65;
-    margin: 0;
-    max-width: 18rem;
-  }
-
   .loading-indicator {
     align-items: center;
     color: var(--color-matcha-500);
@@ -47,8 +34,15 @@
     --loading-indicator-size: 1.75rem;
   }
 
-  .loading-state--compact .loading-indicator {
-    --loading-indicator-size: 1.25rem;
+  [data-theme="dashboard"] .loading-indicator {
+    color: var(--color-db-accent);
+  }
+
+  /* Skeleton (02-COMPONENTS §12): a paper block pulsing on opacity alone — no
+     shimmer, no gradient. */
+  .skeleton {
+    animation: skeleton-pulse 1.6s ease-in-out infinite;
+    background-color: var(--color-paper-3);
   }
 
   .db-table-loading-cell {
@@ -63,12 +57,44 @@
     min-height: 3.5rem;
   }
 
-  [data-theme="dashboard"] .loading-indicator {
-    color: var(--color-db-accent);
+  /* Async panel (components/ui/async-panel.tsx) — one for both themes. A
+     refetch dims the content to one strength everywhere; only the ground it
+     dims toward follows the theme (page ground on the storefront, the panel
+     surface on the dashboard). */
+  .async-panel {
+    --async-panel-ground: var(--color-bg);
+
+    position: relative;
   }
 
-  [data-theme="dashboard"] .loading-state__message {
-    color: var(--color-db-muted);
+  [data-theme="dashboard"] .async-panel {
+    --async-panel-ground: var(--color-surface);
+  }
+
+  .async-panel.is-initial-loading {
+    min-height: 11rem;
+  }
+
+  .async-panel.is-initial-loading > :not(.async-panel__overlay) {
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .async-panel__overlay {
+    align-items: center;
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    position: absolute;
+    z-index: 2;
+  }
+
+  .async-panel.is-refetching .async-panel__overlay {
+    background-color: color-mix(in srgb, var(--async-panel-ground) 65%, transparent);
+  }
+
+  .async-panel.is-refetching {
+    pointer-events: none;
   }
 
   .loading-indicator__spinner {

@@ -4,7 +4,7 @@ import {
   dashboardTableErrorMessage,
 } from "@/constants/dashboard-table";
 
-import { DashboardBusyIndicator } from "./dashboard-busy-overlay";
+import { BusyIndicator } from "./loading-state";
 
 type DashboardTableStateRowsProps = {
   columnCount: number;
@@ -39,7 +39,7 @@ export function DashboardTableStateRows({
           colSpan={columnCount}
         >
           <div className="db-table-loading-indicator" role="status">
-            <DashboardBusyIndicator />
+            <BusyIndicator />
           </div>
         </td>
       </tr>

@@ -2,73 +2,54 @@ import { DotsRing } from "@/components/ui/dots-ring";
 import { LOADING_MESSAGE } from "@/constants/loading-copy";
 import { cn } from "@/lib/utils";
 
-type LoadingStateVariant = "compact" | "inline" | "page";
-
-type LoadingIndicatorProps = {
-  className?: string;
-  /** Fewer dots for dense surfaces (e.g. table cells). */
-  dots?: number;
-};
-
-/** Dots ring spinner — `@loading-ui/dots-ring` via shadcn. */
-export function LoadingIndicator({ className, dots }: LoadingIndicatorProps) {
+/**
+ * The one spinner: a dots ring (`@loading-ui/dots-ring`), always the same
+ * number of dots, sized and coloured by `.loading-indicator` for the theme.
+ * Decorative on its own; `BusyIndicator` adds the announcement.
+ */
+function LoadingIndicator() {
   return (
-    <div aria-hidden="true" className={cn("loading-indicator", className)}>
-      <DotsRing className="loading-indicator__spinner" dots={dots} />
+    <div aria-hidden="true" className="loading-indicator">
+      <DotsRing className="loading-indicator__spinner" />
     </div>
+  );
+}
+
+/** The spinner with its announcement: the unit every loading surface is built from. */
+export function BusyIndicator() {
+  return (
+    <>
+      <span className="sr-only">{LOADING_MESSAGE}</span>
+      <LoadingIndicator />
+    </>
   );
 }
 
 type LoadingStateProps = {
   className?: string;
-  message?: string;
-  showMessage?: boolean;
-  variant?: LoadingStateVariant;
 };
 
-/** Centered loading — dots ring; copy hidden by default (`aria-label` still set). */
-export function LoadingState({
+function LoadingState({
   className,
-  message = LOADING_MESSAGE,
-  showMessage = false,
-  variant = "page",
-}: LoadingStateProps) {
+  variant,
+}: LoadingStateProps & { variant: "inline" | "page" }) {
   return (
     <div
       aria-busy="true"
-      aria-label={message}
-      aria-live="polite"
       className={cn("loading-state", `loading-state--${variant}`, className)}
       role="status"
     >
-      <LoadingIndicator />
-      {showMessage ? (
-        <p className="loading-state__message">{message}</p>
-      ) : null}
+      <BusyIndicator />
     </div>
   );
 }
 
-type PageLoadingStateProps = {
-  className?: string;
-  message?: string;
-  showMessage?: boolean;
-};
-
-export function PageLoadingState(props: PageLoadingStateProps) {
-  return <LoadingState {...props} variant="page" />;
+/** Whole-page wait: centred in the viewport's free height. */
+export function PageLoadingState({ className }: LoadingStateProps) {
+  return <LoadingState className={className} variant="page" />;
 }
 
-type InlineLoadingStateProps = {
-  className?: string;
-  message?: string;
-  showMessage?: boolean;
-  variant?: Extract<LoadingStateVariant, "compact" | "inline">;
-};
-
-export function InlineLoadingState({
-  variant = "inline",
-  ...props
-}: InlineLoadingStateProps) {
-  return <LoadingState {...props} variant={variant} />;
+/** Wait inside a page or section: centred in a padded block. */
+export function InlineLoadingState({ className }: LoadingStateProps) {
+  return <LoadingState className={className} variant="inline" />;
 }

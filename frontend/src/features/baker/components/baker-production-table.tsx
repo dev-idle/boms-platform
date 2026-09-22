@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { DashboardBusyIndicator } from "@/components/ui/dashboard-busy-overlay";
+import { BusyIndicator } from "@/components/ui/loading-state";
 import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
 import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
@@ -68,7 +68,7 @@ export function BakerProductionTable() {
       <DashboardTableWrap refetching={refetching}>
         {initialLoading ? (
           <div className="baker-production-empty" role="status">
-            <DashboardBusyIndicator />
+            <BusyIndicator />
           </div>
         ) : ordersQuery.isError ? (
           <p className="baker-production-empty baker-production-empty--error">

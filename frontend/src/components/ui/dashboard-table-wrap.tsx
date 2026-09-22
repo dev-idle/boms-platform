@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { DashboardAsyncPanel } from "./dashboard-async-panel";
+import { AsyncPanel } from "./async-panel";
 
 type DashboardTableWrapProps = {
   children: ReactNode;
@@ -17,12 +17,12 @@ export function DashboardTableWrap({
   refetching,
 }: DashboardTableWrapProps) {
   return (
-    <DashboardAsyncPanel
+    <AsyncPanel
       className={cn("db-table-wrap", className)}
       overlayOnInitialLoad={false}
       refetching={refetching}
     >
       {children}
-    </DashboardAsyncPanel>
+    </AsyncPanel>
   );
 }

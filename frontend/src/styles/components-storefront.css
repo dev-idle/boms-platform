@@ -2969,27 +2969,6 @@
     min-height: 12rem;
   }
 
-  .storefront-async-panel {
-    position: relative;
-  }
-
-  .storefront-async-panel__overlay {
-    align-items: center;
-    display: flex;
-    inset: 0;
-    justify-content: center;
-    position: absolute;
-    z-index: 2;
-  }
-
-  .storefront-async-panel.is-refetching .storefront-async-panel__overlay {
-    background-color: color-mix(in srgb, var(--color-bg) 72%, transparent);
-  }
-
-  .storefront-async-panel.is-refetching {
-    pointer-events: none;
-  }
-
   /* -----------------------------------------------------------------------------
      Catalog browse (/products)
      ----------------------------------------------------------------------------- */

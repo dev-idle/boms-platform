@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 
-import { LoadingIndicator } from "@/components/ui/loading-state";
+import { BusyIndicator } from "@/components/ui/loading-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/auth-store";
@@ -44,9 +44,9 @@ export function OperationalEmployeeCodeField({
         <div
           aria-busy="true"
           aria-labelledby={fieldId}
-          className="field-chrome field-chrome--readonly employee-id-field-loading"
+          className="field-chrome field-chrome--readonly"
         >
-          <LoadingIndicator className="employee-id-field-loading-indicator" dots={5} />
+          <BusyIndicator />
         </div>
       ) : previewQuery.isError && !code ? (
         <div className="employee-id-field-error">
