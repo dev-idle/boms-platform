@@ -37,6 +37,9 @@ function indexAfterDigits(text: string, count: number): number {
  * typed; the form only ever holds digits. Redrawing the groups would throw the
  * caret to the end, so it is put back after the same digit.
  *
+ * No placeholder: digits in grey after the +84 read as a number already
+ * entered, and the prefix alone says what the field takes.
+ *
  * The number is nine digits and the field holds no more: a digit typed into a
  * full field is refused before it lands, and a paste that would overflow is
  * dropped rather than cut to a number that merely looks valid.
@@ -51,7 +54,6 @@ export function PhoneInput({ onChange, value, ...props }: PhoneInputProps) {
       <Input
         autoComplete="tel"
         inputMode="tel"
-        placeholder="912 345 678"
         type="tel"
         {...props}
         onBeforeInput={(event) => {
@@ -88,8 +90,10 @@ export function PhoneInput({ onChange, value, ...props }: PhoneInputProps) {
           } else {
             next = nationalNumber(typed);
           }
-          if (next.length > NATIONAL_NUMBER_LENGTH) {
-            // Not applied: React puts the controlled value back.
+          // Growth past nine digits is not applied — React puts the controlled
+          // value back. Shortening always is: a number stored before the rule
+          // existed can be longer, and must still be editable down to size.
+          if (next.length > NATIONAL_NUMBER_LENGTH && next.length > national.length) {
             return;
           }
           // Digits dropped above (a trunk 0, 84 or 00) all sat in front.

@@ -119,7 +119,9 @@ export function CreateOperationalUserForm() {
             render={({ field }) => (
               <FormItem>
                 <FieldControl label="Phone" optional>
-                  <PhoneInput {...field} />
+                  {/* The admin is entering someone else's number: the
+                      browser's own phone history would be the wrong one. */}
+                  <PhoneInput autoComplete="off" {...field} />
                 </FieldControl>
                 <FormMessage />
               </FormItem>
