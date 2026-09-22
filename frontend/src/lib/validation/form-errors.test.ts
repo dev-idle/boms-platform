@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, ApiErrorCode } from "@/lib/errors/api-error";
 
 import { applyApiFormFieldErrors } from "./form-errors";
-import { PHONE_TAKEN_MESSAGE } from "./phone";
+import { PHONE_FORMAT_MESSAGE, PHONE_TAKEN_MESSAGE } from "./phone";
 
 const toastError = vi.hoisted(() => vi.fn());
 vi.mock("sonner", () => ({ toast: { error: toastError } }));
@@ -55,7 +55,7 @@ describe("applyApiFormFieldErrors", () => {
     applyApiFormFieldErrors(form, invalid, ["phone"], "Failed");
 
     expect(setError).toHaveBeenCalledWith("phone", {
-      message: "Enter a Vietnam phone number, for example 0912 345 678",
+      message: PHONE_FORMAT_MESSAGE,
     });
   });
 });

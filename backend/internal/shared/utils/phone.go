@@ -7,13 +7,25 @@ import (
 
 // Vietnam numbers in the spellings people type: national (leading zero) and
 // international (+84 or 84, sometimes followed by the national zero). After the
-// prefix comes either a mobile number — 3, 5, 7, 8 or 9 then eight digits — or a
-// land line: 2, the rest of the area code and the subscriber number, ten digits
-// in all. Nothing has been assigned to 0, 1, 4 or 6 since the 2018 renumber.
+// prefix comes the national number, checked against the MIC numbering plan:
+//
+//   - mobile, 9 digits: an assigned carrier prefix — 32–39, 52 55 56 58 59, 70
+//     76–79, 81–89, 90–94, 96–99 — then 7 digits. 095 is retired, and the 11-digit
+//     01x numbers moved to these prefixes on 2018-09-15.
+//   - land line, 10 digits: 2, a province code (24x Hanoi, 28x Ho Chi Minh City,
+//     one per province elsewhere), then a 7-digit subscriber number.
+//
+// Service numbers (1800, 1900, 11x) and 069 are not personal phones and fail.
 // The frontend applies the same pattern (src/lib/validation/phone.ts); both are
-// tested against contracts/vietnam-phone-cases.json.
+// tested against contracts/vietnam-phone-cases.json. When MIC assigns a new
+// prefix, add it in both places and a case to that file.
 var (
-	vietnamPhonePattern  = regexp.MustCompile(`^(?:0|\+?840?)(2\d{9}|[35789]\d{8})$`)
+	vietnamPhonePattern = regexp.MustCompile(
+		`^(?:0|\+?840?)(` +
+			`(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}` +
+			`|2(?:0[3-9]|1[0-689]|2[0-25-9]|3[2-9]|4[2-8]|5[124-9]|6[0-39]|7[0-7]|8[2-7]|9[0-4679])\d{7}` +
+			`)$`,
+	)
 	phoneSeparatorsRegex = regexp.MustCompile(`[\s.()\-]`)
 )
 
