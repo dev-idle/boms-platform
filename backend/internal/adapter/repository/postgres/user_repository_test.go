@@ -15,6 +15,7 @@ import (
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -175,6 +176,61 @@ func TestUserRepository_Integration(t *testing.T) {
 			}
 		}
 		assert.True(t, found, "customer row should be listable")
+	})
+	t.Run("ClaimPhone counts other active holders only", func(t *testing.T) {
+		customers := postgresadapter.NewCustomerProfileRepository(pool)
+		phone := "+84912345678"
+		holder, err := repo.Create(ctx, port.CreateUserParams{
+			Email:        "phone-holder@example.com",
+			PasswordHash: testPasswordHashFixture,
+			Role:         domainuser.RoleCustomer,
+		})
+		require.NoError(t, err)
+		_, err = customers.Create(ctx, port.UpsertCustomerProfileParams{UserID: holder.ID, Phone: &phone})
+		require.NoError(t, err)
+		other, err := repo.Create(ctx, port.CreateUserParams{
+			Email:        "phone-other@example.com",
+			PasswordHash: testPasswordHashFixture,
+			Role:         domainuser.RoleCustomer,
+		})
+		require.NoError(t, err)
+
+		claim := func(userID uuid.UUID) bool {
+			var held bool
+			require.NoError(t, pool.WithTx(ctx, func(txCtx context.Context) error {
+				var claimErr error
+				held, claimErr = repo.ClaimPhone(txCtx, phone, userID)
+				return claimErr
+			}))
+			return held
+		}
+		assert.True(t, claim(other.ID), "another active account holds the number")
+		assert.False(t, claim(holder.ID), "the holder does not block itself")
+
+		require.NoError(t, repo.SoftDelete(ctx, holder.ID))
+		assert.False(t, claim(other.ID), "a disabled holder releases the number")
+
+		_, err = repo.ClaimPhone(ctx, phone, other.ID)
+		assert.Error(t, err, "outside a transaction the lock would guard nothing")
+	})
+
+	t.Run("ReleasePhone clears the phone on the user's profile", func(t *testing.T) {
+		customers := postgresadapter.NewCustomerProfileRepository(pool)
+		phone := "+84987654321"
+		user, err := repo.Create(ctx, port.CreateUserParams{
+			Email:        "phone-release@example.com",
+			PasswordHash: testPasswordHashFixture,
+			Role:         domainuser.RoleCustomer,
+		})
+		require.NoError(t, err)
+		_, err = customers.Create(ctx, port.UpsertCustomerProfileParams{UserID: user.ID, Phone: &phone})
+		require.NoError(t, err)
+
+		require.NoError(t, repo.ReleasePhone(ctx, user.ID))
+
+		profile, err := customers.GetByUserID(ctx, user.ID)
+		require.NoError(t, err)
+		assert.Nil(t, profile.Phone)
 	})
 }
 

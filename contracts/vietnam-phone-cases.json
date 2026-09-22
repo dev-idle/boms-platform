@@ -1,0 +1,42 @@
+{
+  "$comment": "One set of cases for both implementations of the Vietnam phone rule: backend/internal/shared/utils/phone.go and frontend/src/lib/validation/phone.ts. Both test suites read this file, so a change to one pattern that the other does not follow fails CI. Add cases here, not in either test.",
+  "normalize": [
+    { "input": "0912345678", "stored": "+84912345678" },
+    { "input": "0912 345 678", "stored": "+84912345678" },
+    { "input": "0912-345-678", "stored": "+84912345678" },
+    { "input": "0912.345.678", "stored": "+84912345678" },
+    { "input": "(091) 234 5678", "stored": "+84912345678" },
+    { "input": "+84912345678", "stored": "+84912345678" },
+    { "input": "+84 912 345 678", "stored": "+84912345678" },
+    { "input": "84912345678", "stored": "+84912345678" },
+    { "input": "+84 0912 345 678", "stored": "+84912345678" },
+    { "input": "0351234567", "stored": "+84351234567" },
+    { "input": "0561234567", "stored": "+84561234567" },
+    { "input": "0761234567", "stored": "+84761234567" },
+    { "input": "0841234567", "stored": "+84841234567" },
+    { "input": "028 3822 1234", "stored": "+842838221234" },
+    { "input": "024 3825 3536", "stored": "+842438253536" },
+    { "input": "0236 382 2123", "stored": "+842363822123" },
+    { "input": "+84 28 3822 1234", "stored": "+842838221234" }
+  ],
+  "reject": [
+    "",
+    "   ",
+    "!!!!!!",
+    "abcdefghij",
+    "0912",
+    "09123456789",
+    "0212345678",
+    "0112345678",
+    "0412345678",
+    "0612345678",
+    "+14155550172",
+    "+84 12 345 678"
+  ],
+  "display": [
+    { "stored": "+84912345678", "display": "0912 345 678" },
+    { "stored": "+842838221234", "display": "028 3822 1234" },
+    { "stored": "+842438253536", "display": "024 3825 3536" },
+    { "stored": "+842363822123", "display": "0236 382 2123" }
+  ]
+}

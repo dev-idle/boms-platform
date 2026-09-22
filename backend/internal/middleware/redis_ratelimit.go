@@ -134,6 +134,18 @@ func ManagerWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig)
 	}, cfg.ManagerWriteMax, cfg.ManagerWriteWindow, true)
 }
 
+// SelfWriteRateLimit limits self-service account writes per user. PATCH /me answers
+// phone_exists for a number another account holds and PATCH /me/password checks
+// the old password, so both would otherwise be free oracles.
+func SelfWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":self_write"
+		}
+		return "rl:ip:" + c.IP() + ":self_write"
+	}, cfg.SelfWriteMax, cfg.SelfWriteWindow, true)
+}
+
 // OrderWriteRateLimit limits order mutations (checkout, status transitions) per user.
 func OrderWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {

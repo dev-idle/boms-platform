@@ -67,6 +67,13 @@ SELECT id, email, password_hash, role, email_verified_at, must_change_password, 
 FROM users
 WHERE id = $1;
 
+-- name: AdminGetByIDForUpdate :one
+-- Disabled rows included, like AdminGetByID: the caller reports "user is disabled".
+SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+FROM users
+WHERE id = $1
+FOR UPDATE;
+
 -- name: AdminRestore :execrows
 UPDATE users
 SET deleted_at = NULL,
@@ -128,3 +135,34 @@ WHERE (
     sqlc.arg('role_filter')::text = ''
     OR u.role::text = sqlc.arg('role_filter')
   );
+
+-- name: LockPhone :exec
+-- Phones live in three profile tables, so no single unique index can guard them.
+-- This lock (namespace 8734212, keyed by the number) serializes writers of one
+-- number until the transaction ends.
+SELECT pg_advisory_xact_lock(8734212, hashtext(sqlc.arg('phone')::text));
+
+-- name: PhoneHeldByOtherActiveUser :one
+SELECT EXISTS (
+  SELECT 1
+  FROM (
+    SELECT user_id FROM customer_profiles WHERE phone = sqlc.arg('phone')::text
+    UNION ALL
+    SELECT user_id FROM staff_profiles WHERE phone = sqlc.arg('phone')::text
+    UNION ALL
+    SELECT user_id FROM admin_profiles WHERE phone = sqlc.arg('phone')::text
+  ) AS holder
+  JOIN users u ON u.id = holder.user_id
+  WHERE u.id <> sqlc.arg('user_id')::uuid
+    AND u.deleted_at IS NULL
+) AS held;
+
+-- name: ReleasePhone :exec
+-- Clears the phone on whichever profile the user has. Used when a returning
+-- account finds its number taken by an active one: the active holder keeps it.
+WITH released_customer AS (
+  UPDATE customer_profiles SET phone = NULL, updated_at = now() WHERE user_id = sqlc.arg('user_id')::uuid
+), released_staff AS (
+  UPDATE staff_profiles SET phone = NULL, updated_at = now() WHERE user_id = sqlc.arg('user_id')::uuid
+)
+UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = sqlc.arg('user_id')::uuid;

@@ -230,7 +230,7 @@ features/<slice>/
 | Password attack | Argon2id (params from config); timing-safe dummy hash on login |
 | Replay | request-id propagation; refresh rotation |
 | CSRF | SameSite=Lax cookie, internal proxy secret on inbound headers, sanitize `X-User-Role`, `X-Request-ID`, `X-Auth-Hint` |
-| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout + staff/baker status (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) |
+| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout + staff/baker status (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + self-service account writes — `PATCH /me`, `PATCH /me/password`, `DELETE /me` (10/min, `RATE_LIMIT_REDIS_SELF_WRITE_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) |
 | RBAC | `RequireRole(Admin)` on `/admin/*`; admin can't modify self; staff self-update only fills `full_name`, `phone` |
 | Forced password change | `must_change_password` flag → `RequirePasswordChanged` middleware blocks all routes except `/me` GET and `/me/password` PATCH |
 | Audit | All admin mutations write to `audit_logs` with actor/target/before/after |
@@ -278,7 +278,7 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 - **JWT:** stateless access JWT for read routes (`GET /me`); Redis session only on writes — limits Redis QPS.
 - **Frontend:** Turbopack build, RSC + Partial Prerendering, route-group code-split per role, Zod parse only at boundary.
 - **Polling avoidance:** TanStack Query cache + invalidation on mutation success.
-- **Concurrency:** Postgres transactions via `TxManager` for multi-table writes (auth register, role change with profile swap).
+- **Concurrency:** Postgres transactions via `TxManager` for multi-table writes (auth register; admin role and profile edits, which lock the account row and edit the shared staff profile in place; phone writes, which take a per-number advisory lock before the duplicate check; enable, which restores the account and releases its phone if an active account took it meanwhile).
 
 ---
 

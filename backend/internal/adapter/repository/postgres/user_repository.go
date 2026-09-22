@@ -184,6 +184,20 @@ func (r *UserRepository) AdminGetByID(ctx context.Context, id uuid.UUID) (*domai
 	), nil
 }
 
+// AdminGetByIDForUpdate implements port.UserRepository.
+func (r *UserRepository) AdminGetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
+	if txFromContext(ctx) == nil {
+		return nil, apperrors.Errorf("admin get user for update: requires a transaction")
+	}
+	row, err := r.q(ctx).AdminGetByIDForUpdate(ctx, id)
+	if err != nil {
+		return nil, mapRepoError(err, "admin get user by id for update")
+	}
+	return mapUserFields(
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+	), nil
+}
+
 // Restore implements port.UserRepository.
 func (r *UserRepository) Restore(ctx context.Context, id uuid.UUID) error {
 	rows, err := r.q(ctx).AdminRestore(ctx, id)
@@ -333,3 +347,31 @@ func stringPtrOrNil(v string) *string {
 }
 
 var _ port.UserRepository = (*UserRepository)(nil)
+
+// ClaimPhone implements port.UserRepository. The lock only means something inside
+// a transaction that also writes the phone, so it refuses to run outside one.
+func (r *UserRepository) ClaimPhone(ctx context.Context, phone string, userID uuid.UUID) (bool, error) {
+	if txFromContext(ctx) == nil {
+		return false, apperrors.Errorf("claim phone: requires a transaction")
+	}
+	q := r.q(ctx)
+	if err := q.LockPhone(ctx, phone); err != nil {
+		return false, mapRepoError(err, "lock phone")
+	}
+	held, err := q.PhoneHeldByOtherActiveUser(ctx, sqlcgen.PhoneHeldByOtherActiveUserParams{
+		Phone:  phone,
+		UserID: userID,
+	})
+	if err != nil {
+		return false, mapRepoError(err, "phone held by other user")
+	}
+	return held, nil
+}
+
+// ReleasePhone implements port.UserRepository.
+func (r *UserRepository) ReleasePhone(ctx context.Context, userID uuid.UUID) error {
+	if err := r.q(ctx).ReleasePhone(ctx, userID); err != nil {
+		return mapRepoError(err, "release phone")
+	}
+	return nil
+}

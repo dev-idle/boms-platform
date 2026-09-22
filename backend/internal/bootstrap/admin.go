@@ -47,6 +47,10 @@ func ensureDevAdminOne(
 	if email == "" || password == "" {
 		return nil
 	}
+	phone, err := normalizeSeedPhone(seed.Phone)
+	if err != nil {
+		return err
+	}
 
 	existing, err := users.GetByEmail(ctx, email)
 	if err == nil && existing != nil {
@@ -62,7 +66,7 @@ func ensureDevAdminOne(
 			_, err = admins.Create(ctx, port.UpsertAdminProfileParams{
 				UserID:   existing.ID,
 				FullName: seed.FullName,
-				Phone:    normalizeSeedPhone(seed.Phone),
+				Phone:    phone,
 			})
 			return err
 		}
@@ -89,16 +93,23 @@ func ensureDevAdminOne(
 		_, err = admins.Create(txCtx, port.UpsertAdminProfileParams{
 			UserID:   user.ID,
 			FullName: seed.FullName,
-			Phone:    normalizeSeedPhone(seed.Phone),
+			Phone:    phone,
 		})
 		return err
 	})
 }
 
-func normalizeSeedPhone(v string) *string {
+// normalizeSeedPhone stores a seeded phone in the same form the API writes, so a
+// seeded admin renders like every other account. A value the API would reject
+// stops the boot instead of being stored as typed.
+func normalizeSeedPhone(v string) (*string, error) {
 	v = strings.TrimSpace(v)
 	if v == "" {
-		return nil
+		return nil, nil
 	}
-	return &v
+	normalized, ok := utils.NormalizeVietnamPhone(v)
+	if !ok {
+		return nil, errors.New("dev admin seed: phone is not a Vietnam number")
+	}
+	return &normalized, nil
 }

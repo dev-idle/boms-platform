@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -27,6 +26,7 @@ type MeUsecase struct {
 	staff     port.StaffProfileRepository
 	admins    port.AdminProfileRepository
 	sessions  port.SessionStore
+	tx        port.TxManager
 	hasher    port.PasswordHasher
 	audit     *auditlogger.Service
 	profiles  *profilesvc.Service
@@ -39,6 +39,7 @@ func NewMeUsecase(
 	staff port.StaffProfileRepository,
 	admins port.AdminProfileRepository,
 	sessions port.SessionStore,
+	tx port.TxManager,
 	hasher port.PasswordHasher,
 	audit *auditlogger.Service,
 	log *zap.Logger,
@@ -49,6 +50,7 @@ func NewMeUsecase(
 		staff:     staff,
 		admins:    admins,
 		sessions:  sessions,
+		tx:        tx,
 		hasher:    hasher,
 		audit:     audit,
 		profiles:  profilesvc.NewService(customers, staff, admins),
@@ -75,47 +77,25 @@ func (u *MeUsecase) Get(ctx context.Context, userID uuid.UUID) (*domainuser.User
 }
 
 func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto.UpdateMeRequest) (*domainuser.User, any, error) {
-	user, profile, err := u.Get(ctx, userID)
+	phone, err := normalizeRequestPhone(req.Phone)
 	if err != nil {
 		return nil, nil, err
 	}
-	before := profile
-
-	switch p := profile.(type) {
-	case *domainprofile.Customer:
-		params := port.UpsertCustomerProfileParams{
-			UserID:      userID,
-			DisplayName: resolvePatchString(req.DisplayName, p.DisplayName),
-			Phone:       resolvePatchString(req.Phone, p.Phone),
-		}
-		profile, err = u.customers.UpdateByUserID(ctx, params)
-	case *domainprofile.Staff:
-		fullName := p.FullName
-		if req.FullName != nil {
-			fullName = *req.FullName
-		}
-		params := port.UpsertStaffProfileParams{
-			UserID:       userID,
-			FullName:     fullName,
-			Phone:        resolvePatchString(req.Phone, p.Phone),
-			EmployeeCode: p.EmployeeCode,
-		}
-		profile, err = u.staff.UpdateByUserID(ctx, params)
-	case *domainprofile.Admin:
-		fullName := p.FullName
-		if req.FullName != nil {
-			fullName = *req.FullName
-		}
-		params := port.UpsertAdminProfileParams{
-			UserID:   userID,
-			FullName: fullName,
-			Phone:    resolvePatchString(req.Phone, p.Phone),
-		}
-		profile, err = u.admins.UpdateByUserID(ctx, params)
-	default:
-		return nil, nil, domainuser.ErrProfileNotFound
-	}
+	req.Phone = phone
+	user, before, err := u.Get(ctx, userID)
 	if err != nil {
+		return nil, nil, err
+	}
+
+	var profile any
+	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if claimErr := claimPhone(txCtx, u.users, userID, req.Phone, profilePhone(before)); claimErr != nil {
+			return claimErr
+		}
+		var writeErr error
+		profile, writeErr = u.writeProfile(txCtx, userID, before, req)
+		return writeErr
+	}); err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
 			return nil, nil, domainuser.ErrEmployeeCodeExists
 		}
@@ -124,6 +104,40 @@ func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto
 
 	u.logAudit(ctx, domainuser.AuditActionMeUpdatedProfile, userID, user.Role, &userID, "user_profile", before, profile)
 	return user, profile, nil
+}
+
+func (u *MeUsecase) writeProfile(ctx context.Context, userID uuid.UUID, current any, req dto.UpdateMeRequest) (any, error) {
+	switch p := current.(type) {
+	case *domainprofile.Customer:
+		return u.customers.UpdateByUserID(ctx, port.UpsertCustomerProfileParams{
+			UserID:      userID,
+			DisplayName: resolvePatchString(req.DisplayName, p.DisplayName),
+			Phone:       resolvePatchString(req.Phone, p.Phone),
+		})
+	case *domainprofile.Staff:
+		fullName := p.FullName
+		if req.FullName != nil {
+			fullName = *req.FullName
+		}
+		return u.staff.UpdateByUserID(ctx, port.UpsertStaffProfileParams{
+			UserID:       userID,
+			FullName:     fullName,
+			Phone:        resolvePatchString(req.Phone, p.Phone),
+			EmployeeCode: p.EmployeeCode,
+		})
+	case *domainprofile.Admin:
+		fullName := p.FullName
+		if req.FullName != nil {
+			fullName = *req.FullName
+		}
+		return u.admins.UpdateByUserID(ctx, port.UpsertAdminProfileParams{
+			UserID:   userID,
+			FullName: fullName,
+			Phone:    resolvePatchString(req.Phone, p.Phone),
+		})
+	default:
+		return nil, domainuser.ErrProfileNotFound
+	}
 }
 
 func (u *MeUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldPwd, newPwd string) error {
@@ -173,19 +187,6 @@ func (u *MeUsecase) SoftDeleteSelf(ctx context.Context, userID uuid.UUID) error 
 	}
 	u.logAudit(ctx, domainuser.AuditActionMeSoftDeleted, userID, user.Role, &userID, "user", map[string]any{"disabled": false}, map[string]any{"disabled": true})
 	return nil
-}
-
-// resolvePatchString applies PATCH semantics for optional nullable profile strings.
-// Omitted field (nil pointer) keeps fallback; explicit empty string clears to nil.
-func resolvePatchString(incoming, fallback *string) *string {
-	if incoming == nil {
-		return fallback
-	}
-	trimmed := strings.TrimSpace(*incoming)
-	if trimmed == "" {
-		return nil
-	}
-	return &trimmed
 }
 
 func (u *MeUsecase) logAudit(ctx context.Context, action domainuser.AuditAction, actorID uuid.UUID, actorRole domainuser.Role, targetID *uuid.UUID, targetType string, before, after any) {

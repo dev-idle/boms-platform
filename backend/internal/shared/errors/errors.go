@@ -84,6 +84,7 @@ var (
 	ErrCannotModifyAdmin            = New(http.StatusForbidden, "cannot_modify_admin", "Cannot modify an admin account")
 	ErrInvalidRoleTransition        = New(http.StatusUnprocessableEntity, "invalid_role_transition", "Invalid role transition")
 	ErrEmployeeCodeExists           = New(http.StatusConflict, "employee_code_exists", "Employee code already exists")
+	ErrPhoneExists                  = New(http.StatusConflict, "phone_exists", "Phone number is already in use")
 	ErrCategoryHasProducts          = New(http.StatusUnprocessableEntity, "category_has_products", "Category still has products")
 	ErrSlugExists                   = New(http.StatusConflict, "slug_exists", "Slug already exists")
 	ErrCodeExists                   = New(http.StatusConflict, "code_exists", "Code already exists")

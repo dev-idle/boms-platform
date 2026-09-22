@@ -50,6 +50,8 @@ func writeMapUsecaseError(c *fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrProfileNotFound)
 	case errors.Is(err, domainuser.ErrEmployeeCodeExists):
 		return writeAppError(c, apperrors.ErrEmployeeCodeExists)
+	case errors.Is(err, domainuser.ErrPhoneExists):
+		return writeAppError(c, apperrors.ErrPhoneExists)
 	case errors.Is(err, domainuser.ErrCannotModifySelf):
 		return writeAppError(c, apperrors.ErrCannotModifySelf)
 	case errors.Is(err, domainuser.ErrCannotModifyAdmin):

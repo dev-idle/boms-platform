@@ -41,6 +41,7 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "cannot_modify_admin", err: domainuser.ErrCannotModifyAdmin, wantStatus: 403, wantCode: "cannot_modify_admin"},
 		{name: "self_delete_customer_only", err: domainuser.ErrSelfDeleteCustomerOnly, wantStatus: 403, wantCode: "forbidden"},
 		{name: "employee_code_exists", err: domainuser.ErrEmployeeCodeExists, wantStatus: 409, wantCode: "employee_code_exists"},
+		{name: "phone_exists", err: domainuser.ErrPhoneExists, wantStatus: 409, wantCode: "phone_exists"},
 		{name: "email_exists", err: usecase.ErrEmailExists, wantStatus: 409, wantCode: "email_exists"},
 		{name: "category_has_products", err: domaincategory.ErrHasProducts, wantStatus: 422, wantCode: "category_has_products"},
 		{name: "category_slug_exists", err: domaincategory.ErrSlugExists, wantStatus: 409, wantCode: "slug_exists"},

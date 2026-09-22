@@ -81,7 +81,7 @@ func main() {
 	if err != nil {
 		zlog.Fatal("auth_usecase", zap.Error(err))
 	}
-	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, hasher, auditLogger, zlog)
+	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger, zlog)
 	adminUserUC := usecase.NewAdminUserUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger, auditLogRepo, zlog)
 	categoryRepo := postgresrepo.NewCategoryRepository(pgPool)
 	productRepo := postgresrepo.NewProductRepository(pgPool)
@@ -151,11 +151,12 @@ func main() {
 	authGroup.Post("/logout", middleware.AuthLogoutRateLimit(rdb, cfg.RateRedis), middleware.OptionalAuth(tokenSigner), authHandler.Logout)
 
 	passwordChanged := middleware.RequirePasswordChanged(sessionStore)
+	selfWrite := middleware.SelfWriteRateLimit(rdb, cfg.RateRedis)
 
 	apiV1.Get("/me", middleware.RequireAuth(tokenSigner), meHandler.Get)
-	apiV1.Patch("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, meHandler.Patch)
-	apiV1.Patch("/me/password", middleware.RequireAuthWithSession(tokenSigner, sessionStore), meHandler.PatchPassword)
-	apiV1.Delete("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, meHandler.Delete)
+	apiV1.Patch("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, selfWrite, meHandler.Patch)
+	apiV1.Patch("/me/password", middleware.RequireAuthWithSession(tokenSigner, sessionStore), selfWrite, meHandler.PatchPassword)
+	apiV1.Delete("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, selfWrite, meHandler.Delete)
 
 	adminRead := apiV1.Group(
 		"/admin/users",

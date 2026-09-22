@@ -81,6 +81,36 @@ func (q *Queries) AdminGetByID(ctx context.Context, id uuid.UUID) (User, error) 
 	return i, err
 }
 
+const adminGetByIDForUpdate = `-- name: AdminGetByIDForUpdate :one
+SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+FROM users
+WHERE id = $1
+FOR UPDATE
+`
+
+// Disabled rows included, like AdminGetByID: the caller reports "user is disabled".
+//
+//	SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+//	FROM users
+//	WHERE id = $1
+//	FOR UPDATE
+func (q *Queries) AdminGetByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, adminGetByIDForUpdate, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.EmailVerifiedAt,
+		&i.MustChangePassword,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const adminList = `-- name: AdminList :many
 SELECT
     u.id,
@@ -458,6 +488,86 @@ func (q *Queries) GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User,
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const lockPhone = `-- name: LockPhone :exec
+SELECT pg_advisory_xact_lock(8734212, hashtext($1::text))
+`
+
+// Phones live in three profile tables, so no single unique index can guard them.
+// This lock (namespace 8734212, keyed by the number) serializes writers of one
+// number until the transaction ends.
+//
+//	SELECT pg_advisory_xact_lock(8734212, hashtext($1::text))
+func (q *Queries) LockPhone(ctx context.Context, phone string) error {
+	_, err := q.db.ExecContext(ctx, lockPhone, phone)
+	return err
+}
+
+const phoneHeldByOtherActiveUser = `-- name: PhoneHeldByOtherActiveUser :one
+SELECT EXISTS (
+  SELECT 1
+  FROM (
+    SELECT user_id FROM customer_profiles WHERE phone = $1::text
+    UNION ALL
+    SELECT user_id FROM staff_profiles WHERE phone = $1::text
+    UNION ALL
+    SELECT user_id FROM admin_profiles WHERE phone = $1::text
+  ) AS holder
+  JOIN users u ON u.id = holder.user_id
+  WHERE u.id <> $2::uuid
+    AND u.deleted_at IS NULL
+) AS held
+`
+
+type PhoneHeldByOtherActiveUserParams struct {
+	Phone  string    `db:"phone" json:"phone"`
+	UserID uuid.UUID `db:"user_id" json:"userId"`
+}
+
+// PhoneHeldByOtherActiveUser
+//
+//	SELECT EXISTS (
+//	  SELECT 1
+//	  FROM (
+//	    SELECT user_id FROM customer_profiles WHERE phone = $1::text
+//	    UNION ALL
+//	    SELECT user_id FROM staff_profiles WHERE phone = $1::text
+//	    UNION ALL
+//	    SELECT user_id FROM admin_profiles WHERE phone = $1::text
+//	  ) AS holder
+//	  JOIN users u ON u.id = holder.user_id
+//	  WHERE u.id <> $2::uuid
+//	    AND u.deleted_at IS NULL
+//	) AS held
+func (q *Queries) PhoneHeldByOtherActiveUser(ctx context.Context, arg PhoneHeldByOtherActiveUserParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, phoneHeldByOtherActiveUser, arg.Phone, arg.UserID)
+	var held bool
+	err := row.Scan(&held)
+	return held, err
+}
+
+const releasePhone = `-- name: ReleasePhone :exec
+WITH released_customer AS (
+  UPDATE customer_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
+), released_staff AS (
+  UPDATE staff_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
+)
+UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
+`
+
+// Clears the phone on whichever profile the user has. Used when a returning
+// account finds its number taken by an active one: the active holder keeps it.
+//
+//	WITH released_customer AS (
+//	  UPDATE customer_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
+//	), released_staff AS (
+//	  UPDATE staff_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
+//	)
+//	UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
+func (q *Queries) ReleasePhone(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, releasePhone, userID)
+	return err
 }
 
 const setMustChangePassword = `-- name: SetMustChangePassword :execrows

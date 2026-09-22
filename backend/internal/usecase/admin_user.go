@@ -19,9 +19,7 @@ import (
 
 type AdminUserUsecase struct {
 	users     port.UserRepository
-	customers port.CustomerProfileRepository
 	staff     port.StaffProfileRepository
-	admins    port.AdminProfileRepository
 	sessions  port.SessionStore
 	tx        port.TxManager
 	hasher    port.PasswordHasher
@@ -45,9 +43,7 @@ func NewAdminUserUsecase(
 ) *AdminUserUsecase {
 	return &AdminUserUsecase{
 		users:     users,
-		customers: customers,
 		staff:     staff,
-		admins:    admins,
 		sessions:  sessions,
 		tx:        tx,
 		hasher:    hasher,
@@ -64,14 +60,16 @@ func (u *AdminUserUsecase) CreateOperationalUser(
 	actorRole domainuser.Role,
 	req dto.CreateOperationalUserRequest,
 ) (*dto.CreateOperationalUserResponse, error) {
+	phone, err := normalizeRequestPhone(req.Phone)
+	if err != nil {
+		return nil, err
+	}
+	// On create there is nothing to clear: a blank phone means none.
+	phone = resolvePatchString(phone, nil)
 	role, err := parseRole(req.Role)
 	if err != nil {
 		return nil, err
 	}
-	if !role.CanBeAssigned() || role.IsAdmin() {
-		return nil, apperrors.ErrValidation.WithDetail("role", "must be staff, baker, or manager")
-	}
-
 	tempPassword, err := utils.GenerateTempPassword(16)
 	if err != nil {
 		return nil, err
@@ -96,21 +94,10 @@ func (u *AdminUserUsecase) CreateOperationalUser(
 			return createErr
 		}
 		user = created
-
-		switch role.ProfileType() {
-		case "staff":
-			createErr = u.createStaffProfile(txCtx, user.ID, req.FullName, req.Phone, req.EmployeeCode)
-			return createErr
-		case "admin":
-			_, createErr = u.admins.Create(txCtx, port.UpsertAdminProfileParams{
-				UserID:   user.ID,
-				FullName: req.FullName,
-				Phone:    req.Phone,
-			})
-			return createErr
-		default:
-			return domainuser.ErrInvalidRoleTransition
+		if claimErr := claimPhone(txCtx, u.users, user.ID, phone, nil); claimErr != nil {
+			return claimErr
 		}
+		return u.createStaffProfile(txCtx, user.ID, req.FullName, phone, req.EmployeeCode)
 	}); err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
 			return nil, domainuser.ErrEmployeeCodeExists
@@ -137,139 +124,31 @@ func (u *AdminUserUsecase) UpdateOperationalProfile(
 	targetID uuid.UUID,
 	req dto.UpdateOperationalProfileRequest,
 ) (*dto.AdminUserResponse, error) {
+	phone, err := normalizeRequestPhone(req.Phone)
+	if err != nil {
+		return nil, err
+	}
+	// The DTO's `required` tag passes a blank string; this endpoint sets the name,
+	// so a blank one is an error rather than "keep the current name".
+	if strings.TrimSpace(req.FullName) == "" {
+		return nil, apperrors.ErrValidation.WithDetail("full_name", "required")
+	}
 	if actorID == targetID {
 		return nil, domainuser.ErrCannotModifySelf
 	}
-	target, err := u.users.GetByID(ctx, targetID)
-	if err != nil {
-		if errors.Is(err, apperrors.ErrConflict) {
-			return nil, domainuser.ErrEmployeeCodeExists
-		}
-		return nil, err
-	}
 
-	var before any
-	var after any
-	switch target.Role.ProfileType() {
-	case "staff":
-		current, getErr := u.staff.GetByUserID(ctx, targetID)
-		if getErr != nil {
-			return nil, getErr
-		}
-		employeeCode := current.EmployeeCode
-		if req.EmployeeCode != nil {
-			employeeCode = *req.EmployeeCode
-		}
-		before = current
-		after, err = u.staff.UpdateByUserID(ctx, port.UpsertStaffProfileParams{
-			UserID:       targetID,
-			FullName:     req.FullName,
-			Phone:        req.Phone,
-			EmployeeCode: employeeCode,
-		})
-	case "admin":
-		current, getErr := u.admins.GetByUserID(ctx, targetID)
-		if getErr != nil {
-			return nil, getErr
-		}
-		before = current
-		after, err = u.admins.UpdateByUserID(ctx, port.UpsertAdminProfileParams{
-			UserID:   targetID,
-			FullName: req.FullName,
-			Phone:    req.Phone,
-		})
-	default:
-		return nil, domainuser.ErrInvalidRoleTransition
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	u.logAudit(ctx, domainuser.AuditActionAdminUpdatedProfile, actorID, actorRole, &targetID, "user_profile", before, after)
-	return u.getAdminUserResponse(ctx, targetID)
-}
-
-func (u *AdminUserUsecase) UpdateRole(
-	ctx context.Context,
-	actorID uuid.UUID,
-	actorRole domainuser.Role,
-	targetID uuid.UUID,
-	req dto.UpdateUserRoleRequest,
-) (*dto.AdminUserResponse, error) {
-	if actorID == targetID {
-		return nil, domainuser.ErrCannotModifySelf
-	}
-	newRole, err := parseRole(req.Role)
-	if err != nil {
-		return nil, err
-	}
-	if !newRole.CanBeAssigned() {
-		return nil, domainuser.ErrInvalidRoleTransition
-	}
-
-	var beforeRole, afterRole string
-	roleChanged := false
+	var before, after *domainprofile.Staff
 	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
-		target, getErr := u.users.AdminGetByID(txCtx, targetID)
-		if getErr != nil {
-			return getErr
+		if _, lockErr := u.lockStaffTarget(txCtx, targetID); lockErr != nil {
+			return lockErr
 		}
-		if target.Disabled() {
-			return apperrors.ErrValidation.WithDetail("account", "user is disabled")
-		}
-		if !isOperationalRoleChangeTarget(target.Role) {
-			return domainuser.ErrInvalidRoleTransition
-		}
-		beforeRole = string(target.Role)
-		afterRole = string(newRole)
-		if target.Role == newRole {
-			return nil
-		}
-		roleChanged = true
-
-		switch target.Role.ProfileType() {
-		case "customer":
-			if delErr := u.customers.DeleteByUserID(txCtx, targetID); delErr != nil && !errors.Is(delErr, apperrors.ErrNotFound) {
-				return delErr
-			}
-		case "staff":
-			if delErr := u.staff.DeleteByUserID(txCtx, targetID); delErr != nil && !errors.Is(delErr, apperrors.ErrNotFound) {
-				return delErr
-			}
-		case "admin":
-			if delErr := u.admins.DeleteByUserID(txCtx, targetID); delErr != nil && !errors.Is(delErr, apperrors.ErrNotFound) {
-				return delErr
-			}
-		}
-
-		switch newRole.ProfileType() {
-		case "customer":
-			_, getErr = u.customers.Create(txCtx, port.UpsertCustomerProfileParams{
-				UserID: targetID,
-			})
-		case "staff":
-			fullName := req.FullName
-			if fullName == "" {
-				fullName = strings.Split(target.Email, "@")[0]
-			}
-			getErr = u.createStaffProfile(txCtx, targetID, fullName, req.Phone, req.EmployeeCode)
-		case "admin":
-			fullName := req.FullName
-			if fullName == "" {
-				fullName = strings.Split(target.Email, "@")[0]
-			}
-			_, getErr = u.admins.Create(txCtx, port.UpsertAdminProfileParams{
-				UserID:   targetID,
-				FullName: fullName,
-				Phone:    req.Phone,
-			})
-		default:
-			return domainuser.ErrInvalidRoleTransition
-		}
-		if getErr != nil {
-			return getErr
-		}
-		return u.users.UpdateRole(txCtx, targetID, newRole)
+		var writeErr error
+		before, after, writeErr = u.patchStaffProfile(txCtx, targetID, staffProfilePatch{
+			FullName:     req.FullName,
+			Phone:        phone,
+			EmployeeCode: req.EmployeeCode,
+		})
+		return writeErr
 	}); err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
 			return nil, domainuser.ErrEmployeeCodeExists
@@ -277,28 +156,202 @@ func (u *AdminUserUsecase) UpdateRole(
 		return nil, err
 	}
 
-	if roleChanged {
+	u.logAudit(ctx, domainuser.AuditActionAdminUpdatedProfile, actorID, actorRole, &targetID, "user_profile", before, after)
+	return u.getAdminUserResponse(ctx, targetID)
+}
+
+// UpdateRole moves a staff, baker or manager account to another of those roles
+// and saves the name and phone sent with it. The three roles share one staff
+// profile, so the profile is edited in place and the employee code stays with the
+// person; only the role itself changes, and only a real change revokes sessions.
+func (u *AdminUserUsecase) UpdateRole(
+	ctx context.Context,
+	actorID uuid.UUID,
+	actorRole domainuser.Role,
+	targetID uuid.UUID,
+	req dto.UpdateUserRoleRequest,
+) (*dto.AdminUserResponse, error) {
+	phone, err := normalizeRequestPhone(req.Phone)
+	if err != nil {
+		return nil, err
+	}
+	if actorID == targetID {
+		return nil, domainuser.ErrCannotModifySelf
+	}
+	newRole, err := parseRole(req.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	var change roleChange
+	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		var applyErr error
+		change, applyErr = u.applyRoleChange(txCtx, targetID, newRole, staffProfilePatch{
+			FullName:     req.FullName,
+			Phone:        phone,
+			EmployeeCode: req.EmployeeCode,
+		})
+		return applyErr
+	}); err != nil {
+		if errors.Is(err, apperrors.ErrConflict) {
+			return nil, domainuser.ErrEmployeeCodeExists
+		}
+		return nil, err
+	}
+
+	u.logAudit(ctx, domainuser.AuditActionAdminUpdatedProfile, actorID, actorRole, &targetID, "user_profile", change.before, change.after)
+	if change.oldRole != newRole {
 		if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
 			return nil, err
 		}
+		u.logAudit(ctx, domainuser.AuditActionAdminUpdatedRole, actorID, actorRole, &targetID, "user", map[string]any{"role": string(change.oldRole)}, map[string]any{"role": string(newRole)})
 	}
-
-	u.logAudit(ctx, domainuser.AuditActionAdminUpdatedRole, actorID, actorRole, &targetID, "user", map[string]any{"role": beforeRole}, map[string]any{"role": afterRole})
 	return u.getAdminUserResponse(ctx, targetID)
+}
+
+// roleChange is what UpdateRole's transaction reports back for the audit trail.
+type roleChange struct {
+	oldRole       domainuser.Role
+	before, after *domainprofile.Staff
+}
+
+// applyRoleChange runs inside the caller's transaction. The target row is locked
+// first, so two admins changing one account serialize instead of both reading the
+// same old role and overwriting each other's profile edits.
+func (u *AdminUserUsecase) applyRoleChange(
+	ctx context.Context,
+	targetID uuid.UUID,
+	newRole domainuser.Role,
+	patch staffProfilePatch,
+) (roleChange, error) {
+	target, err := u.lockStaffTarget(ctx, targetID)
+	if err != nil {
+		return roleChange{}, err
+	}
+	before, after, err := u.patchStaffProfile(ctx, targetID, patch)
+	if err != nil {
+		return roleChange{}, err
+	}
+	change := roleChange{oldRole: target.Role, before: before, after: after}
+	if newRole == target.Role {
+		return change, nil
+	}
+	return change, u.users.UpdateRole(ctx, targetID, newRole)
+}
+
+// lockStaffTarget locks the account an admin is editing, inside the caller's
+// transaction, and checks it is an active staff, baker or manager account.
+func (u *AdminUserUsecase) lockStaffTarget(ctx context.Context, targetID uuid.UUID) (*domainuser.User, error) {
+	target, err := u.users.AdminGetByIDForUpdate(ctx, targetID)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseAdminTarget(target); err != nil {
+		return nil, err
+	}
+	if target.Disabled() {
+		return nil, apperrors.ErrValidation.WithDetail("account", "user is disabled")
+	}
+	if !isStaffProfileRole(target.Role) {
+		return nil, domainuser.ErrInvalidRoleTransition
+	}
+	return target, nil
+}
+
+// staffProfilePatch carries the admin-editable staff fields with PATCH meaning:
+// an empty name or a nil phone or code keeps the stored value; "" clears a phone.
+type staffProfilePatch struct {
+	FullName     string
+	Phone        *string
+	EmployeeCode *string
+}
+
+func (u *AdminUserUsecase) patchStaffProfile(
+	ctx context.Context,
+	userID uuid.UUID,
+	patch staffProfilePatch,
+) (before, after *domainprofile.Staff, err error) {
+	current, err := u.staff.GetByUserID(ctx, userID)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return nil, nil, domainuser.ErrProfileNotFound
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	phone := resolvePatchString(patch.Phone, current.Phone)
+	if err := claimPhone(ctx, u.users, userID, phone, current.Phone); err != nil {
+		return nil, nil, err
+	}
+	fullName := current.FullName
+	if name := strings.TrimSpace(patch.FullName); name != "" {
+		fullName = name
+	}
+	employeeCode := current.EmployeeCode
+	if code := resolvePatchString(patch.EmployeeCode, nil); code != nil {
+		employeeCode = *code
+	}
+	updated, err := u.staff.UpdateByUserID(ctx, port.UpsertStaffProfileParams{
+		UserID:       userID,
+		FullName:     fullName,
+		Phone:        phone,
+		EmployeeCode: employeeCode,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return current, updated, nil
 }
 
 func (u *AdminUserUsecase) Enable(ctx context.Context, actorID uuid.UUID, actorRole domainuser.Role, targetID uuid.UUID) error {
 	if actorID == targetID {
 		return domainuser.ErrCannotModifySelf
 	}
-	if err := u.rejectAdminAccountMutation(ctx, targetID); err != nil {
+	target, err := u.mutableTarget(ctx, targetID)
+	if err != nil {
 		return err
 	}
-	if err := u.users.Restore(ctx, targetID); err != nil {
+	var released *string
+	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if restoreErr := u.users.Restore(txCtx, targetID); restoreErr != nil {
+			return restoreErr
+		}
+		var reclaimErr error
+		released, reclaimErr = u.reclaimPhone(txCtx, targetID, target.Role)
+		return reclaimErr
+	}); err != nil {
 		return err
 	}
-	u.logAudit(ctx, domainuser.AuditActionAdminEnabledUser, actorID, actorRole, &targetID, "user", map[string]any{"disabled": true}, map[string]any{"disabled": false})
+	after := map[string]any{"disabled": false}
+	if released != nil {
+		after["phone_released"] = *released
+	}
+	u.logAudit(ctx, domainuser.AuditActionAdminEnabledUser, actorID, actorRole, &targetID, "user", map[string]any{"disabled": true}, after)
 	return nil
+}
+
+// reclaimPhone re-checks the phone of an account coming back from a soft delete.
+// While it was disabled its number counted as free. If an active account has
+// taken it since, that holder keeps it and the returning account comes back
+// without a phone; the enable audit entry records the number released. Refusing
+// the enable instead would strand the account: every admin edit path refuses
+// disabled users, and customers have no admin edit path at all.
+func (u *AdminUserUsecase) reclaimPhone(ctx context.Context, userID uuid.UUID, role domainuser.Role) (released *string, err error) {
+	profile, err := u.profiles.GetByUserID(ctx, userID, role)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	phone := profilePhone(profile)
+	claimErr := claimPhone(ctx, u.users, userID, phone, nil)
+	if !errors.Is(claimErr, domainuser.ErrPhoneExists) {
+		return nil, claimErr
+	}
+	if err := u.users.ReleasePhone(ctx, userID); err != nil {
+		return nil, err
+	}
+	return phone, nil
 }
 
 func (u *AdminUserUsecase) ResetPassword(
@@ -310,7 +363,9 @@ func (u *AdminUserUsecase) ResetPassword(
 	if actorID == targetID {
 		return nil, domainuser.ErrCannotModifySelf
 	}
-	target, err := u.users.AdminGetByID(ctx, targetID)
+	// The response carries the new password; resetting another admin would hand
+	// over that account.
+	target, err := u.mutableTarget(ctx, targetID)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +406,7 @@ func (u *AdminUserUsecase) Disable(ctx context.Context, actorID uuid.UUID, actor
 	if actorID == targetID {
 		return domainuser.ErrCannotModifySelf
 	}
-	if err := u.rejectAdminAccountMutation(ctx, targetID); err != nil {
+	if _, err := u.mutableTarget(ctx, targetID); err != nil {
 		return err
 	}
 	if err := u.users.SoftDelete(ctx, targetID); err != nil {
@@ -368,7 +423,7 @@ func (u *AdminUserUsecase) RevokeSessions(ctx context.Context, actorID uuid.UUID
 	if actorID == targetID {
 		return domainuser.ErrCannotModifySelf
 	}
-	if err := u.rejectAdminAccountMutation(ctx, targetID); err != nil {
+	if _, err := u.mutableTarget(ctx, targetID); err != nil {
 		return err
 	}
 	if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
@@ -468,30 +523,34 @@ func mapAdminListItem(in port.AdminListUser) dto.AdminUserResponse {
 	}
 }
 
+// parseRole accepts the roles admin endpoints may assign: staff, baker, manager.
 func parseRole(raw string) (domainuser.Role, error) {
 	role := domainuser.Role(strings.TrimSpace(strings.ToLower(raw)))
-	switch role {
-	case domainuser.RoleStaff, domainuser.RoleBaker, domainuser.RoleManager:
-		return role, nil
-	default:
+	if !isStaffProfileRole(role) {
 		return "", apperrors.ErrValidation.WithDetail("role", "unsupported role")
 	}
+	return role, nil
 }
 
-func isOperationalRoleChangeTarget(role domainuser.Role) bool {
-	switch role {
-	case domainuser.RoleStaff, domainuser.RoleBaker, domainuser.RoleManager:
-		return true
-	default:
-		return false
-	}
+// isStaffProfileRole reports the roles backed by the shared staff profile.
+func isStaffProfileRole(role domainuser.Role) bool {
+	return role.ProfileType() == "staff"
 }
 
-func (u *AdminUserUsecase) rejectAdminAccountMutation(ctx context.Context, targetID uuid.UUID) error {
+// mutableTarget loads the account an admin endpoint is about to change and refuses
+// admin accounts: admins are managed through the dev seed, never by each other.
+func (u *AdminUserUsecase) mutableTarget(ctx context.Context, targetID uuid.UUID) (*domainuser.User, error) {
 	target, err := u.users.AdminGetByID(ctx, targetID)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	if err := refuseAdminTarget(target); err != nil {
+		return nil, err
+	}
+	return target, nil
+}
+
+func refuseAdminTarget(target *domainuser.User) error {
 	if target.Role.IsAdmin() {
 		return domainuser.ErrCannotModifyAdmin
 	}

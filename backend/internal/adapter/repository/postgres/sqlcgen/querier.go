@@ -25,6 +25,13 @@ type Querier interface {
 	//  FROM users
 	//  WHERE id = $1
 	AdminGetByID(ctx context.Context, id uuid.UUID) (User, error)
+	// Disabled rows included, like AdminGetByID: the caller reports "user is disabled".
+	//
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	//  FROM users
+	//  WHERE id = $1
+	//  FOR UPDATE
+	AdminGetByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error)
 	//AdminList
 	//
 	//  SELECT
@@ -840,6 +847,12 @@ type Querier interface {
 	//  WHERE product_id = ANY($1::uuid[])
 	//  ORDER BY product_id ASC, sort_order ASC
 	ListProductImagesByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ListProductImagesByProductIDsRow, error)
+	// Phones live in three profile tables, so no single unique index can guard them.
+	// This lock (namespace 8734212, keyed by the number) serializes writers of one
+	// number until the transaction ends.
+	//
+	//  SELECT pg_advisory_xact_lock(8734212, hashtext($1::text))
+	LockPhone(ctx context.Context, phone string) error
 	//ManagerGetProductByID
 	//
 	//  SELECT
@@ -1010,6 +1023,32 @@ type Querier interface {
 	//    )::text AS next_code
 	//  FROM (SELECT pg_advisory_xact_lock(8734211)) AS lock
 	NextEmployeeCode(ctx context.Context) (string, error)
+	//PhoneHeldByOtherActiveUser
+	//
+	//  SELECT EXISTS (
+	//    SELECT 1
+	//    FROM (
+	//      SELECT user_id FROM customer_profiles WHERE phone = $1::text
+	//      UNION ALL
+	//      SELECT user_id FROM staff_profiles WHERE phone = $1::text
+	//      UNION ALL
+	//      SELECT user_id FROM admin_profiles WHERE phone = $1::text
+	//    ) AS holder
+	//    JOIN users u ON u.id = holder.user_id
+	//    WHERE u.id <> $2::uuid
+	//      AND u.deleted_at IS NULL
+	//  ) AS held
+	PhoneHeldByOtherActiveUser(ctx context.Context, arg PhoneHeldByOtherActiveUserParams) (bool, error)
+	// Clears the phone on whichever profile the user has. Used when a returning
+	// account finds its number taken by an active one: the active holder keeps it.
+	//
+	//  WITH released_customer AS (
+	//    UPDATE customer_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
+	//  ), released_staff AS (
+	//    UPDATE staff_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
+	//  )
+	//  UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
+	ReleasePhone(ctx context.Context, userID uuid.UUID) error
 	//SetCartDiscountCodeID
 	//
 	//  UPDATE carts

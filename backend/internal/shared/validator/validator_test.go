@@ -42,3 +42,45 @@ func TestPasswordComplexity(t *testing.T) {
 		})
 	}
 }
+
+// Mirrors the request DTOs: optional, and only checked when present.
+type phoneField struct {
+	Phone *string `json:"phone" validate:"omitempty,vn_phone"`
+}
+
+func TestVietnamPhone(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		phone   *string
+		wantErr bool
+	}{
+		{name: "absent", phone: nil, wantErr: false},
+		{name: "blank clears", phone: strPtr(""), wantErr: false},
+		{name: "whitespace clears", phone: strPtr("   "), wantErr: false},
+		{name: "national mobile", phone: strPtr("0912 345 678"), wantErr: false},
+		{name: "international mobile", phone: strPtr("+84912345678"), wantErr: false},
+		{name: "land line", phone: strPtr("028 3822 1234"), wantErr: false},
+		{name: "symbols", phone: strPtr("!!!!!!"), wantErr: true},
+		{name: "too short", phone: strPtr("0912"), wantErr: true},
+		{name: "foreign", phone: strPtr("+1 415 555 0172"), wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validator.Struct(phoneField{Phone: tt.phone})
+			if !tt.wantErr {
+				assert.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "vn_phone")
+		})
+	}
+}
+
+func strPtr(value string) *string {
+	return &value
+}

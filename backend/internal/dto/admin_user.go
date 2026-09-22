@@ -6,7 +6,7 @@ type CreateOperationalUserRequest struct {
 	Email        string  `json:"email" validate:"required,email,max=255"`
 	Role         string  `json:"role" validate:"required,oneof=staff baker manager"`
 	FullName     string  `json:"full_name" validate:"required,max=255"`
-	Phone        *string `json:"phone,omitempty" validate:"omitempty,max=50"`
+	Phone        *string `json:"phone,omitempty" validate:"omitempty,vn_phone"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
 }
 
@@ -26,14 +26,14 @@ type AdminResetPasswordResponse struct {
 
 type UpdateOperationalProfileRequest struct {
 	FullName     string  `json:"full_name" validate:"required,max=255"`
-	Phone        *string `json:"phone,omitempty" validate:"omitempty,max=50"`
+	Phone        *string `json:"phone,omitempty" validate:"omitempty,vn_phone"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
 }
 
 type UpdateUserRoleRequest struct {
 	Role         string  `json:"role" validate:"required,oneof=staff baker manager"`
 	FullName     string  `json:"full_name,omitempty" validate:"omitempty,max=255"`
-	Phone        *string `json:"phone,omitempty" validate:"omitempty,max=50"`
+	Phone        *string `json:"phone,omitempty" validate:"omitempty,vn_phone"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
 }
 

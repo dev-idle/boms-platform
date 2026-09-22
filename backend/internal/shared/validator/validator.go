@@ -8,6 +8,8 @@ import (
 	"unicode"
 
 	"github.com/go-playground/validator/v10"
+
+	"github.com/boms/backend/internal/shared/utils"
 )
 
 var (
@@ -21,6 +23,9 @@ func V() *validator.Validate {
 		v = validator.New()
 		if err := v.RegisterValidation("password_complexity", passwordComplexity); err != nil {
 			panic(fmt.Sprintf("register password_complexity: %v", err))
+		}
+		if err := v.RegisterValidation("vn_phone", vietnamPhone); err != nil {
+			panic(fmt.Sprintf("register vn_phone: %v", err))
 		}
 	})
 	return v
@@ -60,6 +65,18 @@ func passwordComplexity(fl validator.FieldLevel) bool {
 		}
 	}
 	return letter && digit
+}
+
+// vietnamPhone accepts any spelling of a Vietnam number; the usecase stores the
+// normalized form. A blank value passes: on a *string field `omitempty` only skips
+// nil, and "" is how a PATCH asks to clear the phone.
+func vietnamPhone(fl validator.FieldLevel) bool {
+	value := strings.TrimSpace(fl.Field().String())
+	if value == "" {
+		return true
+	}
+	_, ok := utils.NormalizeVietnamPhone(value)
+	return ok
 }
 
 func formatValidationError(err error) error {

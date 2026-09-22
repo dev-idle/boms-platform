@@ -51,7 +51,14 @@ type UserRepository interface {
 	ClearMustChangePassword(ctx context.Context, id uuid.UUID) error
 	SoftDelete(ctx context.Context, id uuid.UUID) error
 	AdminGetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error)
+	// AdminGetByIDForUpdate is AdminGetByID with the row locked until the transaction ends.
+	AdminGetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error)
 	Restore(ctx context.Context, id uuid.UUID) error
 	AdminUpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	AdminList(ctx context.Context, params AdminListUsersParams) ([]AdminListUser, int64, error)
+	// ClaimPhone locks phone until the surrounding transaction ends and reports
+	// whether an active account other than userID already holds it.
+	ClaimPhone(ctx context.Context, phone string, userID uuid.UUID) (held bool, err error)
+	// ReleasePhone clears the phone on the user's profile, whichever type it is.
+	ReleasePhone(ctx context.Context, userID uuid.UUID) error
 }

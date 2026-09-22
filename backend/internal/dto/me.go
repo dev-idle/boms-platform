@@ -4,7 +4,7 @@ import "time"
 
 type UpdateMeRequest struct {
 	DisplayName  *string `json:"display_name,omitempty" validate:"omitempty,max=255"`
-	Phone        *string `json:"phone,omitempty" validate:"omitempty,max=50"`
+	Phone        *string `json:"phone,omitempty" validate:"omitempty,vn_phone"`
 	FullName     *string `json:"full_name,omitempty" validate:"omitempty,max=255"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
 }
