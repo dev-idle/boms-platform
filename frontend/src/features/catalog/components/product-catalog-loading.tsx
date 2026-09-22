@@ -5,9 +5,7 @@ export function ProductCatalogLoading() {
   return (
     <div className="catalog-page">
       <h1 className="sr-only">Shop</h1>
-      <div className="storefront-container catalog-page__loading-shell">
-        <InlineLoadingState className="catalog-page__loading" />
-      </div>
+      <InlineLoadingState />
     </div>
   );
 }

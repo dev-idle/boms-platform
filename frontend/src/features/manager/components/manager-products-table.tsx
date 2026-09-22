@@ -24,7 +24,7 @@ import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolb
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
-import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
+import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
@@ -55,7 +55,7 @@ export function ManagerProductsTable() {
     [page, search],
   );
   const query = useProducts(filter);
-  const { initialLoading, refetching } = getDashboardQuerySurface(query);
+  const { initialLoading, refetching } = getQuerySurface(query);
   const products = query.data?.products ?? [];
   const pagination = query.data?.pagination;
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
@@ -184,7 +184,7 @@ export function ManagerProductsTable() {
             </tbody>
           </table>
           <DashboardTablePagination
-            disabled={query.isFetching}
+            disabled={refetching}
             itemLabel="products"
             onPageChange={setPage}
             page={pagination?.page ?? page}

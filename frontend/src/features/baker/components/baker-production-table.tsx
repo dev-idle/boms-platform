@@ -17,7 +17,7 @@ import {
   DASHBOARD_STAFF_ORDERS_PAGE_SIZE,
 } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
-import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
+import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { formatPickupWallTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -46,7 +46,7 @@ export function BakerProductionTable() {
     [page, status],
   );
   const ordersQuery = useBakerProductionOrders(filter);
-  const { initialLoading, refetching } = getDashboardQuerySurface(ordersQuery);
+  const { initialLoading, refetching } = getQuerySurface(ordersQuery);
   const orders = ordersQuery.data?.orders ?? [];
   const pagination = ordersQuery.data?.pagination;
   const hasActiveFilter = status !== undefined;
@@ -134,7 +134,7 @@ export function BakerProductionTable() {
           </>
         )}
         <DashboardTablePagination
-          disabled={ordersQuery.isFetching}
+          disabled={refetching}
           itemLabel="orders"
           onPageChange={setPage}
           page={pagination?.page ?? page}

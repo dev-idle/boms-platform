@@ -142,7 +142,7 @@ export function CustomerAccountProfileForm() {
   const me = useMe();
 
   if (me.isPending) {
-    return <InlineLoadingState className="storefront-account-form__loading" />;
+    return <InlineLoadingState />;
   }
 
   if (!me.data || me.data.role !== USER_ROLE.customer) {

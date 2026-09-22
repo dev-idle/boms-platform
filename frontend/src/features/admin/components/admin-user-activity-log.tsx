@@ -8,7 +8,7 @@ import { DashboardActivityFeedPagePlaceholders } from "@/components/ui/dashboard
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { roleDisplayLabel } from "@/constants/roles";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
-import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
+import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { formatDateTime } from "@/lib/validation/datetime";
 
@@ -27,7 +27,7 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
     page,
     page_size: PAGE_SIZE,
   });
-  const { initialLoading, refetching } = getDashboardQuerySurface(activityQuery);
+  const { initialLoading, refetching } = getQuerySurface(activityQuery);
 
   const entries = activityQuery.data?.entries ?? [];
   const pagination = activityQuery.data?.pagination;

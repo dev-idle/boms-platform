@@ -4,10 +4,8 @@ import { Toaster } from "sonner";
 
 import "./globals.css";
 import { ToastErrorIcon, ToastSuccessIcon } from "@/components/icons/toast-icons";
-import { PageLoadingState } from "@/components/ui/loading-state";
-import { ThemeScope } from "@/components/theme/theme-scope";
+import { RootRouteLoading } from "@/components/ui/route-loading";
 import { BRAND } from "@/constants/brand";
-import { APP_THEME } from "@/constants/themes";
 import { AuthBootstrap } from "@/features/auth/server";
 import { QueryProvider } from "@/providers";
 
@@ -66,13 +64,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-bg font-body text-ink-2">
         <QueryProvider>
-          <Suspense
-            fallback={
-              <ThemeScope theme={APP_THEME.storefront}>
-                <PageLoadingState />
-              </ThemeScope>
-            }
-          >
+          <Suspense fallback={<RootRouteLoading />}>
             <AuthBootstrap>{children}</AuthBootstrap>
           </Suspense>
           <Toaster

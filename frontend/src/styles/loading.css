@@ -16,7 +16,10 @@
     padding: 2.5rem 1rem;
   }
 
+  /* One height for every wait inside a page, so the mark sits in the same
+     place whichever loader draws it — the route's or the view's own. */
   .loading-state--inline {
+    min-height: 14rem;
     padding: 2.5rem 0;
   }
 
@@ -36,6 +39,18 @@
 
   [data-theme="dashboard"] .loading-indicator {
     color: var(--color-db-accent);
+  }
+
+  .loading-indicator__spinner {
+    --duration: var(--loading-duration);
+    animation: loading-indicator-reveal 0.15s ease 0.2s forwards;
+    block-size: var(--loading-indicator-size);
+    inline-size: var(--loading-indicator-size);
+    opacity: 0;
+  }
+
+  .loading-indicator__spinner .loading-ui-dots-ring__dot {
+    animation: loading-ui-dots-ring-pulse var(--loading-duration) linear infinite;
   }
 
   /* Skeleton (02-COMPONENTS §12): a paper block pulsing on opacity alone — no
@@ -97,27 +112,15 @@
     pointer-events: none;
   }
 
-  .loading-indicator__spinner {
-    --duration: var(--loading-duration);
-    animation: loading-indicator-reveal 0.15s ease 0.2s forwards;
-    block-size: var(--loading-indicator-size);
-    inline-size: var(--loading-indicator-size);
-    opacity: 0;
-  }
-
-  .loading-indicator__spinner .loading-ui-dots-ring__dot {
-    animation: loading-ui-dots-ring-pulse var(--loading-duration) linear infinite;
-  }
-
   @media (prefers-reduced-motion: reduce) {
-    .loading-indicator__spinner,
+    .loading-indicator__spinner {
+      animation: none;
+      opacity: 0.85;
+    }
+
     .skeleton {
       animation: none;
       opacity: 0.7;
-    }
-
-    .loading-indicator__spinner {
-      opacity: 0.85;
     }
 
     .loading-indicator__spinner .loading-ui-dots-ring__dot {

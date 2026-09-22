@@ -1572,10 +1572,6 @@
     font-weight: 400;
   }
 
-  .storefront-customer-loading {
-    min-height: 14rem;
-  }
-
   .storefront-account-section {
     display: flex;
     flex-direction: column;
@@ -1664,10 +1660,6 @@
 
   [data-theme="storefront"] .storefront-account-form .dashboard-profile-form-actions {
     justify-content: flex-start;
-  }
-
-  .storefront-account-form__loading {
-    min-height: 10rem;
   }
 
   .storefront-account-danger {
@@ -2955,14 +2947,6 @@
 
   .catalog-detail__actions {
     margin-block-start: 2rem;
-  }
-
-  .catalog-page__loading-shell {
-    padding-block: 4rem;
-  }
-
-  .catalog-page__loading {
-    min-height: 16rem;
   }
 
   .catalog-page__results-panel {

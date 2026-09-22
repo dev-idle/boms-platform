@@ -25,7 +25,7 @@ export function OrderList() {
   const ordersQuery = useOrders(filter);
 
   if (ordersQuery.isPending) {
-    return <InlineLoadingState className="storefront-customer-loading" />;
+    return <InlineLoadingState />;
   }
 
   if (ordersQuery.isError) {

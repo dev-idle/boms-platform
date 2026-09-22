@@ -7,6 +7,7 @@ import { AsyncPanel } from "@/components/ui/async-panel";
 import { StorefrontPageHeader } from "@/components/layouts/storefront-page-header";
 
 import { catalogProductFallbackImageUrl } from "@/constants/storefront-imagery";
+import { getQuerySurface } from "@/lib/react-query/query-surface";
 
 import { toCatalogProductsFilter } from "../lib/catalog-browse-params";
 import {
@@ -52,13 +53,12 @@ export function ProductCatalog() {
   const showCombosLink =
     !combosProbeQuery.isPending &&
     (combosProbeQuery.data?.pagination.total ?? 0) > 0;
-  const productsInitialLoading =
-    productsQuery.isPending && productsQuery.data === undefined;
-  const productsRefetching =
-    productsQuery.isFetching && productsQuery.data !== undefined;
+  const {
+    initialLoading: productsInitialLoading,
+    refetching: productsRefetching,
+  } = getQuerySurface(productsQuery);
   const catalogInitialLoading =
-    (categoriesQuery.isPending && categoriesQuery.data === undefined) ||
-    productsInitialLoading;
+    categoriesQuery.isPending || productsInitialLoading;
 
   if (catalogInitialLoading) {
     return <ProductCatalogLoading />;

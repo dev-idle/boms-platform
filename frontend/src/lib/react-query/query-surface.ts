@@ -1,31 +1,20 @@
-/** True only on first fetch with no cached/placeholder data yet. */
-function isInitialQueryLoad(isPending: boolean, data: unknown): boolean {
-  return isPending && data === undefined;
-}
-
-/** Background refetch — keep previous content visible under the busy overlay. */
-function isQueryRefetching(
-  isFetching: boolean,
-  isPending: boolean,
-  data: unknown,
-): boolean {
-  return isFetching && !isPending && data !== undefined;
-}
-
-type DashboardQuerySurfaceInput = {
-  data: unknown;
-  isFetching: boolean;
+type QuerySurfaceInput = {
   isPending: boolean;
+  isPlaceholderData: boolean;
 };
 
-/** Maps TanStack Query flags to dashboard async panel states. */
-export function getDashboardQuerySurface({
-  data,
-  isFetching,
-  isPending,
-}: DashboardQuerySurfaceInput) {
+/**
+ * Maps TanStack Query flags to what an `AsyncPanel` shows.
+ *
+ * `initialLoading` — nothing to show yet. `refetching` — what is shown is the
+ * previous page or filter's data, kept as a placeholder while the new one
+ * loads, so it is dimmed and locked. A background refresh of data that is
+ * already right (a remount past `staleTime`, an invalidation after a save)
+ * stays silent: the rows are correct and simply update in place.
+ */
+export function getQuerySurface({ isPending, isPlaceholderData }: QuerySurfaceInput) {
   return {
-    initialLoading: isInitialQueryLoad(isPending, data),
-    refetching: isQueryRefetching(isFetching, isPending, data),
+    initialLoading: isPending,
+    refetching: isPlaceholderData,
   };
 }

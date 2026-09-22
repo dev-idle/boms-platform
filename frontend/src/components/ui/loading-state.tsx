@@ -1,6 +1,5 @@
 import { DotsRing } from "@/components/ui/dots-ring";
 import { LOADING_MESSAGE } from "@/constants/loading-copy";
-import { cn } from "@/lib/utils";
 
 /**
  * The one spinner: a dots ring (`@loading-ui/dots-ring`), always the same
@@ -25,18 +24,15 @@ export function BusyIndicator() {
   );
 }
 
-type LoadingStateProps = {
-  className?: string;
-};
-
-function LoadingState({
-  className,
-  variant,
-}: LoadingStateProps & { variant: "inline" | "page" }) {
+/**
+ * No `className`: every wait of a kind is the same size, so none can drift
+ * into a height of its own.
+ */
+function LoadingState({ variant }: { variant: "inline" | "page" }) {
   return (
     <div
       aria-busy="true"
-      className={cn("loading-state", `loading-state--${variant}`, className)}
+      className={`loading-state loading-state--${variant}`}
       role="status"
     >
       <BusyIndicator />
@@ -45,11 +41,11 @@ function LoadingState({
 }
 
 /** Whole-page wait: centred in the viewport's free height. */
-export function PageLoadingState({ className }: LoadingStateProps) {
-  return <LoadingState className={className} variant="page" />;
+export function PageLoadingState() {
+  return <LoadingState variant="page" />;
 }
 
-/** Wait inside a page or section: centred in a padded block. */
-export function InlineLoadingState({ className }: LoadingStateProps) {
-  return <LoadingState className={className} variant="inline" />;
+/** Wait inside a page or section: centred in one fixed-height block. */
+export function InlineLoadingState() {
+  return <LoadingState variant="inline" />;
 }

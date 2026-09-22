@@ -26,7 +26,7 @@ import { USER_ROLE, roleDisplayLabel } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
-import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
+import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
@@ -77,7 +77,7 @@ export function AdminUsersTable() {
     [page, role, search],
   );
   const usersQuery = useUsers(filter);
-  const { initialLoading, refetching } = getDashboardQuerySurface(usersQuery);
+  const { initialLoading, refetching } = getQuerySurface(usersQuery);
   const users = usersQuery.data?.users ?? [];
   const pagination = usersQuery.data?.pagination;
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
@@ -264,7 +264,7 @@ export function AdminUsersTable() {
             </tbody>
           </table>
           <DashboardTablePagination
-            disabled={usersQuery.isFetching}
+            disabled={refetching}
             itemLabel="accounts"
             onPageChange={setPage}
             page={pagination?.page ?? page}

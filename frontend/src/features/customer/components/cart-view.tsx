@@ -98,7 +98,7 @@ export function CartView() {
   );
 
   if (cartQuery.isPending) {
-    return <InlineLoadingState className="storefront-customer-loading" />;
+    return <InlineLoadingState />;
   }
 
   if (cartQuery.isError) {

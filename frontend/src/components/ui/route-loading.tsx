@@ -4,8 +4,8 @@ import { APP_THEME } from "@/constants/themes";
 
 /**
  * Root app fallback — needs a theme when no route-group layout is mounted yet.
- * Page variant, the same as the root layout's Suspense fallback, so the two
- * never swap the spinner between two positions on first load.
+ * Both the root `loading.tsx` and the root layout's Suspense use it, so first
+ * load never swaps the spinner between two positions.
  */
 export function RootRouteLoading() {
   return (

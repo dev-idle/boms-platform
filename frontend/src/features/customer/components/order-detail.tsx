@@ -29,7 +29,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
   }
 
   if (orderQuery.isPending) {
-    return <InlineLoadingState className="storefront-customer-loading" />;
+    return <InlineLoadingState />;
   }
 
   if (orderQuery.isError) {

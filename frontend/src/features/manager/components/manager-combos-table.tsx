@@ -23,7 +23,7 @@ import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolb
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
-import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
+import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
@@ -54,7 +54,7 @@ export function ManagerCombosTable() {
     [page, search],
   );
   const query = useCombos(filter);
-  const { initialLoading, refetching } = getDashboardQuerySurface(query);
+  const { initialLoading, refetching } = getQuerySurface(query);
   const combos = query.data?.combos ?? [];
   const pagination = query.data?.pagination;
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
@@ -151,7 +151,7 @@ export function ManagerCombosTable() {
             </tbody>
           </table>
           <DashboardTablePagination
-            disabled={query.isFetching}
+            disabled={refetching}
             itemLabel="combos"
             onPageChange={setPage}
             page={pagination?.page ?? page}

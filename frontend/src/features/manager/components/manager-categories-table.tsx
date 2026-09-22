@@ -23,7 +23,7 @@ import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolb
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
-import { getDashboardQuerySurface } from "@/lib/react-query/query-surface";
+import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
@@ -52,7 +52,7 @@ export function ManagerCategoriesTable() {
     [page, search],
   );
   const query = useCategories(filter);
-  const { initialLoading, refetching } = getDashboardQuerySurface(query);
+  const { initialLoading, refetching } = getQuerySurface(query);
   const categories = query.data?.categories ?? [];
   const pagination = query.data?.pagination;
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
@@ -158,7 +158,7 @@ export function ManagerCategoriesTable() {
             </tbody>
           </table>
           <DashboardTablePagination
-            disabled={query.isFetching}
+            disabled={refetching}
             itemLabel="categories"
             onPageChange={setPage}
             page={pagination?.page ?? page}
