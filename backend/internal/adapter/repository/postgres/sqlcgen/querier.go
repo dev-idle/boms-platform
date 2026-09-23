@@ -943,7 +943,7 @@ type Querier interface {
 	//      $3::text IS NULL
 	//      OR code ILIKE '%' || $3::text || '%'
 	//    )
-	//  ORDER BY created_at DESC
+	//  ORDER BY starts_at DESC, code ASC
 	//  LIMIT $1 OFFSET $2
 	ManagerListDiscountCodes(ctx context.Context, arg ManagerListDiscountCodesParams) ([]DiscountCode, error)
 	//ManagerListDiscountCodesCount

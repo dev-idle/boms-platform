@@ -106,7 +106,7 @@ WHERE deleted_at IS NULL
     sqlc.narg('search')::text IS NULL
     OR code ILIKE '%' || sqlc.narg('search')::text || '%'
   )
-ORDER BY created_at DESC
+ORDER BY starts_at DESC, code ASC
 LIMIT $1 OFFSET $2;
 
 -- name: GetDiscountCodeByCode :one
