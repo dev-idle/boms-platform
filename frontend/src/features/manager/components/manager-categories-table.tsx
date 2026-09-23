@@ -95,7 +95,7 @@ export function ManagerCategoriesTable() {
             <colgroup>
               <col className="db-table-col-name" />
               <col className="db-table-col-slug" />
-              <col className="db-table-col-order" />
+              <col className="db-table-col-number" />
               <col className="db-table-col-status" />
               <col className="db-table-col-actions" />
             </colgroup>
@@ -103,7 +103,7 @@ export function ManagerCategoriesTable() {
               <tr>
                 <th>Name</th>
                 <th>Slug</th>
-                <th className="db-table-cell-order">Order</th>
+                <th className="db-table-num">Order</th>
                 <th className="db-table-status">Status</th>
                 <th className="db-table-detail">Actions</th>
               </tr>
@@ -127,7 +127,7 @@ export function ManagerCategoriesTable() {
                     >
                       {category.slug}
                     </td>
-                    <td className="db-table-cell-order">{category.sort_order}</td>
+                    <td className="db-table-num">{category.sort_order}</td>
                     <td className="db-table-status">
                       <EntityActivePill active={category.is_active} />
                     </td>

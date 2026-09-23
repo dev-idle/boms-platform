@@ -224,12 +224,14 @@
   /* A popover is an overlay: --color-border edge plus the one legal shadow.
      It portals to <body>, outside [data-theme="dashboard"], so every --db-* token
      would resolve to nothing here — this block uses literals on purpose. */
+  /* The panel is the trigger's own width, so the two read as one block stacked
+     in the sidebar rather than a card thrown over it. */
   .dashboard-account-popover {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-overlay);
-    min-width: 15rem;
     padding: 0.375rem;
+    width: var(--radix-dropdown-menu-trigger-width);
     z-index: 60;
   }
 
@@ -1697,6 +1699,16 @@
     width: var(--db-table-col-actions-group);
   }
 
+  .db-table col.db-table-col-number {
+    width: var(--db-table-col-number);
+  }
+
+  /* Wide enough for the whole timestamp: it is one line, so a column short of it
+     would run into the next column. */
+  .db-table col.db-table-col-datetime {
+    width: var(--db-table-col-datetime);
+  }
+
   .db-table--catalog col.db-table-col-thumb {
     width: var(--db-table-col-lead);
   }
@@ -1718,18 +1730,31 @@
   }
 
   .db-table-datetime time {
-    display: block;
+    display: flex;
+    flex-direction: column;
     font-family: var(--font-mono);
     font-size: 0.8125rem;
     font-variant-numeric: tabular-nums;
+    gap: 0.125rem;
     letter-spacing: 0.04em;
     white-space: nowrap;
   }
 
+  /* The date carries the column; the time under it is the detail, a step down
+     in colour and size rather than a second value competing with it. */
+  .db-table-datetime__date {
+    color: var(--theme-ink);
+    line-height: 1.4;
+  }
+
+  .db-table-datetime__time {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
   .db-table--categories {
-    --db-table-col-order: 5.5rem;
     --db-table-categories-fixed-cols: calc(
-      var(--db-table-col-order) + var(--db-table-col-status-pill) + var(--db-table-col-actions-pair)
+      var(--db-table-col-number) + var(--db-table-col-status-pill) + var(--db-table-col-actions-pair)
     );
     --db-table-categories-name-share: 0.54;
     --db-table-categories-slug-share: 0.46;
@@ -1747,29 +1772,12 @@
     );
   }
 
-  .db-table--categories col.db-table-col-order {
-    width: var(--db-table-col-order);
-  }
-
   .db-table--categories col.db-table-col-status {
     width: var(--db-table-col-status-pill);
   }
 
   .db-table--categories col.db-table-col-actions {
     width: var(--db-table-col-actions-pair);
-  }
-
-  /* Counts are numerics: mono, tabular, right-aligned in both head and body. */
-  .db-table--categories .db-table-cell-order,
-  .db-table--categories thead .db-table-cell-order {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  .db-table--categories thead .db-table-cell-order {
-    font-family: var(--font-body);
   }
 
   /* Two border weights, no more: line-strong seats the header, line-soft divides
@@ -1795,11 +1803,40 @@
     vertical-align: middle;
   }
 
+  /* A filler row holds the last page at a full page's height, so it has to be as
+     tall as the row it stands in for. It is filled rather than given a height:
+     the cell then keeps the ordinary padding and the row hairline, and the last
+     one drops that hairline like any last row, so the pages match to the pixel. */
   .db-table-row--page-placeholder td {
     border-bottom-color: transparent;
     color: transparent;
     pointer-events: none;
     user-select: none;
+  }
+
+  .db-table-row--page-placeholder td::before {
+    block-size: var(--db-table-placeholder-fill);
+    content: "";
+    display: block;
+  }
+
+  /* What the filler stands in for: one line of text, unless the table holds
+     something taller. */
+  .db-table {
+    --db-table-placeholder-fill: 1.25rem;
+  }
+
+  /* A thumb cell trades block padding for the tile; the filler keeps the ordinary
+     padding, so it makes up the difference. */
+  .db-table:has(.db-table-cell-thumb) {
+    --db-table-placeholder-fill: calc(
+      var(--db-table-thumb-size) + 2 * var(--db-table-thumb-padding-block) - 2 *
+        var(--db-table-cell-padding-block)
+    );
+  }
+
+  .db-table:has(.db-table-datetime) {
+    --db-table-placeholder-fill: var(--db-table-datetime-height);
   }
 
   .db-table-stacked-cell {
@@ -1842,10 +1879,23 @@
     background-color: var(--color-db-row);
   }
 
-  .db-table .text-tabular {
+  /* Numbers as data (02-COMPONENTS §4): mono with tabular figures, wherever a
+     value is read as a number — a table cell or a detail row. */
+  .text-tabular {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* A number column. The header is right-aligned with its digits, or the label
+     floats away from the column it names; only the body is mono. */
+  .db-table .db-table-num {
     text-align: right;
+    white-space: nowrap;
+  }
+
+  .db-table tbody .db-table-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
 
   /* Codes and IDs: mono, brass, uppercase, left-aligned. */
@@ -2029,7 +2079,7 @@
   }
 
   .db-table tbody .db-table-cell-thumb {
-    padding-block: 0.75rem;
+    padding-block: var(--db-table-thumb-padding-block);
     padding-inline-end: 0;
   }
 
@@ -2201,10 +2251,10 @@
     color: var(--color-muted);
     display: inline-flex;
     flex-shrink: 0;
-    height: 3.25rem;
+    height: var(--db-table-thumb-size);
     justify-content: center;
     overflow: hidden;
-    width: 3.25rem;
+    width: var(--db-table-thumb-size);
   }
 
   .db-table-thumb__initial {

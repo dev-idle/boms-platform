@@ -105,7 +105,7 @@ export function ManagerProductsTable() {
                 </th>
                 <th>Product</th>
                 <th>Category</th>
-                <th>Price</th>
+                <th className="db-table-num">Price</th>
                 <th className="db-table-status">Status</th>
                 <th className="db-table-detail">Actions</th>
               </tr>
@@ -150,7 +150,7 @@ export function ManagerProductsTable() {
                       <span className="db-table-cell-placeholder">—</span>
                     )}
                   </td>
-                  <td className="text-tabular">
+                  <td className="db-table-num">
                     {formatPriceCents(product.price_cents)}
                   </td>
                   <td className="db-table-status">

@@ -74,7 +74,7 @@ export function StaffOrdersTable() {
               <th>Order</th>
               <th>Customer</th>
               <th>Pickup</th>
-              <th className="db-table-cell-numeric">Total</th>
+              <th className="db-table-num">Total</th>
               <th className="db-table-status">Status</th>
               <th className="db-table-detail">Detail</th>
             </tr>
@@ -112,7 +112,7 @@ export function StaffOrdersTable() {
                         ? formatPickupDateTime(order.pickup_at)
                         : "Not scheduled"}
                     </td>
-                    <td className="text-tabular">
+                    <td className="db-table-num">
                       {formatPriceCents(order.total_cents)}
                     </td>
                     <td className="db-table-status">

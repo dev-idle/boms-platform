@@ -105,11 +105,18 @@ export function ManagerDiscountCodesTable() {
 
         <DashboardTableWrap refetching={refetching}>
           <table className="db-table db-table--catalog">
+            <colgroup>
+              <col />
+              <col className="db-table-col-number" />
+              <col className="db-table-col-number" />
+              <col className="db-table-col-datetime" />
+              <col className="db-table-col-datetime" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Code</th>
-                <th>Value</th>
-                <th>Uses</th>
+                <th className="db-table-num">Value</th>
+                <th className="db-table-num">Uses</th>
                 <th>{DASHBOARD_TABLE_COLUMN_LABEL.startsAt}</th>
                 <th>{DASHBOARD_TABLE_COLUMN_LABEL.endsAt}</th>
                 <th className="db-table-status">Status</th>
@@ -131,13 +138,13 @@ export function ManagerDiscountCodesTable() {
                   <td className="db-table-cell-primary text-order-code">
                     {discountCode.code}
                   </td>
-                  <td className="text-tabular">
+                  <td className="db-table-num">
                     {formatDiscountValue(
                       discountCode.discount_type,
                       discountCode.value,
                     )}
                   </td>
-                  <td className="text-tabular">
+                  <td className="db-table-num">
                     {discountCode.used_count}
                     {discountCode.max_uses != null
                       ? ` / ${discountCode.max_uses}`

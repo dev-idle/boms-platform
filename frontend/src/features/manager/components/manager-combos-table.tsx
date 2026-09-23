@@ -94,13 +94,20 @@ export function ManagerCombosTable() {
 
         <DashboardTableWrap refetching={refetching}>
           <table className="db-table db-table--catalog">
+            <colgroup>
+              <col />
+              <col className="db-table-col-number" />
+              <col className="db-table-col-number" />
+              <col className="db-table-col-datetime" />
+              <col className="db-table-col-datetime" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Price</th>
+                <th className="db-table-num">Price</th>
+                <th className="db-table-num">Items</th>
                 <th>{DASHBOARD_TABLE_COLUMN_LABEL.startsAt}</th>
                 <th>{DASHBOARD_TABLE_COLUMN_LABEL.endsAt}</th>
-                <th>Items</th>
                 <th className="db-table-status">Status</th>
                 <th className="db-table-detail">Actions</th>
               </tr>
@@ -118,12 +125,12 @@ export function ManagerCombosTable() {
                 ? combos.map((combo) => (
                 <tr key={combo.id}>
                   <td className="db-table-cell-primary">{combo.name}</td>
-                  <td className="text-tabular">
+                  <td className="db-table-num">
                     {formatPriceCents(combo.price_cents)}
                   </td>
+                  <td className="db-table-num">{combo.items.length}</td>
                   <DashboardTableDateTimeCell iso={combo.starts_at} />
                   <DashboardTableDateTimeCell iso={combo.ends_at} />
-                  <td className="text-tabular">{combo.items.length}</td>
                   <td className="db-table-status">
                     <EntityActivePill active={combo.is_active} />
                   </td>

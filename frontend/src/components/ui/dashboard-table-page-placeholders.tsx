@@ -19,7 +19,9 @@ export function DashboardTablePagePlaceholders({
       className="db-table-row--page-placeholder"
     >
       {Array.from({ length: columnCount }, (_, cellIndex) => (
-        <td key={cellIndex}>{"\u00a0"}</td>
+        // Empty: the cell takes its height from CSS, which mirrors the row this
+        // one stands in for \u2014 a line of text, a thumb, or a stacked timestamp.
+        <td key={cellIndex} />
       ))}
     </tr>
   ));

@@ -51,6 +51,11 @@
   --db-table-cell-padding-block: 1.125rem;
   --db-table-cell-padding-inline: 1.5rem;
   --db-table-action-hit: 2.5rem;
+  /* 52px catalog thumb, and the block padding its cell trades for the text rhythm. */
+  --db-table-thumb-size: 3.25rem;
+  --db-table-thumb-padding-block: 0.75rem;
+  /* A stacked timestamp: the date line, the gap, the smaller time line. */
+  --db-table-datetime-height: calc(1.1375rem + 0.125rem + 1.05rem);
   --db-table-action-icon: 1.0625rem;
   /* 76px leading icon/thumb column — the only width shared by every table. */
   --db-table-col-lead: 4.75rem;
@@ -58,6 +63,10 @@
   --db-table-col-actions-pair: 10.5rem;
   --db-table-col-actions-group: 17rem;
   --db-table-col-role: 9.25rem;
+  /* A number column: the widest value ("$1,234.00") plus the 24px cell padding. */
+  --db-table-col-number: 8rem;
+  /* A timestamp column: "Sep 25, 2026" with its time below, plus that padding. */
+  --db-table-col-datetime: 9.75rem;
   --db-table-admin-fixed-cols: calc(
     var(--db-table-col-lead) + var(--db-table-col-role) +
       var(--db-table-col-status-pill) + var(--db-table-col-actions-group)
