@@ -7,11 +7,19 @@ import { connection } from "next/server";
 
 import { getServerEnv } from "@/lib/env";
 
+import {
+  CLIENT_IP_HEADER,
+  FORWARDING_HEADERS,
+} from "@/constants/http-headers";
+
+import { resolveClientIp } from "./client-ip";
+
 const INTERNAL_SECRET_HEADER = "X-Internal-Secret";
 const REQUEST_TIMEOUT_MS = 25_000;
 
 /** Client must never supply these; the BFF re-stamps trusted values. */
 const STRIP_REQUEST_HEADERS = new Set([
+  ...FORWARDING_HEADERS,
   "connection",
   "content-length",
   "host",
@@ -86,6 +94,13 @@ export async function proxyRequestToBackend(
   });
 
   headers.set(INTERNAL_SECRET_HEADER, env.INTERNAL_PROXY_SECRET);
+
+  // The API sees only this proxy, so it reads the visitor from here: its
+  // rate-limit buckets and audit rows would otherwise all say "the BFF".
+  const clientIp = resolveClientIp(request.headers);
+  if (clientIp) {
+    headers.set(CLIENT_IP_HEADER, clientIp);
+  }
   if (!headers.has("X-Request-ID")) {
     headers.set("X-Request-ID", randomUUID());
   }

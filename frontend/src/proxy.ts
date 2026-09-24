@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import type { NextProxy, NextRequest } from "next/server";
 
 import { AUTH_REFRESH_COOKIE } from "@/constants/cookies";
+import { FORWARDING_HEADERS } from "@/constants/http-headers";
 import { ROUTE } from "@/constants/routes";
 import { getBackendOrigin, getServerEnv } from "@/lib/env";
 import { isProtectedPath } from "@/lib/routing/role-routes";
@@ -24,6 +25,9 @@ function stripUntrustedInboundHeaders(request: NextRequest): Headers {
     "x-user-role",
     "x-request-id",
     "x-auth-hint",
+    // The edge owns these: a visitor that could set them would pick its own
+    // rate-limit bucket and the address written into audit rows.
+    ...FORWARDING_HEADERS,
   ] as const;
   for (const name of blocked) {
     headers.delete(name);
