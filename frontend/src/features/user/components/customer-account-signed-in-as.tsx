@@ -6,13 +6,17 @@ import { useMe } from "../hooks";
 export function CustomerAccountSignedInAs() {
   const me = useMe();
 
-  if (!me.data) {
-    return null;
-  }
-
+  // The line holds its place while /me answers: arriving late, it would push the
+  // whole account page down a row.
   return (
-    <p className="storefront-account-signed-in">
-      Signed in as <strong>{me.data.email}</strong>
+    <p aria-busy={!me.data || undefined} className="storefront-account-signed-in">
+      {me.data ? (
+        <>
+          Signed in as <strong>{me.data.email}</strong>
+        </>
+      ) : (
+        " "
+      )}
     </p>
   );
 }

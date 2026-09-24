@@ -19,6 +19,7 @@ export function StorefrontHeaderCartLink() {
 
   return (
     <Link
+      aria-busy={cartQuery.isPending || undefined}
       aria-label={
         itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"
       }

@@ -133,7 +133,10 @@ export function BakerProductionOrderDetail({
                 type="button"
                 onClick={() => patchStatus.mutate({ status: action.status })}
               >
-                {patchStatus.isPending ? "Updating…" : action.label}
+                {patchStatus.isPending &&
+                patchStatus.variables?.status === action.status
+                  ? "Updating…"
+                  : action.label}
               </Button>
             ))}
           </div>

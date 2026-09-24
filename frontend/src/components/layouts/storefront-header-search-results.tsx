@@ -42,6 +42,7 @@ export function StorefrontHeaderSearchResults({
   return (
     <div
       ref={panelRef}
+      aria-busy={loading || undefined}
       className={cn(
         "storefront-header-results",
         open && "storefront-header-results--open",

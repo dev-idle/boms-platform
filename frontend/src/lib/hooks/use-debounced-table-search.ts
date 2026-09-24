@@ -25,7 +25,6 @@ export function useDebouncedTableSearch(delayMs = DEFAULT_DELAY_MS) {
     clear,
     hasInput: input.length > 0,
     input,
-    isDebouncing: input.trim() !== search,
     page,
     search,
     setInput,

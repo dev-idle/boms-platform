@@ -13,6 +13,13 @@ export function DeleteAccountCard() {
   const [open, setOpen] = useState(false);
 
   const canDelete = me.data?.role === "customer";
+  // A greyed action says why it is greyed (02-COMPONENTS §4): still loading, or
+  // not a customer account.
+  const disabledReason = me.isPending
+    ? "Loading your account…"
+    : canDelete
+      ? undefined
+      : "Only customer accounts can be deleted here.";
 
   return (
     <div className="storefront-account-danger">
@@ -21,8 +28,10 @@ export function DeleteAccountCard() {
         cannot be undone from the app.
       </p>
       <Button
+        aria-busy={me.isPending || undefined}
         disabled={!canDelete || mutation.isPending}
         onClick={() => setOpen(true)}
+        title={disabledReason}
         type="button"
         variant="destructive"
       >

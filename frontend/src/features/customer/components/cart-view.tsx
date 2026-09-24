@@ -57,8 +57,16 @@ function CartLineItem({ item }: { item: CartItem }) {
           Quantity for {item.name}
         </label>
         <Input
+          aria-busy={updateItem.isPending || undefined}
           className="storefront-cart-line__qty"
           disabled={updateItem.isPending || !item.is_available}
+          title={
+            updateItem.isPending
+              ? "Updating quantity…"
+              : item.is_available
+                ? undefined
+                : "This item is no longer available."
+          }
           variant="inline"
           id={`qty-${item.id}`}
           max={99}
@@ -74,12 +82,13 @@ function CartLineItem({ item }: { item: CartItem }) {
           }}
         />
         <button
+          aria-busy={removeItem.isPending || undefined}
           className="storefront-cart-remove"
           disabled={removeItem.isPending}
           type="button"
           onClick={() => removeItem.mutate(item.id)}
         >
-          Remove
+          {removeItem.isPending ? "Removing…" : "Remove"}
         </button>
       </div>
     </li>
@@ -153,23 +162,28 @@ export function CartView() {
                   onChange={(event) => setDiscountCode(event.target.value)}
                 />
                 <Button
+                  aria-busy={applyDiscount.isPending || undefined}
                   disabled={applyDiscount.isPending || discountCode.trim() === ""}
+                  title={
+                    discountCode.trim() === "" ? "Enter a code first." : undefined
+                  }
                   type="button"
                   variant="outline"
                   onClick={() =>
                     applyDiscount.mutate({ code: discountCode.trim() })
                   }
                 >
-                  Apply
+                  {applyDiscount.isPending ? "Applying…" : "Apply"}
                 </Button>
                 {cart.discount ? (
                   <button
+                    aria-busy={removeDiscount.isPending || undefined}
                     className="storefront-cart-remove storefront-cart-remove--code"
                     disabled={removeDiscount.isPending}
                     type="button"
                     onClick={() => removeDiscount.mutate()}
                   >
-                    Remove code
+                    {removeDiscount.isPending ? "Removing…" : "Remove code"}
                   </button>
                 ) : null}
               </div>

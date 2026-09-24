@@ -194,6 +194,9 @@ export function AppDialog({
       onClick={handleBackdropClick}
     >
       <div
+        // While the request runs, Esc and the backdrop stop closing the dialog.
+        // `aria-busy` is what says so to anything that cannot see the button label.
+        aria-busy={isPending || undefined}
         aria-labelledby={titleId}
         aria-modal="true"
         className={cn(

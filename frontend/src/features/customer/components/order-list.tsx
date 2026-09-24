@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { AsyncPanel } from "@/components/ui/async-panel";
 import { Button } from "@/components/ui/button";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import {
@@ -17,12 +18,15 @@ import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
+import { getQuerySurface } from "@/lib/react-query/query-surface";
+
 import { useOrders } from "../hooks";
 
 export function OrderList() {
   const [page, setPage] = useState(1);
   const filter = useMemo(() => ({ page, page_size: 20 }), [page]);
   const ordersQuery = useOrders(filter);
+  const { refetching } = getQuerySurface(ordersQuery);
 
   if (ordersQuery.isPending) {
     return <InlineLoadingState />;
@@ -54,38 +58,41 @@ export function OrderList() {
 
   return (
     <div className="storefront-orders">
-      <ul className="storefront-orders__list">
-        {orders.map((order) => (
-          <li key={order.id}>
-            <Link
-              className="storefront-order-card"
-              href={ROUTE.orderDetail(order.id)}
-            >
-              <div className="storefront-order-card__main">
-                <div className="storefront-order-card__top">
-                  <p className="storefront-order-card__price text-price">
-                    {formatPriceCents(order.total_cents)}
+      {/* A page change keeps the previous page on screen; the scrim says so. */}
+      <AsyncPanel refetching={refetching}>
+        <ul className="storefront-orders__list">
+          {orders.map((order) => (
+            <li key={order.id}>
+              <Link
+                className="storefront-order-card"
+                href={ROUTE.orderDetail(order.id)}
+              >
+                <div className="storefront-order-card__main">
+                  <div className="storefront-order-card__top">
+                    <p className="storefront-order-card__price text-price">
+                      {formatPriceCents(order.total_cents)}
+                    </p>
+                    <StatusPill
+                      label={formatOrderStatusLabel(order.status)}
+                      variant={orderStatusToPillVariant(order.status)}
+                    />
+                  </div>
+                  <p className="storefront-order-card__meta text-caption">
+                    {formatDateTime(order.created_at)} · {order.item_count} item
+                    {order.item_count === 1 ? "" : "s"}
+                    {order.pickup_at
+                      ? ` · Pickup ${formatPickupDateTime(order.pickup_at)}`
+                      : ""}
                   </p>
-                  <StatusPill
-                    label={formatOrderStatusLabel(order.status)}
-                    variant={orderStatusToPillVariant(order.status)}
-                  />
                 </div>
-                <p className="storefront-order-card__meta text-caption">
-                  {formatDateTime(order.created_at)} · {order.item_count} item
-                  {order.item_count === 1 ? "" : "s"}
-                  {order.pickup_at
-                    ? ` · Pickup ${formatPickupDateTime(order.pickup_at)}`
-                    : ""}
-                </p>
-              </div>
-              <span className="storefront-order-card__cta" aria-hidden="true">
-                →
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+                <span className="storefront-order-card__cta" aria-hidden="true">
+                  →
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </AsyncPanel>
 
       {pagination && pagination.total_pages > 1 ? (
         <div className="storefront-orders__pagination">

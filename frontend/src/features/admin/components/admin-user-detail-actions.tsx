@@ -94,6 +94,7 @@ export function AdminUserDetailActions({
       <InlineAction
           disabled={actionsPending}
           onClick={onRevokeSessions}
+          title={actionsPending ? "Another action is finishing…" : undefined}
           tone="warning"
         >
           Revoke all sessions

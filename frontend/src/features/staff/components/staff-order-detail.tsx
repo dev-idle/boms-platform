@@ -161,7 +161,12 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
                     patchStatus.mutate({ status: action.status });
                   }}
                 >
-                  {patchStatus.isPending ? "Updating…" : action.label}
+                  {/* Only the action being applied says so; the others are simply
+                      held. One label per running request. */}
+                  {patchStatus.isPending &&
+                  patchStatus.variables?.status === action.status
+                    ? "Updating…"
+                    : action.label}
                 </Button>
               ))}
             </div>

@@ -35,6 +35,9 @@ export function ComboProductPicker({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const debouncedQuery = useDebouncedValue(query, 280).trim();
+  // Every search, not just the first: under keepPreviousData the list would
+  // otherwise show the previous query's products as though they were the answer.
+  const settling = query.trim() !== debouncedQuery;
 
   const productsQuery = useProducts({
     page: 1,
@@ -76,7 +79,8 @@ export function ComboProductPicker({
   }
 
   const showList = open && !value;
-  const listEmpty = !productsQuery.isPending && options.length === 0;
+  const busy = productsQuery.isFetching || settling;
+  const listEmpty = !busy && options.length === 0;
 
   return (
     <div className={cn("combo-product-picker", className)} ref={rootRef}>
@@ -136,17 +140,17 @@ export function ComboProductPicker({
               id={listboxId}
               role="listbox"
             >
-              {productsQuery.isPending ? (
+              {busy ? (
                 <li className="combo-product-picker__status">Searching…</li>
               ) : null}
-              {!productsQuery.isPending && listEmpty ? (
+              {listEmpty ? (
                 <li className="combo-product-picker__status">
                   {debouncedQuery
                     ? "No products match."
                     : "Type a product name or slug."}
                 </li>
               ) : null}
-              {!productsQuery.isPending
+              {!busy
                 ? options.map((product) => (
                     <li key={product.id} role="presentation">
                       <button

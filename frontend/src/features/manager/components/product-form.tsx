@@ -162,8 +162,22 @@ function ProductFormFields({
           render={({ field }) => (
             <FormItem>
               <FieldControl label="Category">
-                <Select onChange={field.onChange} value={field.value ?? ""}>
-                  <option value="">Select a category</option>
+                {/* The list arrives with the form: until it does the control says so
+                    rather than offering an empty menu. */}
+                <Select
+                  aria-busy={categoriesQuery.isPending || undefined}
+                  disabled={categoriesQuery.isPending}
+                  onChange={field.onChange}
+                  title={
+                    categoriesQuery.isPending ? "Loading categories…" : undefined
+                  }
+                  value={field.value ?? ""}
+                >
+                  <option value="">
+                    {categoriesQuery.isPending
+                      ? "Loading categories…"
+                      : "Select a category"}
+                  </option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}

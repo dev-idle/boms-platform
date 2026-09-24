@@ -269,6 +269,13 @@
     color: var(--color-ink);
   }
 
+  /* Signing out: the row is held, so it stops answering the pointer and reads in
+     the muted tone every waiting control uses. */
+  .dashboard-account-item[data-disabled] {
+    color: var(--color-muted);
+    cursor: progress;
+  }
+
   /* The danger tint sits at the same lightness as --color-paper-4, so this hover
      weighs what every other hover weighs and only the hue says "destructive". */
   .dashboard-account-item--signout[data-highlighted] {

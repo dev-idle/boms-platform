@@ -81,13 +81,19 @@ export function DashboardAccountMenu({
 
           <DropdownMenu.Separator className="dashboard-account-separator" />
 
-          {/* Selecting closes the menu and the mutation always redirects, so there is
-              no pending state anyone can see. */}
+          {/* The menu stays open while the request runs: closing it first would take
+              the only place the wait could be shown, and signing out is slow enough
+              to be worth saying. The redirect closes it. */}
           <DropdownMenu.Item
+            aria-busy={logout.isPending || undefined}
             className="dashboard-account-item dashboard-account-item--signout"
-            onSelect={() => logout.mutate()}
+            disabled={logout.isPending}
+            onSelect={(event) => {
+              event.preventDefault();
+              logout.mutate();
+            }}
           >
-            Sign out
+            {logout.isPending ? "Signing out…" : "Sign out"}
             {/* Trailing so both labels keep one left rail; the only glyph in the
                 menu, so it reads as punctuation rather than a column of icons. */}
             <LogOutIcon className="dashboard-account-item__mark" />
