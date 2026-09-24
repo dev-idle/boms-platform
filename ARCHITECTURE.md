@@ -325,6 +325,29 @@ BOMS is a **bakery pickup** flow, not delivery or shipping.
 
 ---
 
+### Shared contracts (`contracts/`)
+
+Rules enforced on **both** sides are held to one fixture at the repo root, owned
+by neither side:
+
+```
+contracts/
+├── README.md                    # what belongs here, how to add a case
+└── vietnam-phone-cases.json     # Vietnam mobile rule — accepted, stored, rejected, displayed
+```
+
+`backend/internal/shared/utils/phone_test.go` and
+`frontend/src/lib/validation/phone.test.ts` read the same file, and both CI
+workflows watch `contracts/**`, so a change to one implementation that the other
+does not follow fails the build. Cases go in the fixture, never in either test.
+
+A fixture belongs here only when Go and TypeScript both enforce the rule and must
+agree exactly. A rule that lives on one side stays with that side; codes mirrored
+across the boundary (`apperrors` → `ApiErrorCode`) are covered by
+`internal/shared/errors/contract_test.go` instead.
+
+---
+
 ## 7. Verification gates
 
 ```bash
