@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import {
+  CATALOG_CATEGORIES_PAGE_SIZE,
+  CATALOG_COMBOS_PAGE_SIZE,
+  CATALOG_PRODUCTS_PAGE_SIZE,
+} from "@/constants/catalog";
+
 import { catalogSlugSchema } from "@/lib/validation/catalog";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 import {
@@ -28,12 +34,12 @@ export const catalogProductSchema = z.object({
 
 export const catalogCategoriesListFilterSchema = z.object({
   page: z.number().int().min(1).default(1),
-  page_size: z.number().int().min(1).max(100).default(100),
+  page_size: z.number().int().min(1).max(100).default(CATALOG_CATEGORIES_PAGE_SIZE),
 });
 
 export const catalogProductsListFilterSchema = z.object({
   page: z.number().int().min(1).default(1),
-  page_size: z.number().int().min(1).max(100).default(24),
+  page_size: z.number().int().min(1).max(100).default(CATALOG_PRODUCTS_PAGE_SIZE),
   category_id: z.string().uuid().optional(),
   search: z.string().max(100).optional().default(""),
 });
@@ -59,7 +65,7 @@ export const catalogComboSchema = z.object({
 
 export const catalogCombosListFilterSchema = z.object({
   page: z.number().int().min(1).default(1),
-  page_size: z.number().int().min(1).max(100).default(12),
+  page_size: z.number().int().min(1).max(100).default(CATALOG_COMBOS_PAGE_SIZE),
 });
 
 export type CatalogCategory = z.infer<typeof catalogCategorySchema>;

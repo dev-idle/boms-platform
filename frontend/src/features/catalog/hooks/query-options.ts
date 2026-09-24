@@ -65,18 +65,12 @@ export function catalogProductQueryOptions(id: string, enabled: boolean) {
   });
 }
 
-const defaultCombosFilter: CatalogCombosListFilterInput = {
-  page: 1,
-  page_size: 12,
-};
-
-export function catalogCombosQueryOptions(
-  input: CatalogCombosListFilterInput = defaultCombosFilter,
-) {
+export function catalogCombosQueryOptions(input: CatalogCombosListFilterInput) {
   const filter = catalogCombosListFilterSchema.parse(input);
   return queryOptions({
     queryKey: catalogQueryKeys.combos(filter),
     queryFn: () => listCatalogCombos(filter),
     placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
 }

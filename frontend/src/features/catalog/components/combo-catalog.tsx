@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useCatalogCombos } from "../hooks";
+import { CATALOG_COMBOS_PAGE_SIZE } from "@/constants/catalog";
 import {
   CATALOG_COMBOS_HEADING_ID,
   CATALOG_COMBOS_SECTION_ID,
@@ -13,8 +14,6 @@ import {
 import { CatalogPagination } from "./catalog-pagination";
 import { ComboCard } from "./combo-card";
 
-const COMBOS_PAGE_SIZE = 12;
-
 type ComboCatalogProps = {
   renderPurchaseActions?: (comboId: string) => ReactNode;
 };
@@ -22,7 +21,7 @@ type ComboCatalogProps = {
 export function ComboCatalog({ renderPurchaseActions }: ComboCatalogProps) {
   const [page, setPage] = useState(1);
   const filter = useMemo(
-    () => ({ page, page_size: COMBOS_PAGE_SIZE }),
+    () => ({ page, page_size: CATALOG_COMBOS_PAGE_SIZE }),
     [page],
   );
   const combosQuery = useCatalogCombos(filter);

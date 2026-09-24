@@ -43,6 +43,6 @@ export function useCatalogProduct(
   });
 }
 
-export function useCatalogCombos(input?: CatalogCombosListFilterInput) {
+export function useCatalogCombos(input: CatalogCombosListFilterInput) {
   return useQuery(catalogCombosQueryOptions(input));
 }

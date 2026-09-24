@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { AsyncPanel } from "@/components/ui/async-panel";
 import { StorefrontPageHeader } from "@/components/layouts/storefront-page-header";
 
+import {
+  CATALOG_COMBOS_PAGE_SIZE,
+  CATALOG_PRODUCTS_PAGE_SIZE,
+} from "@/constants/catalog";
 import { catalogProductFallbackImageUrl } from "@/constants/storefront-imagery";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 
@@ -21,7 +25,7 @@ import { CatalogPagination } from "./catalog-pagination";
 import { ProductCard } from "./product-card";
 import { ProductCatalogLoading } from "./product-catalog-loading";
 
-const PRODUCTS_PAGE_SIZE = 24;
+
 
 const CATALOG_PAGE_LEAD =
   "Everything we bake today, in one place. Availability updates through the morning as each batch leaves the oven.";
@@ -36,12 +40,16 @@ export function ProductCatalog() {
   } = useCatalogBrowseFilters();
 
   const productsFilter = useMemo(
-    () => toCatalogProductsFilter(params, PRODUCTS_PAGE_SIZE),
+    () => toCatalogProductsFilter(params, CATALOG_PRODUCTS_PAGE_SIZE),
     [params],
   );
 
   const categoriesQuery = useCatalogCategories();
-  const combosProbeQuery = useCatalogCombos({ page: 1, page_size: 1 });
+  // The page the combos section itself renders, so one query answers both.
+  const combosQuery = useCatalogCombos({
+    page: 1,
+    page_size: CATALOG_COMBOS_PAGE_SIZE,
+  });
   const productsQuery = useCatalogProducts(productsFilter);
 
   const categories = categoriesQuery.data?.categories ?? [];
@@ -51,8 +59,7 @@ export function ProductCatalog() {
     !productsQuery.isPending && !productsQuery.isError && pagination;
   const activeSearch = params.search.trim();
   const showCombosLink =
-    !combosProbeQuery.isPending &&
-    (combosProbeQuery.data?.pagination.total ?? 0) > 0;
+    !combosQuery.isPending && (combosQuery.data?.pagination.total ?? 0) > 0;
   const {
     initialLoading: productsInitialLoading,
     refetching: productsRefetching,
