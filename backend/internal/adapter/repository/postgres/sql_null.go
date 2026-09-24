@@ -21,6 +21,15 @@ func optionalString(v *string) sql.NullString {
 	return sql.NullString{String: *v, Valid: true}
 }
 
+// stringOrNil reads a nullable text column back into the domain's optional string.
+func stringOrNil(v sql.NullString) *string {
+	if !v.Valid {
+		return nil
+	}
+	value := v.String
+	return &value
+}
+
 func optionalUUID(id *uuid.UUID) uuid.NullUUID {
 	if id == nil {
 		return uuid.NullUUID{}

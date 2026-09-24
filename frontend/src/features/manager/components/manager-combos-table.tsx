@@ -10,6 +10,8 @@ import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import { catalogItemInitial } from "@/features/catalog";
+import { catalogProductImageUrl } from "@/lib/cloudinary/config";
 import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import {
   DashboardTableDeleteButton,
@@ -33,6 +35,11 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 import { useCombos, useDeleteCombo } from "../hooks";
 
 const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
+
+/** The combo's own shot, sized for the 52px row tile. */
+function comboThumbUrl(imageUrl: string | null): string | undefined {
+  return catalogProductImageUrl(imageUrl, 96);
+}
 
 export function ManagerCombosTable() {
   const {
@@ -95,6 +102,7 @@ export function ManagerCombosTable() {
         <DashboardTableWrap refetching={refetching}>
           <table className="db-table db-table--catalog">
             <colgroup>
+              <col className="db-table-col-thumb" />
               <col />
               <col className="db-table-col-number" />
               <col className="db-table-col-number" />
@@ -103,6 +111,9 @@ export function ManagerCombosTable() {
             </colgroup>
             <thead>
               <tr>
+                <th className="db-table-cell-thumb">
+                  <span className="sr-only">Image</span>
+                </th>
                 <th>Name</th>
                 <th className="db-table-num">Price</th>
                 <th className="db-table-num">Items</th>
@@ -114,7 +125,7 @@ export function ManagerCombosTable() {
             </thead>
             <tbody>
               <DashboardTableStateRows
-                columnCount={7}
+                columnCount={8}
                 entityLabel="combos"
                 hasActiveFilter={Boolean(search)}
                 isEmpty={combos.length === 0}
@@ -124,6 +135,23 @@ export function ManagerCombosTable() {
               {!initialLoading && !query.isError && combos.length > 0
                 ? combos.map((combo) => (
                 <tr key={combo.id}>
+                  <td className="db-table-cell-thumb">
+                    <span className="db-table-thumb">
+                      {comboThumbUrl(combo.image_url) ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- manager-provided catalog URL
+                        <img
+                          alt=""
+                          aria-hidden
+                          className="db-table-thumb__image"
+                          src={comboThumbUrl(combo.image_url)}
+                        />
+                      ) : (
+                        <span className="db-table-thumb__initial">
+                          {catalogItemInitial(combo.name)}
+                        </span>
+                      )}
+                    </span>
+                  </td>
                   <td className="db-table-cell-primary">{combo.name}</td>
                   <td className="db-table-num">
                     {formatPriceCents(combo.price_cents)}
@@ -152,7 +180,7 @@ export function ManagerCombosTable() {
               ))
                 : null}
               <DashboardTablePagePlaceholders
-                columnCount={7}
+                columnCount={8}
                 count={pagePlaceholderCount}
               />
             </tbody>

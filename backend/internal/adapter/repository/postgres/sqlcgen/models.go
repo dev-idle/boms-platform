@@ -229,16 +229,17 @@ type Category struct {
 }
 
 type Combo struct {
-	ID         uuid.UUID    `db:"id" json:"id"`
-	Name       string       `db:"name" json:"name"`
-	Slug       string       `db:"slug" json:"slug"`
-	PriceCents int64        `db:"price_cents" json:"priceCents"`
-	StartsAt   time.Time    `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time    `db:"ends_at" json:"endsAt"`
-	IsActive   bool         `db:"is_active" json:"isActive"`
-	CreatedAt  time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt  time.Time    `db:"updated_at" json:"updatedAt"`
-	DeletedAt  sql.NullTime `db:"deleted_at" json:"deletedAt"`
+	ID         uuid.UUID      `db:"id" json:"id"`
+	Name       string         `db:"name" json:"name"`
+	Slug       string         `db:"slug" json:"slug"`
+	PriceCents int64          `db:"price_cents" json:"priceCents"`
+	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
+	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
+	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
+	IsActive   bool           `db:"is_active" json:"isActive"`
+	CreatedAt  time.Time      `db:"created_at" json:"createdAt"`
+	UpdatedAt  time.Time      `db:"updated_at" json:"updatedAt"`
+	DeletedAt  sql.NullTime   `db:"deleted_at" json:"deletedAt"`
 }
 
 type CustomerProfile struct {

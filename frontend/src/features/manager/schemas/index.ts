@@ -2,7 +2,12 @@ import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
-import { productImageUrlsResponseSchema, productImageUrlsSchema } from "@/lib/validation/cloudinary";
+import {
+  catalogImageUrlResponseSchema,
+  catalogImageUrlSchema,
+  productImageUrlsResponseSchema,
+  productImageUrlsSchema,
+} from "@/lib/validation/cloudinary";
 
 import {
   COMBO_BUNDLE_MIN_MESSAGE,
@@ -116,6 +121,7 @@ export const managerComboSchema = z.object({
   name: z.string().min(1),
   slug: catalogSlugSchema,
   price_cents: z.number().int().min(0),
+  image_url: catalogImageUrlResponseSchema,
   starts_at: apiDateTimeSchema,
   ends_at: apiDateTimeSchema,
   is_active: z.boolean(),
@@ -129,6 +135,7 @@ export const comboFormSchema = z
     name: z.string().trim().min(1, "Name is required").max(255),
     slug: catalogSlugSchema,
     price_cents: z.coerce.number().int().min(0, "Price must be zero or greater"),
+    image_url: catalogImageUrlSchema,
     starts_at: apiDateTimeSchema,
     ends_at: apiDateTimeSchema,
     is_active: z.boolean(),

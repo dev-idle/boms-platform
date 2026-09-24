@@ -302,7 +302,7 @@ export function CatalogImageListField({
                       ) : null}
                     </div>
                     <div className="catalog-image-list-copy">
-                      {isPrimary ? (
+                      {showOrderBadges && isPrimary ? (
                         <span className="catalog-image-list-primary-label">
                           {CATALOG_IMAGE_FIELD_COPY.primaryImage}
                         </span>
@@ -370,11 +370,14 @@ export function CatalogImageListField({
             >
               {CATALOG_IMAGE_FIELD_COPY.addImage}
             </Button>
-            <span className="catalog-image-field-status">
-              {isUploading
-                ? CATALOG_IMAGE_FIELD_COPY.uploadProgress
-                : CATALOG_IMAGE_FIELD_COPY.imageCount(value.length, maxImages)}
-            </span>
+            {/* A gallery counts; a single-image field has nothing to count. */}
+            {isUploading || maxImages > 1 ? (
+              <span className="catalog-image-field-status">
+                {isUploading
+                  ? CATALOG_IMAGE_FIELD_COPY.uploadProgress
+                  : CATALOG_IMAGE_FIELD_COPY.imageCount(value.length, maxImages)}
+              </span>
+            ) : null}
           </div>
         ) : (
           <Button

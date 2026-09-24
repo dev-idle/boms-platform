@@ -12,6 +12,7 @@ const sampleCombo: CatalogCombo = {
   name: "Morning set",
   slug: "morning-set",
   price_cents: 1200,
+  image_url: null,
   starts_at: "2026-01-01T00:00:00+00:00",
   ends_at: "2026-12-31T23:59:59+00:00",
   items: [

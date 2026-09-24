@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/boms/backend/internal/config"
 	domaincatalog "github.com/boms/backend/internal/domain/catalog"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -20,19 +21,21 @@ import (
 )
 
 type ManagerComboUsecase struct {
-	combos port.ComboRepository
-	tx     port.TxManager
-	audit  *auditlogger.Service
-	log    *zap.Logger
+	combos     port.ComboRepository
+	tx         port.TxManager
+	audit      *auditlogger.Service
+	cloudinary config.CloudinaryConfig
+	log        *zap.Logger
 }
 
 func NewManagerComboUsecase(
 	combos port.ComboRepository,
 	tx port.TxManager,
 	audit *auditlogger.Service,
+	cloudinary config.CloudinaryConfig,
 	log *zap.Logger,
 ) *ManagerComboUsecase {
-	return &ManagerComboUsecase{combos: combos, tx: tx, audit: audit, log: log}
+	return &ManagerComboUsecase{combos: combos, tx: tx, audit: audit, cloudinary: cloudinary, log: log}
 }
 
 func (u *ManagerComboUsecase) Create(
@@ -41,7 +44,11 @@ func (u *ManagerComboUsecase) Create(
 	actorRole domainuser.Role,
 	req dto.CreateComboRequest,
 ) (*dto.ComboResponse, error) {
-	parsed, err := parseComboRequest(req.Name, req.Slug, req.PriceCents, req.StartsAt, req.EndsAt, req.IsActive, req.Items, true)
+	imageURL, err := sanitizeManagerComboImageURL(u.cloudinary, req.ImageURL)
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := parseComboRequest(req.Name, req.Slug, req.PriceCents, imageURL, req.StartsAt, req.EndsAt, req.IsActive, req.Items, true)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +144,11 @@ func (u *ManagerComboUsecase) Update(
 		return nil, err
 	}
 
-	parsed, parseErr := parseComboRequest(req.Name, req.Slug, req.PriceCents, req.StartsAt, req.EndsAt, req.IsActive, req.Items, false)
+	imageURL, imageErr := sanitizeManagerComboImageURL(u.cloudinary, req.ImageURL)
+	if imageErr != nil {
+		return nil, imageErr
+	}
+	parsed, parseErr := parseComboRequest(req.Name, req.Slug, req.PriceCents, imageURL, req.StartsAt, req.EndsAt, req.IsActive, req.Items, false)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -146,6 +157,7 @@ func (u *ManagerComboUsecase) Update(
 		Name:       parsed.params.Name,
 		Slug:       parsed.params.Slug,
 		PriceCents: parsed.params.PriceCents,
+		ImageURL:   parsed.params.ImageURL,
 		StartsAt:   parsed.params.StartsAt,
 		EndsAt:     parsed.params.EndsAt,
 		IsActive:   parsed.params.IsActive,
@@ -206,6 +218,7 @@ type parsedComboRequest struct {
 func parseComboRequest(
 	nameRaw, slugRaw string,
 	priceCents int64,
+	imageURL *string,
 	startsAt, endsAt time.Time,
 	isActive bool,
 	items []dto.ComboItemInput,
@@ -233,6 +246,7 @@ func parseComboRequest(
 			Name:       name,
 			Slug:       slug,
 			PriceCents: priceCents,
+			ImageURL:   imageURL,
 			StartsAt:   startsAt,
 			EndsAt:     endsAt,
 			IsActive:   isActive,
@@ -299,6 +313,7 @@ func toComboResponse(combo *domaincombo.Combo, items []domaincombo.Item) *dto.Co
 		Name:       combo.Name,
 		Slug:       combo.Slug,
 		PriceCents: combo.PriceCents,
+		ImageURL:   combo.ImageURL,
 		StartsAt:   combo.StartsAt,
 		EndsAt:     combo.EndsAt,
 		IsActive:   combo.IsActive,

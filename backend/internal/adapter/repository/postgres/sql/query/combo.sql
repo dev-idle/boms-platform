@@ -1,10 +1,10 @@
 -- name: CreateCombo :one
-INSERT INTO combos (name, slug, price_cents, starts_at, ends_at, is_active)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at;
+INSERT INTO combos (name, slug, price_cents, image_url, starts_at, ends_at, is_active)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at;
 
 -- name: GetComboByID :one
-SELECT id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+SELECT id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 FROM combos
 WHERE id = $1
   AND deleted_at IS NULL;
@@ -14,13 +14,14 @@ UPDATE combos
 SET name        = $2,
     slug        = $3,
     price_cents = $4,
-    starts_at   = $5,
-    ends_at     = $6,
-    is_active   = $7,
+    image_url   = $5,
+    starts_at   = $6,
+    ends_at     = $7,
+    is_active   = $8,
     updated_at  = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at;
+RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at;
 
 -- name: SoftDeleteCombo :execrows
 UPDATE combos
@@ -81,7 +82,7 @@ WHERE ci.combo_id = ANY(sqlc.arg('combo_ids')::uuid[])
 ORDER BY ci.combo_id ASC, p.name ASC;
 
 -- name: ManagerListCombos :many
-SELECT id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+SELECT id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 FROM combos
 WHERE deleted_at IS NULL
   AND (
@@ -103,7 +104,7 @@ WHERE deleted_at IS NULL
   );
 
 -- name: CatalogListCombos :many
-SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
 FROM combos c
 WHERE c.deleted_at IS NULL
   AND c.is_active = true
@@ -135,7 +136,7 @@ WHERE c.deleted_at IS NULL
   );
 
 -- name: CatalogGetCombosByIDs :many
-SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
 FROM combos c
 WHERE c.id = ANY(sqlc.arg('combo_ids')::uuid[])
   AND c.deleted_at IS NULL
@@ -151,7 +152,7 @@ WHERE c.id = ANY(sqlc.arg('combo_ids')::uuid[])
   );
 
 -- name: CatalogGetComboByID :one
-SELECT id, name, slug, price_cents, starts_at, ends_at
+SELECT id, name, slug, price_cents, image_url, starts_at, ends_at
 FROM combos
 WHERE id = $1
   AND deleted_at IS NULL

@@ -146,7 +146,7 @@ type Querier interface {
 	BakerListProductionOrdersCount(ctx context.Context, status NullOrderStatus) (int64, error)
 	//CatalogGetComboByID
 	//
-	//  SELECT id, name, slug, price_cents, starts_at, ends_at
+	//  SELECT id, name, slug, price_cents, image_url, starts_at, ends_at
 	//  FROM combos
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -156,7 +156,7 @@ type Querier interface {
 	CatalogGetComboByID(ctx context.Context, id uuid.UUID) (CatalogGetComboByIDRow, error)
 	//CatalogGetCombosByIDs
 	//
-	//  SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+	//  SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
 	//  FROM combos c
 	//  WHERE c.id = ANY($1::uuid[])
 	//    AND c.deleted_at IS NULL
@@ -223,7 +223,7 @@ type Querier interface {
 	CatalogListCategoriesCount(ctx context.Context) (int64, error)
 	//CatalogListCombos
 	//
-	//  SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+	//  SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
 	//  FROM combos c
 	//  WHERE c.deleted_at IS NULL
 	//    AND c.is_active = true
@@ -375,9 +375,9 @@ type Querier interface {
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	//CreateCombo
 	//
-	//  INSERT INTO combos (name, slug, price_cents, starts_at, ends_at, is_active)
-	//  VALUES ($1, $2, $3, $4, $5, $6)
-	//  RETURNING id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+	//  INSERT INTO combos (name, slug, price_cents, image_url, starts_at, ends_at, is_active)
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7)
+	//  RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 	CreateCombo(ctx context.Context, arg CreateComboParams) (Combo, error)
 	//CreateCustomerProfile
 	//
@@ -579,7 +579,7 @@ type Querier interface {
 	GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error)
 	//GetComboByID
 	//
-	//  SELECT id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+	//  SELECT id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 	//  FROM combos
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -898,7 +898,7 @@ type Querier interface {
 	ManagerListCategoriesCount(ctx context.Context, search sql.NullString) (int64, error)
 	//ManagerListCombos
 	//
-	//  SELECT id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+	//  SELECT id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 	//  FROM combos
 	//  WHERE deleted_at IS NULL
 	//    AND (
@@ -1207,13 +1207,14 @@ type Querier interface {
 	//  SET name        = $2,
 	//      slug        = $3,
 	//      price_cents = $4,
-	//      starts_at   = $5,
-	//      ends_at     = $6,
-	//      is_active   = $7,
+	//      image_url   = $5,
+	//      starts_at   = $6,
+	//      ends_at     = $7,
+	//      is_active   = $8,
 	//      updated_at  = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	//  RETURNING id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+	//  RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 	UpdateCombo(ctx context.Context, arg UpdateComboParams) (Combo, error)
 	//UpdateCustomerProfileByUserID
 	//

@@ -41,6 +41,13 @@ export function cloudinaryImageTooLargeMessage(maxBytes: number): string {
 }
 
 /** Field hint — upload limits (primary/order is shown in the gallery UI). */
+/** A combo carries one promotional shot, so the hint counts formats, not images. */
+export function cloudinaryComboImageFieldHint(
+  maxBytes = CLOUDINARY_MAX_IMAGE_BYTES,
+): string {
+  return `One image. ${CLOUDINARY_UPLOAD_COPY.allowedFormats}, ${formatCloudinaryMaxImageSize(maxBytes)}.`;
+}
+
 export function cloudinaryProductImageFieldHint(
   maxBytes = CLOUDINARY_MAX_IMAGE_BYTES,
   maxImages = CLOUDINARY_MAX_PRODUCT_IMAGES,

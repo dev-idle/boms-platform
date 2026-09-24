@@ -52,6 +52,14 @@ export const productImageUrlsResponseSchema = z
   ])
   .transform((urls) => urls ?? []);
 
+/** A combo carries one promotional image; "" means it has none. Same folder rules. */
+export const catalogImageUrlSchema = z.union([z.literal(""), productImageItemSchema]);
+
+/** Lenient single URL for API responses — null when nothing has been uploaded yet. */
+export const catalogImageUrlResponseSchema = z
+  .union([productImageUrlResponseItemSchema, z.null(), z.undefined()])
+  .transform((url) => url ?? null);
+
 /** Product gallery URLs for forms — Cloudinary folder rules apply when configured (max 5). */
 export const productImageUrlsSchema = z
   .array(productImageItemSchema)

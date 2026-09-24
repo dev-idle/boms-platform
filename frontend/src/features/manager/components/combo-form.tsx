@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { CatalogImageListField } from "@/components/ui/catalog-image-list-field";
 import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
@@ -22,6 +23,8 @@ import {
 } from "@/components/ui/form";
 import { DashboardDatetimeInput } from "@/components/ui/dashboard-datetime-input";
 import { IntegerFieldInput } from "@/components/ui/integer-field-input";
+import { isCloudinaryConfigured } from "@/lib/cloudinary/config";
+import { cloudinaryComboImageFieldHint } from "@/lib/cloudinary/messages";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
@@ -67,6 +70,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
       name: combo?.name ?? "",
       slug: combo?.slug ?? "",
       price_cents: combo?.price_cents ?? 0,
+      image_url: combo?.image_url ?? "",
       starts_at: combo?.starts_at ?? defaultStartsAt(),
       ends_at: combo?.ends_at ?? defaultEndsAt(),
       is_active: combo?.is_active ?? true,
@@ -138,6 +142,33 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
                 label="Price (cents)"
               >
                 <IntegerFieldInput min={0} {...field} />
+              </FieldControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="image_url"
+          render={({ field }) => (
+            <FormItem>
+              <FieldControl
+                hint={
+                  isCloudinaryConfigured()
+                    ? cloudinaryComboImageFieldHint()
+                    : FORM_FIELD_HINT.comboImageUrlFallback
+                }
+                label="Combo image"
+                optional
+              >
+                {/* One shot of the assembled bundle: the gallery field, capped at one. */}
+                <CatalogImageListField
+                  disabled={isSavePending}
+                  maxImages={1}
+                  onChange={(next) => field.onChange(next[0] ?? "")}
+                  value={field.value ? [field.value] : []}
+                />
               </FieldControl>
               <FormMessage />
             </FormItem>

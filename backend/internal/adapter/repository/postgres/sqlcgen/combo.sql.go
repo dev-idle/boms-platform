@@ -15,7 +15,7 @@ import (
 )
 
 const catalogGetComboByID = `-- name: CatalogGetComboByID :one
-SELECT id, name, slug, price_cents, starts_at, ends_at
+SELECT id, name, slug, price_cents, image_url, starts_at, ends_at
 FROM combos
 WHERE id = $1
   AND deleted_at IS NULL
@@ -25,17 +25,18 @@ WHERE id = $1
 `
 
 type CatalogGetComboByIDRow struct {
-	ID         uuid.UUID `db:"id" json:"id"`
-	Name       string    `db:"name" json:"name"`
-	Slug       string    `db:"slug" json:"slug"`
-	PriceCents int64     `db:"price_cents" json:"priceCents"`
-	StartsAt   time.Time `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time `db:"ends_at" json:"endsAt"`
+	ID         uuid.UUID      `db:"id" json:"id"`
+	Name       string         `db:"name" json:"name"`
+	Slug       string         `db:"slug" json:"slug"`
+	PriceCents int64          `db:"price_cents" json:"priceCents"`
+	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
+	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
+	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
 }
 
 // CatalogGetComboByID
 //
-//	SELECT id, name, slug, price_cents, starts_at, ends_at
+//	SELECT id, name, slug, price_cents, image_url, starts_at, ends_at
 //	FROM combos
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -50,6 +51,7 @@ func (q *Queries) CatalogGetComboByID(ctx context.Context, id uuid.UUID) (Catalo
 		&i.Name,
 		&i.Slug,
 		&i.PriceCents,
+		&i.ImageUrl,
 		&i.StartsAt,
 		&i.EndsAt,
 	)
@@ -57,7 +59,7 @@ func (q *Queries) CatalogGetComboByID(ctx context.Context, id uuid.UUID) (Catalo
 }
 
 const catalogGetCombosByIDs = `-- name: CatalogGetCombosByIDs :many
-SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
 FROM combos c
 WHERE c.id = ANY($1::uuid[])
   AND c.deleted_at IS NULL
@@ -74,17 +76,18 @@ WHERE c.id = ANY($1::uuid[])
 `
 
 type CatalogGetCombosByIDsRow struct {
-	ID         uuid.UUID `db:"id" json:"id"`
-	Name       string    `db:"name" json:"name"`
-	Slug       string    `db:"slug" json:"slug"`
-	PriceCents int64     `db:"price_cents" json:"priceCents"`
-	StartsAt   time.Time `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time `db:"ends_at" json:"endsAt"`
+	ID         uuid.UUID      `db:"id" json:"id"`
+	Name       string         `db:"name" json:"name"`
+	Slug       string         `db:"slug" json:"slug"`
+	PriceCents int64          `db:"price_cents" json:"priceCents"`
+	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
+	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
+	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
 }
 
 // CatalogGetCombosByIDs
 //
-//	SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+//	SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
 //	FROM combos c
 //	WHERE c.id = ANY($1::uuid[])
 //	  AND c.deleted_at IS NULL
@@ -112,6 +115,7 @@ func (q *Queries) CatalogGetCombosByIDs(ctx context.Context, comboIds []uuid.UUI
 			&i.Name,
 			&i.Slug,
 			&i.PriceCents,
+			&i.ImageUrl,
 			&i.StartsAt,
 			&i.EndsAt,
 		); err != nil {
@@ -129,7 +133,7 @@ func (q *Queries) CatalogGetCombosByIDs(ctx context.Context, comboIds []uuid.UUI
 }
 
 const catalogListCombos = `-- name: CatalogListCombos :many
-SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
 FROM combos c
 WHERE c.deleted_at IS NULL
   AND c.is_active = true
@@ -152,17 +156,18 @@ type CatalogListCombosParams struct {
 }
 
 type CatalogListCombosRow struct {
-	ID         uuid.UUID `db:"id" json:"id"`
-	Name       string    `db:"name" json:"name"`
-	Slug       string    `db:"slug" json:"slug"`
-	PriceCents int64     `db:"price_cents" json:"priceCents"`
-	StartsAt   time.Time `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time `db:"ends_at" json:"endsAt"`
+	ID         uuid.UUID      `db:"id" json:"id"`
+	Name       string         `db:"name" json:"name"`
+	Slug       string         `db:"slug" json:"slug"`
+	PriceCents int64          `db:"price_cents" json:"priceCents"`
+	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
+	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
+	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
 }
 
 // CatalogListCombos
 //
-//	SELECT c.id, c.name, c.slug, c.price_cents, c.starts_at, c.ends_at
+//	SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
 //	FROM combos c
 //	WHERE c.deleted_at IS NULL
 //	  AND c.is_active = true
@@ -191,6 +196,7 @@ func (q *Queries) CatalogListCombos(ctx context.Context, arg CatalogListCombosPa
 			&i.Name,
 			&i.Slug,
 			&i.PriceCents,
+			&i.ImageUrl,
 			&i.StartsAt,
 			&i.EndsAt,
 		); err != nil {
@@ -270,30 +276,32 @@ func (q *Queries) CountAvailableProductsForCombo(ctx context.Context, productIds
 }
 
 const createCombo = `-- name: CreateCombo :one
-INSERT INTO combos (name, slug, price_cents, starts_at, ends_at, is_active)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+INSERT INTO combos (name, slug, price_cents, image_url, starts_at, ends_at, is_active)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 `
 
 type CreateComboParams struct {
-	Name       string    `db:"name" json:"name"`
-	Slug       string    `db:"slug" json:"slug"`
-	PriceCents int64     `db:"price_cents" json:"priceCents"`
-	StartsAt   time.Time `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time `db:"ends_at" json:"endsAt"`
-	IsActive   bool      `db:"is_active" json:"isActive"`
+	Name       string         `db:"name" json:"name"`
+	Slug       string         `db:"slug" json:"slug"`
+	PriceCents int64          `db:"price_cents" json:"priceCents"`
+	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
+	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
+	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
+	IsActive   bool           `db:"is_active" json:"isActive"`
 }
 
 // CreateCombo
 //
-//	INSERT INTO combos (name, slug, price_cents, starts_at, ends_at, is_active)
-//	VALUES ($1, $2, $3, $4, $5, $6)
-//	RETURNING id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+//	INSERT INTO combos (name, slug, price_cents, image_url, starts_at, ends_at, is_active)
+//	VALUES ($1, $2, $3, $4, $5, $6, $7)
+//	RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 func (q *Queries) CreateCombo(ctx context.Context, arg CreateComboParams) (Combo, error) {
 	row := q.db.QueryRowContext(ctx, createCombo,
 		arg.Name,
 		arg.Slug,
 		arg.PriceCents,
+		arg.ImageUrl,
 		arg.StartsAt,
 		arg.EndsAt,
 		arg.IsActive,
@@ -304,6 +312,7 @@ func (q *Queries) CreateCombo(ctx context.Context, arg CreateComboParams) (Combo
 		&i.Name,
 		&i.Slug,
 		&i.PriceCents,
+		&i.ImageUrl,
 		&i.StartsAt,
 		&i.EndsAt,
 		&i.IsActive,
@@ -329,7 +338,7 @@ func (q *Queries) DeleteComboItemsByComboID(ctx context.Context, comboID uuid.UU
 }
 
 const getComboByID = `-- name: GetComboByID :one
-SELECT id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+SELECT id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 FROM combos
 WHERE id = $1
   AND deleted_at IS NULL
@@ -337,7 +346,7 @@ WHERE id = $1
 
 // GetComboByID
 //
-//	SELECT id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+//	SELECT id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 //	FROM combos
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -349,6 +358,7 @@ func (q *Queries) GetComboByID(ctx context.Context, id uuid.UUID) (Combo, error)
 		&i.Name,
 		&i.Slug,
 		&i.PriceCents,
+		&i.ImageUrl,
 		&i.StartsAt,
 		&i.EndsAt,
 		&i.IsActive,
@@ -592,7 +602,7 @@ func (q *Queries) ListComboItemsByComboIDs(ctx context.Context, comboIds []uuid.
 }
 
 const managerListCombos = `-- name: ManagerListCombos :many
-SELECT id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+SELECT id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 FROM combos
 WHERE deleted_at IS NULL
   AND (
@@ -612,7 +622,7 @@ type ManagerListCombosParams struct {
 
 // ManagerListCombos
 //
-//	SELECT id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+//	SELECT id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 //	FROM combos
 //	WHERE deleted_at IS NULL
 //	  AND (
@@ -636,6 +646,7 @@ func (q *Queries) ManagerListCombos(ctx context.Context, arg ManagerListCombosPa
 			&i.Name,
 			&i.Slug,
 			&i.PriceCents,
+			&i.ImageUrl,
 			&i.StartsAt,
 			&i.EndsAt,
 			&i.IsActive,
@@ -712,23 +723,25 @@ UPDATE combos
 SET name        = $2,
     slug        = $3,
     price_cents = $4,
-    starts_at   = $5,
-    ends_at     = $6,
-    is_active   = $7,
+    image_url   = $5,
+    starts_at   = $6,
+    ends_at     = $7,
+    is_active   = $8,
     updated_at  = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 `
 
 type UpdateComboParams struct {
-	ID         uuid.UUID `db:"id" json:"id"`
-	Name       string    `db:"name" json:"name"`
-	Slug       string    `db:"slug" json:"slug"`
-	PriceCents int64     `db:"price_cents" json:"priceCents"`
-	StartsAt   time.Time `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time `db:"ends_at" json:"endsAt"`
-	IsActive   bool      `db:"is_active" json:"isActive"`
+	ID         uuid.UUID      `db:"id" json:"id"`
+	Name       string         `db:"name" json:"name"`
+	Slug       string         `db:"slug" json:"slug"`
+	PriceCents int64          `db:"price_cents" json:"priceCents"`
+	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
+	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
+	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
+	IsActive   bool           `db:"is_active" json:"isActive"`
 }
 
 // UpdateCombo
@@ -737,19 +750,21 @@ type UpdateComboParams struct {
 //	SET name        = $2,
 //	    slug        = $3,
 //	    price_cents = $4,
-//	    starts_at   = $5,
-//	    ends_at     = $6,
-//	    is_active   = $7,
+//	    image_url   = $5,
+//	    starts_at   = $6,
+//	    ends_at     = $7,
+//	    is_active   = $8,
 //	    updated_at  = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
-//	RETURNING id, name, slug, price_cents, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
+//	RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 func (q *Queries) UpdateCombo(ctx context.Context, arg UpdateComboParams) (Combo, error) {
 	row := q.db.QueryRowContext(ctx, updateCombo,
 		arg.ID,
 		arg.Name,
 		arg.Slug,
 		arg.PriceCents,
+		arg.ImageUrl,
 		arg.StartsAt,
 		arg.EndsAt,
 		arg.IsActive,
@@ -760,6 +775,7 @@ func (q *Queries) UpdateCombo(ctx context.Context, arg UpdateComboParams) (Combo
 		&i.Name,
 		&i.Slug,
 		&i.PriceCents,
+		&i.ImageUrl,
 		&i.StartsAt,
 		&i.EndsAt,
 		&i.IsActive,

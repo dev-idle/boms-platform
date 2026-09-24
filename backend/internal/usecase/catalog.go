@@ -175,6 +175,7 @@ func toCatalogComboResponse(item port.CatalogCombo) dto.CatalogComboResponse {
 		Name:       item.Name,
 		Slug:       item.Slug,
 		PriceCents: item.PriceCents,
+		ImageURL:   item.ImageURL,
 		StartsAt:   item.StartsAt,
 		EndsAt:     item.EndsAt,
 		Items:      toComboItemResponses(item.Items),

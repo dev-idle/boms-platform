@@ -450,6 +450,12 @@ table "combos" {
     type = bigint
     null = false
   }
+  # One promotional shot of the assembled bundle. Products keep their own
+  # image table; a combo is a dated campaign and needs exactly one photo.
+  column "image_url" {
+    type = text
+    null = true
+  }
   column "starts_at" {
     type = timestamptz
     null = false

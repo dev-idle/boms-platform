@@ -12,12 +12,14 @@ type Combo struct {
 	Name       string
 	Slug       string
 	PriceCents int64
-	StartsAt   time.Time
-	EndsAt     time.Time
-	IsActive   bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	DeletedAt  *time.Time
+	// One promotional shot of the assembled bundle; nil until a manager uploads it.
+	ImageURL  *string
+	StartsAt  time.Time
+	EndsAt    time.Time
+	IsActive  bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
 }
 
 // Item is a line in a combo referencing a catalog product.

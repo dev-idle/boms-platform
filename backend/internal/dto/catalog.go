@@ -88,6 +88,7 @@ type CreateComboRequest struct {
 	Name       string           `json:"name" validate:"required,max=255"`
 	Slug       string           `json:"slug" validate:"omitempty,max=128"`
 	PriceCents int64            `json:"price_cents" validate:"min=0"`
+	ImageURL   *string          `json:"image_url,omitempty" validate:"omitempty,url,max=2048"`
 	StartsAt   time.Time        `json:"starts_at" validate:"required"`
 	EndsAt     time.Time        `json:"ends_at" validate:"required"`
 	IsActive   bool             `json:"is_active"`
@@ -98,6 +99,7 @@ type UpdateComboRequest struct {
 	Name       string           `json:"name" validate:"required,max=255"`
 	Slug       string           `json:"slug" validate:"required,max=128"`
 	PriceCents int64            `json:"price_cents" validate:"min=0"`
+	ImageURL   *string          `json:"image_url,omitempty" validate:"omitempty,url,max=2048"`
 	StartsAt   time.Time        `json:"starts_at" validate:"required"`
 	EndsAt     time.Time        `json:"ends_at" validate:"required"`
 	IsActive   bool             `json:"is_active"`
@@ -117,6 +119,7 @@ type ComboResponse struct {
 	Name       string              `json:"name"`
 	Slug       string              `json:"slug"`
 	PriceCents int64               `json:"price_cents"`
+	ImageURL   *string             `json:"image_url,omitempty"`
 	StartsAt   time.Time           `json:"starts_at"`
 	EndsAt     time.Time           `json:"ends_at"`
 	IsActive   bool                `json:"is_active"`
@@ -130,6 +133,7 @@ type CatalogComboResponse struct {
 	Name       string              `json:"name"`
 	Slug       string              `json:"slug"`
 	PriceCents int64               `json:"price_cents"`
+	ImageURL   *string             `json:"image_url,omitempty"`
 	StartsAt   time.Time           `json:"starts_at"`
 	EndsAt     time.Time           `json:"ends_at"`
 	Items      []ComboItemResponse `json:"items"`

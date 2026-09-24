@@ -131,6 +131,7 @@ CREATE TABLE "combos" (
   "name" text NOT NULL,
   "slug" citext NOT NULL,
   "price_cents" bigint NOT NULL,
+  "image_url" text NULL,
   "starts_at" timestamptz NOT NULL,
   "ends_at" timestamptz NOT NULL,
   "is_active" boolean NOT NULL DEFAULT true,

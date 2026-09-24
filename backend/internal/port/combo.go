@@ -12,6 +12,7 @@ type CreateComboParams struct {
 	Name       string
 	Slug       string
 	PriceCents int64
+	ImageURL   *string
 	StartsAt   time.Time
 	EndsAt     time.Time
 	IsActive   bool
@@ -22,6 +23,7 @@ type UpdateComboParams struct {
 	Name       string
 	Slug       string
 	PriceCents int64
+	ImageURL   *string
 	StartsAt   time.Time
 	EndsAt     time.Time
 	IsActive   bool
@@ -48,6 +50,7 @@ type CatalogCombo struct {
 	Name       string
 	Slug       string
 	PriceCents int64
+	ImageURL   *string
 	StartsAt   time.Time
 	EndsAt     time.Time
 	Items      []domaincombo.Item
