@@ -48,8 +48,6 @@ WHERE id = $1
   AND deleted_at IS NULL;
 
 -- name: ManagerListProducts :many
--- Same shape as the catalog list: cut the page first, then gather the gallery,
--- so the aggregate runs once per row shown rather than once per row matched.
 SELECT
     page.id,
     page.category_id,
@@ -113,10 +111,6 @@ WHERE p.deleted_at IS NULL
   );
 
 -- name: CatalogListProducts :many
--- Images come back with the row: fetching them separately costs a second round
--- trip, which on a remote Postgres is the whole request budget. The page is cut
--- first and the gallery gathered after, so the aggregate runs once per row shown
--- rather than once per row the filter matches.
 SELECT
     page.id,
     page.category_id,
@@ -127,6 +121,9 @@ SELECT
     page.category_name,
     page.category_slug,
     COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
+-- The page is cut first and the gallery gathered after: fetching images
+-- separately costs a second round trip, and aggregating before LIMIT would run
+-- once per row the filter matches rather than once per row shown.
 FROM (
     SELECT
         p.id,

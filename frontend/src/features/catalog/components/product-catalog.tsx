@@ -25,8 +25,6 @@ import { CatalogPagination } from "./catalog-pagination";
 import { ProductCard } from "./product-card";
 import { ProductCatalogLoading } from "./product-catalog-loading";
 
-
-
 const CATALOG_PAGE_LEAD =
   "Everything we bake today, in one place. Availability updates through the morning as each batch leaves the oven.";
 

@@ -8,7 +8,7 @@ const DEFAULT_DELAY_MS = 280;
 export function useDebouncedTableSearch(delayMs = DEFAULT_DELAY_MS) {
   const [input, setInput] = useState("");
   const [page, setPage] = useState(1);
-  const debouncedInput = useDebouncedValue(input, delayMs);
+  const [debouncedInput] = useDebouncedValue(input, delayMs);
   const search = debouncedInput.trim();
 
   const [trackedSearch, setTrackedSearch] = useState(search);

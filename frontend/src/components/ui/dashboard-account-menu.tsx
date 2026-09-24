@@ -88,6 +88,7 @@ export function DashboardAccountMenu({
             aria-busy={logout.isPending || undefined}
             className="dashboard-account-item dashboard-account-item--signout"
             disabled={logout.isPending}
+            title={logout.isPending ? "Signing out…" : undefined}
             onSelect={(event) => {
               event.preventDefault();
               logout.mutate();

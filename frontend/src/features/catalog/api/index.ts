@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { CATALOG_CATEGORIES_PAGE_SIZE } from "@/constants/catalog";
 import { browserRequest, browserRequestWithMeta } from "@/lib/browser-api-client";
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
 import {
@@ -21,7 +22,10 @@ import {
 } from "@/lib/schemas/catalog";
 
 export async function listCatalogCategories(
-  input: CatalogCategoriesListFilterInput = { page: 1, page_size: 100 },
+  input: CatalogCategoriesListFilterInput = {
+    page: 1,
+    page_size: CATALOG_CATEGORIES_PAGE_SIZE,
+  },
 ): Promise<CatalogCategoriesListResult> {
   const filter = catalogCategoriesListFilterSchema.parse(input);
   const params = new URLSearchParams();

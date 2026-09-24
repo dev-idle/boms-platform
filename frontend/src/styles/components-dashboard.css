@@ -269,11 +269,11 @@
     color: var(--color-ink);
   }
 
-  /* Signing out: the row is held, so it stops answering the pointer and reads in
-     the muted tone every waiting control uses. */
+  /* Signing out: the row is held, so it reads in the muted tone and refuses the
+     pointer like every other inert control. */
   .dashboard-account-item[data-disabled] {
     color: var(--color-muted);
-    cursor: progress;
+    cursor: not-allowed;
   }
 
   /* The danger tint sits at the same lightness as --color-paper-4, so this hover

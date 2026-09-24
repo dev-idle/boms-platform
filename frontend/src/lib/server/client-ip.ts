@@ -1,10 +1,13 @@
+import { EDGE_CLIENT_IP_HEADER } from "@/constants/http-headers";
+
 /** Resolving the visitor's address from what the hosting edge reported. */
 
 const IPV4 = /^(\d{1,3}\.){3}\d{1,3}$/;
 
 function isAddress(value: string): boolean {
   if (value.includes(":")) {
-    // IPv6: hex groups and separators only, which is all the API parses back.
+    // Loose on IPv6 shapes; the API parses the value with net.ParseIP and falls
+    // back to the socket address when it does not hold up.
     return /^[0-9a-f:.]+$/i.test(value);
   }
   if (!IPV4.test(value)) {
@@ -27,11 +30,9 @@ function isAddress(value: string): boolean {
  * would let a visitor choose its own address, so the deployment must not do that.
  */
 export function resolveClientIp(headers: Headers): string | undefined {
-  // `x-real-ip` is a single address; `x-forwarded-for` is a chain whose first
-  // entry is the client the edge saw.
   const candidates = [
-    headers.get("x-real-ip"),
-    headers.get("x-forwarded-for")?.split(",")[0],
+    headers.get(EDGE_CLIENT_IP_HEADER.single),
+    headers.get(EDGE_CLIENT_IP_HEADER.chain)?.split(",")[0],
   ];
 
   for (const candidate of candidates) {

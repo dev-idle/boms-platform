@@ -26,13 +26,9 @@ export function useStorefrontSearchSuggestions(
   query: string,
   enabled: boolean,
 ): StorefrontSearchSuggestions {
-  const typedQuery = query.trim();
-  const settledQuery = useDebouncedValue(query, DEBOUNCE_MS).trim();
+  const [debounced, settling] = useDebouncedValue(query, DEBOUNCE_MS);
+  const settledQuery = debounced.trim();
   const active = enabled && settledQuery.length >= MIN_QUERY_LENGTH;
-  // The debounce is part of the wait. Without this the panel spends it showing
-  // the previous query's answer — or "nothing matches" — for what the shopper has
-  // already finished typing.
-  const settling = typedQuery !== settledQuery;
 
   const productsQuery = useCatalogProducts(
     { page: 1, page_size: SUGGESTION_LIMIT, search: settledQuery },

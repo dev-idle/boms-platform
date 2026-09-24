@@ -62,6 +62,9 @@ export function AdminUserDetailActions({
   user,
 }: AdminUserDetailActionsProps) {
   const actionsPending = accountPending || resetPending;
+  // A greyed action says why it is greyed, and while one action runs the others
+  // are greyed for the same reason.
+  const busyReason = actionsPending ? "Another action is finishing…" : undefined;
   const showReset = canResetPassword(user);
   const accountLocked = isAdminAccountManagementLocked(user);
 
@@ -75,6 +78,7 @@ export function AdminUserDetailActions({
             disabled={actionsPending}
             onClick={onEnable}
             pendingLabel={accountPending ? "Enabling…" : undefined}
+            title={busyReason}
             tone="accent"
           >
             Enable account
@@ -84,6 +88,7 @@ export function AdminUserDetailActions({
             disabled={actionsPending}
             onClick={onDisable}
             pendingLabel={accountPending ? "Disabling…" : undefined}
+            title={busyReason}
             tone="danger"
           >
             Disable account
@@ -94,7 +99,7 @@ export function AdminUserDetailActions({
       <InlineAction
           disabled={actionsPending}
           onClick={onRevokeSessions}
-          title={actionsPending ? "Another action is finishing…" : undefined}
+          title={busyReason}
           tone="warning"
         >
           Revoke all sessions
@@ -108,7 +113,7 @@ export function AdminUserDetailActions({
           title={
             user.disabled
               ? "Enable this account before resetting the password."
-              : undefined
+              : busyReason
           }
           tone="accent"
         >

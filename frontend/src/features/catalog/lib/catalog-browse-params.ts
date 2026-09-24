@@ -6,7 +6,6 @@ import type { CatalogProductsListFilterInput } from "@/lib/schemas/catalog";
 
 export const CATALOG_SEARCH_MAX_LENGTH = 100;
 
-
 const catalogBrowseParamsSchema = z.object({
   search: z
     .string()

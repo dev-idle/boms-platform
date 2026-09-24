@@ -10,6 +10,7 @@ import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import { DashboardTableThumb } from "@/components/ui/dashboard-table-thumb";
 import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import {
   DashboardTableDeleteButton,
@@ -19,7 +20,6 @@ import {
 import { CatalogAvailabilityPill } from "@/components/ui/status-pill";
 import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
-import { catalogItemInitial } from "@/features/catalog";
 import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolbar-meta";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
@@ -28,7 +28,6 @@ import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
-import { primaryCatalogProductImageUrl } from "@/lib/cloudinary/config";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useDeleteProduct, useProducts } from "../hooks";
@@ -120,30 +119,12 @@ export function ManagerProductsTable() {
                 initialLoading={initialLoading}
               />
               {!initialLoading && !query.isError && products.length > 0
-                ? products.map((product) => {
-                  const thumbUrl = primaryCatalogProductImageUrl(
-                    product.image_urls,
-                    96,
-                  );
-                  return (
+                ? products.map((product) => (
                 <tr key={product.id}>
-                  <td className="db-table-cell-thumb">
-                    <span className="db-table-thumb">
-                      {thumbUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- manager-provided catalog URL
-                        <img
-                          alt=""
-                          aria-hidden
-                          className="db-table-thumb__image"
-                          src={thumbUrl}
-                        />
-                      ) : (
-                        <span className="db-table-thumb__initial">
-                          {catalogItemInitial(product.name)}
-                        </span>
-                      )}
-                    </span>
-                  </td>
+                  <DashboardTableThumb
+                    name={product.name}
+                    url={product.image_urls[0]}
+                  />
                   <td className="db-table-cell-primary">{product.name}</td>
                   <td className="text-muted">
                     {product.category_name ?? (
@@ -174,8 +155,7 @@ export function ManagerProductsTable() {
                     </DashboardTableRowActions>
                   </td>
                 </tr>
-              );
-              })
+              ))
                 : null}
               <DashboardTablePagePlaceholders
                 columnCount={6}

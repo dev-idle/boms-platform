@@ -48,7 +48,16 @@ func (u *ManagerComboUsecase) Create(
 	if err != nil {
 		return nil, err
 	}
-	parsed, err := parseComboRequest(req.Name, req.Slug, req.PriceCents, imageURL, req.StartsAt, req.EndsAt, req.IsActive, req.Items, true)
+	parsed, err := parseComboRequest(comboRequestFields{
+		Name:       req.Name,
+		Slug:       req.Slug,
+		PriceCents: req.PriceCents,
+		ImageURL:   imageURL,
+		StartsAt:   req.StartsAt,
+		EndsAt:     req.EndsAt,
+		IsActive:   req.IsActive,
+		Items:      req.Items,
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +160,16 @@ func (u *ManagerComboUsecase) Update(
 	if imageErr != nil {
 		return nil, imageErr
 	}
-	parsed, parseErr := parseComboRequest(req.Name, req.Slug, req.PriceCents, imageURL, req.StartsAt, req.EndsAt, req.IsActive, req.Items, false)
+	parsed, parseErr := parseComboRequest(comboRequestFields{
+		Name:       req.Name,
+		Slug:       req.Slug,
+		PriceCents: req.PriceCents,
+		ImageURL:   imageURL,
+		StartsAt:   req.StartsAt,
+		EndsAt:     req.EndsAt,
+		IsActive:   req.IsActive,
+		Items:      req.Items,
+	}, false)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -218,28 +236,37 @@ type parsedComboRequest struct {
 	productIDs []uuid.UUID
 }
 
+// comboRequestFields is the write shape shared by create and update, with the
+// image URL already sanitized. Positional arguments had grown to nine, two of
+// them adjacent timestamps.
+type comboRequestFields struct {
+	Name       string
+	Slug       string
+	PriceCents int64
+	ImageURL   *string
+	StartsAt   time.Time
+	EndsAt     time.Time
+	IsActive   bool
+	Items      []dto.ComboItemInput
+}
+
 func parseComboRequest(
-	nameRaw, slugRaw string,
-	priceCents int64,
-	imageURL *string,
-	startsAt, endsAt time.Time,
-	isActive bool,
-	items []dto.ComboItemInput,
+	fields comboRequestFields,
 	deriveSlugFromName bool,
 ) (parsedComboRequest, error) {
-	name := strings.TrimSpace(nameRaw)
+	name := strings.TrimSpace(fields.Name)
 	if name == "" {
 		return parsedComboRequest{}, apperrors.ErrValidation.WithDetail("name", "required")
 	}
-	slug, err := resolveManagerCatalogSlug(name, slugRaw, deriveSlugFromName)
+	slug, err := resolveManagerCatalogSlug(name, fields.Slug, deriveSlugFromName)
 	if err != nil {
 		return parsedComboRequest{}, err
 	}
-	if !endsAt.After(startsAt) {
+	if !fields.EndsAt.After(fields.StartsAt) {
 		return parsedComboRequest{}, apperrors.ErrValidation.WithDetail("ends_at", "must be after starts_at")
 	}
 
-	itemParams, productIDs, err := parseComboItems(items)
+	itemParams, productIDs, err := parseComboItems(fields.Items)
 	if err != nil {
 		return parsedComboRequest{}, err
 	}
@@ -248,11 +275,11 @@ func parseComboRequest(
 		params: port.CreateComboParams{
 			Name:       name,
 			Slug:       slug,
-			PriceCents: priceCents,
-			ImageURL:   imageURL,
-			StartsAt:   startsAt,
-			EndsAt:     endsAt,
-			IsActive:   isActive,
+			PriceCents: fields.PriceCents,
+			ImageURL:   fields.ImageURL,
+			StartsAt:   fields.StartsAt,
+			EndsAt:     fields.EndsAt,
+			IsActive:   fields.IsActive,
 		},
 		itemParams: itemParams,
 		productIDs: productIDs,

@@ -162,7 +162,6 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
                 label="Combo image"
                 optional
               >
-                {/* One shot of the assembled bundle: the gallery field, capped at one. */}
                 <CatalogImageListField
                   disabled={isSavePending}
                   maxImages={1}

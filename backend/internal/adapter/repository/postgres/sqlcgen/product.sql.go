@@ -215,10 +215,9 @@ type CatalogListProductsRow struct {
 	ImageUrls    []string       `db:"image_urls" json:"imageUrls"`
 }
 
-// Images come back with the row: fetching them separately costs a second round
-// trip, which on a remote Postgres is the whole request budget. The page is cut
-// first and the gallery gathered after, so the aggregate runs once per row shown
-// rather than once per row the filter matches.
+// The page is cut first and the gallery gathered after: fetching images
+// separately costs a second round trip, and aggregating before LIMIT would run
+// once per row the filter matches rather than once per row shown.
 //
 //	SELECT
 //	    page.id,
@@ -564,8 +563,7 @@ type ManagerListProductsRow struct {
 	ImageUrls    []string       `db:"image_urls" json:"imageUrls"`
 }
 
-// Same shape as the catalog list: cut the page first, then gather the gallery,
-// so the aggregate runs once per row shown rather than once per row matched.
+// ManagerListProducts
 //
 //	SELECT
 //	    page.id,

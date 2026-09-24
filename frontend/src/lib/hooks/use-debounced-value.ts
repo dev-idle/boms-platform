@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 
-/** Returns `value` after it stops changing for `delayMs`. */
-export function useDebouncedValue<T>(value: T, delayMs: number): T {
+/**
+ * `value` after it stops changing for `delayMs`, and whether it is still
+ * catching up. The wait is part of the answer: a field that reports results for
+ * the settled value must say it is working until the two agree, or it shows the
+ * previous answer — "nothing matches" — for what the user has already typed.
+ */
+export function useDebouncedValue<T>(
+  value: T,
+  delayMs: number,
+): [debounced: T, settling: boolean] {
   const [debounced, setDebounced] = useState(value);
 
   useEffect(() => {
@@ -9,5 +17,5 @@ export function useDebouncedValue<T>(value: T, delayMs: number): T {
     return () => window.clearTimeout(timerId);
   }, [delayMs, value]);
 
-  return debounced;
+  return [debounced, debounced !== value];
 }

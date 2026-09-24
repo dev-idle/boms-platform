@@ -145,7 +145,6 @@ func (u *ManagerProductUsecase) List(
 		return nil, 0, page, pageSize, err
 	}
 
-	// The gallery arrives with each row, so the page is one round trip.
 	out := make([]dto.ProductResponse, 0, len(items))
 	for _, item := range items {
 		out = append(out, *toProductResponse(&item.Product, item.CategoryName, item.ImageURLs))

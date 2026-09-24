@@ -43,8 +43,7 @@ type CatalogListProductsParams struct {
 type ManagerListProduct struct {
 	Product      domainproduct.Product
 	CategoryName string
-	// Gallery URLs in sort order; the list query returns them with the row.
-	ImageURLs []string
+	ImageURLs    []string
 }
 
 type CatalogListProduct struct {
@@ -56,8 +55,7 @@ type CatalogListProduct struct {
 	PriceCents   int64
 	CategoryName string
 	CategorySlug string
-	// Gallery URLs in sort order; the list query returns them with the row.
-	ImageURLs []string
+	ImageURLs    []string
 }
 
 type ProductRepository interface {

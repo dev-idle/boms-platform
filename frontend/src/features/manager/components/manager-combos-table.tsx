@@ -10,9 +10,8 @@ import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
-import { catalogItemInitial } from "@/features/catalog";
-import { catalogProductImageUrl } from "@/lib/cloudinary/config";
 import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
+import { DashboardTableThumb } from "@/components/ui/dashboard-table-thumb";
 import {
   DashboardTableDeleteButton,
   DashboardTableEditLink,
@@ -35,11 +34,6 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 import { useCombos, useDeleteCombo } from "../hooks";
 
 const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
-
-/** The combo's own shot, sized for the 52px row tile. */
-function comboThumbUrl(imageUrl: string | null): string | undefined {
-  return catalogProductImageUrl(imageUrl, 96);
-}
 
 export function ManagerCombosTable() {
   const {
@@ -135,23 +129,7 @@ export function ManagerCombosTable() {
               {!initialLoading && !query.isError && combos.length > 0
                 ? combos.map((combo) => (
                 <tr key={combo.id}>
-                  <td className="db-table-cell-thumb">
-                    <span className="db-table-thumb">
-                      {comboThumbUrl(combo.image_url) ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- manager-provided catalog URL
-                        <img
-                          alt=""
-                          aria-hidden
-                          className="db-table-thumb__image"
-                          src={comboThumbUrl(combo.image_url)}
-                        />
-                      ) : (
-                        <span className="db-table-thumb__initial">
-                          {catalogItemInitial(combo.name)}
-                        </span>
-                      )}
-                    </span>
-                  </td>
+                  <DashboardTableThumb name={combo.name} url={combo.image_url} />
                   <td className="db-table-cell-primary">{combo.name}</td>
                   <td className="db-table-num">
                     {formatPriceCents(combo.price_cents)}

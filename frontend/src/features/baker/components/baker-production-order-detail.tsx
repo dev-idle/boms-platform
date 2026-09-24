@@ -9,6 +9,7 @@ import {
   StatusPill,
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
+import { isApplyingOrderStatus } from "@/lib/schemas/order";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -133,8 +134,7 @@ export function BakerProductionOrderDetail({
                 type="button"
                 onClick={() => patchStatus.mutate({ status: action.status })}
               >
-                {patchStatus.isPending &&
-                patchStatus.variables?.status === action.status
+                {isApplyingOrderStatus(patchStatus, action.status)
                   ? "Updating…"
                   : action.label}
               </Button>

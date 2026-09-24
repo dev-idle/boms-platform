@@ -6,17 +6,15 @@ import { useMe } from "../hooks";
 export function CustomerAccountSignedInAs() {
   const me = useMe();
 
-  // The line holds its place while /me answers: arriving late, it would push the
-  // whole account page down a row.
+  // The paragraph keeps its line while /me answers (CSS `min-block-size`), so the
+  // email arriving does not push the page down a row.
   return (
     <p aria-busy={!me.data || undefined} className="storefront-account-signed-in">
       {me.data ? (
         <>
           Signed in as <strong>{me.data.email}</strong>
         </>
-      ) : (
-        " "
-      )}
+      ) : null}
     </p>
   );
 }

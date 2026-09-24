@@ -9,6 +9,8 @@ import {
   type CatalogProductsListFilterInput,
 } from "@/lib/schemas/catalog";
 
+import { CATALOG_CATEGORIES_PAGE_SIZE } from "@/constants/catalog";
+
 import {
   getCatalogProduct,
   listCatalogCategories,
@@ -29,13 +31,11 @@ const catalogQueryKeys = {
     [...catalogQueryKeys.combosRoot, filter] as const,
 };
 
-const defaultCategoriesFilter: CatalogCategoriesListFilterInput = {
-  page: 1,
-  page_size: 100,
-};
-
 export function catalogCategoriesQueryOptions(
-  input: CatalogCategoriesListFilterInput = defaultCategoriesFilter,
+  input: CatalogCategoriesListFilterInput = {
+    page: 1,
+    page_size: CATALOG_CATEGORIES_PAGE_SIZE,
+  },
 ) {
   const filter = catalogCategoriesListFilterSchema.parse(input);
   return queryOptions({

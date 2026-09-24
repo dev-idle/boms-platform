@@ -1561,10 +1561,12 @@
     max-width: 40rem;
   }
 
+  /* One line high before the email arrives, so nothing below it moves. */
   .storefront-account-signed-in {
     color: var(--color-muted);
     font-size: 0.8125rem;
     margin: 0;
+    min-block-size: 1lh;
   }
 
   .storefront-account-signed-in strong {

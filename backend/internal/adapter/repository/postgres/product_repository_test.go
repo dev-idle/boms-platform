@@ -114,7 +114,18 @@ func TestProductRepository_ListGallery_Integration(t *testing.T) {
 	})
 
 	t.Run("a_soft_deleted_product_leaves_no_gallery_behind", func(t *testing.T) {
-		require.NoError(t, products.SoftDelete(ctx, withImages.ID))
+		// Its own product: the subtests above assert on theirs, and a fixture one
+		// of them deletes would make this suite depend on the order it runs in.
+		doomed, err := products.Create(ctx, port.CreateProductParams{
+			CategoryID: category.ID,
+			Name:       "Withdrawn tart",
+			Slug:       "withdrawn-tart",
+			PriceCents: 500,
+			IsActive:   true,
+		})
+		require.NoError(t, err)
+		require.NoError(t, products.ReplaceProductImages(ctx, doomed.ID, []string{first}))
+		require.NoError(t, products.SoftDelete(ctx, doomed.ID))
 
 		rows, err := products.CatalogList(ctx, port.CatalogListProductsParams{
 			Limit:  20,
@@ -123,7 +134,7 @@ func TestProductRepository_ListGallery_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, row := range rows {
-			assert.NotEqual(t, withImages.ID, row.ID)
+			assert.NotEqual(t, doomed.ID, row.ID)
 		}
 	})
 }

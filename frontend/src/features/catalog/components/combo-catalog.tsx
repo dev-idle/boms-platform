@@ -3,8 +3,9 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import { useCatalogCombos } from "../hooks";
 import { CATALOG_COMBOS_PAGE_SIZE } from "@/constants/catalog";
+
+import { useCatalogCombos } from "../hooks";
 import {
   CATALOG_COMBOS_HEADING_ID,
   CATALOG_COMBOS_SECTION_ID,

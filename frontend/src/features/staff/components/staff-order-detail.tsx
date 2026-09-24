@@ -11,7 +11,7 @@ import {
   StatusPill,
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
-import type { OrderStatus } from "@/lib/schemas/order";
+import { isApplyingOrderStatus, type OrderStatus } from "@/lib/schemas/order";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -161,10 +161,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
                     patchStatus.mutate({ status: action.status });
                   }}
                 >
-                  {/* Only the action being applied says so; the others are simply
-                      held. One label per running request. */}
-                  {patchStatus.isPending &&
-                  patchStatus.variables?.status === action.status
+                  {isApplyingOrderStatus(patchStatus, action.status)
                     ? "Updating…"
                     : action.label}
                 </Button>

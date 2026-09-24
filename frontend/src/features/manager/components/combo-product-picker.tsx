@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 
 import { useProducts } from "../hooks";
 
+/** Matches the dashboard table search: long enough to skip a keystroke burst. */
+const PICKER_DEBOUNCE_MS = 280;
+
 export type ComboProductPickerValue = {
   id: string;
   name: string;
@@ -34,10 +37,8 @@ export function ComboProductPicker({
   const inputId = useId();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const debouncedQuery = useDebouncedValue(query, 280).trim();
-  // Every search, not just the first: under keepPreviousData the list would
-  // otherwise show the previous query's products as though they were the answer.
-  const settling = query.trim() !== debouncedQuery;
+  const [debounced, settling] = useDebouncedValue(query, PICKER_DEBOUNCE_MS);
+  const debouncedQuery = debounced.trim();
 
   const productsQuery = useProducts({
     page: 1,
@@ -79,6 +80,8 @@ export function ComboProductPicker({
   }
 
   const showList = open && !value;
+  // Every search, not just the first: under keepPreviousData the list would
+  // otherwise show the previous query's products as though they were the answer.
   const busy = productsQuery.isFetching || settling;
   const listEmpty = !busy && options.length === 0;
 

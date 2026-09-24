@@ -114,7 +114,10 @@ export function CatalogImageListField({
   const isDisabled = disabled || isUploading;
   const canAddMore = value.length < maxImages;
   const useCloudinary = isCloudinaryConfigured();
-  const showOrderBadges = value.length > 1;
+  // A gallery ranks its images; a single-image field has nothing to rank, so the
+  // order badge, the primary mark and the counter all belong to the gallery.
+  const isGallery = maxImages > 1;
+  const showOrderBadges = isGallery && value.length > 1;
 
   function labelForUrl(url: string): string {
     return catalogFileLabelForUrl(url, uploadedLabels);
@@ -269,7 +272,9 @@ export function CatalogImageListField({
                     <div
                       className={cn(
                         "catalog-image-list-thumb-wrap",
-                        isPrimary && "catalog-image-list-thumb-wrap--primary",
+                        showOrderBadges &&
+                          isPrimary &&
+                          "catalog-image-list-thumb-wrap--primary",
                       )}
                     >
                       {canPreview ? (
@@ -370,8 +375,7 @@ export function CatalogImageListField({
             >
               {CATALOG_IMAGE_FIELD_COPY.addImage}
             </Button>
-            {/* A gallery counts; a single-image field has nothing to count. */}
-            {isUploading || maxImages > 1 ? (
+            {isUploading || isGallery ? (
               <span className="catalog-image-field-status">
                 {isUploading
                   ? CATALOG_IMAGE_FIELD_COPY.uploadProgress

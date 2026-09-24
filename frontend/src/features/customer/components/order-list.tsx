@@ -14,11 +14,10 @@ import {
 import { ROUTE } from "@/constants/routes";
 import { STOREFRONT_NAV_COPY } from "@/constants/storefront-nav-copy";
 import { isApiError } from "@/lib/errors";
+import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
-
-import { getQuerySurface } from "@/lib/react-query/query-surface";
 
 import { useOrders } from "../hooks";
 
@@ -58,7 +57,6 @@ export function OrderList() {
 
   return (
     <div className="storefront-orders">
-      {/* A page change keeps the previous page on screen; the scrim says so. */}
       <AsyncPanel refetching={refetching}>
         <ul className="storefront-orders__list">
           {orders.map((order) => (
