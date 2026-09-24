@@ -2244,12 +2244,16 @@
   }
 
   /* Manager catalog — 52px square thumb in the 76px lead column. */
+  /* Block, not inline: an inline tile sits in a line box, and the row then grows
+     by whatever the baseline asks for — a tile holding a photo has no baseline of
+     its own, so rows with a photo stood ~4px taller than rows with a monogram and
+     the table jumped between pages. As a block the tile is just its own square. */
   .db-table-thumb {
     align-items: center;
     background-color: var(--color-paper-3);
     border: 1px solid var(--color-border);
     color: var(--color-muted);
-    display: inline-flex;
+    display: flex;
     flex-shrink: 0;
     height: var(--db-table-thumb-size);
     justify-content: center;
