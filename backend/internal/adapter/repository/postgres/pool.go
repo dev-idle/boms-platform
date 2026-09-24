@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
@@ -33,6 +34,11 @@ func NewPool(ctx context.Context, cfg config.PostgresConfig) (*Pool, error) {
 	pcfg.MaxConnLifetime = cfg.MaxConnLifetime
 	pcfg.MaxConnIdleTime = cfg.MaxConnIdleTime
 	pcfg.HealthCheckPeriod = 30 * time.Second
+	if cfg.StatementTimeout > 0 {
+		// Server-side, so it still applies when the client goes away mid-query.
+		pcfg.ConnConfig.RuntimeParams["statement_timeout"] =
+			strconv.FormatInt(cfg.StatementTimeout.Milliseconds(), 10)
+	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, pcfg)
 	if err != nil {

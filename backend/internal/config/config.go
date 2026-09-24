@@ -89,6 +89,10 @@ type PostgresConfig struct {
 	MaxConnLifetime    time.Duration
 	MaxConnIdleTime    time.Duration
 	HealthCheckTimeout time.Duration
+	// StatementTimeout bounds a single statement server-side. A request that is
+	// abandoned by the client still holds its connection until the statement
+	// ends, so without this one slow query can starve the pool.
+	StatementTimeout time.Duration
 }
 
 type RedisConfig struct {
@@ -272,6 +276,7 @@ func Load() (*Config, error) {
 			MaxConnLifetime:    v.GetDuration("postgres.max_conn_lifetime"),
 			MaxConnIdleTime:    v.GetDuration("postgres.max_conn_idle_time"),
 			HealthCheckTimeout: v.GetDuration("postgres.health_timeout"),
+			StatementTimeout:   v.GetDuration("postgres.statement_timeout"),
 		},
 		Redis: RedisConfig{
 			Addr:               v.GetString("redis.addr"),
@@ -384,6 +389,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("postgres.max_conn_lifetime", time.Hour)
 	v.SetDefault("postgres.max_conn_idle_time", 15*time.Minute)
 	v.SetDefault("postgres.health_timeout", 2*time.Second)
+	v.SetDefault("postgres.statement_timeout", 10*time.Second)
 
 	v.SetDefault("redis.addr", "127.0.0.1:6379")
 	v.SetDefault("redis.password", "")

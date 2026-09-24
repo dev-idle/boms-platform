@@ -12,9 +12,3 @@ SELECT image_url, sort_order
 FROM product_images
 WHERE product_id = $1
 ORDER BY sort_order ASC;
-
--- name: ListProductImagesByProductIDs :many
-SELECT product_id, image_url, sort_order
-FROM product_images
-WHERE product_id = ANY(sqlc.arg('product_ids')::uuid[])
-ORDER BY product_id ASC, sort_order ASC;

@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 const deleteProductImagesByProductID = `-- name: DeleteProductImagesByProductID :exec
@@ -85,48 +84,6 @@ func (q *Queries) ListProductImagesByProductID(ctx context.Context, productID uu
 	for rows.Next() {
 		var i ListProductImagesByProductIDRow
 		if err := rows.Scan(&i.ImageUrl, &i.SortOrder); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listProductImagesByProductIDs = `-- name: ListProductImagesByProductIDs :many
-SELECT product_id, image_url, sort_order
-FROM product_images
-WHERE product_id = ANY($1::uuid[])
-ORDER BY product_id ASC, sort_order ASC
-`
-
-type ListProductImagesByProductIDsRow struct {
-	ProductID uuid.UUID `db:"product_id" json:"productId"`
-	ImageUrl  string    `db:"image_url" json:"imageUrl"`
-	SortOrder int16     `db:"sort_order" json:"sortOrder"`
-}
-
-// ListProductImagesByProductIDs
-//
-//	SELECT product_id, image_url, sort_order
-//	FROM product_images
-//	WHERE product_id = ANY($1::uuid[])
-//	ORDER BY product_id ASC, sort_order ASC
-func (q *Queries) ListProductImagesByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ListProductImagesByProductIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listProductImagesByProductIDs, pq.Array(productIds))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListProductImagesByProductIDsRow{}
-	for rows.Next() {
-		var i ListProductImagesByProductIDsRow
-		if err := rows.Scan(&i.ProductID, &i.ImageUrl, &i.SortOrder); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

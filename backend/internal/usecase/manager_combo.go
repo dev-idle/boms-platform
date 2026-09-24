@@ -105,15 +105,18 @@ func (u *ManagerComboUsecase) List(
 	if trimmed != "" {
 		searchPtr = &trimmed
 	}
-	combos, err := u.combos.ManagerList(ctx, port.ManagerListCombosParams{
-		Search: searchPtr,
-		Limit:  pageSize,
-		Offset: utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.combos.ManagerListCount(ctx, searchPtr)
+	combos, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]domaincombo.Combo, error) {
+			return u.combos.ManagerList(ctx, port.ManagerListCombosParams{
+				Search: searchPtr,
+				Limit:  pageSize,
+				Offset: utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.combos.ManagerListCount(ctx, searchPtr)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}

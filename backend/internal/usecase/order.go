@@ -116,15 +116,18 @@ func (u *OrderUsecase) List(
 	page, pageSize int32,
 ) ([]dto.OrderSummaryResponse, int64, int32, int32, error) {
 	page, pageSize = normalizeOrderListPage(page, pageSize)
-	orders, err := u.orders.ListByUser(ctx, port.ListOrdersParams{
-		UserID: userID,
-		Limit:  pageSize,
-		Offset: utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.orders.ListCountByUser(ctx, userID)
+	orders, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]domainorder.Order, error) {
+			return u.orders.ListByUser(ctx, port.ListOrdersParams{
+				UserID: userID,
+				Limit:  pageSize,
+				Offset: utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.orders.ListCountByUser(ctx, userID)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}

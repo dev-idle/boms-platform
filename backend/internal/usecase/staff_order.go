@@ -46,15 +46,18 @@ func (u *StaffOrderUsecase) List(
 		status = &parsed
 	}
 
-	rows, err := u.orders.StaffList(ctx, port.StaffListOrdersParams{
-		Status: status,
-		Limit:  pageSize,
-		Offset: utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.orders.StaffListCount(ctx, status)
+	rows, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]port.StaffOrderListRow, error) {
+			return u.orders.StaffList(ctx, port.StaffListOrdersParams{
+				Status: status,
+				Limit:  pageSize,
+				Offset: utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.orders.StaffListCount(ctx, status)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}

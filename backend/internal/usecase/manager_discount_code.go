@@ -78,15 +78,18 @@ func (u *ManagerDiscountCodeUsecase) List(
 	if trimmed != "" {
 		searchPtr = &trimmed
 	}
-	codes, err := u.codes.ManagerList(ctx, port.ManagerListDiscountCodesParams{
-		Search: searchPtr,
-		Limit:  pageSize,
-		Offset: utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.codes.ManagerListCount(ctx, searchPtr)
+	codes, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]domaindiscount.Code, error) {
+			return u.codes.ManagerList(ctx, port.ManagerListDiscountCodesParams{
+				Search: searchPtr,
+				Limit:  pageSize,
+				Offset: utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.codes.ManagerListCount(ctx, searchPtr)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}

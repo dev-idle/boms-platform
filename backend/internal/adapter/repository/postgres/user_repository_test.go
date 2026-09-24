@@ -127,12 +127,15 @@ func TestUserRepository_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		customerRole := domainuser.RoleCustomer
-		rows, total, err := repo.AdminList(ctx, port.AdminListUsersParams{
+		rows, err := repo.AdminList(ctx, port.AdminListUsersParams{
 			Search: "",
 			Role:   &customerRole,
 			Limit:  20,
 			Offset: 0,
 		})
+		require.NoError(t, err)
+
+		total, err := repo.AdminListCount(ctx, "", &customerRole)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, total, int64(1))
 
@@ -158,11 +161,14 @@ func TestUserRepository_Integration(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		rows, total, err := repo.AdminList(ctx, port.AdminListUsersParams{
+		rows, err := repo.AdminList(ctx, port.AdminListUsersParams{
 			Search: "",
 			Limit:  20,
 			Offset: 0,
 		})
+		require.NoError(t, err)
+
+		total, err := repo.AdminListCount(ctx, "", nil)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, total, int64(1))
 		assert.NotEmpty(t, rows)

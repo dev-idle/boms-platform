@@ -81,15 +81,18 @@ func (u *ManagerCategoryUsecase) List(
 	if trimmed != "" {
 		searchPtr = &trimmed
 	}
-	items, err := u.categories.ManagerList(ctx, port.ManagerListCategoriesParams{
-		Search: searchPtr,
-		Limit:  pageSize,
-		Offset: utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.categories.ManagerListCount(ctx, searchPtr)
+	items, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]domaincategory.Category, error) {
+			return u.categories.ManagerList(ctx, port.ManagerListCategoriesParams{
+				Search: searchPtr,
+				Limit:  pageSize,
+				Offset: utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.categories.ManagerListCount(ctx, searchPtr)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}

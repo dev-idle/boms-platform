@@ -43,6 +43,8 @@ type CatalogListProductsParams struct {
 type ManagerListProduct struct {
 	Product      domainproduct.Product
 	CategoryName string
+	// Gallery URLs in sort order; the list query returns them with the row.
+	ImageURLs []string
 }
 
 type CatalogListProduct struct {
@@ -54,6 +56,8 @@ type CatalogListProduct struct {
 	PriceCents   int64
 	CategoryName string
 	CategorySlug string
+	// Gallery URLs in sort order; the list query returns them with the row.
+	ImageURLs []string
 }
 
 type ProductRepository interface {
@@ -70,5 +74,4 @@ type ProductRepository interface {
 	CatalogGetByIDs(ctx context.Context, ids []uuid.UUID) ([]CatalogListProduct, error)
 	ReplaceProductImages(ctx context.Context, productID uuid.UUID, imageURLs []string) error
 	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]string, error)
-	ListProductImagesByProductIDs(ctx context.Context, productIDs []uuid.UUID) (map[uuid.UUID][]string, error)
 }

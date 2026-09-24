@@ -78,11 +78,15 @@ func (m *mockUserRepo) Restore(ctx context.Context, id uuid.UUID) error {
 func (m *mockUserRepo) AdminUpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
 	return m.Called(ctx, id, passwordHash).Error(0)
 }
-func (m *mockUserRepo) AdminList(ctx context.Context, params port.AdminListUsersParams) ([]port.AdminListUser, int64, error) {
+func (m *mockUserRepo) AdminList(ctx context.Context, params port.AdminListUsersParams) ([]port.AdminListUser, error) {
 	args := m.Called(ctx, params)
 	rows, _ := args.Get(0).([]port.AdminListUser)
-	total, _ := args.Get(1).(int64)
-	return rows, total, args.Error(2)
+	return rows, args.Error(1)
+}
+func (m *mockUserRepo) AdminListCount(ctx context.Context, search string, role *domainuser.Role) (int64, error) {
+	args := m.Called(ctx, search, role)
+	total, _ := args.Get(0).(int64)
+	return total, args.Error(1)
 }
 func (m *mockUserRepo) ClaimPhone(ctx context.Context, phone string, userID uuid.UUID) (bool, error) {
 	args := m.Called(ctx, phone, userID)

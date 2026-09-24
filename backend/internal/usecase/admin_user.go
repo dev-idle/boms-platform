@@ -456,12 +456,20 @@ func (u *AdminUserUsecase) List(
 	if err != nil {
 		return nil, 0, 0, 0, err
 	}
-	rows, total, err := u.users.AdminList(ctx, port.AdminListUsersParams{
-		Search: strings.TrimSpace(search),
-		Role:   role,
-		Limit:  pageSize,
-		Offset: utils.PageOffset(page, pageSize),
-	})
+	trimmedSearch := strings.TrimSpace(search)
+	rows, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]port.AdminListUser, error) {
+			return u.users.AdminList(ctx, port.AdminListUsersParams{
+				Search: trimmedSearch,
+				Role:   role,
+				Limit:  pageSize,
+				Offset: utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.users.AdminListCount(ctx, trimmedSearch, role)
+		},
+	)
 	if err != nil {
 		return nil, 0, 0, 0, err
 	}

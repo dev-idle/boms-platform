@@ -46,15 +46,18 @@ func (u *BakerOrderUsecase) List(
 		status = &parsed
 	}
 
-	rows, err := u.orders.BakerListProduction(ctx, port.BakerListOrdersParams{
-		Status: status,
-		Limit:  pageSize,
-		Offset: utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.orders.BakerListProductionCount(ctx, status)
+	rows, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]port.StaffOrderListRow, error) {
+			return u.orders.BakerListProduction(ctx, port.BakerListOrdersParams{
+				Status: status,
+				Limit:  pageSize,
+				Offset: utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.orders.BakerListProductionCount(ctx, status)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}

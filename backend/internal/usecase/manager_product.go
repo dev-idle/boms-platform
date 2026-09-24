@@ -128,32 +128,27 @@ func (u *ManagerProductUsecase) List(
 		searchPtr = &trimmed
 	}
 
-	items, err := u.products.ManagerList(ctx, port.ManagerListProductsParams{
-		CategoryID: categoryID,
-		Search:     searchPtr,
-		Limit:      pageSize,
-		Offset:     utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.products.ManagerListCount(ctx, categoryID, searchPtr)
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-
-	productIDs := make([]uuid.UUID, 0, len(items))
-	for _, item := range items {
-		productIDs = append(productIDs, item.Product.ID)
-	}
-	imagesByProduct, err := u.products.ListProductImagesByProductIDs(ctx, productIDs)
+	items, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]port.ManagerListProduct, error) {
+			return u.products.ManagerList(ctx, port.ManagerListProductsParams{
+				CategoryID: categoryID,
+				Search:     searchPtr,
+				Limit:      pageSize,
+				Offset:     utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.products.ManagerListCount(ctx, categoryID, searchPtr)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}
 
+	// The gallery arrives with each row, so the page is one round trip.
 	out := make([]dto.ProductResponse, 0, len(items))
 	for _, item := range items {
-		out = append(out, *toProductResponse(&item.Product, item.CategoryName, imagesByProduct[item.Product.ID]))
+		out = append(out, *toProductResponse(&item.Product, item.CategoryName, item.ImageURLs))
 	}
 	return out, total, page, pageSize, nil
 }

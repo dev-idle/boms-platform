@@ -255,32 +255,54 @@ type Querier interface {
 	//      WHERE ci.combo_id = c.id
 	//    )
 	CatalogListCombosCount(ctx context.Context) (int64, error)
-	//CatalogListProducts
+	// Images come back with the row: fetching them separately costs a second round
+	// trip, which on a remote Postgres is the whole request budget. The page is cut
+	// first and the gallery gathered after, so the aggregate runs once per row shown
+	// rather than once per row the filter matches.
 	//
 	//  SELECT
-	//      p.id,
-	//      p.category_id,
-	//      p.name,
-	//      p.slug,
-	//      p.description,
-	//      p.price_cents,
-	//      c.name AS category_name,
-	//      c.slug AS category_slug
-	//  FROM products p
-	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
-	//  WHERE p.deleted_at IS NULL
-	//    AND p.is_active = true
-	//    AND (
-	//      $3::uuid IS NULL
-	//      OR p.category_id = $3::uuid
-	//    )
-	//    AND (
-	//      $4::text IS NULL
-	//      OR p.name ILIKE '%' || $4::text || '%'
-	//      OR p.slug ILIKE '%' || $4::text || '%'
-	//    )
-	//  ORDER BY c.sort_order ASC, p.name ASC
-	//  LIMIT $1 OFFSET $2
+	//      page.id,
+	//      page.category_id,
+	//      page.name,
+	//      page.slug,
+	//      page.description,
+	//      page.price_cents,
+	//      page.category_name,
+	//      page.category_slug,
+	//      COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
+	//  FROM (
+	//      SELECT
+	//          p.id,
+	//          p.category_id,
+	//          p.name,
+	//          p.slug,
+	//          p.description,
+	//          p.price_cents,
+	//          c.name AS category_name,
+	//          c.slug AS category_slug,
+	//          c.sort_order AS category_sort_order
+	//      FROM products p
+	//      INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+	//      WHERE p.deleted_at IS NULL
+	//        AND p.is_active = true
+	//        AND (
+	//          $3::uuid IS NULL
+	//          OR p.category_id = $3::uuid
+	//        )
+	//        AND (
+	//          $4::text IS NULL
+	//          OR p.name ILIKE '%' || $4::text || '%'
+	//          OR p.slug ILIKE '%' || $4::text || '%'
+	//        )
+	//      ORDER BY c.sort_order ASC, p.name ASC
+	//      LIMIT $1 OFFSET $2
+	//  ) page
+	//  LEFT JOIN LATERAL (
+	//      SELECT array_agg(pi.image_url ORDER BY pi.sort_order) AS urls
+	//      FROM product_images pi
+	//      WHERE pi.product_id = page.id
+	//  ) img ON true
+	//  ORDER BY page.category_sort_order ASC, page.name ASC
 	CatalogListProducts(ctx context.Context, arg CatalogListProductsParams) ([]CatalogListProductsRow, error)
 	//CatalogListProductsCount
 	//
@@ -840,13 +862,6 @@ type Querier interface {
 	//  WHERE product_id = $1
 	//  ORDER BY sort_order ASC
 	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]ListProductImagesByProductIDRow, error)
-	//ListProductImagesByProductIDs
-	//
-	//  SELECT product_id, image_url, sort_order
-	//  FROM product_images
-	//  WHERE product_id = ANY($1::uuid[])
-	//  ORDER BY product_id ASC, sort_order ASC
-	ListProductImagesByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ListProductImagesByProductIDsRow, error)
 	// Phones live in three profile tables, so no single unique index can guard them.
 	// This lock (namespace 8734212, keyed by the number) serializes writers of one
 	// number until the transaction ends.
@@ -956,34 +971,56 @@ type Querier interface {
 	//      OR code ILIKE '%' || $1::text || '%'
 	//    )
 	ManagerListDiscountCodesCount(ctx context.Context, search sql.NullString) (int64, error)
-	//ManagerListProducts
+	// Same shape as the catalog list: cut the page first, then gather the gallery,
+	// so the aggregate runs once per row shown rather than once per row matched.
 	//
 	//  SELECT
-	//      p.id,
-	//      p.category_id,
-	//      p.name,
-	//      p.slug,
-	//      p.description,
-	//      p.price_cents,
-	//      p.is_active,
-	//      p.created_at,
-	//      p.updated_at,
-	//      p.deleted_at,
-	//      c.name AS category_name
-	//  FROM products p
-	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
-	//  WHERE p.deleted_at IS NULL
-	//    AND (
-	//      $3::uuid IS NULL
-	//      OR p.category_id = $3::uuid
-	//    )
-	//    AND (
-	//      $4::text IS NULL
-	//      OR p.name ILIKE '%' || $4::text || '%'
-	//      OR p.slug ILIKE '%' || $4::text || '%'
-	//    )
-	//  ORDER BY p.name ASC
-	//  LIMIT $1 OFFSET $2
+	//      page.id,
+	//      page.category_id,
+	//      page.name,
+	//      page.slug,
+	//      page.description,
+	//      page.price_cents,
+	//      page.is_active,
+	//      page.created_at,
+	//      page.updated_at,
+	//      page.deleted_at,
+	//      page.category_name,
+	//      COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
+	//  FROM (
+	//      SELECT
+	//          p.id,
+	//          p.category_id,
+	//          p.name,
+	//          p.slug,
+	//          p.description,
+	//          p.price_cents,
+	//          p.is_active,
+	//          p.created_at,
+	//          p.updated_at,
+	//          p.deleted_at,
+	//          c.name AS category_name
+	//      FROM products p
+	//      INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+	//      WHERE p.deleted_at IS NULL
+	//        AND (
+	//          $3::uuid IS NULL
+	//          OR p.category_id = $3::uuid
+	//        )
+	//        AND (
+	//          $4::text IS NULL
+	//          OR p.name ILIKE '%' || $4::text || '%'
+	//          OR p.slug ILIKE '%' || $4::text || '%'
+	//        )
+	//      ORDER BY p.name ASC
+	//      LIMIT $1 OFFSET $2
+	//  ) page
+	//  LEFT JOIN LATERAL (
+	//      SELECT array_agg(pi.image_url ORDER BY pi.sort_order) AS urls
+	//      FROM product_images pi
+	//      WHERE pi.product_id = page.id
+	//  ) img ON true
+	//  ORDER BY page.name ASC
 	ManagerListProducts(ctx context.Context, arg ManagerListProductsParams) ([]ManagerListProductsRow, error)
 	//ManagerListProductsCount
 	//

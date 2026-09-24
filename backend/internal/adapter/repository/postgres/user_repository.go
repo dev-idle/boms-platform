@@ -226,10 +226,10 @@ func (r *UserRepository) AdminUpdatePassword(ctx context.Context, id uuid.UUID, 
 }
 
 // AdminList implements port.UserRepository.
-func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUsersParams) ([]port.AdminListUser, int64, error) {
+func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUsersParams) ([]port.AdminListUser, error) {
 	roleFilter, err := adminListRoleFilter(params.Role)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	rows, err := r.q(ctx).AdminList(ctx, sqlcgen.AdminListParams{
 		Search:     params.Search,
@@ -238,14 +238,7 @@ func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUse
 		Offset:     params.Offset,
 	})
 	if err != nil {
-		return nil, 0, mapRepoError(err, "admin list users")
-	}
-	total, err := r.q(ctx).AdminListCount(ctx, sqlcgen.AdminListCountParams{
-		Search:     params.Search,
-		RoleFilter: roleFilter,
-	})
-	if err != nil {
-		return nil, 0, mapRepoError(err, "admin list count")
+		return nil, mapRepoError(err, "admin list users")
 	}
 
 	out := make([]port.AdminListUser, 0, len(rows))
@@ -270,7 +263,26 @@ func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUse
 		out = append(out, item)
 	}
 
-	return out, total, nil
+	return out, nil
+}
+
+func (r *UserRepository) AdminListCount(
+	ctx context.Context,
+	search string,
+	role *domainuser.Role,
+) (int64, error) {
+	roleFilter, err := adminListRoleFilter(role)
+	if err != nil {
+		return 0, err
+	}
+	total, err := r.q(ctx).AdminListCount(ctx, sqlcgen.AdminListCountParams{
+		Search:     search,
+		RoleFilter: roleFilter,
+	})
+	if err != nil {
+		return 0, mapRepoError(err, "admin list count")
+	}
+	return total, nil
 }
 
 func mapUserFields(

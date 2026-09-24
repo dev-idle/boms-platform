@@ -100,8 +100,19 @@ Canonical implementation: `GET /admin/users` (`handler/v1/admin_user.go`, `useca
 | Generic clamp + offset | `shared/utils.NormalizePageParams`, `PageOffset`, `Int32FromInt64` |
 | Feature defaults & max `page_size` | `usecase/*_list_page.go` (int32 const + derived query default string; e.g. admin: 20 / 100) |
 | SQL `LIMIT`/`OFFSET` | `port.*Params` as `int32`; usecase returns effective page values for `OKPaginated` meta |
+| Page + count together | `usecase/list_with_total.go` — `listWithTotal` runs the page query and its count concurrently (`errgroup`) |
 
 **Rules:** normalize once in usecase (zero-trust); handler does not duplicate clamp; never `strconv.Atoi` → `int` → `int32` for SQL limits. Admin list excludes soft-deleted users (`deleted_at IS NULL`).
+
+**One round trip per page.** Postgres is managed and remote, so a list endpoint
+spends its time on round trips, not on queries. Every list goes through
+`listWithTotal`, which is read-only by construction: it refuses to run inside a
+transaction (`ctxmeta.InTransaction`), because one transaction connection cannot
+serve two queries at once. Rows a page needs from another table are joined into
+the page query rather than fetched afterwards — the product gallery is a
+`LEFT JOIN LATERAL` over the already-paginated rows, not a second query. A list
+therefore costs two concurrent connections for the width of one round trip;
+`POSTGRES_STATEMENT_TIMEOUT` bounds what a single statement may hold.
 
 **Handler errors:** map usecase failures with `handler/v1/writeMapUsecaseError`; repositories map pgx errors with `mapRepoError`; bind/validation failures use `writeValidationError`.
 

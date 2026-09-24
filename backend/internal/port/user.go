@@ -55,7 +55,8 @@ type UserRepository interface {
 	AdminGetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error)
 	Restore(ctx context.Context, id uuid.UUID) error
 	AdminUpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
-	AdminList(ctx context.Context, params AdminListUsersParams) ([]AdminListUser, int64, error)
+	AdminList(ctx context.Context, params AdminListUsersParams) ([]AdminListUser, error)
+	AdminListCount(ctx context.Context, search string, role *domainuser.Role) (int64, error)
 	// ClaimPhone locks phone until the surrounding transaction ends and reports
 	// whether an active account other than userID already holds it.
 	ClaimPhone(ctx context.Context, phone string, userID uuid.UUID) (held bool, err error)

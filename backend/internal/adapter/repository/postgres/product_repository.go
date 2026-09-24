@@ -111,24 +111,6 @@ func (r *ProductRepository) ListProductImagesByProductID(
 	return out, nil
 }
 
-func (r *ProductRepository) ListProductImagesByProductIDs(
-	ctx context.Context,
-	productIDs []uuid.UUID,
-) (map[uuid.UUID][]string, error) {
-	if len(productIDs) == 0 {
-		return map[uuid.UUID][]string{}, nil
-	}
-	rows, err := r.q(ctx).ListProductImagesByProductIDs(ctx, productIDs)
-	if err != nil {
-		return nil, mapRepoError(err, "list product images by product ids")
-	}
-	out := make(map[uuid.UUID][]string, len(productIDs))
-	for _, row := range rows {
-		out[row.ProductID] = append(out[row.ProductID], row.ImageUrl)
-	}
-	return out, nil
-}
-
 func (r *ProductRepository) ManagerList(ctx context.Context, params port.ManagerListProductsParams) ([]port.ManagerListProduct, error) {
 	rows, err := r.q(ctx).ManagerListProducts(ctx, sqlcgen.ManagerListProductsParams{
 		Limit:      params.Limit,
@@ -223,7 +205,7 @@ func (r *ProductRepository) CatalogGetByIDs(ctx context.Context, ids []uuid.UUID
 }
 
 func mapManagerListProductsRow(row sqlcgen.ManagerListProductsRow) port.ManagerListProduct {
-	return mapManagerJoinedProduct(
+	item := mapManagerJoinedProduct(
 		row.ID,
 		row.CategoryID,
 		row.Name,
@@ -236,6 +218,8 @@ func mapManagerListProductsRow(row sqlcgen.ManagerListProductsRow) port.ManagerL
 		row.DeletedAt,
 		row.CategoryName,
 	)
+	item.ImageURLs = row.ImageUrls
+	return item
 }
 
 func mapManagerGetProductRow(row sqlcgen.ManagerGetProductByIDRow) port.ManagerListProduct {
@@ -314,7 +298,7 @@ func mapProduct(row sqlcgen.Product) *domainproduct.Product {
 }
 
 func mapCatalogListProductsRow(row sqlcgen.CatalogListProductsRow) port.CatalogListProduct {
-	return mapCatalogProductFields(
+	item := mapCatalogProductFields(
 		row.ID,
 		row.CategoryID,
 		row.Name,
@@ -324,6 +308,8 @@ func mapCatalogListProductsRow(row sqlcgen.CatalogListProductsRow) port.CatalogL
 		row.CategoryName,
 		row.CategorySlug,
 	)
+	item.ImageURLs = row.ImageUrls
+	return item
 }
 
 func mapCatalogGetProductRow(row sqlcgen.CatalogGetProductByIDRow) port.CatalogListProduct {

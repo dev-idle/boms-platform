@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -31,14 +32,17 @@ func (u *CatalogUsecase) ListCategories(
 ) ([]dto.CatalogCategoryResponse, int64, int32, int32, error) {
 	page, pageSize = normalizeCatalogListPage(page, pageSize)
 
-	items, err := u.categories.CatalogList(ctx, port.CatalogListCategoriesParams{
-		Limit:  pageSize,
-		Offset: utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.categories.CatalogListCount(ctx)
+	items, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]domaincategory.Category, error) {
+			return u.categories.CatalogList(ctx, port.CatalogListCategoriesParams{
+				Limit:  pageSize,
+				Offset: utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.categories.CatalogListCount(ctx)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}
@@ -79,31 +83,27 @@ func (u *CatalogUsecase) ListProducts(
 		searchPtr = &trimmed
 	}
 
-	items, err := u.products.CatalogList(ctx, port.CatalogListProductsParams{
-		CategoryID: categoryID,
-		Search:     searchPtr,
-		Limit:      pageSize,
-		Offset:     utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.products.CatalogListCount(ctx, categoryID, searchPtr)
+	items, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]port.CatalogListProduct, error) {
+			return u.products.CatalogList(ctx, port.CatalogListProductsParams{
+				CategoryID: categoryID,
+				Search:     searchPtr,
+				Limit:      pageSize,
+				Offset:     utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.products.CatalogListCount(ctx, categoryID, searchPtr)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}
 
+	// The gallery arrives with each row, so the page is one round trip.
 	out := make([]dto.CatalogProductResponse, 0, len(items))
-	productIDs := make([]uuid.UUID, 0, len(items))
 	for _, item := range items {
-		productIDs = append(productIDs, item.ID)
-	}
-	imagesByProduct, err := u.products.ListProductImagesByProductIDs(ctx, productIDs)
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	for _, item := range items {
-		out = append(out, toCatalogProductResponse(item, imagesByProduct[item.ID]))
+		out = append(out, toCatalogProductResponse(item, item.ImageURLs))
 	}
 	return out, total, page, pageSize, nil
 }
@@ -141,14 +141,17 @@ func (u *CatalogUsecase) ListCombos(
 ) ([]dto.CatalogComboResponse, int64, int32, int32, error) {
 	page, pageSize = normalizeCatalogListPage(page, pageSize)
 
-	items, err := u.combos.CatalogList(ctx, port.CatalogListCombosParams{
-		Limit:  pageSize,
-		Offset: utils.PageOffset(page, pageSize),
-	})
-	if err != nil {
-		return nil, 0, page, pageSize, err
-	}
-	total, err := u.combos.CatalogListCount(ctx)
+	items, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]port.CatalogCombo, error) {
+			return u.combos.CatalogList(ctx, port.CatalogListCombosParams{
+				Limit:  pageSize,
+				Offset: utils.PageOffset(page, pageSize),
+			})
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.combos.CatalogListCount(ctx)
+		},
+	)
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}
