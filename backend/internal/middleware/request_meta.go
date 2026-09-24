@@ -14,7 +14,7 @@ func AttachRequestMeta() fiber.Handler {
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		c.SetUserContext(ctxmeta.WithRequestMeta(ctx, c.IP(), c.Get(fiber.HeaderUserAgent)))
+		c.SetUserContext(ctxmeta.WithRequestMeta(ctx, ClientIP(c), c.Get(fiber.HeaderUserAgent)))
 		return c.Next()
 	}
 }

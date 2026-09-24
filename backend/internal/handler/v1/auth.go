@@ -53,7 +53,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	access, refresh, user, err := h.usecase.Login(c.UserContext(), req, c.Get(fiber.HeaderUserAgent), c.IP())
+	access, refresh, user, err := h.usecase.Login(c.UserContext(), req, c.Get(fiber.HeaderUserAgent), middleware.ClientIP(c))
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
@@ -75,7 +75,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	if refresh == "" {
 		return writeAppError(c, apperrors.ErrMissingRefreshToken)
 	}
-	access, newRefresh, mustChange, err := h.usecase.Refresh(c.UserContext(), refresh, c.Get(fiber.HeaderUserAgent), c.IP())
+	access, newRefresh, mustChange, err := h.usecase.Refresh(c.UserContext(), refresh, c.Get(fiber.HeaderUserAgent), middleware.ClientIP(c))
 	if err != nil {
 		if errors.Is(err, apperrors.ErrInvalidRefreshToken) || errors.Is(err, apperrors.ErrSessionRevoked) {
 			clearRefreshCookie(c, h.cfg)

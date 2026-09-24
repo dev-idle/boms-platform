@@ -246,7 +246,9 @@ features/<slice>/
 | Forced password change | `must_change_password` flag → `RequirePasswordChanged` middleware blocks all routes except `/me` GET and `/me/password` PATCH |
 | Audit | All admin mutations write to `audit_logs` with actor/target/before/after |
 | Soft delete | `users.deleted_at` (no hard delete from app) |
-| Inbound | Strip `x-internal-secret`, `x-user-role`, `x-auth-hint` from client requests in proxy |
+| Inbound | Strip `x-internal-secret`, `x-user-role`, `x-auth-hint` and the forwarding headers (`x-forwarded-for`, `x-real-ip`, `forwarded`, `x-client-ip`) from client requests in proxy |
+| Visitor identity | The API only ever sees the BFF, so the BFF stamps `X-Client-IP` from what the hosting edge reported (`lib/server/client-ip.ts`) and `middleware.ClientIP` reads it, falling back to the socket address when it is absent or malformed. Rate-limit buckets and `audit_logs.ip` would otherwise all be the BFF |
+| Abandoned request | `HTTP_REQUEST_TIMEOUT` deadlines the handler context (below `HTTP_WRITE_TIMEOUT`), `POSTGRES_STATEMENT_TIMEOUT` caps one statement — a caller that walks away cannot hold database connections |
 
 ### Product images (Cloudinary)
 

@@ -15,7 +15,7 @@ func RateLimit(cfg config.RateLimitConfig) fiber.Handler {
 		Max:        cfg.Max,
 		Expiration: cfg.WindowDuration,
 		KeyGenerator: func(c *fiber.Ctx) string {
-			return c.IP()
+			return ClientIP(c)
 		},
 		LimitReached: func(c *fiber.Ctx) error {
 			sec := int(cfg.WindowDuration.Round(time.Second).Seconds())

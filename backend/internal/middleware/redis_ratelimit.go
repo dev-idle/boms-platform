@@ -86,21 +86,21 @@ func RedisRateLimit(rdb *goredis.Client, keyFn func(*fiber.Ctx) string, max int,
 // AuthAttemptRateLimit limits login/register attempts per IP (fail-closed when Redis is down).
 func AuthAttemptRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
-		return "rl:ip:" + c.IP() + ":auth_attempt"
+		return "rl:ip:" + ClientIP(c) + ":auth_attempt"
 	}, cfg.AuthAttemptMax, cfg.AuthAttemptWindow, false)
 }
 
 // AuthRefreshRateLimit limits refresh calls per IP.
 func AuthRefreshRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
-		return "rl:ip:" + c.IP() + ":auth_refresh"
+		return "rl:ip:" + ClientIP(c) + ":auth_refresh"
 	}, cfg.AuthRefreshMax, cfg.AuthRefreshWindow, true)
 }
 
 // AuthLogoutRateLimit limits logout calls per IP.
 func AuthLogoutRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
-		return "rl:ip:" + c.IP() + ":auth_logout"
+		return "rl:ip:" + ClientIP(c) + ":auth_logout"
 	}, cfg.AuthLogoutMax, cfg.AuthLogoutWindow, true)
 }
 
@@ -110,7 +110,7 @@ func AdminWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) f
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":admin_write"
 		}
-		return "rl:ip:" + c.IP() + ":admin_write"
+		return "rl:ip:" + ClientIP(c) + ":admin_write"
 	}, cfg.AdminWriteMax, cfg.AdminWriteWindow, true)
 }
 
@@ -120,7 +120,7 @@ func ManagerMediaRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig)
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":manager_media"
 		}
-		return "rl:ip:" + c.IP() + ":manager_media"
+		return "rl:ip:" + ClientIP(c) + ":manager_media"
 	}, cfg.ManagerMediaMax, cfg.ManagerMediaWindow, true)
 }
 
@@ -130,7 +130,7 @@ func ManagerWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig)
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":manager_write"
 		}
-		return "rl:ip:" + c.IP() + ":manager_write"
+		return "rl:ip:" + ClientIP(c) + ":manager_write"
 	}, cfg.ManagerWriteMax, cfg.ManagerWriteWindow, true)
 }
 
@@ -142,7 +142,7 @@ func SelfWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fi
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":self_write"
 		}
-		return "rl:ip:" + c.IP() + ":self_write"
+		return "rl:ip:" + ClientIP(c) + ":self_write"
 	}, cfg.SelfWriteMax, cfg.SelfWriteWindow, true)
 }
 
@@ -152,6 +152,6 @@ func OrderWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) f
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":order_write"
 		}
-		return "rl:ip:" + c.IP() + ":order_write"
+		return "rl:ip:" + ClientIP(c) + ":order_write"
 	}, cfg.OrderWriteMax, cfg.OrderWriteWindow, true)
 }

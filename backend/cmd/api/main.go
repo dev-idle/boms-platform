@@ -320,9 +320,10 @@ func newFiberApp(cfg *config.Config, log *zap.Logger) *fiber.App {
 	app := fiber.New(fcfg)
 
 	// Order matters: requestid → recover (catches panics from everything below) →
-	// request meta + headers → logger → cors → rate limit.
+	// request deadline → request meta + headers → logger → cors → rate limit.
 	app.Use(requestid.New())
 	app.Use(middleware.Recover(log))
+	app.Use(middleware.RequestTimeout(cfg.HTTP.RequestTimeout))
 	app.Use(middleware.AttachRequestMeta())
 	app.Use(middleware.SecurityHeaders(cfg.HTTP))
 	app.Use(middleware.RequestLogger(log))

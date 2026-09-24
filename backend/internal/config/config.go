@@ -38,12 +38,15 @@ type AppConfig struct {
 }
 
 type HTTPConfig struct {
-	Host           string
-	Port           int
-	BodyLimit      int
-	ReadTimeout    time.Duration
-	WriteTimeout   time.Duration
-	IdleTimeout    time.Duration
+	Host         string
+	Port         int
+	BodyLimit    int
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
+	// RequestTimeout bounds one handler. Below WriteTimeout, so the handler
+	// gives up before the socket does and the client sees a mapped error.
+	RequestTimeout time.Duration
 	TrustedProxies []string
 	HSTSMaxAge     int    // seconds; 0 disables Strict-Transport-Security
 	InternalSecret string // shared secret between Next.js proxy and this API; empty disables enforcement
@@ -235,6 +238,7 @@ func Load() (*Config, error) {
 			BodyLimit:      v.GetInt("http.body_limit"),
 			ReadTimeout:    v.GetDuration("http.read_timeout"),
 			WriteTimeout:   v.GetDuration("http.write_timeout"),
+			RequestTimeout: v.GetDuration("http.request_timeout"),
 			IdleTimeout:    v.GetDuration("http.idle_timeout"),
 			TrustedProxies: splitAndTrim(v.GetString("http.trusted_proxies")),
 			HSTSMaxAge:     v.GetInt("http.hsts_max_age"),
@@ -352,6 +356,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("http.body_limit", 1<<20)
 	v.SetDefault("http.read_timeout", 15*time.Second)
 	v.SetDefault("http.write_timeout", 30*time.Second)
+	v.SetDefault("http.request_timeout", 20*time.Second)
 	v.SetDefault("http.idle_timeout", 120*time.Second)
 	v.SetDefault("http.hsts_max_age", 0)
 	v.SetDefault("http.internal_secret", "")

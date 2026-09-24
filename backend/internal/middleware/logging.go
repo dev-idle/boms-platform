@@ -19,7 +19,7 @@ func RequestLogger(log *zap.Logger) fiber.Handler {
 			zap.String("path", c.Path()),
 			zap.Int("status", c.Response().StatusCode()),
 			zap.Duration("latency", time.Since(start)),
-			zap.String("remote_ip", c.IP()),
+			zap.String("remote_ip", ClientIP(c)),
 			zap.Int("bytes_out", len(c.Response().Body())),
 		}
 		fields = append(fields, response.ZapCorrelationFields(c)...)
