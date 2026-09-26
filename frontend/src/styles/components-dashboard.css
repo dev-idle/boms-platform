@@ -1130,16 +1130,24 @@
     inline-size: max(100%,24rem);
     inset-block-start: 100%;
     inset-inline: 0;
-    overflow: visible;
+    /* Set by the field: the room that side leaves, so a taller panel scrolls
+       instead of running off the window. */
+    max-block-size: var(--datetime-panel-space, none);
+    overflow-y: auto;
     position: absolute;
     z-index: 50;
   }
 
   .dashboard-datetime__panel-body {
     --datetime-cell-gap: 0.25rem;
-    --datetime-col-calendar: minmax(0, 1.1fr);
-    --datetime-col-time: minmax(0, 0.9fr);
-    --datetime-day-size: 2rem;
+    /* A day cell is a dense numeric target like a pagination cell, not a
+       button: 36px, and seven of them set the width every band aligns on. */
+    --datetime-day-size: 2.25rem;
+  .dashboard-datetime__panel--above {
+    inset-block-end: 100%;
+    inset-block-start: auto;
+  }
+
     --datetime-pane-width: calc(7 * var(--datetime-day-size) + 6 * var(--datetime-cell-gap));
     display: flex;
     flex-direction: column;
@@ -1315,12 +1323,12 @@
   .dashboard-datetime__time-label {
     color: var(--color-ink);
     display: block;
-    font-size: 0.875rem;
-    font-weight: 500;
-    letter-spacing: 0;
-    line-height: 1.25;
-    text-align: center;
-    width: 100%;
+    font-size: var(--label-size-sm);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking-sm);
+    line-height: 1;
+    text-transform: uppercase;
+    width: var(--datetime-pane-width);
   }
 
   .dashboard-datetime__time-controls .field-select {
@@ -1367,18 +1375,6 @@
   .dashboard-datetime__period-btn--selected:hover {
     background-color: var(--color-matcha-500);
     color: var(--theme-on-primary);
-  }
-
-    .dashboard-datetime__calendar {
-      border-bottom: 1px solid var(--color-line-soft);
-    .dashboard-datetime__time-controls {
-      flex-flow: wrap;
-    }
-
-    .dashboard-datetime__time-controls .field-select {
-      flex: 4.5rem;
-      width: auto;
-    }
   }
 
   .dashboard-order-summary {

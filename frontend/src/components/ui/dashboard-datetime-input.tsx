@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { DashboardCalendarIcon } from "@/components/icons/dashboard-ui-icons";
 import { DashboardDatetimePicker } from "@/components/ui/dashboard-datetime-picker";
@@ -29,6 +29,27 @@ function isPortaledSelectTarget(target: EventTarget | null): boolean {
   );
 }
 
+/** Clearance kept between the panel and the edge of the window. */
+const PANEL_VIEWPORT_MARGIN = 12;
+
+type PanelPlacement = {
+  /** How much room that side leaves, so a panel taller than it can scroll.
+   * Null until measured: an unmeasured panel must render at its natural height,
+   * or the first measurement reads a cap of its own making. */
+  space: number | null;
+  side: "above" | "below";
+};
+
+const INITIAL_PLACEMENT: PanelPlacement = { side: "below", space: null };
+
+/** Below the field, or above it when the panel would otherwise run off-screen. */
+function measurePlacement(field: DOMRect, panelHeight: number): PanelPlacement {
+  const below = window.innerHeight - field.bottom - PANEL_VIEWPORT_MARGIN;
+  const above = field.top - PANEL_VIEWPORT_MARGIN;
+  const side = panelHeight > below && above > below ? "above" : "below";
+  return { side, space: Math.max(side === "above" ? above : below, 0) };
+}
+
 /** Dashboard datetime field — themed popover; draft commits on Set only. */
 export function DashboardDatetimeInput({
   className,
@@ -40,8 +61,10 @@ export function DashboardDatetimeInput({
   ...props
 }: DashboardDatetimeInputProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const [open, setOpen] = useState(false);
+  const [placement, setPlacement] = useState<PanelPlacement>(INITIAL_PLACEMENT);
   const [draft, setDraft] = useState<LocalDatetimeParts>(() =>
     parseIsoToLocalParts(value),
   );
@@ -80,6 +103,44 @@ export function DashboardDatetimeInput({
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  // A field low on the page would otherwise open a panel that runs past the
+  // bottom of the window, leaving the time row and Set out of reach.
+  useLayoutEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function place(): void {
+      const field = rootRef.current;
+      const panel = panelRef.current;
+      if (!field || !panel) {
+        return;
+      }
+      // `scrollHeight`, not `offsetHeight`: the panel is already capped by the
+      // space this effect wrote last time, so measuring its box would compare
+      // the cap with itself and the flip could never fire.
+      const next = measurePlacement(
+        field.getBoundingClientRect(),
+        panel.scrollHeight,
+      );
+      setPlacement((current) =>
+        current.side === next.side &&
+        current.space !== null &&
+        Math.abs(current.space - (next.space ?? 0)) < 1
+          ? current
+          : next,
+      );
+    }
+
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
     };
   }, [open]);
 
@@ -136,10 +197,21 @@ export function DashboardDatetimeInput({
 
       {open ? (
         <div
-          className="dashboard-datetime__panel"
+          className={cn(
+            "dashboard-datetime__panel",
+            placement.side === "above" && "dashboard-datetime__panel--above",
+          )}
           id={panelId}
+          ref={panelRef}
           role="dialog"
           aria-label="Choose date and time"
+          style={
+            placement.space === null
+              ? undefined
+              : ({
+                  "--datetime-panel-space": `${placement.space}px`,
+                } as React.CSSProperties)
+          }
         >
           <DashboardDatetimePicker
             draft={draft}
