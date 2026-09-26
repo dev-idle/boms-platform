@@ -71,7 +71,7 @@ export default function RootLayout({
             closeButton
             duration={TOAST_DURATION_MS}
             icons={{ error: <ToastErrorIcon />, success: <ToastSuccessIcon /> }}
-            position="bottom-right"
+            position="top-center"
             style={TOASTER_STYLE}
           />
         </QueryProvider>

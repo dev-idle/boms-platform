@@ -10,11 +10,11 @@
 
    Anatomy: a square paper card, one hairline, the overlay shadow, a status tile
    and a title. The tile — a thin-stroke glyph on a square of the status tint —
-   is the one filled shape on the card, so the toast is found at a glance from
-   the bottom-right corner where it lands. The bottom hairline takes the status
-   tone and drains to the left over the toast's lifetime. The drain is the auto-dismiss timer made
-   visible; it stops while the pointer holds the stack open, exactly when sonner
-   stops its own timer.
+   is the one filled shape on the card, so the toast is found at a glance where
+   it lands, centred above the page. The bottom hairline takes the status tone
+   and drains to the left over the toast's lifetime. The drain is the
+   auto-dismiss timer made visible; it stops while the pointer holds the stack
+   open, exactly when sonner stops its own timer.
 
    Under reduced motion sonner sets `animation: none !important`, which leaves
    the full status hairline standing — the right fallback, so no rule here. One
