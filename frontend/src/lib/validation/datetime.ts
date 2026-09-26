@@ -6,6 +6,21 @@ import { z } from "zod";
  */
 export const apiDateTimeSchema = z.string().datetime({ offset: true });
 
+/**
+ * The near end of a default promotion window. A combo or code a manager is
+ * creating right now starts right now — anything later is a delay they did not
+ * ask for and may not notice, and the backend only asks that the window ends
+ * after it begins.
+ */
+export function windowStartsNow(): string {
+  return new Date().toISOString();
+}
+
+/** The far end of that window, `days` out. */
+export function windowEndsInDays(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",

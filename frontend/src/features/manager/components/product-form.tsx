@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
-import { IntegerFieldInput } from "@/components/ui/integer-field-input";
+import { MoneyFieldInput } from "@/components/ui/money-field-input";
 import { Input } from "@/components/ui/input";
 import {
   FORM_FIELD_HINT,
@@ -34,14 +34,14 @@ import {
   productFormSchema,
   type ManagerProduct,
   type ProductFormInput,
+  type ProductFormValues,
 } from "../schemas";
 
-const CREATE_PRODUCT_EMPTY_VALUES: ProductFormInput = {
+const CREATE_PRODUCT_EMPTY_VALUES: ProductFormValues = {
   category_id: "",
   name: "",
   slug: "",
   description: null,
-  price_cents: 0,
   is_active: true,
   image_urls: [],
 };
@@ -73,7 +73,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           name: product?.name ?? "",
           slug: product?.slug ?? "",
           description: product?.description ?? null,
-          price_cents: product?.price_cents ?? 0,
+          price_cents: product?.price_cents,
           is_active: product?.is_active ?? true,
           image_urls: product?.image_urls ?? [],
         };
@@ -90,7 +90,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
 }
 
 type ProductFormFieldsProps = {
-  defaultValues: ProductFormInput;
+  defaultValues: ProductFormValues;
   mode: "create" | "edit";
   product?: ManagerProduct;
   onSuccess?: () => void;
@@ -111,7 +111,7 @@ function ProductFormFields({
   });
   const categories = categoriesQuery.data?.categories ?? [];
 
-  const form = useForm<ProductFormInput>({
+  const form = useForm<ProductFormValues, unknown, ProductFormInput>({
     resolver: zodResolver(productFormSchema),
     defaultValues,
   });
@@ -219,11 +219,8 @@ function ProductFormFields({
           name="price_cents"
           render={({ field }) => (
             <FormItem>
-              <FieldControl
-                hint={FORM_FIELD_HINT.catalogPriceCents}
-                label="Price (cents)"
-              >
-                <IntegerFieldInput min={0} {...field} />
+              <FieldControl hint={FORM_FIELD_HINT.catalogPrice} label="Price">
+                <MoneyFieldInput {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>

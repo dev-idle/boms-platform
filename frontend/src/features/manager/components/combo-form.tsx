@@ -22,11 +22,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { DashboardDatetimeInput } from "@/components/ui/dashboard-datetime-input";
-import { IntegerFieldInput } from "@/components/ui/integer-field-input";
+import { MoneyFieldInput } from "@/components/ui/money-field-input";
 import { isCloudinaryConfigured } from "@/lib/cloudinary/config";
 import { cloudinaryComboImageFieldHint } from "@/lib/cloudinary/messages";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
+import { windowEndsInDays, windowStartsNow } from "@/lib/validation/datetime";
 
 import {
   useCreateCombo,
@@ -35,6 +36,7 @@ import {
 import {
   comboFormSchema,
   type ComboFormInput,
+  type ComboFormValues,
   type ManagerCombo,
 } from "../schemas";
 
@@ -56,23 +58,18 @@ const COMBO_FORM_FIELDS = [
   "items",
 ] as const;
 
-const defaultStartsAt = (): string =>
-  new Date(Date.now() + 60 * 60 * 1000).toISOString();
-const defaultEndsAt = (): string =>
-  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
 export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
   const createCombo = useCreateCombo();
   const updateCombo = useUpdateCombo(combo?.id ?? "");
 
   const defaultValues = useMemo(
-    (): ComboFormInput => ({
+    (): ComboFormValues => ({
       name: combo?.name ?? "",
       slug: combo?.slug ?? "",
-      price_cents: combo?.price_cents ?? 0,
+      price_cents: combo?.price_cents,
       image_url: combo?.image_url ?? "",
-      starts_at: combo?.starts_at ?? defaultStartsAt(),
-      ends_at: combo?.ends_at ?? defaultEndsAt(),
+      starts_at: combo?.starts_at ?? windowStartsNow(),
+      ends_at: combo?.ends_at ?? windowEndsInDays(7),
       is_active: combo?.is_active ?? true,
       items:
         combo?.items.map((item) => ({
@@ -83,7 +80,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
     [combo],
   );
 
-  const form = useForm<ComboFormInput>({
+  const form = useForm<ComboFormValues, unknown, ComboFormInput>({
     resolver: zodResolver(comboFormSchema),
     defaultValues,
   });
@@ -137,11 +134,8 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
           name="price_cents"
           render={({ field }) => (
             <FormItem>
-              <FieldControl
-                hint={FORM_FIELD_HINT.catalogPriceCents}
-                label="Price (cents)"
-              >
-                <IntegerFieldInput min={0} {...field} />
+              <FieldControl hint={FORM_FIELD_HINT.catalogPrice} label="Price">
+                <MoneyFieldInput {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>

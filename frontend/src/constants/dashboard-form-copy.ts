@@ -8,13 +8,13 @@
  */
 
 export const FORM_FIELD_HINT = {
-  catalogPriceCents: "Amount in cents (100 = $1.00).",
+  catalogPrice: "Shown to customers exactly as entered.",
   catalogSlugCreate: "Auto-filled from name.",
   catalogSortOrder: "Lower values appear first.",
   comboItems: "Each product once. Add two products, or one product with quantity at least 2.",
   discountMaxUses: "Leave empty for unlimited uses.",
-  discountMinOrderCents: "Minimum cart total in cents. Leave empty for no minimum.",
-  discountMaxDiscountCents: "Cap percent discounts in cents. Leave empty for no cap.",
+  discountMinOrder: "Minimum cart total. Leave empty for no minimum.",
+  discountMaxDiscount: "Caps a percent discount. Leave empty for no cap.",
   discountPercentOff: "Whole number from 1 to 100.",
   comboImageUrlFallback: "One HTTPS image URL.",
   productImageUrlFallback: "Maximum 5 HTTPS image URLs.",

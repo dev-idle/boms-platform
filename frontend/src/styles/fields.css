@@ -1048,3 +1048,31 @@
     var(--field-control-padding-inline) + 1.7em + 2 * var(--phone-prefix-gap) + 1px
   );
 }
+
+/* Money field — the dollar sign belongs to the field, not to what is typed, so
+   it sits in the control and the value stays a plain amount. No hairline: unlike
+   the phone prefix it is one glyph, and a rule beside it would read as a column. */
+.money-input {
+  --money-prefix-gap: 0.5rem;
+
+  display: block;
+  position: relative;
+}
+
+.money-input__prefix {
+  align-items: center;
+  color: var(--color-ink-2);
+  display: flex;
+  font-size: var(--field-control-font-size);
+  inset-block: 0;
+  inset-inline-start: var(--field-control-padding-inline);
+  pointer-events: none;
+  position: absolute;
+}
+
+.money-input__control {
+  font-variant-numeric: tabular-nums;
+  padding-inline-start: calc(
+    var(--field-control-padding-inline) + 1ch + var(--money-prefix-gap)
+  );
+}

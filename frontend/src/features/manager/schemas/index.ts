@@ -14,6 +14,29 @@ import {
   isValidComboBundle,
 } from "../lib/combo-bundle-rules";
 
+/**
+ * An amount the manager must enter, unset until they do — so the field shows its
+ * hint instead of a zero nobody typed, and submitting without one says so.
+ */
+function requiredAmount(message: string, min: number, minMessage: string) {
+  // `.optional()` keeps the field unset until the manager types — the form's
+  // default omits it — while the refine below is what makes it required. A
+  // union would report `invalid_union` instead, which reads as "Invalid input".
+  return z
+    .number({ invalid_type_error: message })
+    .int(minMessage)
+    .min(min, minMessage)
+    .optional()
+    .refine((value) => value !== undefined, { message })
+    .transform((value) => value as number);
+}
+
+const priceAmount = requiredAmount(
+  "Price is required",
+  0,
+  "Price must be zero or greater",
+);
+
 export const managerCategorySchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
@@ -61,7 +84,7 @@ export const productFormSchema = z.object({
     .max(2000)
     .optional()
     .nullable(),
-  price_cents: z.coerce.number().int().min(0, "Price must be zero or greater"),
+  price_cents: priceAmount,
   is_active: z.boolean(),
   image_urls: productImageUrlsSchema,
 });
@@ -79,6 +102,10 @@ export type CategoryListFilterInput = z.infer<typeof categoryListFilterSchema>;
 
 export type ManagerProduct = z.infer<typeof managerProductSchema>;
 export type ProductFormInput = z.infer<typeof productFormSchema>;
+/** RHF defaults — `price_cents` unset on create until the manager enters it. */
+export type ProductFormValues = Omit<ProductFormInput, "price_cents"> & {
+  price_cents?: number;
+};
 export type ProductListFilterInput = z.infer<typeof productListFilterSchema>;
 
 export type CategoriesListResult = {
@@ -134,7 +161,7 @@ export const comboFormSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(255),
     slug: catalogSlugSchema,
-    price_cents: z.coerce.number().int().min(0, "Price must be zero or greater"),
+    price_cents: priceAmount,
     image_url: catalogImageUrlSchema,
     starts_at: apiDateTimeSchema,
     ends_at: apiDateTimeSchema,
@@ -181,18 +208,7 @@ export const discountCodeFormSchema = z
   .object({
     code: z.string().trim().min(3, "Code is required").max(64),
     discount_type: z.enum([DISCOUNT_TYPE.percent, DISCOUNT_TYPE.fixedCents]),
-    value: z
-      .union([
-        z.undefined(),
-        z
-          .number({ invalid_type_error: "Value is required" })
-          .int()
-          .min(1, "Value must be at least 1"),
-      ])
-      .refine((val) => val !== undefined, {
-        message: "Value is required",
-      })
-      .transform((val) => val as number),
+    value: requiredAmount("Value is required", 1, "Value must be at least 1"),
     min_order_cents: z.coerce
       .number()
       .int()
@@ -246,6 +262,10 @@ export const discountCodeListFilterSchema = z.object({
 
 export type ManagerCombo = z.infer<typeof managerComboSchema>;
 export type ComboFormInput = z.infer<typeof comboFormSchema>;
+/** RHF defaults — `price_cents` unset on create until the manager enters it. */
+export type ComboFormValues = Omit<ComboFormInput, "price_cents"> & {
+  price_cents?: number;
+};
 export type ComboListFilterInput = z.infer<typeof comboListFilterSchema>;
 
 export type ManagerDiscountCode = z.infer<typeof managerDiscountCodeSchema>;

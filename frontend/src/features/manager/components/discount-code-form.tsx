@@ -23,11 +23,16 @@ import {
   IntegerFieldInput,
   OptionalIntegerFieldInput,
 } from "@/components/ui/integer-field-input";
+import {
+  MoneyFieldInput,
+  OptionalMoneyFieldInput,
+} from "@/components/ui/money-field-input";
 import { DashboardDatetimeInput } from "@/components/ui/dashboard-datetime-input";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
+import { windowEndsInDays, windowStartsNow } from "@/lib/validation/datetime";
 
 import {
   useCreateDiscountCode,
@@ -46,11 +51,6 @@ type DiscountCodeFormProps = {
   discountCode?: ManagerDiscountCode;
   onSuccess?: () => void;
 };
-
-const defaultStartsAt = (): string =>
-  new Date(Date.now() + 60 * 60 * 1000).toISOString();
-const defaultEndsAt = (): string =>
-  new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
 const DISCOUNT_CODE_FORM_FIELDS = [
   "code",
@@ -80,8 +80,8 @@ export function DiscountCodeForm({
       min_order_cents: discountCode?.min_order_cents ?? null,
       max_uses: discountCode?.max_uses ?? null,
       max_discount_cents: discountCode?.max_discount_cents ?? null,
-      starts_at: discountCode?.starts_at ?? defaultStartsAt(),
-      ends_at: discountCode?.ends_at ?? defaultEndsAt(),
+      starts_at: discountCode?.starts_at ?? windowStartsNow(),
+      ends_at: discountCode?.ends_at ?? windowEndsInDays(30),
       is_active: discountCode?.is_active ?? true,
     }),
     [discountCode],
@@ -189,16 +189,15 @@ export function DiscountCodeForm({
                 hint={
                   isPercent
                     ? FORM_FIELD_HINT.discountPercentOff
-                    : FORM_FIELD_HINT.catalogPriceCents
+                    : FORM_FIELD_HINT.catalogPrice
                 }
-                label={isPercent ? "Percent off" : "Discount amount (cents)"}
+                label={isPercent ? "Percent off" : "Discount amount"}
               >
-                <IntegerFieldInput
-                  allowEmpty
-                  min={1}
-                  max={isPercent ? 100 : undefined}
-                  {...field}
-                />
+                {isPercent ? (
+                  <IntegerFieldInput allowEmpty min={1} max={100} {...field} />
+                ) : (
+                  <MoneyFieldInput {...field} />
+                )}
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -211,15 +210,11 @@ export function DiscountCodeForm({
           render={({ field }) => (
             <FormItem>
               <FieldControl
-                hint={FORM_FIELD_HINT.discountMinOrderCents}
-                label="Minimum order (cents)"
+                hint={FORM_FIELD_HINT.discountMinOrder}
+                label="Minimum order"
                 optional
               >
-                <OptionalIntegerFieldInput
-                  min={0}
-                  {...field}
-                  value={field.value ?? null}
-                />
+                <OptionalMoneyFieldInput {...field} value={field.value ?? null} />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -254,15 +249,11 @@ export function DiscountCodeForm({
             render={({ field }) => (
               <FormItem>
                 <FieldControl
-                  hint={FORM_FIELD_HINT.discountMaxDiscountCents}
-                  label="Maximum discount (cents)"
+                  hint={FORM_FIELD_HINT.discountMaxDiscount}
+                  label="Maximum discount"
                   optional
                 >
-                  <OptionalIntegerFieldInput
-                    min={1}
-                    {...field}
-                    value={field.value ?? null}
-                  />
+                  <OptionalMoneyFieldInput {...field} value={field.value ?? null} />
                 </FieldControl>
                 <FormMessage />
               </FormItem>
