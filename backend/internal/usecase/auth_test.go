@@ -99,11 +99,13 @@ func TestAuthUsecase_RefreshHappyPath(t *testing.T) {
 	signer.On("SignAccess", mock.Anything).Return("access-new", nil)
 	signer.On("SignRefresh", mock.Anything).Return("refresh-new", nil)
 
-	access, refresh, mustChange, err := uc.Refresh(context.Background(), "refresh-raw", "ua", "1.2.3.4")
+	refreshed, err := uc.Refresh(context.Background(), "refresh-raw", "ua", "1.2.3.4")
 	require.NoError(t, err)
-	assert.Equal(t, "access-new", access)
-	assert.Equal(t, "refresh-new", refresh)
-	assert.False(t, mustChange)
+	assert.Equal(t, "access-new", refreshed.AccessToken)
+	assert.Equal(t, "refresh-new", refreshed.RefreshToken)
+	assert.False(t, refreshed.MustChangePassword)
+	// The proxy routes a returning visitor on this, so a rotation must carry it.
+	assert.Equal(t, domainuser.RoleCustomer, refreshed.Role)
 	sessions.AssertCalled(t, "Rotate", mock.Anything, uid.String(), oldSid, mock.AnythingOfType("string"), oldJti, mock.Anything)
 }
 
@@ -120,7 +122,7 @@ func TestAuthUsecase_RefreshReuseJTImismatch(t *testing.T) {
 	sessions.On("Rotate", mock.Anything, uid.String(), "s1", mock.AnythingOfType("string"), "jti-a", mock.Anything).Return(apperrors.ErrConflict)
 	sessions.On("DeleteAllForUser", mock.Anything, uid.String()).Return(nil)
 
-	_, _, _, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
+	_, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrors.ErrSessionRevoked))
 	sessions.AssertCalled(t, "DeleteAllForUser", mock.Anything, uid.String())
@@ -139,7 +141,7 @@ func TestAuthUsecase_RefreshMissingSession(t *testing.T) {
 	sessions.On("Rotate", mock.Anything, uid.String(), "s1", mock.AnythingOfType("string"), "j1", mock.Anything).Return(apperrors.ErrNotFound)
 	sessions.On("DeleteAllForUser", mock.Anything, uid.String()).Return(nil)
 
-	_, _, _, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
+	_, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrors.ErrSessionRevoked))
 }
@@ -151,7 +153,7 @@ func TestAuthUsecase_RefreshAccessTokenRejected(t *testing.T) {
 
 	signer.On("ParseRefresh", "access-token").Return(port.RefreshTokenClaims{}, apperrors.ErrUnauthorized)
 
-	_, _, _, err := uc.Refresh(context.Background(), "access-token", "ua", "ip")
+	_, err := uc.Refresh(context.Background(), "access-token", "ua", "ip")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrors.ErrInvalidRefreshToken))
 	signer.AssertCalled(t, "ParseRefresh", "access-token")
@@ -169,7 +171,7 @@ func TestAuthUsecase_RefreshUserSoftDeleted(t *testing.T) {
 	users.On("GetByID", mock.Anything, uid).Return(nil, apperrors.ErrNotFound)
 	sessions.On("DeleteAllForUser", mock.Anything, uid.String()).Return(nil)
 
-	_, _, _, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
+	_, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrors.ErrSessionRevoked))
 	sessions.AssertNotCalled(t, "Rotate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)

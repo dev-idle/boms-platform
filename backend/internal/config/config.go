@@ -139,6 +139,10 @@ type CookieConfig struct {
 	Name   string
 	Secure bool
 	Domain string
+	// RoleName carries the signed-in role so the Next.js proxy can route a
+	// returning visitor at the edge. It is a navigation hint, never authority:
+	// every route stays guarded by the session itself.
+	RoleName string
 }
 
 // Argon2Config tunes the Argon2id password hasher (memory in KiB).
@@ -313,9 +317,10 @@ func Load() (*Config, error) {
 			TTL: v.GetDuration("session.ttl"),
 		},
 		Cookie: CookieConfig{
-			Name:   v.GetString("cookie.name"),
-			Secure: v.GetBool("cookie.secure"),
-			Domain: v.GetString("cookie.domain"),
+			Name:     v.GetString("cookie.name"),
+			Secure:   v.GetBool("cookie.secure"),
+			Domain:   v.GetString("cookie.domain"),
+			RoleName: v.GetString("cookie.role_name"),
 		},
 		Argon2: Argon2Config{
 			Memory:      argon2Memory,
@@ -421,6 +426,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("session.ttl", 168*time.Hour)
 
 	v.SetDefault("cookie.name", "boms_refresh")
+	v.SetDefault("cookie.role_name", "boms_role")
 	v.SetDefault("cookie.secure", false)
 	v.SetDefault("cookie.domain", "")
 
@@ -495,6 +501,15 @@ func (c *Config) Validate() error {
 	}
 	if strings.TrimSpace(c.Cookie.Name) == "" {
 		return errors.New("cookie.name must be set")
+	}
+	// An empty name makes fasthttp emit a nameless Set-Cookie the browser then
+	// replays as a bare token; the same name as the session cookie overwrites the
+	// refresh token with a role string and nobody can hold a session.
+	if strings.TrimSpace(c.Cookie.RoleName) == "" {
+		return errors.New("cookie.role_name must be set")
+	}
+	if c.Cookie.RoleName == c.Cookie.Name {
+		return errors.New("cookie.role_name must differ from cookie.name")
 	}
 	if c.Argon2.Memory < 8*1024 {
 		return errors.New("argon2.memory must be at least 8192 KiB")

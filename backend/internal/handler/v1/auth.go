@@ -57,7 +57,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
-	writeRefreshCookie(c, h.cfg, refresh)
+	writeSessionCookies(c, h.cfg, refresh, user.Role)
 	noStore(c)
 	return response.OK(c, dto.TokenResponse{
 		AccessToken:        access,
@@ -75,20 +75,20 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	if refresh == "" {
 		return writeAppError(c, apperrors.ErrMissingRefreshToken)
 	}
-	access, newRefresh, mustChange, err := h.usecase.Refresh(c.UserContext(), refresh, c.Get(fiber.HeaderUserAgent), middleware.ClientIP(c))
+	refreshed, err := h.usecase.Refresh(c.UserContext(), refresh, c.Get(fiber.HeaderUserAgent), middleware.ClientIP(c))
 	if err != nil {
 		if errors.Is(err, apperrors.ErrInvalidRefreshToken) || errors.Is(err, apperrors.ErrSessionRevoked) {
-			clearRefreshCookie(c, h.cfg)
+			clearSessionCookies(c, h.cfg)
 		}
 		return writeMapUsecaseError(c, err)
 	}
-	writeRefreshCookie(c, h.cfg, newRefresh)
+	writeSessionCookies(c, h.cfg, refreshed.RefreshToken, refreshed.Role)
 	noStore(c)
 	return response.OK(c, dto.RefreshResponse{
-		AccessToken:        access,
+		AccessToken:        refreshed.AccessToken,
 		TokenType:          "Bearer",
 		ExpiresIn:          int(h.cfg.JWT.AccessTTL.Seconds()),
-		MustChangePassword: mustChangePasswordPtr(mustChange),
+		MustChangePassword: mustChangePasswordPtr(refreshed.MustChangePassword),
 	})
 }
 
@@ -104,7 +104,7 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	bearerUserID, bearerSessionID, hasBearer := bearerSessionFromCtx(c)
 	h.usecase.LogoutHybrid(c.UserContext(), bearerUserID, bearerSessionID, hasBearer, c.Cookies(h.cfg.Cookie.Name))
-	clearRefreshCookie(c, h.cfg)
+	clearSessionCookies(c, h.cfg)
 	return response.NoContent(c)
 }
 
@@ -121,13 +121,16 @@ func toUserResponse(u *domainuser.User) dto.UserResponse {
 	}
 }
 
-func writeRefreshCookie(c *fiber.Ctx, cfg *config.Config, token string) {
+func writeSessionCookies(c *fiber.Ctx, cfg *config.Config, token string, role domainuser.Role) {
 	clearLegacyRefreshCookie(c, cfg)
-	c.Cookie(refreshCookie(cfg, token, int(cfg.JWT.RefreshTTL.Seconds())))
+	ttl := int(cfg.JWT.RefreshTTL.Seconds())
+	c.Cookie(refreshCookie(cfg, token, ttl))
+	c.Cookie(roleCookie(cfg, string(role), ttl))
 }
 
-func clearRefreshCookie(c *fiber.Ctx, cfg *config.Config) {
+func clearSessionCookies(c *fiber.Ctx, cfg *config.Config) {
 	c.Cookie(refreshCookie(cfg, "", -1))
+	c.Cookie(roleCookie(cfg, "", -1))
 	clearLegacyRefreshCookie(c, cfg)
 }
 
@@ -139,10 +142,23 @@ func refreshCookie(cfg *config.Config, token string, maxAge int) *fiber.Cookie {
 	return refreshCookieAtPath(cfg, token, maxAge, middleware.AuthCookiePath)
 }
 
+// roleCookie lets the Next.js proxy send a returning visitor straight to their
+// own area instead of rendering a page they are not allowed to keep. It carries
+// the role and nothing else, and no route trusts it for access.
+func roleCookie(cfg *config.Config, role string, maxAge int) *fiber.Cookie {
+	cookie := cookieAtPath(cfg, role, maxAge, middleware.AuthCookiePath)
+	cookie.Name = cfg.Cookie.RoleName
+	return cookie
+}
+
 func refreshCookieAtPath(cfg *config.Config, token string, maxAge int, path string) *fiber.Cookie {
+	return cookieAtPath(cfg, token, maxAge, path)
+}
+
+func cookieAtPath(cfg *config.Config, value string, maxAge int, path string) *fiber.Cookie {
 	cookie := &fiber.Cookie{
 		Name:     cfg.Cookie.Name,
-		Value:    token,
+		Value:    value,
 		Path:     path,
 		HTTPOnly: true,
 		Secure:   cfg.Cookie.Secure,

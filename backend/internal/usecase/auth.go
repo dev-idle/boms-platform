@@ -164,26 +164,35 @@ func (a *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest, userAgent
 	return accessToken, refreshToken, user, nil
 }
 
+// RefreshResult is one rotation: the new tokens, plus what the caller needs to
+// route the session afterwards — the role, and whether a password change is due.
+type RefreshResult struct {
+	AccessToken        string
+	RefreshToken       string
+	Role               domainuser.Role
+	MustChangePassword bool
+}
+
 // Refresh validates the refresh JWT, rotates the session atomically, and issues a new token pair.
-func (a *AuthUsecase) Refresh(ctx context.Context, refreshToken, userAgent, ip string) (accessToken, newRefreshToken string, mustChangePassword bool, err error) {
+func (a *AuthUsecase) Refresh(ctx context.Context, refreshToken, userAgent, ip string) (RefreshResult, error) {
 	claims, err := a.signer.ParseRefresh(refreshToken)
 	if err != nil {
-		return "", "", false, apperrors.ErrInvalidRefreshToken
+		return RefreshResult{}, apperrors.ErrInvalidRefreshToken
 	}
 
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
 		_ = a.sessionStore.DeleteAllForUser(ctx, claims.Subject)
-		return "", "", false, apperrors.ErrSessionRevoked
+		return RefreshResult{}, apperrors.ErrSessionRevoked
 	}
 	// Fetch user before rotation so the new session reflects the latest must_change_password flag.
 	user, err := a.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
 			_ = a.sessionStore.DeleteAllForUser(ctx, claims.Subject)
-			return "", "", false, apperrors.ErrSessionRevoked
+			return RefreshResult{}, apperrors.ErrSessionRevoked
 		}
-		return "", "", false, apperrors.Errorf("get user: %w", err)
+		return RefreshResult{}, apperrors.Errorf("get user: %w", err)
 	}
 
 	newSid := uuid.NewString()
@@ -199,33 +208,38 @@ func (a *AuthUsecase) Refresh(ctx context.Context, refreshToken, userAgent, ip s
 	if rotateErr != nil {
 		if errors.Is(rotateErr, apperrors.ErrNotFound) || errors.Is(rotateErr, apperrors.ErrConflict) {
 			_ = a.sessionStore.DeleteAllForUser(ctx, claims.Subject)
-			return "", "", false, apperrors.ErrSessionRevoked
+			return RefreshResult{}, apperrors.ErrSessionRevoked
 		}
-		return "", "", false, apperrors.Errorf("rotate session: %w", rotateErr)
+		return RefreshResult{}, apperrors.Errorf("rotate session: %w", rotateErr)
 	}
 
-	accessToken, err = a.signer.SignAccess(port.AccessTokenClaims{
+	accessToken, err := a.signer.SignAccess(port.AccessTokenClaims{
 		Subject:   user.ID.String(),
 		Role:      string(user.Role),
 		SessionID: newSid,
 		JTI:       uuid.NewString(),
 	})
 	if err != nil {
-		return "", "", false, apperrors.Errorf("sign access: %w", err)
+		return RefreshResult{}, apperrors.Errorf("sign access: %w", err)
 	}
-	newRefreshToken, err = a.signer.SignRefresh(port.RefreshTokenClaims{
+	newRefreshToken, err := a.signer.SignRefresh(port.RefreshTokenClaims{
 		Subject:   user.ID.String(),
 		SessionID: newSid,
 		JTI:       newJti,
 	})
 	if err != nil {
-		return "", "", false, apperrors.Errorf("sign refresh: %w", err)
+		return RefreshResult{}, apperrors.Errorf("sign refresh: %w", err)
 	}
 
 	if a.log != nil {
 		a.log.Info("auth_refresh_success", zap.String("user_id", user.ID.String()))
 	}
-	return accessToken, newRefreshToken, user.MustChangePassword, nil
+	return RefreshResult{
+		AccessToken:        accessToken,
+		RefreshToken:       newRefreshToken,
+		Role:               user.Role,
+		MustChangePassword: user.MustChangePassword,
+	}, nil
 }
 
 // LogoutSource identifies how a logout request was authenticated.

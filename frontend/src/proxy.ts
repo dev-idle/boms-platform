@@ -3,11 +3,13 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { NextProxy, NextRequest } from "next/server";
 
-import { AUTH_REFRESH_COOKIE } from "@/constants/cookies";
+import { AUTH_REFRESH_COOKIE, AUTH_ROLE_COOKIE } from "@/constants/cookies";
 import { FORWARDING_HEADERS } from "@/constants/http-headers";
+import type { UserRole } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { getBackendOrigin, getServerEnv } from "@/lib/env";
 import { isProtectedPath } from "@/lib/routing/role-routes";
+import { parseRoleHint, signedInLanding } from "@/lib/routing/signed-in-landing";
 import { validateNext } from "@/lib/validate-next";
 
 function isApiPath(pathname: string): boolean {
@@ -16,6 +18,14 @@ function isApiPath(pathname: string): boolean {
 
 function hasRefreshCookie(request: NextRequest): boolean {
   return request.cookies.has(AUTH_REFRESH_COOKIE);
+}
+
+/** The role of a live session, as the browser reports it. */
+function sessionRole(request: NextRequest): UserRole | undefined {
+  if (!hasRefreshCookie(request)) {
+    return undefined;
+  }
+  return parseRoleHint(request.cookies.get(AUTH_ROLE_COOKIE)?.value);
 }
 
 function stripUntrustedInboundHeaders(request: NextRequest): Headers {
@@ -81,6 +91,33 @@ export const proxy: NextProxy = (request) => {
       login.searchParams.set("next", nextPath);
     }
     return NextResponse.redirect(login);
+  }
+
+  // Land a signed-in visitor before any HTML is sent: the access token lives in
+  // memory, so otherwise the browser has to restore the session first and a
+  // manager opening the site watches the storefront render, then jump.
+  //
+  // Documents only, and never `/api/*`. The flash this prevents exists on a
+  // document load; on a client navigation the cookie hint would fight the gates,
+  // which know the real session — a stale hint and a gate correcting it would
+  // bounce a visitor between the two forever, with the sign-in page among the
+  // pages they could never reach.
+  const isDocumentNavigation =
+    request.headers.get("sec-fetch-dest") === "document";
+  const role =
+    isDocumentNavigation && !isApiPath(pathname)
+      ? sessionRole(request)
+      : undefined;
+  if (role) {
+    const landing = signedInLanding(pathname, search, role);
+    if (landing) {
+      const redirect = NextResponse.redirect(new URL(landing, request.url));
+      // The answer depends on a cookie: a shared cache must never hand this
+      // bounce to the next visitor asking for the storefront.
+      redirect.headers.set("Cache-Control", "no-store, private");
+      redirect.headers.set("Vary", "Cookie");
+      return redirect;
+    }
   }
 
   const requestHeaders = stripUntrustedInboundHeaders(request);

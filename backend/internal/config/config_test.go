@@ -53,7 +53,7 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 			RefreshTTL:        time.Hour,
 		},
 		Session: config.SessionConfig{TTL: time.Hour},
-		Cookie:  config.CookieConfig{Name: "boms_refresh", Secure: true},
+		Cookie:  config.CookieConfig{Name: "boms_refresh", RoleName: "boms_role", Secure: true},
 		Argon2: config.Argon2Config{
 			Memory: 65536, Iterations: 3, Parallelism: 1, SaltLength: 16, KeyLength: 32,
 		},
@@ -154,9 +154,33 @@ func minimalDevConfig() *config.Config {
 			RefreshTTL: time.Hour,
 		},
 		Session: config.SessionConfig{TTL: time.Hour},
-		Cookie:  config.CookieConfig{Name: "boms_refresh"},
+		Cookie:  config.CookieConfig{Name: "boms_refresh", RoleName: "boms_role"},
 		Argon2: config.Argon2Config{
 			Memory: 65536, Iterations: 3, Parallelism: 1, SaltLength: 16, KeyLength: 32,
 		},
 	}
+}
+
+func TestValidate_RoleCookieName(t *testing.T) {
+	t.Parallel()
+
+	t.Run("must be set", func(t *testing.T) {
+		t.Parallel()
+		cfg := minimalDevConfig()
+		cfg.Cookie.RoleName = ""
+		if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "cookie.role_name must be set") {
+			t.Fatalf("expected role cookie name error, got: %v", err)
+		}
+	})
+
+	// Same name means the second Set-Cookie replaces the refresh token with a
+	// role string, and nobody can hold a session.
+	t.Run("must differ from the session cookie", func(t *testing.T) {
+		t.Parallel()
+		cfg := minimalDevConfig()
+		cfg.Cookie.RoleName = cfg.Cookie.Name
+		if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "must differ") {
+			t.Fatalf("expected distinct cookie name error, got: %v", err)
+		}
+	})
 }
