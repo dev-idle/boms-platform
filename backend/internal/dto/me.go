@@ -3,9 +3,12 @@ package dto
 import "time"
 
 type UpdateMeRequest struct {
-	DisplayName  *string `json:"display_name,omitempty" validate:"omitempty,max=255"`
-	Phone        *string `json:"phone,omitempty" validate:"omitempty,vn_phone"`
-	FullName     *string `json:"full_name,omitempty" validate:"omitempty,max=255"`
+	DisplayName *string `json:"display_name,omitempty" validate:"omitempty,max=255"`
+	Phone       *string `json:"phone,omitempty" validate:"omitempty,vn_phone"`
+	// `omitnil`, not `omitempty`: leaving the field out keeps the stored name,
+	// but sending an empty one is a request to erase an operational identity and
+	// is refused rather than written through.
+	FullName     *string `json:"full_name,omitempty" validate:"omitnil,min=1,max=255"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
 }
 

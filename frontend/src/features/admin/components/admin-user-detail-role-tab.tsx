@@ -78,7 +78,7 @@ function AdminUserDetailRoleFormBody({
         id: userId,
         input: {
           role: values.role,
-          full_name: values.full_name?.trim() || undefined,
+          full_name: values.full_name,
           // Normalized by the schema; "" clears the stored phone.
           phone: values.phone,
         },
@@ -140,7 +140,7 @@ function AdminUserDetailRoleFormBody({
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FieldControl label="Full name" optional>
+                  <FieldControl label="Full name">
                     <Input autoComplete="name" {...field} value={field.value ?? ""} />
                   </FieldControl>
                   <FormMessage />

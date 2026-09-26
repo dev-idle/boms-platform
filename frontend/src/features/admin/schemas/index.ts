@@ -69,7 +69,13 @@ const updateRoleBaseSchema = z.object({
     USER_ROLE.baker,
     USER_ROLE.manager,
   ]),
-  full_name: z.string().trim().max(255).optional(),
+  // Required here as it is on create and on the person's own profile: the API
+  // refuses an empty operational name rather than dropping it silently.
+  full_name: z
+    .string()
+    .trim()
+    .min(1, "Full name is required")
+    .max(255, "Full name must be at most 255 characters"),
   phone: vietnamPhoneZodString(),
 });
 

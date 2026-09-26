@@ -1,8 +1,10 @@
 package validator_test
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/shared/validator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,4 +104,44 @@ func TestFieldErrorsReportsJSONFieldNames(t *testing.T) {
 		"full_name": "required",
 		"phone":     "vn_phone",
 	}, validator.FieldErrors(err))
+}
+
+// The full name of an operational user is its identity in the sidebar and in
+// the admin table: absent means "leave it alone", empty would mean "erase it".
+func TestStruct_FullNameCannotBeEmptied(t *testing.T) {
+	t.Parallel()
+
+	t.Run("self profile keeps an omitted name", func(t *testing.T) {
+		t.Parallel()
+		if err := validator.Struct(dto.UpdateMeRequest{}); err != nil {
+			t.Fatalf("expected an omitted full_name to pass, got: %v", err)
+		}
+	})
+
+	t.Run("self profile refuses an empty name", func(t *testing.T) {
+		t.Parallel()
+		empty := ""
+		err := validator.Struct(dto.UpdateMeRequest{FullName: &empty})
+		if err == nil || !strings.Contains(err.Error(), "full_name") {
+			t.Fatalf("expected a full_name error, got: %v", err)
+		}
+	})
+
+	t.Run("role update requires a name", func(t *testing.T) {
+		t.Parallel()
+		err := validator.Struct(dto.UpdateUserRoleRequest{Role: "staff"})
+		if err == nil || !strings.Contains(err.Error(), "full_name") {
+			t.Fatalf("expected a full_name error, got: %v", err)
+		}
+	})
+
+	t.Run("role update accepts a name", func(t *testing.T) {
+		t.Parallel()
+		if err := validator.Struct(dto.UpdateUserRoleRequest{
+			Role:     "staff",
+			FullName: "Mai Tran",
+		}); err != nil {
+			t.Fatalf("expected a named role update to pass, got: %v", err)
+		}
+	})
 }
