@@ -1,15 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  DashboardDeleteIcon,
-  DashboardPrimaryIcon,
-  DashboardViewIcon,
-} from "@/components/icons/dashboard-ui-icons";
 import { AppDialog, AppDialogFooterActions } from "@/components/ui/app-dialog";
 import { Button } from "@/components/ui/button";
-import { DashboardIconAction } from "@/components/ui/dashboard-icon-action";
+import { DashboardTableActionButton } from "@/components/ui/dashboard-table-action-button";
 import { Input } from "@/components/ui/input";
 import { CATALOG_IMAGE_FIELD_COPY } from "@/constants/dashboard-form-copy";
 import { isApiError, ApiErrorCode } from "@/lib/errors";
@@ -100,6 +95,97 @@ function CatalogImagePreviewContent({ label, url }: CatalogImagePreviewContentPr
   );
 }
 
+type CatalogImageRowActionsProps = {
+  /** Set while the field is busy — every action greys with this as its reason. */
+  blockedReason?: string;
+  canPreview: boolean;
+  isPrimary: boolean;
+  label: string;
+  onPreview: () => void;
+  onRemove: () => void;
+  onSetPrimary: () => void;
+  /** False when there is nothing to rank: one image, or a single-image field. */
+  showPrimary: boolean;
+};
+
+/**
+ * Row actions in words, not glyphs (02-COMPONENTS §"Row actions"): an icon in a
+ * row needs a legend and this row has none, while one of them deletes.
+ *
+ * Ordered safe → destructive, the way the catalog tables beside this field order
+ * Edit before Delete, so Remove is never the first label the eye lands on. Among
+ * the safe ones the leading label is the one that changes the catalog — Primary
+ * decides the card, the hero and the lead of the detail strip, while View only
+ * looks. The hairline between members is what keeps a run of uppercase labels
+ * readable as separate actions.
+ *
+ * `PRIMARY`, not `SET AS PRIMARY`: this row is the busiest in the dashboard, the
+ * word matches the badge it produces, and the accessible name carries the verb
+ * the label drops.
+ */
+function CatalogImageRowActions({
+  blockedReason,
+  canPreview,
+  isPrimary,
+  label,
+  onPreview,
+  onRemove,
+  onSetPrimary,
+  showPrimary,
+}: CatalogImageRowActionsProps) {
+  const actions = [
+    showPrimary ? (
+      <DashboardTableActionButton
+        blockedReason={
+          blockedReason ??
+          (isPrimary ? CATALOG_IMAGE_FIELD_COPY.alreadyPrimary : undefined)
+        }
+        key="primary"
+        label={CATALOG_IMAGE_FIELD_COPY.setPrimaryImageFor(label)}
+        onClick={onSetPrimary}
+        text={CATALOG_IMAGE_FIELD_COPY.primaryImage}
+        tone="accent"
+      />
+    ) : null,
+    <DashboardTableActionButton
+      blockedReason={
+        blockedReason ??
+        (canPreview ? undefined : CATALOG_IMAGE_FIELD_COPY.previewUnavailable)
+      }
+      key="view"
+      label={CATALOG_IMAGE_FIELD_COPY.viewImage(label)}
+      onClick={onPreview}
+      text={CATALOG_IMAGE_FIELD_COPY.view}
+      tone="accent"
+    />,
+    <DashboardTableActionButton
+      blockedReason={blockedReason}
+      key="remove"
+      label={CATALOG_IMAGE_FIELD_COPY.removeImage(label)}
+      onClick={onRemove}
+      text={CATALOG_IMAGE_FIELD_COPY.remove}
+      tone="danger"
+    />,
+  ].filter(Boolean);
+
+  return (
+    <div
+      aria-label={CATALOG_IMAGE_FIELD_COPY.actionsAriaLabel}
+      className="dashboard-inline-actions"
+      role="group"
+    >
+      {actions.map((action, index) => (
+        <Fragment key={index}>
+          {index > 0 ? (
+            <span aria-hidden className="dashboard-inline-actions__sep" />
+          ) : null}
+          {action}
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
 export function CatalogImageListField({
   disabled = false,
   maxImages = CLOUDINARY_MAX_PRODUCT_IMAGES,
@@ -107,7 +193,9 @@ export function CatalogImageListField({
   value,
 }: CatalogImageListFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadedLabels, setUploadedLabels] = useState<Record<string, string>>({});
 
@@ -123,10 +211,13 @@ export function CatalogImageListField({
     return catalogFileLabelForUrl(url, uploadedLabels);
   }
 
-  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
-    event.target.value = "";
-    if (files.length === 0 || !canAddMore) {
+  async function uploadFiles(files: File[]): Promise<void> {
+    // A drop and a paste reach this without passing the file input, which is
+    // what `disabled` guards — so the guard lives here, not on the control. The
+    // count is left to the planner below: it is the one that can say how many
+    // still fit, and a drop on a full gallery deserves that message rather than
+    // silence.
+    if (files.length === 0 || isDisabled) {
       return;
     }
 
@@ -180,6 +271,81 @@ export function CatalogImageListField({
     }
   }
 
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>): void {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    void uploadFiles(files);
+  }
+
+  /** A drag carrying anything but files is somebody else's — leave it alone. */
+  function dragCarriesFiles(event: React.DragEvent): boolean {
+    return Array.from(event.dataTransfer.types).includes("Files");
+  }
+
+  function handleDragEnter(event: React.DragEvent): void {
+    if (!useCloudinary || !dragCarriesFiles(event)) {
+      return;
+    }
+    event.preventDefault();
+    // Entering a child fires enter before the parent's leave, so count depth
+    // instead of toggling — otherwise the outline blinks across every row.
+    dragDepth.current += 1;
+    setIsDropTarget(true);
+  }
+
+  function handleDragOver(event: React.DragEvent): void {
+    if (!useCloudinary || !dragCarriesFiles(event)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect =
+      isDisabled || !canAddMore ? "none" : "copy";
+  }
+
+  function handleDragLeave(event: React.DragEvent): void {
+    if (!useCloudinary || !dragCarriesFiles(event)) {
+      return;
+    }
+    dragDepth.current = Math.max(dragDepth.current - 1, 0);
+    if (dragDepth.current === 0) {
+      setIsDropTarget(false);
+    }
+  }
+
+  /**
+   * A drag dropped outside the window, or abandoned with Escape, never sends the
+   * leave that would close the count — so the end of the drag itself resets it,
+   * rather than leaving the field outlined until the next one.
+   */
+  function resetDragState(): void {
+    dragDepth.current = 0;
+    setIsDropTarget(false);
+  }
+
+  function handleDrop(event: React.DragEvent): void {
+    if (!useCloudinary || !dragCarriesFiles(event)) {
+      return;
+    }
+    event.preventDefault();
+    dragDepth.current = 0;
+    setIsDropTarget(false);
+    void uploadFiles(Array.from(event.dataTransfer.files));
+  }
+
+  /** Scoped to the field, so Ctrl+V anywhere else in the form is untouched. */
+  function handlePaste(event: React.ClipboardEvent): void {
+    if (!useCloudinary) {
+      return;
+    }
+    const files = Array.from(event.clipboardData.files);
+    if (files.length === 0) {
+      return;
+    }
+    event.preventDefault();
+    void uploadFiles(files);
+  }
+
+  /** To the front — the first image is the card, the hero and the strip's lead. */
   function handleSetPrimary(index: number): void {
     if (index <= 0 || index >= value.length) {
       return;
@@ -236,7 +402,14 @@ export function CatalogImageListField({
           "catalog-image-list",
           isUploading && "catalog-image-list--uploading",
           isDisabled && "catalog-image-list--disabled",
+          isDropTarget && "catalog-image-list--drop",
         )}
+        onDragEnd={resetDragState}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onPaste={handlePaste}
       >
         {useCloudinary ? (
           <input
@@ -264,9 +437,13 @@ export function CatalogImageListField({
 
               return (
                 <li
-                  aria-label={CATALOG_IMAGE_FIELD_COPY.imagePosition(order, value.length)}
+                  aria-label={CATALOG_IMAGE_FIELD_COPY.imagePosition(
+                    order,
+                    value.length,
+                    showOrderBadges && isPrimary,
+                  )}
                   className="catalog-image-list-item"
-                  key={`${url}-${index}`}
+                  key={url}
                 >
                   <div className="catalog-image-list-item-main">
                     <div
@@ -307,11 +484,6 @@ export function CatalogImageListField({
                       ) : null}
                     </div>
                     <div className="catalog-image-list-copy">
-                      {showOrderBadges && isPrimary ? (
-                        <span className="catalog-image-list-primary-label">
-                          {CATALOG_IMAGE_FIELD_COPY.primaryImage}
-                        </span>
-                      ) : null}
                       {useCloudinary ? (
                         <span className="catalog-image-field-name" title={label}>
                           {label}
@@ -326,38 +498,18 @@ export function CatalogImageListField({
                       )}
                     </div>
                   </div>
-                  <div
-                    aria-label={CATALOG_IMAGE_FIELD_COPY.actionsAriaLabel}
-                    className="catalog-image-field-actions"
-                    role="group"
-                  >
-                    <span className="catalog-image-field-action-slot">
-                      {!isPrimary ? (
-                        <DashboardIconAction
-                          disabled={isDisabled}
-                          label={CATALOG_IMAGE_FIELD_COPY.setPrimaryImageFor(label)}
-                          onClick={() => handleSetPrimary(index)}
-                        >
-                          <DashboardPrimaryIcon className="db-icon-action__icon" />
-                        </DashboardIconAction>
-                      ) : null}
-                    </span>
-                    <DashboardIconAction
-                      disabled={isDisabled || !canPreview}
-                      label={CATALOG_IMAGE_FIELD_COPY.viewImage(label)}
-                      onClick={() => setPreviewUrl(url)}
-                    >
-                      <DashboardViewIcon className="db-icon-action__icon" />
-                    </DashboardIconAction>
-                    <DashboardIconAction
-                      disabled={isDisabled}
-                      label={CATALOG_IMAGE_FIELD_COPY.remove}
-                      onClick={() => handleRemove(url)}
-                      tone="danger"
-                    >
-                      <DashboardDeleteIcon className="db-icon-action__icon" />
-                    </DashboardIconAction>
-                  </div>
+                  <CatalogImageRowActions
+                    blockedReason={
+                      isDisabled ? CATALOG_IMAGE_FIELD_COPY.busy : undefined
+                    }
+                    canPreview={canPreview}
+                    isPrimary={isPrimary}
+                    label={label}
+                    onPreview={() => setPreviewUrl(url)}
+                    onRemove={() => handleRemove(url)}
+                    onSetPrimary={() => handleSetPrimary(index)}
+                    showPrimary={isGallery}
+                  />
                 </li>
               );
             })}
@@ -373,7 +525,9 @@ export function CatalogImageListField({
               type="button"
               variant="outline"
             >
-              {CATALOG_IMAGE_FIELD_COPY.addImage}
+              {isGallery
+                ? CATALOG_IMAGE_FIELD_COPY.addImage
+                : CATALOG_IMAGE_FIELD_COPY.addOneImage}
             </Button>
             {isUploading || isGallery ? (
               <span className="catalog-image-field-status">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useId, useRef, useState } from "react";
+import { useMemo, useId, useState } from "react";
 import {
   useWatch,
   type Control,
@@ -9,11 +9,8 @@ import {
   type FieldArrayWithId,
 } from "react-hook-form";
 
-import {
-  DashboardAddIcon,
-  DashboardDeleteIcon,
-} from "@/components/icons/dashboard-ui-icons";
-import { DashboardIconAction } from "@/components/ui/dashboard-icon-action";
+import { Button } from "@/components/ui/button";
+import { DashboardTableActionButton } from "@/components/ui/dashboard-table-action-button";
 import { FormFieldHint } from "@/components/ui/form-field-hint";
 import { FORM_FIELD_HINT } from "@/constants/dashboard-form-copy";
 import {
@@ -25,7 +22,7 @@ import {
 import { IntegerFieldInput } from "@/components/ui/integer-field-input";
 import { Label } from "@/components/ui/label";
 
-import type { ComboFormInput, ManagerCombo } from "../schemas";
+import type { ComboFormValues, ManagerCombo } from "../schemas";
 
 import {
   ComboProductPicker,
@@ -33,10 +30,10 @@ import {
 } from "./combo-product-picker";
 
 type ComboFormItemsSectionProps = {
-  append: UseFieldArrayAppend<ComboFormInput, "items">;
+  append: UseFieldArrayAppend<ComboFormValues, "items">;
   combo?: ManagerCombo;
-  control: Control<ComboFormInput>;
-  fields: FieldArrayWithId<ComboFormInput, "items", "id">[];
+  control: Control<ComboFormValues>;
+  fields: FieldArrayWithId<ComboFormValues, "items", "id">[];
   remove: UseFieldArrayRemove;
 };
 
@@ -47,14 +44,10 @@ export function ComboFormItemsSection({
   fields,
   remove,
 }: ComboFormItemsSectionProps) {
-  const addQuantityId = useId();
   const hintId = useId();
-  const sectionRef = useRef<HTMLElement>(null);
-  const addQuantityRef = useRef<HTMLInputElement>(null);
+  const addQuantityId = useId();
   const [draftProduct, setDraftProduct] = useState<ComboProductPickerValue>(null);
   const [draftQuantity, setDraftQuantity] = useState(1);
-  const [addError, setAddError] = useState<string | null>(null);
-
   const [sessionProductNames, setSessionProductNames] = useState<
     Record<string, string>
   >(() =>
@@ -80,47 +73,34 @@ export function ComboFormItemsSection({
     [sessionProductNames],
   );
 
-  function releaseComposerFocus(): void {
-    addQuantityRef.current?.blur();
-    const active = document.activeElement;
-    if (
-      active instanceof HTMLElement &&
-      sectionRef.current?.contains(active) &&
-      active.closest(".combo-form-items__qty")
-    ) {
-      active.blur();
-    }
-  }
-
+  /**
+   * A bundle of one product needs a quantity of at least two, which the hint
+   * above says out loud — so the composer asks for the quantity where the
+   * manager already is, instead of adding a row they must then go and edit.
+   *
+   * Add stays disabled until there is something to add: a button that cannot
+   * act says so by being greyed, not by raising an error after the click.
+   */
   function handleAddProduct(): void {
-    if (!draftProduct) {
-      setAddError("Pick a product from the list");
+    if (!draftProduct || takenProductIds.has(draftProduct.id)) {
       return;
     }
-    if (takenProductIds.has(draftProduct.id)) {
-      setAddError("This product is already in the bundle");
-      return;
-    }
-
     append(
       { product_id: draftProduct.id, quantity: draftQuantity },
       { shouldFocus: false },
     );
-    setSessionProductNames((prev) => ({
-      ...prev,
+    setSessionProductNames((previous) => ({
+      ...previous,
       [draftProduct.id]: draftProduct.name,
     }));
     setDraftProduct(null);
     setDraftQuantity(1);
-    setAddError(null);
-    queueMicrotask(releaseComposerFocus);
   }
 
   return (
     <section
       aria-labelledby="combo-items-title"
       className="combo-form-items"
-      ref={sectionRef}
     >
       <div className="field-control-label-block">
         <Label id="combo-items-title">Bundle contents</Label>
@@ -154,13 +134,12 @@ export function ComboFormItemsSection({
                   )}
                 />
                 <div className="combo-form-items__actions">
-                  <DashboardIconAction
+                  <DashboardTableActionButton
                     label={`Remove ${productName}`}
                     onClick={() => remove(index)}
+                    text="Remove"
                     tone="danger"
-                  >
-                    <DashboardDeleteIcon className="db-icon-action__icon" />
-                  </DashboardIconAction>
+                  />
                 </div>
               </li>
             );
@@ -171,10 +150,7 @@ export function ComboFormItemsSection({
       <div aria-describedby={hintId} className="combo-form-items__composer">
         <ComboProductPicker
           excludedProductIds={takenProductIds}
-          onChange={(next) => {
-            setDraftProduct(next);
-            setAddError(null);
-          }}
+          onChange={setDraftProduct}
           value={draftProduct}
         />
         <div className="combo-form-items__qty">
@@ -183,28 +159,29 @@ export function ComboFormItemsSection({
             id={addQuantityId}
             min={1}
             onChange={(value) => setDraftQuantity(value ?? 1)}
-            ref={addQuantityRef}
             value={draftQuantity}
           />
         </div>
         <div className="combo-form-items__actions">
-          <DashboardIconAction
-            label="Add product to bundle"
+          <Button
+            aria-label="Add product to bundle"
+            disabled={!draftProduct}
+            // A greyed control says why it is greyed, here as everywhere else.
+            title={draftProduct ? undefined : "Pick a product to add."}
             onClick={handleAddProduct}
+            // Mousedown would blur the picker and close its list before the
+            // click lands on a button that no longer exists.
             onMouseDown={(event) => {
               event.preventDefault();
             }}
+            size="sm"
+            type="button"
+            variant="outline"
           >
-            <DashboardAddIcon className="db-icon-action__icon" />
-          </DashboardIconAction>
+            Add
+          </Button>
         </div>
       </div>
-
-      {addError ? (
-        <p className="combo-form-items__error" role="alert">
-          {addError}
-        </p>
-      ) : null}
 
       <FormField
         control={control}

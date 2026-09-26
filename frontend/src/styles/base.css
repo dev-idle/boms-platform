@@ -7,6 +7,14 @@
     border-color: var(--color-border);
   }
 
+  /* Tailwind's preflight leaves a button on the default arrow, so each component
+     had to remember `cursor: pointer` — and the two catalog clear glyphs did not.
+     Say it once for every enabled button; a disabled one keeps whatever its own
+     rule sets, which is `not-allowed`. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
