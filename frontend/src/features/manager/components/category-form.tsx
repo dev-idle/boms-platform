@@ -107,6 +107,7 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
                 hint={FORM_FIELD_HINT.catalogSortOrder}
                 hintId="category-sort-order-hint"
                 label="Sort order"
+                optional
               >
                 <IntegerFieldInput min={0} {...field} />
               </FieldControl>

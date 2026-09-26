@@ -10,7 +10,7 @@
 export const FORM_FIELD_HINT = {
   catalogPrice: "Shown to customers exactly as entered.",
   catalogSlugCreate: "Auto-filled from name.",
-  catalogSortOrder: "Lower values appear first.",
+  catalogSortOrder: "Lower values appear first. Leave empty for 0.",
   comboItems: "Each product once. Add two products, or one product with quantity at least 2.",
   discountMaxUses: "Leave empty for unlimited uses.",
   discountMinOrder: "Minimum cart total. Leave empty for no minimum.",
