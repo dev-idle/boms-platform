@@ -2,12 +2,13 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
+
+	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	"github.com/boms/backend/internal/port"
-	"github.com/google/uuid"
+	apperrors "github.com/boms/backend/internal/shared/errors"
 )
 
 type AdminProfileRepository struct {
@@ -29,7 +30,7 @@ func (r *AdminProfileRepository) Create(ctx context.Context, params port.UpsertA
 	row, err := r.q(ctx).CreateAdminProfile(ctx, sqlcgen.CreateAdminProfileParams{
 		UserID:   params.UserID,
 		FullName: params.FullName,
-		Phone:    toNullString(params.Phone),
+		Phone:    params.Phone,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create admin profile")
@@ -49,7 +50,7 @@ func (r *AdminProfileRepository) UpdateByUserID(ctx context.Context, params port
 	row, err := r.q(ctx).UpdateAdminProfileByUserID(ctx, sqlcgen.UpdateAdminProfileByUserIDParams{
 		UserID:   params.UserID,
 		FullName: params.FullName,
-		Phone:    toNullString(params.Phone),
+		Phone:    params.Phone,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update admin profile")
@@ -63,7 +64,7 @@ func (r *AdminProfileRepository) DeleteByUserID(ctx context.Context, userID uuid
 		return mapRepoError(err, "delete admin profile")
 	}
 	if rows == 0 {
-		return mapRepoError(sql.ErrNoRows, "delete admin profile")
+		return apperrors.ErrNotFound
 	}
 	return nil
 }
@@ -72,7 +73,7 @@ func mapAdminProfile(row sqlcgen.AdminProfile) *domainprofile.Admin {
 	return &domainprofile.Admin{
 		UserID:    row.UserID,
 		FullName:  row.FullName,
-		Phone:     nullStringPtr(row.Phone),
+		Phone:     row.Phone,
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
 	}

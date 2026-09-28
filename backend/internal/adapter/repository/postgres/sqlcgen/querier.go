@@ -6,7 +6,6 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 
 	"github.com/google/uuid"
@@ -143,7 +142,7 @@ type Querier interface {
 	//      $1::order_status IS NULL
 	//      OR o.status = $1::order_status
 	//    )
-	BakerListProductionOrdersCount(ctx context.Context, status NullOrderStatus) (int64, error)
+	BakerListProductionOrdersCount(ctx context.Context, status *OrderStatus) (int64, error)
 	//CatalogGetComboByID
 	//
 	//  SELECT id, name, slug, price_cents, image_url, starts_at, ends_at
@@ -339,7 +338,7 @@ type Querier interface {
 	//  SELECT COUNT(*)::bigint AS total
 	//  FROM audit_logs
 	//  WHERE target_id = $1
-	CountAuditLogsByTargetID(ctx context.Context, targetID uuid.NullUUID) (int64, error)
+	CountAuditLogsByTargetID(ctx context.Context, targetID *uuid.UUID) (int64, error)
 	//CountAvailableProductsForCombo
 	//
 	//  SELECT COUNT(DISTINCT p.id)::bigint AS count
@@ -909,7 +908,7 @@ type Querier interface {
 	//      OR name ILIKE '%' || $1::text || '%'
 	//      OR slug ILIKE '%' || $1::text || '%'
 	//    )
-	ManagerListCategoriesCount(ctx context.Context, search sql.NullString) (int64, error)
+	ManagerListCategoriesCount(ctx context.Context, search *string) (int64, error)
 	//ManagerListCombos
 	//
 	//  SELECT id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
@@ -933,7 +932,7 @@ type Querier interface {
 	//      OR name ILIKE '%' || $1::text || '%'
 	//      OR slug ILIKE '%' || $1::text || '%'
 	//    )
-	ManagerListCombosCount(ctx context.Context, search sql.NullString) (int64, error)
+	ManagerListCombosCount(ctx context.Context, search *string) (int64, error)
 	//ManagerListDiscountCodes
 	//
 	//  SELECT
@@ -969,7 +968,7 @@ type Querier interface {
 	//      $1::text IS NULL
 	//      OR code ILIKE '%' || $1::text || '%'
 	//    )
-	ManagerListDiscountCodesCount(ctx context.Context, search sql.NullString) (int64, error)
+	ManagerListDiscountCodesCount(ctx context.Context, search *string) (int64, error)
 	//ManagerListProducts
 	//
 	//  SELECT
@@ -1200,7 +1199,7 @@ type Querier interface {
 	//      $1::order_status IS NULL
 	//      OR o.status = $1::order_status
 	//  )
-	StaffListOrdersCount(ctx context.Context, status NullOrderStatus) (int64, error)
+	StaffListOrdersCount(ctx context.Context, status *OrderStatus) (int64, error)
 	//SumOrderItemQuantitiesByOrderIDs
 	//
 	//  SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count

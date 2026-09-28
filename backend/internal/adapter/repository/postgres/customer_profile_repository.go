@@ -2,12 +2,13 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
+
+	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	"github.com/boms/backend/internal/port"
-	"github.com/google/uuid"
+	apperrors "github.com/boms/backend/internal/shared/errors"
 )
 
 type CustomerProfileRepository struct {
@@ -28,8 +29,8 @@ func (r *CustomerProfileRepository) q(ctx context.Context) *sqlcgen.Queries {
 func (r *CustomerProfileRepository) Create(ctx context.Context, params port.UpsertCustomerProfileParams) (*domainprofile.Customer, error) {
 	row, err := r.q(ctx).CreateCustomerProfile(ctx, sqlcgen.CreateCustomerProfileParams{
 		UserID:      params.UserID,
-		DisplayName: toNullString(params.DisplayName),
-		Phone:       toNullString(params.Phone),
+		DisplayName: params.DisplayName,
+		Phone:       params.Phone,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create customer profile")
@@ -48,8 +49,8 @@ func (r *CustomerProfileRepository) GetByUserID(ctx context.Context, userID uuid
 func (r *CustomerProfileRepository) UpdateByUserID(ctx context.Context, params port.UpsertCustomerProfileParams) (*domainprofile.Customer, error) {
 	row, err := r.q(ctx).UpdateCustomerProfileByUserID(ctx, sqlcgen.UpdateCustomerProfileByUserIDParams{
 		UserID:      params.UserID,
-		DisplayName: toNullString(params.DisplayName),
-		Phone:       toNullString(params.Phone),
+		DisplayName: params.DisplayName,
+		Phone:       params.Phone,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update customer profile")
@@ -63,7 +64,7 @@ func (r *CustomerProfileRepository) DeleteByUserID(ctx context.Context, userID u
 		return mapRepoError(err, "delete customer profile")
 	}
 	if rows == 0 {
-		return mapRepoError(sql.ErrNoRows, "delete customer profile")
+		return apperrors.ErrNotFound
 	}
 	return nil
 }
@@ -71,18 +72,11 @@ func (r *CustomerProfileRepository) DeleteByUserID(ctx context.Context, userID u
 func mapCustomerProfile(row sqlcgen.CustomerProfile) *domainprofile.Customer {
 	return &domainprofile.Customer{
 		UserID:      row.UserID,
-		DisplayName: nullStringPtr(row.DisplayName),
-		Phone:       nullStringPtr(row.Phone),
+		DisplayName: row.DisplayName,
+		Phone:       row.Phone,
 		CreatedAt:   row.CreatedAt,
 		UpdatedAt:   row.UpdatedAt,
 	}
-}
-
-func toNullString(v *string) sql.NullString {
-	if v == nil {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: *v, Valid: true}
 }
 
 var _ port.CustomerProfileRepository = (*CustomerProfileRepository)(nil)

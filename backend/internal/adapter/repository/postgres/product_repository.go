@@ -2,13 +2,14 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	"github.com/boms/backend/internal/port"
-	"github.com/google/uuid"
+	apperrors "github.com/boms/backend/internal/shared/errors"
 )
 
 type ProductRepository struct {
@@ -31,7 +32,7 @@ func (r *ProductRepository) Create(ctx context.Context, params port.CreateProduc
 		CategoryID:  params.CategoryID,
 		Name:        params.Name,
 		Slug:        params.Slug,
-		Description: optionalString(params.Description),
+		Description: params.Description,
 		PriceCents:  params.PriceCents,
 		IsActive:    params.IsActive,
 	})
@@ -55,7 +56,7 @@ func (r *ProductRepository) Update(ctx context.Context, params port.UpdateProduc
 		CategoryID:  params.CategoryID,
 		Name:        params.Name,
 		Slug:        params.Slug,
-		Description: optionalString(params.Description),
+		Description: params.Description,
 		PriceCents:  params.PriceCents,
 		IsActive:    params.IsActive,
 	})
@@ -71,7 +72,7 @@ func (r *ProductRepository) SoftDelete(ctx context.Context, id uuid.UUID) error 
 		return mapRepoError(err, "soft delete product")
 	}
 	if rows == 0 {
-		return mapRepoError(sql.ErrNoRows, "soft delete product")
+		return apperrors.ErrNotFound
 	}
 	return nil
 }
@@ -115,7 +116,7 @@ func (r *ProductRepository) ManagerList(ctx context.Context, params port.Manager
 	rows, err := r.q(ctx).ManagerListProducts(ctx, sqlcgen.ManagerListProductsParams{
 		Limit:      params.Limit,
 		Offset:     params.Offset,
-		CategoryID: optionalUUID(params.CategoryID),
+		CategoryID: params.CategoryID,
 		Search:     optionalSearch(params.Search),
 	})
 	if err != nil {
@@ -130,7 +131,7 @@ func (r *ProductRepository) ManagerList(ctx context.Context, params port.Manager
 
 func (r *ProductRepository) ManagerListCount(ctx context.Context, categoryID *uuid.UUID, search *string) (int64, error) {
 	count, err := r.q(ctx).ManagerListProductsCount(ctx, sqlcgen.ManagerListProductsCountParams{
-		CategoryID: optionalUUID(categoryID),
+		CategoryID: categoryID,
 		Search:     optionalSearch(search),
 	})
 	if err != nil {
@@ -152,7 +153,7 @@ func (r *ProductRepository) CatalogList(ctx context.Context, params port.Catalog
 	rows, err := r.q(ctx).CatalogListProducts(ctx, sqlcgen.CatalogListProductsParams{
 		Limit:      params.Limit,
 		Offset:     params.Offset,
-		CategoryID: optionalUUID(params.CategoryID),
+		CategoryID: params.CategoryID,
 		Search:     optionalSearch(params.Search),
 	})
 	if err != nil {
@@ -171,7 +172,7 @@ func (r *ProductRepository) CatalogListCount(
 	search *string,
 ) (int64, error) {
 	count, err := r.q(ctx).CatalogListProductsCount(ctx, sqlcgen.CatalogListProductsCountParams{
-		CategoryID: optionalUUID(categoryID),
+		CategoryID: categoryID,
 		Search:     optionalSearch(search),
 	})
 	if err != nil {
@@ -243,58 +244,44 @@ func mapManagerJoinedProduct(
 	categoryID uuid.UUID,
 	name string,
 	slug string,
-	description sql.NullString,
+	description *string,
 	priceCents int64,
 	isActive bool,
 	createdAt time.Time,
 	updatedAt time.Time,
-	deletedAt sql.NullTime,
+	deletedAt *time.Time,
 	categoryName string,
 ) port.ManagerListProduct {
-	p := &domainproduct.Product{
-		ID:         id,
-		CategoryID: categoryID,
-		Name:       name,
-		Slug:       slug,
-		PriceCents: priceCents,
-		IsActive:   isActive,
-		CreatedAt:  createdAt,
-		UpdatedAt:  updatedAt,
-	}
-	if description.Valid {
-		desc := description.String
-		p.Description = &desc
-	}
-	if deletedAt.Valid {
-		t := deletedAt.Time
-		p.DeletedAt = &t
-	}
 	return port.ManagerListProduct{
-		Product:      *p,
+		Product: domainproduct.Product{
+			ID:          id,
+			CategoryID:  categoryID,
+			Name:        name,
+			Slug:        slug,
+			Description: description,
+			PriceCents:  priceCents,
+			IsActive:    isActive,
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+			DeletedAt:   deletedAt,
+		},
 		CategoryName: categoryName,
 	}
 }
 
 func mapProduct(row sqlcgen.Product) *domainproduct.Product {
-	p := &domainproduct.Product{
-		ID:         row.ID,
-		CategoryID: row.CategoryID,
-		Name:       row.Name,
-		Slug:       row.Slug,
-		PriceCents: row.PriceCents,
-		IsActive:   row.IsActive,
-		CreatedAt:  row.CreatedAt,
-		UpdatedAt:  row.UpdatedAt,
+	return &domainproduct.Product{
+		ID:          row.ID,
+		CategoryID:  row.CategoryID,
+		Name:        row.Name,
+		Slug:        row.Slug,
+		PriceCents:  row.PriceCents,
+		IsActive:    row.IsActive,
+		CreatedAt:   row.CreatedAt,
+		UpdatedAt:   row.UpdatedAt,
+		Description: row.Description,
+		DeletedAt:   row.DeletedAt,
 	}
-	if row.Description.Valid {
-		desc := row.Description.String
-		p.Description = &desc
-	}
-	if row.DeletedAt.Valid {
-		t := row.DeletedAt.Time
-		p.DeletedAt = &t
-	}
-	return p
 }
 
 func mapCatalogListProductsRow(row sqlcgen.CatalogListProductsRow) port.CatalogListProduct {
@@ -343,12 +330,12 @@ func mapCatalogProductFields(
 	categoryID uuid.UUID,
 	name string,
 	slug string,
-	description sql.NullString,
+	description *string,
 	priceCents int64,
 	categoryName string,
 	categorySlug string,
 ) port.CatalogListProduct {
-	out := port.CatalogListProduct{
+	return port.CatalogListProduct{
 		ID:           id,
 		CategoryID:   categoryID,
 		Name:         name,
@@ -356,12 +343,8 @@ func mapCatalogProductFields(
 		PriceCents:   priceCents,
 		CategoryName: categoryName,
 		CategorySlug: categorySlug,
+		Description:  description,
 	}
-	if description.Valid {
-		desc := description.String
-		out.Description = &desc
-	}
-	return out
 }
 
 var _ port.ProductRepository = (*ProductRepository)(nil)

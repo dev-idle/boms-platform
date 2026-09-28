@@ -7,7 +7,6 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -19,9 +18,9 @@ RETURNING user_id, display_name, phone, created_at, updated_at
 `
 
 type CreateCustomerProfileParams struct {
-	UserID      uuid.UUID      `db:"user_id" json:"userId"`
-	DisplayName sql.NullString `db:"display_name" json:"displayName"`
-	Phone       sql.NullString `db:"phone" json:"phone"`
+	UserID      uuid.UUID `json:"userId"`
+	DisplayName *string   `json:"displayName"`
+	Phone       *string   `json:"phone"`
 }
 
 // CreateCustomerProfile
@@ -30,7 +29,7 @@ type CreateCustomerProfileParams struct {
 //	VALUES ($1, $2, $3)
 //	RETURNING user_id, display_name, phone, created_at, updated_at
 func (q *Queries) CreateCustomerProfile(ctx context.Context, arg CreateCustomerProfileParams) (CustomerProfile, error) {
-	row := q.db.QueryRowContext(ctx, createCustomerProfile, arg.UserID, arg.DisplayName, arg.Phone)
+	row := q.db.QueryRow(ctx, createCustomerProfile, arg.UserID, arg.DisplayName, arg.Phone)
 	var i CustomerProfile
 	err := row.Scan(
 		&i.UserID,
@@ -52,11 +51,11 @@ WHERE user_id = $1
 //	DELETE FROM customer_profiles
 //	WHERE user_id = $1
 func (q *Queries) DeleteCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteCustomerProfileByUserID, userID)
+	result, err := q.db.Exec(ctx, deleteCustomerProfileByUserID, userID)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const getCustomerProfileByUserID = `-- name: GetCustomerProfileByUserID :one
@@ -71,7 +70,7 @@ WHERE user_id = $1
 //	FROM customer_profiles
 //	WHERE user_id = $1
 func (q *Queries) GetCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (CustomerProfile, error) {
-	row := q.db.QueryRowContext(ctx, getCustomerProfileByUserID, userID)
+	row := q.db.QueryRow(ctx, getCustomerProfileByUserID, userID)
 	var i CustomerProfile
 	err := row.Scan(
 		&i.UserID,
@@ -93,9 +92,9 @@ RETURNING user_id, display_name, phone, created_at, updated_at
 `
 
 type UpdateCustomerProfileByUserIDParams struct {
-	UserID      uuid.UUID      `db:"user_id" json:"userId"`
-	DisplayName sql.NullString `db:"display_name" json:"displayName"`
-	Phone       sql.NullString `db:"phone" json:"phone"`
+	UserID      uuid.UUID `json:"userId"`
+	DisplayName *string   `json:"displayName"`
+	Phone       *string   `json:"phone"`
 }
 
 // UpdateCustomerProfileByUserID
@@ -107,7 +106,7 @@ type UpdateCustomerProfileByUserIDParams struct {
 //	WHERE user_id = $1
 //	RETURNING user_id, display_name, phone, created_at, updated_at
 func (q *Queries) UpdateCustomerProfileByUserID(ctx context.Context, arg UpdateCustomerProfileByUserIDParams) (CustomerProfile, error) {
-	row := q.db.QueryRowContext(ctx, updateCustomerProfileByUserID, arg.UserID, arg.DisplayName, arg.Phone)
+	row := q.db.QueryRow(ctx, updateCustomerProfileByUserID, arg.UserID, arg.DisplayName, arg.Phone)
 	var i CustomerProfile
 	err := row.Scan(
 		&i.UserID,

@@ -2,15 +2,13 @@ package postgres_test
 
 import (
 	"context"
-	"strings"
 	"testing"
-	"time"
 
-	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
-	"github.com/boms/backend/internal/config"
-	"github.com/boms/backend/internal/port"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
+	"github.com/boms/backend/internal/port"
 )
 
 // The catalog and manager list queries carry the gallery with each row. These
@@ -18,33 +16,10 @@ import (
 // to survive the driver, come back in sort order, and be empty — not null — for
 // a product with no images.
 func TestProductRepository_ListGallery_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
 	t.Parallel()
 
 	ctx := context.Background()
-	pgContainer, connStr, err := startPostgres(ctx, t)
-	if err != nil {
-		if strings.Contains(err.Error(), "docker") {
-			t.Skip("docker not available")
-		}
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = pgContainer.Terminate(ctx) })
-	require.NoError(t, applyMigrations(ctx, connStr))
-
-	pool, err := postgresadapter.NewPool(ctx, config.PostgresConfig{
-		URL:                connStr,
-		MaxConns:           5,
-		MinConns:           1,
-		MaxConnLifetime:    time.Hour,
-		MaxConnIdleTime:    time.Minute,
-		HealthCheckTimeout: 5 * time.Second,
-	})
-	require.NoError(t, err)
-	t.Cleanup(pool.Close)
-
+	pool := newIntegrationPool(t, 5)
 	categories := postgresadapter.NewCategoryRepository(pool)
 	products := postgresadapter.NewProductRepository(pool)
 

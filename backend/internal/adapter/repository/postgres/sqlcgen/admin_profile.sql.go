@@ -7,7 +7,6 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -19,9 +18,9 @@ RETURNING user_id, full_name, phone, created_at, updated_at
 `
 
 type CreateAdminProfileParams struct {
-	UserID   uuid.UUID      `db:"user_id" json:"userId"`
-	FullName string         `db:"full_name" json:"fullName"`
-	Phone    sql.NullString `db:"phone" json:"phone"`
+	UserID   uuid.UUID `json:"userId"`
+	FullName string    `json:"fullName"`
+	Phone    *string   `json:"phone"`
 }
 
 // CreateAdminProfile
@@ -30,7 +29,7 @@ type CreateAdminProfileParams struct {
 //	VALUES ($1, $2, $3)
 //	RETURNING user_id, full_name, phone, created_at, updated_at
 func (q *Queries) CreateAdminProfile(ctx context.Context, arg CreateAdminProfileParams) (AdminProfile, error) {
-	row := q.db.QueryRowContext(ctx, createAdminProfile, arg.UserID, arg.FullName, arg.Phone)
+	row := q.db.QueryRow(ctx, createAdminProfile, arg.UserID, arg.FullName, arg.Phone)
 	var i AdminProfile
 	err := row.Scan(
 		&i.UserID,
@@ -52,11 +51,11 @@ WHERE user_id = $1
 //	DELETE FROM admin_profiles
 //	WHERE user_id = $1
 func (q *Queries) DeleteAdminProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteAdminProfileByUserID, userID)
+	result, err := q.db.Exec(ctx, deleteAdminProfileByUserID, userID)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const getAdminProfileByUserID = `-- name: GetAdminProfileByUserID :one
@@ -71,7 +70,7 @@ WHERE user_id = $1
 //	FROM admin_profiles
 //	WHERE user_id = $1
 func (q *Queries) GetAdminProfileByUserID(ctx context.Context, userID uuid.UUID) (AdminProfile, error) {
-	row := q.db.QueryRowContext(ctx, getAdminProfileByUserID, userID)
+	row := q.db.QueryRow(ctx, getAdminProfileByUserID, userID)
 	var i AdminProfile
 	err := row.Scan(
 		&i.UserID,
@@ -93,9 +92,9 @@ RETURNING user_id, full_name, phone, created_at, updated_at
 `
 
 type UpdateAdminProfileByUserIDParams struct {
-	UserID   uuid.UUID      `db:"user_id" json:"userId"`
-	FullName string         `db:"full_name" json:"fullName"`
-	Phone    sql.NullString `db:"phone" json:"phone"`
+	UserID   uuid.UUID `json:"userId"`
+	FullName string    `json:"fullName"`
+	Phone    *string   `json:"phone"`
 }
 
 // UpdateAdminProfileByUserID
@@ -107,7 +106,7 @@ type UpdateAdminProfileByUserIDParams struct {
 //	WHERE user_id = $1
 //	RETURNING user_id, full_name, phone, created_at, updated_at
 func (q *Queries) UpdateAdminProfileByUserID(ctx context.Context, arg UpdateAdminProfileByUserIDParams) (AdminProfile, error) {
-	row := q.db.QueryRowContext(ctx, updateAdminProfileByUserID, arg.UserID, arg.FullName, arg.Phone)
+	row := q.db.QueryRow(ctx, updateAdminProfileByUserID, arg.UserID, arg.FullName, arg.Phone)
 	var i AdminProfile
 	err := row.Scan(
 		&i.UserID,

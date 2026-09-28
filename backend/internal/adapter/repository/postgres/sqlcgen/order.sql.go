@@ -7,12 +7,10 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 const bakerListProductionOrders = `-- name: BakerListProductionOrders :many
@@ -47,25 +45,25 @@ LIMIT $3 OFFSET $2
 `
 
 type BakerListProductionOrdersParams struct {
-	Status NullOrderStatus `db:"status" json:"status"`
-	Offset int32           `db:"offset" json:"offset"`
-	Limit  int32           `db:"limit" json:"limit"`
+	Status *OrderStatus `json:"status"`
+	Offset int32        `json:"offset"`
+	Limit  int32        `json:"limit"`
 }
 
 type BakerListProductionOrdersRow struct {
-	ID                   uuid.UUID      `db:"id" json:"id"`
-	UserID               uuid.UUID      `db:"user_id" json:"userId"`
-	Status               OrderStatus    `db:"status" json:"status"`
-	SubtotalCents        int64          `db:"subtotal_cents" json:"subtotalCents"`
-	DiscountCents        int64          `db:"discount_cents" json:"discountCents"`
-	TotalCents           int64          `db:"total_cents" json:"totalCents"`
-	DiscountCodeID       uuid.NullUUID  `db:"discount_code_id" json:"discountCodeId"`
-	DiscountCodeSnapshot sql.NullString `db:"discount_code_snapshot" json:"discountCodeSnapshot"`
-	PickupAt             sql.NullTime   `db:"pickup_at" json:"pickupAt"`
-	CreatedAt            time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt            time.Time      `db:"updated_at" json:"updatedAt"`
-	CustomerEmail        string         `db:"customer_email" json:"customerEmail"`
-	CustomerDisplayName  sql.NullString `db:"customer_display_name" json:"customerDisplayName"`
+	ID                   uuid.UUID   `json:"id"`
+	UserID               uuid.UUID   `json:"userId"`
+	Status               OrderStatus `json:"status"`
+	SubtotalCents        int64       `json:"subtotalCents"`
+	DiscountCents        int64       `json:"discountCents"`
+	TotalCents           int64       `json:"totalCents"`
+	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
+	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
+	PickupAt             *time.Time  `json:"pickupAt"`
+	CreatedAt            time.Time   `json:"createdAt"`
+	UpdatedAt            time.Time   `json:"updatedAt"`
+	CustomerEmail        string      `json:"customerEmail"`
+	CustomerDisplayName  *string     `json:"customerDisplayName"`
 }
 
 // BakerListProductionOrders
@@ -99,7 +97,7 @@ type BakerListProductionOrdersRow struct {
 //	ORDER BY o.pickup_at ASC NULLS LAST, o.created_at ASC
 //	LIMIT $3 OFFSET $2
 func (q *Queries) BakerListProductionOrders(ctx context.Context, arg BakerListProductionOrdersParams) ([]BakerListProductionOrdersRow, error) {
-	rows, err := q.db.QueryContext(ctx, bakerListProductionOrders, arg.Status, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, bakerListProductionOrders, arg.Status, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -125,9 +123,6 @@ func (q *Queries) BakerListProductionOrders(ctx context.Context, arg BakerListPr
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -164,8 +159,8 @@ WHERE o.status IN (
 //	    $1::order_status IS NULL
 //	    OR o.status = $1::order_status
 //	  )
-func (q *Queries) BakerListProductionOrdersCount(ctx context.Context, status NullOrderStatus) (int64, error) {
-	row := q.db.QueryRowContext(ctx, bakerListProductionOrdersCount, status)
+func (q *Queries) BakerListProductionOrdersCount(ctx context.Context, status *OrderStatus) (int64, error) {
+	row := q.db.QueryRow(ctx, bakerListProductionOrdersCount, status)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -198,14 +193,14 @@ RETURNING
 `
 
 type CreateOrderParams struct {
-	UserID               uuid.UUID      `db:"user_id" json:"userId"`
-	Status               OrderStatus    `db:"status" json:"status"`
-	SubtotalCents        int64          `db:"subtotal_cents" json:"subtotalCents"`
-	DiscountCents        int64          `db:"discount_cents" json:"discountCents"`
-	TotalCents           int64          `db:"total_cents" json:"totalCents"`
-	DiscountCodeID       uuid.NullUUID  `db:"discount_code_id" json:"discountCodeId"`
-	DiscountCodeSnapshot sql.NullString `db:"discount_code_snapshot" json:"discountCodeSnapshot"`
-	PickupAt             sql.NullTime   `db:"pickup_at" json:"pickupAt"`
+	UserID               uuid.UUID   `json:"userId"`
+	Status               OrderStatus `json:"status"`
+	SubtotalCents        int64       `json:"subtotalCents"`
+	DiscountCents        int64       `json:"discountCents"`
+	TotalCents           int64       `json:"totalCents"`
+	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
+	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
+	PickupAt             *time.Time  `json:"pickupAt"`
 }
 
 // CreateOrder
@@ -234,7 +229,7 @@ type CreateOrderParams struct {
 //	  created_at,
 //	  updated_at
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
-	row := q.db.QueryRowContext(ctx, createOrder,
+	row := q.db.QueryRow(ctx, createOrder,
 		arg.UserID,
 		arg.Status,
 		arg.SubtotalCents,
@@ -338,11 +333,11 @@ FROM jsonb_to_recordset($1::jsonb) AS item (
 //	  line_total_cents bigint
 //	)
 func (q *Queries) CreateOrderItems(ctx context.Context, items json.RawMessage) (int64, error) {
-	result, err := q.db.ExecContext(ctx, createOrderItems, items)
+	result, err := q.db.Exec(ctx, createOrderItems, items)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const getOrderByIDForUser = `-- name: GetOrderByIDForUser :one
@@ -363,8 +358,8 @@ WHERE id = $1 AND user_id = $2
 `
 
 type GetOrderByIDForUserParams struct {
-	ID     uuid.UUID `db:"id" json:"id"`
-	UserID uuid.UUID `db:"user_id" json:"userId"`
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"userId"`
 }
 
 // GetOrderByIDForUser
@@ -384,7 +379,7 @@ type GetOrderByIDForUserParams struct {
 //	FROM orders
 //	WHERE id = $1 AND user_id = $2
 func (q *Queries) GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error) {
-	row := q.db.QueryRowContext(ctx, getOrderByIDForUser, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, getOrderByIDForUser, arg.ID, arg.UserID)
 	var i Order
 	err := row.Scan(
 		&i.ID,
@@ -440,7 +435,7 @@ ORDER BY created_at ASC
 //	WHERE order_id = $1
 //	ORDER BY created_at ASC
 func (q *Queries) ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]OrderItem, error) {
-	rows, err := q.db.QueryContext(ctx, listOrderItemsByOrderID, orderID)
+	rows, err := q.db.Query(ctx, listOrderItemsByOrderID, orderID)
 	if err != nil {
 		return nil, err
 	}
@@ -465,9 +460,6 @@ func (q *Queries) ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -495,9 +487,9 @@ LIMIT $2 OFFSET $3
 `
 
 type ListOrdersByUserParams struct {
-	UserID uuid.UUID `db:"user_id" json:"userId"`
-	Limit  int32     `db:"limit" json:"limit"`
-	Offset int32     `db:"offset" json:"offset"`
+	UserID uuid.UUID `json:"userId"`
+	Limit  int32     `json:"limit"`
+	Offset int32     `json:"offset"`
 }
 
 // ListOrdersByUser
@@ -519,7 +511,7 @@ type ListOrdersByUserParams struct {
 //	ORDER BY created_at DESC
 //	LIMIT $2 OFFSET $3
 func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserParams) ([]Order, error) {
-	rows, err := q.db.QueryContext(ctx, listOrdersByUser, arg.UserID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listOrdersByUser, arg.UserID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -544,9 +536,6 @@ func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserPara
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -565,7 +554,7 @@ WHERE user_id = $1
 //	FROM orders
 //	WHERE user_id = $1
 func (q *Queries) ListOrdersByUserCount(ctx context.Context, userID uuid.UUID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, listOrdersByUserCount, userID)
+	row := q.db.QueryRow(ctx, listOrdersByUserCount, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -593,19 +582,19 @@ WHERE o.id = $1
 `
 
 type StaffGetOrderByIDRow struct {
-	ID                   uuid.UUID      `db:"id" json:"id"`
-	UserID               uuid.UUID      `db:"user_id" json:"userId"`
-	Status               OrderStatus    `db:"status" json:"status"`
-	SubtotalCents        int64          `db:"subtotal_cents" json:"subtotalCents"`
-	DiscountCents        int64          `db:"discount_cents" json:"discountCents"`
-	TotalCents           int64          `db:"total_cents" json:"totalCents"`
-	DiscountCodeID       uuid.NullUUID  `db:"discount_code_id" json:"discountCodeId"`
-	DiscountCodeSnapshot sql.NullString `db:"discount_code_snapshot" json:"discountCodeSnapshot"`
-	PickupAt             sql.NullTime   `db:"pickup_at" json:"pickupAt"`
-	CreatedAt            time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt            time.Time      `db:"updated_at" json:"updatedAt"`
-	CustomerEmail        string         `db:"customer_email" json:"customerEmail"`
-	CustomerDisplayName  sql.NullString `db:"customer_display_name" json:"customerDisplayName"`
+	ID                   uuid.UUID   `json:"id"`
+	UserID               uuid.UUID   `json:"userId"`
+	Status               OrderStatus `json:"status"`
+	SubtotalCents        int64       `json:"subtotalCents"`
+	DiscountCents        int64       `json:"discountCents"`
+	TotalCents           int64       `json:"totalCents"`
+	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
+	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
+	PickupAt             *time.Time  `json:"pickupAt"`
+	CreatedAt            time.Time   `json:"createdAt"`
+	UpdatedAt            time.Time   `json:"updatedAt"`
+	CustomerEmail        string      `json:"customerEmail"`
+	CustomerDisplayName  *string     `json:"customerDisplayName"`
 }
 
 // StaffGetOrderByID
@@ -629,7 +618,7 @@ type StaffGetOrderByIDRow struct {
 //	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
 //	WHERE o.id = $1
 func (q *Queries) StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGetOrderByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, staffGetOrderByID, id)
+	row := q.db.QueryRow(ctx, staffGetOrderByID, id)
 	var i StaffGetOrderByIDRow
 	err := row.Scan(
 		&i.ID,
@@ -676,25 +665,25 @@ LIMIT $3 OFFSET $2
 `
 
 type StaffListOrdersParams struct {
-	Status NullOrderStatus `db:"status" json:"status"`
-	Offset int32           `db:"offset" json:"offset"`
-	Limit  int32           `db:"limit" json:"limit"`
+	Status *OrderStatus `json:"status"`
+	Offset int32        `json:"offset"`
+	Limit  int32        `json:"limit"`
 }
 
 type StaffListOrdersRow struct {
-	ID                   uuid.UUID      `db:"id" json:"id"`
-	UserID               uuid.UUID      `db:"user_id" json:"userId"`
-	Status               OrderStatus    `db:"status" json:"status"`
-	SubtotalCents        int64          `db:"subtotal_cents" json:"subtotalCents"`
-	DiscountCents        int64          `db:"discount_cents" json:"discountCents"`
-	TotalCents           int64          `db:"total_cents" json:"totalCents"`
-	DiscountCodeID       uuid.NullUUID  `db:"discount_code_id" json:"discountCodeId"`
-	DiscountCodeSnapshot sql.NullString `db:"discount_code_snapshot" json:"discountCodeSnapshot"`
-	PickupAt             sql.NullTime   `db:"pickup_at" json:"pickupAt"`
-	CreatedAt            time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt            time.Time      `db:"updated_at" json:"updatedAt"`
-	CustomerEmail        string         `db:"customer_email" json:"customerEmail"`
-	CustomerDisplayName  sql.NullString `db:"customer_display_name" json:"customerDisplayName"`
+	ID                   uuid.UUID   `json:"id"`
+	UserID               uuid.UUID   `json:"userId"`
+	Status               OrderStatus `json:"status"`
+	SubtotalCents        int64       `json:"subtotalCents"`
+	DiscountCents        int64       `json:"discountCents"`
+	TotalCents           int64       `json:"totalCents"`
+	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
+	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
+	PickupAt             *time.Time  `json:"pickupAt"`
+	CreatedAt            time.Time   `json:"createdAt"`
+	UpdatedAt            time.Time   `json:"updatedAt"`
+	CustomerEmail        string      `json:"customerEmail"`
+	CustomerDisplayName  *string     `json:"customerDisplayName"`
 }
 
 // StaffListOrders
@@ -723,7 +712,7 @@ type StaffListOrdersRow struct {
 //	ORDER BY o.created_at DESC
 //	LIMIT $3 OFFSET $2
 func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error) {
-	rows, err := q.db.QueryContext(ctx, staffListOrders, arg.Status, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, staffListOrders, arg.Status, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -750,9 +739,6 @@ func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -778,8 +764,8 @@ WHERE (
 //	    $1::order_status IS NULL
 //	    OR o.status = $1::order_status
 //	)
-func (q *Queries) StaffListOrdersCount(ctx context.Context, status NullOrderStatus) (int64, error) {
-	row := q.db.QueryRowContext(ctx, staffListOrdersCount, status)
+func (q *Queries) StaffListOrdersCount(ctx context.Context, status *OrderStatus) (int64, error) {
+	row := q.db.QueryRow(ctx, staffListOrdersCount, status)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -793,8 +779,8 @@ GROUP BY order_id
 `
 
 type SumOrderItemQuantitiesByOrderIDsRow struct {
-	OrderID   uuid.UUID `db:"order_id" json:"orderId"`
-	ItemCount int64     `db:"item_count" json:"itemCount"`
+	OrderID   uuid.UUID `json:"orderId"`
+	ItemCount int64     `json:"itemCount"`
 }
 
 // SumOrderItemQuantitiesByOrderIDs
@@ -804,7 +790,7 @@ type SumOrderItemQuantitiesByOrderIDsRow struct {
 //	WHERE order_id = ANY($1::uuid[])
 //	GROUP BY order_id
 func (q *Queries) SumOrderItemQuantitiesByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]SumOrderItemQuantitiesByOrderIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, sumOrderItemQuantitiesByOrderIDs, pq.Array(orderIds))
+	rows, err := q.db.Query(ctx, sumOrderItemQuantitiesByOrderIDs, orderIds)
 	if err != nil {
 		return nil, err
 	}
@@ -816,9 +802,6 @@ func (q *Queries) SumOrderItemQuantitiesByOrderIDs(ctx context.Context, orderIds
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -847,9 +830,9 @@ RETURNING
 `
 
 type UpdateOrderStatusParams struct {
-	ToStatus   OrderStatus `db:"to_status" json:"toStatus"`
-	ID         uuid.UUID   `db:"id" json:"id"`
-	FromStatus OrderStatus `db:"from_status" json:"fromStatus"`
+	ToStatus   OrderStatus `json:"toStatus"`
+	ID         uuid.UUID   `json:"id"`
+	FromStatus OrderStatus `json:"fromStatus"`
 }
 
 // UpdateOrderStatus
@@ -872,7 +855,7 @@ type UpdateOrderStatusParams struct {
 //	  created_at,
 //	  updated_at
 func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error) {
-	row := q.db.QueryRowContext(ctx, updateOrderStatus, arg.ToStatus, arg.ID, arg.FromStatus)
+	row := q.db.QueryRow(ctx, updateOrderStatus, arg.ToStatus, arg.ID, arg.FromStatus)
 	var i Order
 	err := row.Scan(
 		&i.ID,

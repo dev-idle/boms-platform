@@ -2,15 +2,15 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
-	"github.com/google/uuid"
 )
 
 // UserRepository implements port.UserRepository using sqlc-generated queries.
@@ -247,18 +247,15 @@ func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUse
 			ID:                 row.ID,
 			Email:              row.Email,
 			Role:               fromSQLRole(row.Role),
-			EmailVerified:      row.EmailVerifiedAt.Valid,
+			EmailVerified:      row.EmailVerifiedAt != nil,
 			MustChangePassword: row.MustChangePassword,
 			CreatedAt:          row.CreatedAt,
 			UpdatedAt:          row.UpdatedAt,
 			FullName:           stringPtrOrNil(row.FullName),
-			Phone:              nullStringPtr(row.Phone),
+			Phone:              row.Phone,
 			EmployeeCode:       stringPtrOrNil(row.EmployeeCode),
-			DisplayName:        nullStringPtr(row.DisplayName),
-		}
-		if row.DeletedAt.Valid {
-			t := row.DeletedAt.Time
-			item.DeletedAt = &t
+			DisplayName:        row.DisplayName,
+			DeletedAt:          row.DeletedAt,
 		}
 		out = append(out, item)
 	}
@@ -289,26 +286,22 @@ func mapUserFields(
 	id uuid.UUID,
 	email, passwordHash string,
 	role sqlcgen.UserRole,
-	emailVerifiedAt sql.NullTime,
+	emailVerifiedAt *time.Time,
 	mustChangePassword bool,
 	createdAt, updatedAt time.Time,
-	deletedAt sql.NullTime,
+	deletedAt *time.Time,
 ) *domainuser.User {
-	user := &domainuser.User{
+	return &domainuser.User{
 		ID:                 id,
 		Email:              email,
 		PasswordHash:       passwordHash,
 		Role:               fromSQLRole(role),
-		EmailVerified:      emailVerifiedAt.Valid,
+		EmailVerified:      emailVerifiedAt != nil,
 		MustChangePassword: mustChangePassword,
 		CreatedAt:          createdAt,
 		UpdatedAt:          updatedAt,
+		DeletedAt:          deletedAt,
 	}
-	if deletedAt.Valid {
-		t := deletedAt.Time
-		user.DeletedAt = &t
-	}
-	return user
 }
 
 func toSQLRole(role domainuser.Role) (sqlcgen.UserRole, error) {
@@ -340,14 +333,6 @@ func adminListRoleFilter(role *domainuser.Role) (string, error) {
 		return "", apperrors.ErrValidation.WithDetail("role", "unsupported role")
 	}
 	return string(*role), nil
-}
-
-func nullStringPtr(v sql.NullString) *string {
-	if !v.Valid {
-		return nil
-	}
-	s := v.String
-	return &s
 }
 
 func stringPtrOrNil(v string) *string {

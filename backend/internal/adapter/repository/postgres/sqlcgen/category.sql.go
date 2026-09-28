@@ -7,7 +7,6 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -22,15 +21,15 @@ LIMIT $1 OFFSET $2
 `
 
 type CatalogListCategoriesParams struct {
-	Limit  int32 `db:"limit" json:"limit"`
-	Offset int32 `db:"offset" json:"offset"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
 }
 
 type CatalogListCategoriesRow struct {
-	ID        uuid.UUID `db:"id" json:"id"`
-	Name      string    `db:"name" json:"name"`
-	Slug      string    `db:"slug" json:"slug"`
-	SortOrder int32     `db:"sort_order" json:"sortOrder"`
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	SortOrder int32     `json:"sortOrder"`
 }
 
 // CatalogListCategories
@@ -42,7 +41,7 @@ type CatalogListCategoriesRow struct {
 //	ORDER BY sort_order ASC, name ASC
 //	LIMIT $1 OFFSET $2
 func (q *Queries) CatalogListCategories(ctx context.Context, arg CatalogListCategoriesParams) ([]CatalogListCategoriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, catalogListCategories, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, catalogListCategories, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -59,9 +58,6 @@ func (q *Queries) CatalogListCategories(ctx context.Context, arg CatalogListCate
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -83,7 +79,7 @@ WHERE deleted_at IS NULL
 //	WHERE deleted_at IS NULL
 //	  AND is_active = true
 func (q *Queries) CatalogListCategoriesCount(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, catalogListCategoriesCount)
+	row := q.db.QueryRow(ctx, catalogListCategoriesCount)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -96,10 +92,10 @@ RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted
 `
 
 type CreateCategoryParams struct {
-	Name      string `db:"name" json:"name"`
-	Slug      string `db:"slug" json:"slug"`
-	SortOrder int32  `db:"sort_order" json:"sortOrder"`
-	IsActive  bool   `db:"is_active" json:"isActive"`
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	SortOrder int32  `json:"sortOrder"`
+	IsActive  bool   `json:"isActive"`
 }
 
 // CreateCategory
@@ -108,7 +104,7 @@ type CreateCategoryParams struct {
 //	VALUES ($1, $2, $3, $4)
 //	RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, createCategory,
+	row := q.db.QueryRow(ctx, createCategory,
 		arg.Name,
 		arg.Slug,
 		arg.SortOrder,
@@ -142,7 +138,7 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error) {
-	row := q.db.QueryRowContext(ctx, getCategoryByID, id)
+	row := q.db.QueryRow(ctx, getCategoryByID, id)
 	var i Category
 	err := row.Scan(
 		&i.ID,
@@ -171,9 +167,9 @@ LIMIT $1 OFFSET $2
 `
 
 type ManagerListCategoriesParams struct {
-	Limit  int32          `db:"limit" json:"limit"`
-	Offset int32          `db:"offset" json:"offset"`
-	Search sql.NullString `db:"search" json:"search"`
+	Limit  int32   `json:"limit"`
+	Offset int32   `json:"offset"`
+	Search *string `json:"search"`
 }
 
 // ManagerListCategories
@@ -189,7 +185,7 @@ type ManagerListCategoriesParams struct {
 //	ORDER BY sort_order ASC, name ASC
 //	LIMIT $1 OFFSET $2
 func (q *Queries) ManagerListCategories(ctx context.Context, arg ManagerListCategoriesParams) ([]Category, error) {
-	rows, err := q.db.QueryContext(ctx, managerListCategories, arg.Limit, arg.Offset, arg.Search)
+	rows, err := q.db.Query(ctx, managerListCategories, arg.Limit, arg.Offset, arg.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -210,9 +206,6 @@ func (q *Queries) ManagerListCategories(ctx context.Context, arg ManagerListCate
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -241,8 +234,8 @@ WHERE deleted_at IS NULL
 //	    OR name ILIKE '%' || $1::text || '%'
 //	    OR slug ILIKE '%' || $1::text || '%'
 //	  )
-func (q *Queries) ManagerListCategoriesCount(ctx context.Context, search sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, managerListCategoriesCount, search)
+func (q *Queries) ManagerListCategoriesCount(ctx context.Context, search *string) (int64, error) {
+	row := q.db.QueryRow(ctx, managerListCategoriesCount, search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -276,11 +269,11 @@ WHERE categories.id = $1
 //	      AND products.deleted_at IS NULL
 //	  )
 func (q *Queries) SoftDeleteCategoryIfNoProducts(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, softDeleteCategoryIfNoProducts, id)
+	result, err := q.db.Exec(ctx, softDeleteCategoryIfNoProducts, id)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const updateCategory = `-- name: UpdateCategory :one
@@ -296,11 +289,11 @@ RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted
 `
 
 type UpdateCategoryParams struct {
-	ID        uuid.UUID `db:"id" json:"id"`
-	Name      string    `db:"name" json:"name"`
-	Slug      string    `db:"slug" json:"slug"`
-	SortOrder int32     `db:"sort_order" json:"sortOrder"`
-	IsActive  bool      `db:"is_active" json:"isActive"`
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	SortOrder int32     `json:"sortOrder"`
+	IsActive  bool      `json:"isActive"`
 }
 
 // UpdateCategory
@@ -315,7 +308,7 @@ type UpdateCategoryParams struct {
 //	  AND deleted_at IS NULL
 //	RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
 func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, updateCategory,
+	row := q.db.QueryRow(ctx, updateCategory,
 		arg.ID,
 		arg.Name,
 		arg.Slug,

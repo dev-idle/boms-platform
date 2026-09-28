@@ -3,49 +3,26 @@ package postgres_test
 import (
 	"context"
 	"encoding/json"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
-	"github.com/boms/backend/internal/config"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestOrderCheckoutRepositories_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
 	t.Parallel()
 
 	ctx := context.Background()
-	pgContainer, connStr, err := startPostgres(ctx, t)
-	if err != nil {
-		if strings.Contains(err.Error(), "docker") {
-			t.Skip("docker not available")
-		}
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = pgContainer.Terminate(ctx) })
-	require.NoError(t, applyMigrations(ctx, connStr))
-
-	pool, err := postgresadapter.NewPool(ctx, config.PostgresConfig{
-		URL:                connStr,
-		MaxConns:           5,
-		MinConns:           1,
-		MaxConnLifetime:    time.Hour,
-		MaxConnIdleTime:    time.Minute,
-		HealthCheckTimeout: 5 * time.Second,
-	})
-	require.NoError(t, err)
-	t.Cleanup(pool.Close)
-
+	pool := newIntegrationPool(t, 5)
 	users := postgresadapter.NewUserRepository(pool)
 	categories := postgresadapter.NewCategoryRepository(pool)
 	products := postgresadapter.NewProductRepository(pool)
@@ -163,5 +140,55 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 		case <-time.After(10 * time.Second):
 			t.Fatal("second transaction never acquired the cart lock")
 		}
+	})
+
+	t.Run("staff_and_baker_lists_filter_by_an_optional_status", func(t *testing.T) {
+		confirmed, err := orders.Create(ctx, port.CreateOrderParams{
+			UserID: customer.ID, Status: domainorder.StatusConfirmed, SubtotalCents: 4500, TotalCents: 4500,
+		})
+		require.NoError(t, err)
+		status := domainorder.StatusConfirmed
+
+		all, err := orders.StaffList(ctx, port.StaffListOrdersParams{Limit: 100})
+		require.NoError(t, err)
+		allCount, err := orders.StaffListCount(ctx, nil)
+		require.NoError(t, err)
+		assert.Equal(t, int64(len(all)), allCount)
+		assert.Greater(t, allCount, int64(1), "an unset status lists every order")
+
+		filtered, err := orders.StaffList(ctx, port.StaffListOrdersParams{Status: &status, Limit: 100})
+		require.NoError(t, err)
+		filteredCount, err := orders.StaffListCount(ctx, &status)
+		require.NoError(t, err)
+		require.Len(t, filtered, 1)
+		assert.Equal(t, int64(1), filteredCount)
+		assert.Equal(t, confirmed.ID, filtered[0].Order.ID)
+		assert.Equal(t, customer.Email, filtered[0].CustomerEmail)
+
+		production, err := orders.BakerListProduction(ctx, port.BakerListOrdersParams{Status: &status, Limit: 100})
+		require.NoError(t, err)
+		require.Len(t, production, 1)
+		assert.Equal(t, confirmed.ID, production[0].Order.ID)
+	})
+
+	t.Run("sums_item_quantities_for_a_list_of_order_ids", func(t *testing.T) {
+		order, err := orders.Create(ctx, port.CreateOrderParams{
+			UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 12200, TotalCents: 12200,
+		})
+		require.NoError(t, err)
+		require.NoError(t, orders.CreateItems(ctx, []port.CreateOrderItemParams{
+			{
+				OrderID: order.ID, LineType: domaincart.LineTypeProduct, ProductID: &cake.ID,
+				Name: cake.Name, Slug: cake.Slug, Quantity: 2, UnitPriceCents: 4500, LineTotalCents: 9000,
+			},
+			{
+				OrderID: order.ID, LineType: domaincart.LineTypeProduct, ProductID: &tart.ID,
+				Name: tart.Name, Slug: tart.Slug, Quantity: 1, UnitPriceCents: 3200, LineTotalCents: 3200,
+			},
+		}))
+
+		sums, err := orders.SumItemQuantitiesByOrderIDs(ctx, []uuid.UUID{order.ID, uuid.New()})
+		require.NoError(t, err)
+		assert.Equal(t, map[uuid.UUID]int32{order.ID: 3}, sums)
 	})
 }

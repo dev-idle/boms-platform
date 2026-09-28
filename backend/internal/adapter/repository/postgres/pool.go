@@ -2,27 +2,25 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	"github.com/boms/backend/internal/config"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
 )
 
-// Pool wraps pgxpool for native ping/pgx usage, and sqlx + sqlc for type-safe SQL.
-// sqlx sits on database/sql opened from the same pool (stdlib.OpenDBFromPool).
+// Pool owns the pgx connection pool and the sqlc queries bound to it.
 type Pool struct {
 	inner   *pgxpool.Pool
-	sqlxDB  *sqlx.DB
 	queries *sqlcgen.Queries
 }
 
-// NewPool creates a PostgreSQL pool, a sqlx handle over it, and sqlc-generated queries.
+// NewPool creates a PostgreSQL pool and the sqlc queries that run on it.
 func NewPool(ctx context.Context, cfg config.PostgresConfig) (*Pool, error) {
 	pcfg, err := pgxpool.ParseConfig(cfg.URL)
 	if err != nil {
@@ -52,30 +50,10 @@ func NewPool(ctx context.Context, cfg config.PostgresConfig) (*Pool, error) {
 		return nil, fmt.Errorf("ping postgres: %w", err)
 	}
 
-	sqlStd := stdlib.OpenDBFromPool(pool)
-	sqlxDB := sqlx.NewDb(sqlStd, "pgx")
-
 	return &Pool{
 		inner:   pool,
-		sqlxDB:  sqlxDB,
-		queries: sqlcgen.New(sqlxDB),
+		queries: sqlcgen.New(pool),
 	}, nil
-}
-
-// DB exposes the underlying pgx pool (raw SQL, COPY, LISTEN/NOTIFY, …).
-func (p *Pool) DB() *pgxpool.Pool {
-	if p == nil {
-		return nil
-	}
-	return p.inner
-}
-
-// SQLX exposes sqlx for repositories that need NamedExec / StructScan helpers.
-func (p *Pool) SQLX() *sqlx.DB {
-	if p == nil {
-		return nil
-	}
-	return p.sqlxDB
 }
 
 // Queries exposes sqlc-generated methods (Querier); use in repository adapters.
@@ -86,14 +64,10 @@ func (p *Pool) Queries() *sqlcgen.Queries {
 	return p.queries
 }
 
-// Close closes sqlx (stdlib DB) then the pgx pool. Order matters for OpenDBFromPool.
+// Close closes the pgx pool.
 func (p *Pool) Close() {
 	if p == nil {
 		return
-	}
-	if p.sqlxDB != nil {
-		_ = p.sqlxDB.Close()
-		p.sqlxDB = nil
 	}
 	if p.inner != nil {
 		p.inner.Close()
@@ -107,7 +81,7 @@ func (p *Pool) Name() string {
 	return "postgres"
 }
 
-// Ping implements port.HealthResource (pgx pool; avoids sqlc/sqlx path for probes).
+// Ping implements port.HealthResource.
 func (p *Pool) Ping(ctx context.Context) error {
 	if p == nil || p.inner == nil {
 		return fmt.Errorf("postgres pool is nil")
@@ -115,21 +89,36 @@ func (p *Pool) Ping(ctx context.Context) error {
 	return p.inner.Ping(ctx)
 }
 
-// WithTx runs fn in a SQL transaction and commits on success.
-func (p *Pool) WithTx(ctx context.Context, fn func(txCtx context.Context) error) error {
-	if p == nil || p.sqlxDB == nil || p.sqlxDB.DB == nil {
+// rollbackTimeout bounds a rollback that runs after the caller's context may
+// already be done — a request that timed out, or a panic unwinding.
+const rollbackTimeout = 5 * time.Second
+
+// WithTx runs fn in a transaction and commits on success. Repositories pick the
+// transaction up from txCtx, so every call inside fn shares one connection.
+func (p *Pool) WithTx(ctx context.Context, fn func(txCtx context.Context) error) (err error) {
+	if p == nil || p.inner == nil {
 		return fmt.Errorf("postgres pool is nil")
 	}
-	tx, err := p.sqlxDB.BeginTx(ctx, &sql.TxOptions{})
+	tx, err := p.inner.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	txCtx := withTx(ctx, tx)
-	if err := fn(txCtx); err != nil {
-		_ = tx.Rollback()
+	defer func() {
+		// Runs on failure and on panic, so row locks and the pooled connection are
+		// always given back; after a commit it is a no-op (ErrTxClosed). Detached
+		// from ctx, which a timed-out request has already cancelled. A connection
+		// that died mid-query was rolled back by the server when it closed.
+		rbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), rollbackTimeout)
+		defer cancel()
+		conn := tx.Conn()
+		if rbErr := tx.Rollback(rbCtx); rbErr != nil && !errors.Is(rbErr, pgx.ErrTxClosed) && !conn.IsClosed() {
+			err = errors.Join(err, fmt.Errorf("rollback tx: %w", rbErr))
+		}
+	}()
+	if err = fn(withTx(ctx, tx)); err != nil {
 		return err
 	}
-	if err := tx.Commit(); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit tx: %w", err)
 	}
 	return nil

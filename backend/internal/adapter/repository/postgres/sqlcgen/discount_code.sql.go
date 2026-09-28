@@ -7,7 +7,6 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,15 +43,15 @@ RETURNING
 `
 
 type CreateDiscountCodeParams struct {
-	Code             string        `db:"code" json:"code"`
-	DiscountType     DiscountType  `db:"discount_type" json:"discountType"`
-	Value            int64         `db:"value" json:"value"`
-	MinOrderCents    sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
-	MaxUses          sql.NullInt32 `db:"max_uses" json:"maxUses"`
-	MaxDiscountCents sql.NullInt64 `db:"max_discount_cents" json:"maxDiscountCents"`
-	StartsAt         time.Time     `db:"starts_at" json:"startsAt"`
-	EndsAt           time.Time     `db:"ends_at" json:"endsAt"`
-	IsActive         bool          `db:"is_active" json:"isActive"`
+	Code             string       `json:"code"`
+	DiscountType     DiscountType `json:"discountType"`
+	Value            int64        `json:"value"`
+	MinOrderCents    *int64       `json:"minOrderCents"`
+	MaxUses          *int32       `json:"maxUses"`
+	MaxDiscountCents *int64       `json:"maxDiscountCents"`
+	StartsAt         time.Time    `json:"startsAt"`
+	EndsAt           time.Time    `json:"endsAt"`
+	IsActive         bool         `json:"isActive"`
 }
 
 // CreateDiscountCode
@@ -85,7 +84,7 @@ type CreateDiscountCodeParams struct {
 //	    updated_at,
 //	    deleted_at
 func (q *Queries) CreateDiscountCode(ctx context.Context, arg CreateDiscountCodeParams) (DiscountCode, error) {
-	row := q.db.QueryRowContext(ctx, createDiscountCode,
+	row := q.db.QueryRow(ctx, createDiscountCode,
 		arg.Code,
 		arg.DiscountType,
 		arg.Value,
@@ -158,7 +157,7 @@ WHERE code = $1
 //	WHERE code = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) GetDiscountCodeByCode(ctx context.Context, code string) (DiscountCode, error) {
-	row := q.db.QueryRowContext(ctx, getDiscountCodeByCode, code)
+	row := q.db.QueryRow(ctx, getDiscountCodeByCode, code)
 	var i DiscountCode
 	err := row.Scan(
 		&i.ID,
@@ -221,7 +220,7 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) GetDiscountCodeByID(ctx context.Context, id uuid.UUID) (DiscountCode, error) {
-	row := q.db.QueryRowContext(ctx, getDiscountCodeByID, id)
+	row := q.db.QueryRow(ctx, getDiscountCodeByID, id)
 	var i DiscountCode
 	err := row.Scan(
 		&i.ID,
@@ -290,7 +289,7 @@ RETURNING
 //	    updated_at,
 //	    deleted_at
 func (q *Queries) IncrementDiscountCodeUsedCount(ctx context.Context, id uuid.UUID) (DiscountCode, error) {
-	row := q.db.QueryRowContext(ctx, incrementDiscountCodeUsedCount, id)
+	row := q.db.QueryRow(ctx, incrementDiscountCodeUsedCount, id)
 	var i DiscountCode
 	err := row.Scan(
 		&i.ID,
@@ -338,9 +337,9 @@ LIMIT $1 OFFSET $2
 `
 
 type ManagerListDiscountCodesParams struct {
-	Limit  int32          `db:"limit" json:"limit"`
-	Offset int32          `db:"offset" json:"offset"`
-	Search sql.NullString `db:"search" json:"search"`
+	Limit  int32   `json:"limit"`
+	Offset int32   `json:"offset"`
+	Search *string `json:"search"`
 }
 
 // ManagerListDiscountCodes
@@ -369,7 +368,7 @@ type ManagerListDiscountCodesParams struct {
 //	ORDER BY starts_at DESC, code ASC
 //	LIMIT $1 OFFSET $2
 func (q *Queries) ManagerListDiscountCodes(ctx context.Context, arg ManagerListDiscountCodesParams) ([]DiscountCode, error) {
-	rows, err := q.db.QueryContext(ctx, managerListDiscountCodes, arg.Limit, arg.Offset, arg.Search)
+	rows, err := q.db.Query(ctx, managerListDiscountCodes, arg.Limit, arg.Offset, arg.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -397,9 +396,6 @@ func (q *Queries) ManagerListDiscountCodes(ctx context.Context, arg ManagerListD
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -425,8 +421,8 @@ WHERE deleted_at IS NULL
 //	    $1::text IS NULL
 //	    OR code ILIKE '%' || $1::text || '%'
 //	  )
-func (q *Queries) ManagerListDiscountCodesCount(ctx context.Context, search sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, managerListDiscountCodesCount, search)
+func (q *Queries) ManagerListDiscountCodesCount(ctx context.Context, search *string) (int64, error) {
+	row := q.db.QueryRow(ctx, managerListDiscountCodesCount, search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -448,11 +444,11 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) SoftDeleteDiscountCode(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, softDeleteDiscountCode, id)
+	result, err := q.db.Exec(ctx, softDeleteDiscountCode, id)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const updateDiscountCode = `-- name: UpdateDiscountCode :one
@@ -487,16 +483,16 @@ RETURNING
 `
 
 type UpdateDiscountCodeParams struct {
-	ID               uuid.UUID     `db:"id" json:"id"`
-	Code             string        `db:"code" json:"code"`
-	DiscountType     DiscountType  `db:"discount_type" json:"discountType"`
-	Value            int64         `db:"value" json:"value"`
-	MinOrderCents    sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
-	MaxUses          sql.NullInt32 `db:"max_uses" json:"maxUses"`
-	MaxDiscountCents sql.NullInt64 `db:"max_discount_cents" json:"maxDiscountCents"`
-	StartsAt         time.Time     `db:"starts_at" json:"startsAt"`
-	EndsAt           time.Time     `db:"ends_at" json:"endsAt"`
-	IsActive         bool          `db:"is_active" json:"isActive"`
+	ID               uuid.UUID    `json:"id"`
+	Code             string       `json:"code"`
+	DiscountType     DiscountType `json:"discountType"`
+	Value            int64        `json:"value"`
+	MinOrderCents    *int64       `json:"minOrderCents"`
+	MaxUses          *int32       `json:"maxUses"`
+	MaxDiscountCents *int64       `json:"maxDiscountCents"`
+	StartsAt         time.Time    `json:"startsAt"`
+	EndsAt           time.Time    `json:"endsAt"`
+	IsActive         bool         `json:"isActive"`
 }
 
 // UpdateDiscountCode
@@ -530,7 +526,7 @@ type UpdateDiscountCodeParams struct {
 //	    updated_at,
 //	    deleted_at
 func (q *Queries) UpdateDiscountCode(ctx context.Context, arg UpdateDiscountCodeParams) (DiscountCode, error) {
-	row := q.db.QueryRowContext(ctx, updateDiscountCode,
+	row := q.db.QueryRow(ctx, updateDiscountCode,
 		arg.ID,
 		arg.Code,
 		arg.DiscountType,

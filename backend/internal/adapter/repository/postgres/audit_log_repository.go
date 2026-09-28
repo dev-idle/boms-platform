@@ -2,13 +2,13 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
+
+	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
-	"github.com/google/uuid"
 )
 
 type AuditLogRepository struct {
@@ -27,34 +27,26 @@ func (r *AuditLogRepository) q(ctx context.Context) *sqlcgen.Queries {
 }
 
 func (r *AuditLogRepository) Create(ctx context.Context, params port.CreateAuditLogParams) error {
-	targetIDNull := uuid.NullUUID{}
-	if params.TargetID != nil {
-		targetIDNull = uuid.NullUUID{UUID: *params.TargetID, Valid: true}
-	}
 	var ip string
 	if params.IP != nil {
 		ip = *params.IP
-	}
-	ua := sql.NullString{}
-	if params.UserAgent != nil {
-		ua = sql.NullString{String: *params.UserAgent, Valid: true}
 	}
 	err := r.q(ctx).CreateAuditLog(ctx, sqlcgen.CreateAuditLogParams{
 		ActorID:     params.ActorID,
 		ActorRole:   sqlcgen.UserRole(params.ActorRole),
 		Action:      string(params.Action),
-		TargetID:    targetIDNull,
+		TargetID:    params.TargetID,
 		TargetType:  params.TargetType,
 		BeforeJsonb: json.RawMessage(params.BeforeJSON),
 		AfterJsonb:  json.RawMessage(params.AfterJSON),
 		Column8:     ip,
-		UserAgent:   ua,
+		UserAgent:   params.UserAgent,
 	})
 	return mapRepoError(err, "create audit log")
 }
 
 func (r *AuditLogRepository) CountByTargetID(ctx context.Context, targetID uuid.UUID) (int64, error) {
-	total, err := r.q(ctx).CountAuditLogsByTargetID(ctx, uuid.NullUUID{UUID: targetID, Valid: true})
+	total, err := r.q(ctx).CountAuditLogsByTargetID(ctx, &targetID)
 	if err != nil {
 		return 0, mapRepoError(err, "count audit logs by target")
 	}
@@ -66,7 +58,7 @@ func (r *AuditLogRepository) ListByTargetID(
 	params port.ListAuditLogsByTargetParams,
 ) ([]port.AuditLogEntry, error) {
 	rows, err := r.q(ctx).ListAuditLogsByTargetID(ctx, sqlcgen.ListAuditLogsByTargetIDParams{
-		TargetID: uuid.NullUUID{UUID: params.TargetID, Valid: true},
+		TargetID: &params.TargetID,
 		Limit:    params.Limit,
 		Offset:   params.Offset,
 	})

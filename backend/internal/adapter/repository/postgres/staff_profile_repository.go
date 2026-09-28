@@ -2,13 +2,14 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	"github.com/boms/backend/internal/port"
-	"github.com/google/uuid"
+	apperrors "github.com/boms/backend/internal/shared/errors"
 )
 
 type StaffProfileRepository struct {
@@ -30,7 +31,7 @@ func (r *StaffProfileRepository) Create(ctx context.Context, params port.UpsertS
 	row, err := r.q(ctx).CreateStaffProfile(ctx, sqlcgen.CreateStaffProfileParams{
 		UserID:       params.UserID,
 		FullName:     params.FullName,
-		Phone:        toNullString(params.Phone),
+		Phone:        params.Phone,
 		EmployeeCode: params.EmployeeCode,
 	})
 	if err != nil {
@@ -51,7 +52,7 @@ func (r *StaffProfileRepository) UpdateByUserID(ctx context.Context, params port
 	row, err := r.q(ctx).UpdateStaffProfileByUserID(ctx, sqlcgen.UpdateStaffProfileByUserIDParams{
 		UserID:       params.UserID,
 		FullName:     params.FullName,
-		Phone:        toNullString(params.Phone),
+		Phone:        params.Phone,
 		EmployeeCode: params.EmployeeCode,
 	})
 	if err != nil {
@@ -74,7 +75,7 @@ func (r *StaffProfileRepository) DeleteByUserID(ctx context.Context, userID uuid
 		return mapStaffError(err, "delete staff profile")
 	}
 	if rows == 0 {
-		return mapStaffError(sql.ErrNoRows, "delete staff profile")
+		return apperrors.ErrNotFound
 	}
 	return nil
 }
@@ -83,7 +84,7 @@ func mapStaffProfile(row sqlcgen.StaffProfile) *domainprofile.Staff {
 	return &domainprofile.Staff{
 		UserID:       row.UserID,
 		FullName:     row.FullName,
-		Phone:        nullStringPtr(row.Phone),
+		Phone:        row.Phone,
 		EmployeeCode: row.EmployeeCode,
 		CreatedAt:    row.CreatedAt,
 		UpdatedAt:    row.UpdatedAt,

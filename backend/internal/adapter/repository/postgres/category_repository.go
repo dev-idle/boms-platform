@@ -3,10 +3,11 @@ package postgres
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	"github.com/boms/backend/internal/port"
-	"github.com/google/uuid"
 )
 
 type CategoryRepository struct {
@@ -121,7 +122,7 @@ func (r *CategoryRepository) CatalogListCount(ctx context.Context) (int64, error
 }
 
 func mapCategory(row sqlcgen.Category) *domaincategory.Category {
-	cat := &domaincategory.Category{
+	return &domaincategory.Category{
 		ID:        row.ID,
 		Name:      row.Name,
 		Slug:      row.Slug,
@@ -129,12 +130,8 @@ func mapCategory(row sqlcgen.Category) *domaincategory.Category {
 		IsActive:  row.IsActive,
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
+		DeletedAt: row.DeletedAt,
 	}
-	if row.DeletedAt.Valid {
-		t := row.DeletedAt.Time
-		cat.DeletedAt = &t
-	}
-	return cat
 }
 
 var _ port.CategoryRepository = (*CategoryRepository)(nil)

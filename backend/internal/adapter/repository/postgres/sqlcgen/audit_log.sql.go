@@ -7,7 +7,6 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -25,8 +24,8 @@ WHERE target_id = $1
 //	SELECT COUNT(*)::bigint AS total
 //	FROM audit_logs
 //	WHERE target_id = $1
-func (q *Queries) CountAuditLogsByTargetID(ctx context.Context, targetID uuid.NullUUID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countAuditLogsByTargetID, targetID)
+func (q *Queries) CountAuditLogsByTargetID(ctx context.Context, targetID *uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countAuditLogsByTargetID, targetID)
 	var total int64
 	err := row.Scan(&total)
 	return total, err
@@ -48,15 +47,15 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')::inet, $9)
 `
 
 type CreateAuditLogParams struct {
-	ActorID     uuid.UUID       `db:"actor_id" json:"actorId"`
-	ActorRole   UserRole        `db:"actor_role" json:"actorRole"`
-	Action      string          `db:"action" json:"action"`
-	TargetID    uuid.NullUUID   `db:"target_id" json:"targetId"`
-	TargetType  string          `db:"target_type" json:"targetType"`
-	BeforeJsonb json.RawMessage `db:"before_jsonb" json:"beforeJsonb"`
-	AfterJsonb  json.RawMessage `db:"after_jsonb" json:"afterJsonb"`
-	Column8     interface{}     `db:"column_8" json:"column8"`
-	UserAgent   sql.NullString  `db:"user_agent" json:"userAgent"`
+	ActorID     uuid.UUID       `json:"actorId"`
+	ActorRole   UserRole        `json:"actorRole"`
+	Action      string          `json:"action"`
+	TargetID    *uuid.UUID      `json:"targetId"`
+	TargetType  string          `json:"targetType"`
+	BeforeJsonb json.RawMessage `json:"beforeJsonb"`
+	AfterJsonb  json.RawMessage `json:"afterJsonb"`
+	Column8     interface{}     `json:"column8"`
+	UserAgent   *string         `json:"userAgent"`
 }
 
 // CreateAuditLog
@@ -74,7 +73,7 @@ type CreateAuditLogParams struct {
 //	)
 //	VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')::inet, $9)
 func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) error {
-	_, err := q.db.ExecContext(ctx, createAuditLog,
+	_, err := q.db.Exec(ctx, createAuditLog,
 		arg.ActorID,
 		arg.ActorRole,
 		arg.Action,
@@ -106,20 +105,20 @@ LIMIT $2 OFFSET $3
 `
 
 type ListAuditLogsByTargetIDParams struct {
-	TargetID uuid.NullUUID `db:"target_id" json:"targetId"`
-	Limit    int32         `db:"limit" json:"limit"`
-	Offset   int32         `db:"offset" json:"offset"`
+	TargetID *uuid.UUID `json:"targetId"`
+	Limit    int32      `json:"limit"`
+	Offset   int32      `json:"offset"`
 }
 
 type ListAuditLogsByTargetIDRow struct {
-	ID          uuid.UUID       `db:"id" json:"id"`
-	ActorID     uuid.UUID       `db:"actor_id" json:"actorId"`
-	ActorRole   UserRole        `db:"actor_role" json:"actorRole"`
-	ActorEmail  string          `db:"actor_email" json:"actorEmail"`
-	Action      string          `db:"action" json:"action"`
-	BeforeJsonb json.RawMessage `db:"before_jsonb" json:"beforeJsonb"`
-	AfterJsonb  json.RawMessage `db:"after_jsonb" json:"afterJsonb"`
-	CreatedAt   time.Time       `db:"created_at" json:"createdAt"`
+	ID          uuid.UUID       `json:"id"`
+	ActorID     uuid.UUID       `json:"actorId"`
+	ActorRole   UserRole        `json:"actorRole"`
+	ActorEmail  string          `json:"actorEmail"`
+	Action      string          `json:"action"`
+	BeforeJsonb json.RawMessage `json:"beforeJsonb"`
+	AfterJsonb  json.RawMessage `json:"afterJsonb"`
+	CreatedAt   time.Time       `json:"createdAt"`
 }
 
 // ListAuditLogsByTargetID
@@ -139,7 +138,7 @@ type ListAuditLogsByTargetIDRow struct {
 //	ORDER BY al.created_at DESC
 //	LIMIT $2 OFFSET $3
 func (q *Queries) ListAuditLogsByTargetID(ctx context.Context, arg ListAuditLogsByTargetIDParams) ([]ListAuditLogsByTargetIDRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAuditLogsByTargetID, arg.TargetID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listAuditLogsByTargetID, arg.TargetID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -160,9 +159,6 @@ func (q *Queries) ListAuditLogsByTargetID(ctx context.Context, arg ListAuditLogs
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -3,11 +3,12 @@ package postgres
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
-	"github.com/google/uuid"
 )
 
 type ComboRepository struct {
@@ -30,7 +31,7 @@ func (r *ComboRepository) Create(ctx context.Context, params port.CreateComboPar
 		Name:       params.Name,
 		Slug:       params.Slug,
 		PriceCents: params.PriceCents,
-		ImageUrl:   optionalString(params.ImageURL),
+		ImageUrl:   params.ImageURL,
 		StartsAt:   params.StartsAt,
 		EndsAt:     params.EndsAt,
 		IsActive:   params.IsActive,
@@ -55,7 +56,7 @@ func (r *ComboRepository) Update(ctx context.Context, params port.UpdateComboPar
 		Name:       params.Name,
 		Slug:       params.Slug,
 		PriceCents: params.PriceCents,
-		ImageUrl:   optionalString(params.ImageURL),
+		ImageUrl:   params.ImageURL,
 		StartsAt:   params.StartsAt,
 		EndsAt:     params.EndsAt,
 		IsActive:   params.IsActive,
@@ -176,7 +177,7 @@ func (r *ComboRepository) CatalogList(ctx context.Context, params port.CatalogLi
 			Name:       row.Name,
 			Slug:       row.Slug,
 			PriceCents: row.PriceCents,
-			ImageURL:   stringOrNil(row.ImageUrl),
+			ImageURL:   row.ImageUrl,
 			StartsAt:   row.StartsAt,
 			EndsAt:     row.EndsAt,
 			Items:      itemsByCombo[row.ID],
@@ -220,7 +221,7 @@ func (r *ComboRepository) CatalogGetByIDs(ctx context.Context, ids []uuid.UUID) 
 			Name:       row.Name,
 			Slug:       row.Slug,
 			PriceCents: row.PriceCents,
-			ImageURL:   stringOrNil(row.ImageUrl),
+			ImageURL:   row.ImageUrl,
 			StartsAt:   row.StartsAt,
 			EndsAt:     row.EndsAt,
 			Items:      items,
@@ -247,7 +248,7 @@ func (r *ComboRepository) CatalogGetByID(ctx context.Context, id uuid.UUID) (*po
 		Name:       row.Name,
 		Slug:       row.Slug,
 		PriceCents: row.PriceCents,
-		ImageURL:   stringOrNil(row.ImageUrl),
+		ImageURL:   row.ImageUrl,
 		StartsAt:   row.StartsAt,
 		EndsAt:     row.EndsAt,
 		Items:      items,
@@ -324,20 +325,17 @@ func groupComboItems(items []domaincombo.Item) map[uuid.UUID][]domaincombo.Item 
 }
 
 func mapCombo(row sqlcgen.Combo) *domaincombo.Combo {
-	c := &domaincombo.Combo{
+	return &domaincombo.Combo{
 		ID:         row.ID,
 		Name:       row.Name,
 		Slug:       row.Slug,
 		PriceCents: row.PriceCents,
-		ImageURL:   stringOrNil(row.ImageUrl),
+		ImageURL:   row.ImageUrl,
 		StartsAt:   row.StartsAt,
 		EndsAt:     row.EndsAt,
 		IsActive:   row.IsActive,
 		CreatedAt:  row.CreatedAt,
 		UpdatedAt:  row.UpdatedAt,
+		DeletedAt:  row.DeletedAt,
 	}
-	if row.DeletedAt.Valid {
-		c.DeletedAt = &row.DeletedAt.Time
-	}
-	return c
 }

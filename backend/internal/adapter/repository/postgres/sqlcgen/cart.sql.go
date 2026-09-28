@@ -23,7 +23,7 @@ WHERE id = $1
 //	SET discount_code_id = NULL, updated_at = now()
 //	WHERE id = $1
 func (q *Queries) ClearCartDiscountCode(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, clearCartDiscountCode, id)
+	_, err := q.db.Exec(ctx, clearCartDiscountCode, id)
 	return err
 }
 
@@ -39,7 +39,7 @@ WHERE cart_id = $1
 //	FROM cart_items
 //	WHERE cart_id = $1
 func (q *Queries) CountCartItems(ctx context.Context, cartID uuid.UUID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countCartItems, cartID)
+	row := q.db.QueryRow(ctx, countCartItems, cartID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -57,7 +57,7 @@ RETURNING id, user_id, discount_code_id, created_at, updated_at
 //	VALUES ($1)
 //	RETURNING id, user_id, discount_code_id, created_at, updated_at
 func (q *Queries) CreateCart(ctx context.Context, userID uuid.UUID) (Cart, error) {
-	row := q.db.QueryRowContext(ctx, createCart, userID)
+	row := q.db.QueryRow(ctx, createCart, userID)
 	var i Cart
 	err := row.Scan(
 		&i.ID,
@@ -76,11 +76,11 @@ RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration,
 `
 
 type CreateCartItemParams struct {
-	CartID    uuid.UUID     `db:"cart_id" json:"cartId"`
-	LineType  LineType      `db:"line_type" json:"lineType"`
-	ProductID uuid.NullUUID `db:"product_id" json:"productId"`
-	ComboID   uuid.NullUUID `db:"combo_id" json:"comboId"`
-	Quantity  int32         `db:"quantity" json:"quantity"`
+	CartID    uuid.UUID  `json:"cartId"`
+	LineType  LineType   `json:"lineType"`
+	ProductID *uuid.UUID `json:"productId"`
+	ComboID   *uuid.UUID `json:"comboId"`
+	Quantity  int32      `json:"quantity"`
 }
 
 // CreateCartItem
@@ -89,7 +89,7 @@ type CreateCartItemParams struct {
 //	VALUES ($1, $2, $3, $4, $5)
 //	RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 func (q *Queries) CreateCartItem(ctx context.Context, arg CreateCartItemParams) (CartItem, error) {
-	row := q.db.QueryRowContext(ctx, createCartItem,
+	row := q.db.QueryRow(ctx, createCartItem,
 		arg.CartID,
 		arg.LineType,
 		arg.ProductID,
@@ -121,7 +121,7 @@ WHERE cart_id = $1
 //	DELETE FROM cart_items
 //	WHERE cart_id = $1
 func (q *Queries) DeleteAllCartItems(ctx context.Context, cartID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteAllCartItems, cartID)
+	_, err := q.db.Exec(ctx, deleteAllCartItems, cartID)
 	return err
 }
 
@@ -131,8 +131,8 @@ WHERE cart_id = $1 AND id = $2
 `
 
 type DeleteCartItemParams struct {
-	CartID uuid.UUID `db:"cart_id" json:"cartId"`
-	ID     uuid.UUID `db:"id" json:"id"`
+	CartID uuid.UUID `json:"cartId"`
+	ID     uuid.UUID `json:"id"`
 }
 
 // DeleteCartItem
@@ -140,11 +140,11 @@ type DeleteCartItemParams struct {
 //	DELETE FROM cart_items
 //	WHERE cart_id = $1 AND id = $2
 func (q *Queries) DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteCartItem, arg.CartID, arg.ID)
+	result, err := q.db.Exec(ctx, deleteCartItem, arg.CartID, arg.ID)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const getCartByUserID = `-- name: GetCartByUserID :one
@@ -159,7 +159,7 @@ WHERE user_id = $1
 //	FROM carts
 //	WHERE user_id = $1
 func (q *Queries) GetCartByUserID(ctx context.Context, userID uuid.UUID) (Cart, error) {
-	row := q.db.QueryRowContext(ctx, getCartByUserID, userID)
+	row := q.db.QueryRow(ctx, getCartByUserID, userID)
 	var i Cart
 	err := row.Scan(
 		&i.ID,
@@ -185,7 +185,7 @@ FOR UPDATE
 //	WHERE user_id = $1
 //	FOR UPDATE
 func (q *Queries) GetCartByUserIDForUpdate(ctx context.Context, userID uuid.UUID) (Cart, error) {
-	row := q.db.QueryRowContext(ctx, getCartByUserIDForUpdate, userID)
+	row := q.db.QueryRow(ctx, getCartByUserIDForUpdate, userID)
 	var i Cart
 	err := row.Scan(
 		&i.ID,
@@ -204,8 +204,8 @@ WHERE cart_id = $1 AND line_type = 'combo' AND combo_id = $2
 `
 
 type GetCartItemByComboParams struct {
-	CartID  uuid.UUID     `db:"cart_id" json:"cartId"`
-	ComboID uuid.NullUUID `db:"combo_id" json:"comboId"`
+	CartID  uuid.UUID  `json:"cartId"`
+	ComboID *uuid.UUID `json:"comboId"`
 }
 
 // GetCartItemByCombo
@@ -214,7 +214,7 @@ type GetCartItemByComboParams struct {
 //	FROM cart_items
 //	WHERE cart_id = $1 AND line_type = 'combo' AND combo_id = $2
 func (q *Queries) GetCartItemByCombo(ctx context.Context, arg GetCartItemByComboParams) (CartItem, error) {
-	row := q.db.QueryRowContext(ctx, getCartItemByCombo, arg.CartID, arg.ComboID)
+	row := q.db.QueryRow(ctx, getCartItemByCombo, arg.CartID, arg.ComboID)
 	var i CartItem
 	err := row.Scan(
 		&i.ID,
@@ -237,8 +237,8 @@ WHERE cart_id = $1 AND id = $2
 `
 
 type GetCartItemByIDParams struct {
-	CartID uuid.UUID `db:"cart_id" json:"cartId"`
-	ID     uuid.UUID `db:"id" json:"id"`
+	CartID uuid.UUID `json:"cartId"`
+	ID     uuid.UUID `json:"id"`
 }
 
 // GetCartItemByID
@@ -247,7 +247,7 @@ type GetCartItemByIDParams struct {
 //	FROM cart_items
 //	WHERE cart_id = $1 AND id = $2
 func (q *Queries) GetCartItemByID(ctx context.Context, arg GetCartItemByIDParams) (CartItem, error) {
-	row := q.db.QueryRowContext(ctx, getCartItemByID, arg.CartID, arg.ID)
+	row := q.db.QueryRow(ctx, getCartItemByID, arg.CartID, arg.ID)
 	var i CartItem
 	err := row.Scan(
 		&i.ID,
@@ -270,8 +270,8 @@ WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2
 `
 
 type GetCartItemByProductParams struct {
-	CartID    uuid.UUID     `db:"cart_id" json:"cartId"`
-	ProductID uuid.NullUUID `db:"product_id" json:"productId"`
+	CartID    uuid.UUID  `json:"cartId"`
+	ProductID *uuid.UUID `json:"productId"`
 }
 
 // GetCartItemByProduct
@@ -280,7 +280,7 @@ type GetCartItemByProductParams struct {
 //	FROM cart_items
 //	WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2
 func (q *Queries) GetCartItemByProduct(ctx context.Context, arg GetCartItemByProductParams) (CartItem, error) {
-	row := q.db.QueryRowContext(ctx, getCartItemByProduct, arg.CartID, arg.ProductID)
+	row := q.db.QueryRow(ctx, getCartItemByProduct, arg.CartID, arg.ProductID)
 	var i CartItem
 	err := row.Scan(
 		&i.ID,
@@ -310,7 +310,7 @@ ORDER BY created_at ASC
 //	WHERE cart_id = $1
 //	ORDER BY created_at ASC
 func (q *Queries) ListCartItemsByCartID(ctx context.Context, cartID uuid.UUID) ([]CartItem, error) {
-	rows, err := q.db.QueryContext(ctx, listCartItemsByCartID, cartID)
+	rows, err := q.db.Query(ctx, listCartItemsByCartID, cartID)
 	if err != nil {
 		return nil, err
 	}
@@ -333,9 +333,6 @@ func (q *Queries) ListCartItemsByCartID(ctx context.Context, cartID uuid.UUID) (
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -349,8 +346,8 @@ WHERE id = $1
 `
 
 type SetCartDiscountCodeIDParams struct {
-	ID             uuid.UUID     `db:"id" json:"id"`
-	DiscountCodeID uuid.NullUUID `db:"discount_code_id" json:"discountCodeId"`
+	ID             uuid.UUID  `json:"id"`
+	DiscountCodeID *uuid.UUID `json:"discountCodeId"`
 }
 
 // SetCartDiscountCodeID
@@ -359,7 +356,7 @@ type SetCartDiscountCodeIDParams struct {
 //	SET discount_code_id = $2, updated_at = now()
 //	WHERE id = $1
 func (q *Queries) SetCartDiscountCodeID(ctx context.Context, arg SetCartDiscountCodeIDParams) error {
-	_, err := q.db.ExecContext(ctx, setCartDiscountCodeID, arg.ID, arg.DiscountCodeID)
+	_, err := q.db.Exec(ctx, setCartDiscountCodeID, arg.ID, arg.DiscountCodeID)
 	return err
 }
 
@@ -371,9 +368,9 @@ RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration,
 `
 
 type UpdateCartItemQuantityParams struct {
-	CartID   uuid.UUID `db:"cart_id" json:"cartId"`
-	ID       uuid.UUID `db:"id" json:"id"`
-	Quantity int32     `db:"quantity" json:"quantity"`
+	CartID   uuid.UUID `json:"cartId"`
+	ID       uuid.UUID `json:"id"`
+	Quantity int32     `json:"quantity"`
 }
 
 // UpdateCartItemQuantity
@@ -383,7 +380,7 @@ type UpdateCartItemQuantityParams struct {
 //	WHERE cart_id = $1 AND id = $2
 //	RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 func (q *Queries) UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error) {
-	row := q.db.QueryRowContext(ctx, updateCartItemQuantity, arg.CartID, arg.ID, arg.Quantity)
+	row := q.db.QueryRow(ctx, updateCartItemQuantity, arg.CartID, arg.ID, arg.Quantity)
 	var i CartItem
 	err := row.Scan(
 		&i.ID,

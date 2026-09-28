@@ -7,7 +7,6 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,10 +19,10 @@ RETURNING id, email, password_hash, role, email_verified_at, must_change_passwor
 `
 
 type AdminCreateParams struct {
-	Email              string   `db:"email" json:"email"`
-	PasswordHash       string   `db:"password_hash" json:"passwordHash"`
-	Role               UserRole `db:"role" json:"role"`
-	MustChangePassword bool     `db:"must_change_password" json:"mustChangePassword"`
+	Email              string   `json:"email"`
+	PasswordHash       string   `json:"passwordHash"`
+	Role               UserRole `json:"role"`
+	MustChangePassword bool     `json:"mustChangePassword"`
 }
 
 // AdminCreate
@@ -32,7 +31,7 @@ type AdminCreateParams struct {
 //	VALUES ($1, $2, $3, $4)
 //	RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
 func (q *Queries) AdminCreate(ctx context.Context, arg AdminCreateParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, adminCreate,
+	row := q.db.QueryRow(ctx, adminCreate,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Role,
@@ -65,7 +64,7 @@ WHERE id = $1
 //	FROM users
 //	WHERE id = $1
 func (q *Queries) AdminGetByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, adminGetByID, id)
+	row := q.db.QueryRow(ctx, adminGetByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -95,7 +94,7 @@ FOR UPDATE
 //	WHERE id = $1
 //	FOR UPDATE
 func (q *Queries) AdminGetByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, adminGetByIDForUpdate, id)
+	row := q.db.QueryRow(ctx, adminGetByIDForUpdate, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -144,25 +143,25 @@ LIMIT $4 OFFSET $3
 `
 
 type AdminListParams struct {
-	Search     string `db:"search" json:"search"`
-	RoleFilter string `db:"role_filter" json:"roleFilter"`
-	Offset     int32  `db:"offset" json:"offset"`
-	Limit      int32  `db:"limit" json:"limit"`
+	Search     string `json:"search"`
+	RoleFilter string `json:"roleFilter"`
+	Offset     int32  `json:"offset"`
+	Limit      int32  `json:"limit"`
 }
 
 type AdminListRow struct {
-	ID                 uuid.UUID      `db:"id" json:"id"`
-	Email              string         `db:"email" json:"email"`
-	Role               UserRole       `db:"role" json:"role"`
-	EmailVerifiedAt    sql.NullTime   `db:"email_verified_at" json:"emailVerifiedAt"`
-	MustChangePassword bool           `db:"must_change_password" json:"mustChangePassword"`
-	CreatedAt          time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt          time.Time      `db:"updated_at" json:"updatedAt"`
-	DeletedAt          sql.NullTime   `db:"deleted_at" json:"deletedAt"`
-	DisplayName        sql.NullString `db:"display_name" json:"displayName"`
-	FullName           string         `db:"full_name" json:"fullName"`
-	Phone              sql.NullString `db:"phone" json:"phone"`
-	EmployeeCode       string         `db:"employee_code" json:"employeeCode"`
+	ID                 uuid.UUID  `json:"id"`
+	Email              string     `json:"email"`
+	Role               UserRole   `json:"role"`
+	EmailVerifiedAt    *time.Time `json:"emailVerifiedAt"`
+	MustChangePassword bool       `json:"mustChangePassword"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
+	DeletedAt          *time.Time `json:"deletedAt"`
+	DisplayName        *string    `json:"displayName"`
+	FullName           string     `json:"fullName"`
+	Phone              *string    `json:"phone"`
+	EmployeeCode       string     `json:"employeeCode"`
 }
 
 // AdminList
@@ -197,7 +196,7 @@ type AdminListRow struct {
 //	ORDER BY u.created_at DESC
 //	LIMIT $4 OFFSET $3
 func (q *Queries) AdminList(ctx context.Context, arg AdminListParams) ([]AdminListRow, error) {
-	rows, err := q.db.QueryContext(ctx, adminList,
+	rows, err := q.db.Query(ctx, adminList,
 		arg.Search,
 		arg.RoleFilter,
 		arg.Offset,
@@ -228,9 +227,6 @@ func (q *Queries) AdminList(ctx context.Context, arg AdminListParams) ([]AdminLi
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -256,8 +252,8 @@ WHERE (
 `
 
 type AdminListCountParams struct {
-	Search     string `db:"search" json:"search"`
-	RoleFilter string `db:"role_filter" json:"roleFilter"`
+	Search     string `json:"search"`
+	RoleFilter string `json:"roleFilter"`
 }
 
 // AdminListCount
@@ -278,7 +274,7 @@ type AdminListCountParams struct {
 //	    OR u.role::text = $2
 //	  )
 func (q *Queries) AdminListCount(ctx context.Context, arg AdminListCountParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, adminListCount, arg.Search, arg.RoleFilter)
+	row := q.db.QueryRow(ctx, adminListCount, arg.Search, arg.RoleFilter)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -300,11 +296,11 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NOT NULL
 func (q *Queries) AdminRestore(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, adminRestore, id)
+	result, err := q.db.Exec(ctx, adminRestore, id)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const adminUpdateUserPassword = `-- name: AdminUpdateUserPassword :execrows
@@ -316,8 +312,8 @@ WHERE id = $1
 `
 
 type AdminUpdateUserPasswordParams struct {
-	ID           uuid.UUID `db:"id" json:"id"`
-	PasswordHash string    `db:"password_hash" json:"passwordHash"`
+	ID           uuid.UUID `json:"id"`
+	PasswordHash string    `json:"passwordHash"`
 }
 
 // AdminUpdateUserPassword
@@ -328,11 +324,11 @@ type AdminUpdateUserPasswordParams struct {
 //	    updated_at = now()
 //	WHERE id = $1
 func (q *Queries) AdminUpdateUserPassword(ctx context.Context, arg AdminUpdateUserPasswordParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, adminUpdateUserPassword, arg.ID, arg.PasswordHash)
+	result, err := q.db.Exec(ctx, adminUpdateUserPassword, arg.ID, arg.PasswordHash)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const clearMustChangePassword = `-- name: ClearMustChangePassword :execrows
@@ -351,11 +347,11 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) ClearMustChangePassword(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, clearMustChangePassword, id)
+	result, err := q.db.Exec(ctx, clearMustChangePassword, id)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const createUser = `-- name: CreateUser :one
@@ -365,10 +361,10 @@ RETURNING id, email, password_hash, role, email_verified_at, must_change_passwor
 `
 
 type CreateUserParams struct {
-	Email              string   `db:"email" json:"email"`
-	PasswordHash       string   `db:"password_hash" json:"passwordHash"`
-	Role               UserRole `db:"role" json:"role"`
-	MustChangePassword bool     `db:"must_change_password" json:"mustChangePassword"`
+	Email              string   `json:"email"`
+	PasswordHash       string   `json:"passwordHash"`
+	Role               UserRole `json:"role"`
+	MustChangePassword bool     `json:"mustChangePassword"`
 }
 
 // CreateUser
@@ -377,7 +373,7 @@ type CreateUserParams struct {
 //	VALUES ($1, $2, $3, $4)
 //	RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+	row := q.db.QueryRow(ctx, createUser,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Role,
@@ -412,7 +408,7 @@ WHERE email = $1
 //	WHERE email = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -442,7 +438,7 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -474,7 +470,7 @@ FOR UPDATE
 //	  AND deleted_at IS NULL
 //	FOR UPDATE
 func (q *Queries) GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByIDForUpdate, id)
+	row := q.db.QueryRow(ctx, getUserByIDForUpdate, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -500,7 +496,7 @@ SELECT pg_advisory_xact_lock(8734212, hashtext($1::text))
 //
 //	SELECT pg_advisory_xact_lock(8734212, hashtext($1::text))
 func (q *Queries) LockPhone(ctx context.Context, phone string) error {
-	_, err := q.db.ExecContext(ctx, lockPhone, phone)
+	_, err := q.db.Exec(ctx, lockPhone, phone)
 	return err
 }
 
@@ -521,8 +517,8 @@ SELECT EXISTS (
 `
 
 type PhoneHeldByOtherActiveUserParams struct {
-	Phone  string    `db:"phone" json:"phone"`
-	UserID uuid.UUID `db:"user_id" json:"userId"`
+	Phone  string    `json:"phone"`
+	UserID uuid.UUID `json:"userId"`
 }
 
 // PhoneHeldByOtherActiveUser
@@ -541,7 +537,7 @@ type PhoneHeldByOtherActiveUserParams struct {
 //	    AND u.deleted_at IS NULL
 //	) AS held
 func (q *Queries) PhoneHeldByOtherActiveUser(ctx context.Context, arg PhoneHeldByOtherActiveUserParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, phoneHeldByOtherActiveUser, arg.Phone, arg.UserID)
+	row := q.db.QueryRow(ctx, phoneHeldByOtherActiveUser, arg.Phone, arg.UserID)
 	var held bool
 	err := row.Scan(&held)
 	return held, err
@@ -566,7 +562,7 @@ UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::u
 //	)
 //	UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
 func (q *Queries) ReleasePhone(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, releasePhone, userID)
+	_, err := q.db.Exec(ctx, releasePhone, userID)
 	return err
 }
 
@@ -586,11 +582,11 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) SetMustChangePassword(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setMustChangePassword, id)
+	result, err := q.db.Exec(ctx, setMustChangePassword, id)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const softDelete = `-- name: SoftDelete :execrows
@@ -609,11 +605,11 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) SoftDelete(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, softDelete, id)
+	result, err := q.db.Exec(ctx, softDelete, id)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const updateRole = `-- name: UpdateRole :execrows
@@ -625,8 +621,8 @@ WHERE id = $1
 `
 
 type UpdateRoleParams struct {
-	ID   uuid.UUID `db:"id" json:"id"`
-	Role UserRole  `db:"role" json:"role"`
+	ID   uuid.UUID `json:"id"`
+	Role UserRole  `json:"role"`
 }
 
 // UpdateRole
@@ -637,11 +633,11 @@ type UpdateRoleParams struct {
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateRole, arg.ID, arg.Role)
+	result, err := q.db.Exec(ctx, updateRole, arg.ID, arg.Role)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const updateUserPassword = `-- name: UpdateUserPassword :execrows
@@ -653,8 +649,8 @@ WHERE id = $1
 `
 
 type UpdateUserPasswordParams struct {
-	ID           uuid.UUID `db:"id" json:"id"`
-	PasswordHash string    `db:"password_hash" json:"passwordHash"`
+	ID           uuid.UUID `json:"id"`
+	PasswordHash string    `json:"passwordHash"`
 }
 
 // UpdateUserPassword
@@ -665,9 +661,9 @@ type UpdateUserPasswordParams struct {
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	result, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }

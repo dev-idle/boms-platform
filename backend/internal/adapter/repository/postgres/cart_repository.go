@@ -3,11 +3,12 @@ package postgres
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
-	"github.com/google/uuid"
 )
 
 type CartRepository struct {
@@ -56,7 +57,7 @@ func (r *CartRepository) CreateForUser(ctx context.Context, userID uuid.UUID) (*
 func (r *CartRepository) SetDiscountCodeID(ctx context.Context, cartID uuid.UUID, discountCodeID *uuid.UUID) error {
 	err := r.q(ctx).SetCartDiscountCodeID(ctx, sqlcgen.SetCartDiscountCodeIDParams{
 		ID:             cartID,
-		DiscountCodeID: optionalUUID(discountCodeID),
+		DiscountCodeID: discountCodeID,
 	})
 	if err != nil {
 		return mapRepoError(err, "set cart discount code")
@@ -95,7 +96,7 @@ func (r *CartRepository) GetItemByID(ctx context.Context, cartID, itemID uuid.UU
 func (r *CartRepository) GetItemByProduct(ctx context.Context, cartID, productID uuid.UUID) (*domaincart.Item, error) {
 	row, err := r.q(ctx).GetCartItemByProduct(ctx, sqlcgen.GetCartItemByProductParams{
 		CartID:    cartID,
-		ProductID: uuid.NullUUID{UUID: productID, Valid: true},
+		ProductID: &productID,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "get cart item by product")
@@ -107,7 +108,7 @@ func (r *CartRepository) GetItemByProduct(ctx context.Context, cartID, productID
 func (r *CartRepository) GetItemByCombo(ctx context.Context, cartID, comboID uuid.UUID) (*domaincart.Item, error) {
 	row, err := r.q(ctx).GetCartItemByCombo(ctx, sqlcgen.GetCartItemByComboParams{
 		CartID:  cartID,
-		ComboID: uuid.NullUUID{UUID: comboID, Valid: true},
+		ComboID: &comboID,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "get cart item by combo")
@@ -124,8 +125,8 @@ func (r *CartRepository) CreateItem(ctx context.Context, params port.CreateCartI
 	row, err := r.q(ctx).CreateCartItem(ctx, sqlcgen.CreateCartItemParams{
 		CartID:    params.CartID,
 		LineType:  lineType,
-		ProductID: optionalUUID(params.ProductID),
-		ComboID:   optionalUUID(params.ComboID),
+		ProductID: params.ProductID,
+		ComboID:   params.ComboID,
 		Quantity:  params.Quantity,
 	})
 	if err != nil {
@@ -181,17 +182,13 @@ func (r *CartRepository) CountItems(ctx context.Context, cartID uuid.UUID) (int6
 }
 
 func mapCart(row sqlcgen.Cart) *domaincart.Cart {
-	c := &domaincart.Cart{
-		ID:        row.ID,
-		UserID:    row.UserID,
-		CreatedAt: row.CreatedAt,
-		UpdatedAt: row.UpdatedAt,
+	return &domaincart.Cart{
+		ID:             row.ID,
+		UserID:         row.UserID,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+		DiscountCodeID: row.DiscountCodeID,
 	}
-	if row.DiscountCodeID.Valid {
-		id := row.DiscountCodeID.UUID
-		c.DiscountCodeID = &id
-	}
-	return c
 }
 
 func mapCartItem(row sqlcgen.CartItem) domaincart.Item {
@@ -203,17 +200,11 @@ func mapCartItem(row sqlcgen.CartItem) domaincart.Item {
 		Configuration: row.Configuration,
 		CreatedAt:     row.CreatedAt,
 		UpdatedAt:     row.UpdatedAt,
+		ProductID:     row.ProductID,
+		ComboID:       row.ComboID,
 	}
 	if len(item.Configuration) == 0 {
 		item.Configuration = domaincart.EmptyConfiguration
-	}
-	if row.ProductID.Valid {
-		id := row.ProductID.UUID
-		item.ProductID = &id
-	}
-	if row.ComboID.Valid {
-		id := row.ComboID.UUID
-		item.ComboID = &id
 	}
 	return item
 }

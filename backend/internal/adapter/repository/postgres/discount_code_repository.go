@@ -2,14 +2,14 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"errors"
+
+	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
-	"github.com/google/uuid"
 )
 
 type DiscountCodeRepository struct {
@@ -39,9 +39,9 @@ func (r *DiscountCodeRepository) Create(
 		Code:             params.Code,
 		DiscountType:     discountType,
 		Value:            params.Value,
-		MinOrderCents:    optionalInt64(params.MinOrderCents),
-		MaxUses:          optionalInt32(params.MaxUses),
-		MaxDiscountCents: optionalInt64(params.MaxDiscountCents),
+		MinOrderCents:    params.MinOrderCents,
+		MaxUses:          params.MaxUses,
+		MaxDiscountCents: params.MaxDiscountCents,
 		StartsAt:         params.StartsAt,
 		EndsAt:           params.EndsAt,
 		IsActive:         params.IsActive,
@@ -93,9 +93,9 @@ func (r *DiscountCodeRepository) Update(
 		Code:             params.Code,
 		DiscountType:     discountType,
 		Value:            params.Value,
-		MinOrderCents:    optionalInt64(params.MinOrderCents),
-		MaxUses:          optionalInt32(params.MaxUses),
-		MaxDiscountCents: optionalInt64(params.MaxDiscountCents),
+		MinOrderCents:    params.MinOrderCents,
+		MaxUses:          params.MaxUses,
+		MaxDiscountCents: params.MaxDiscountCents,
 		StartsAt:         params.StartsAt,
 		EndsAt:           params.EndsAt,
 		IsActive:         params.IsActive,
@@ -153,31 +153,22 @@ func mapDiscountCode(row sqlcgen.DiscountCode) (*domaindiscount.Code, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &domaindiscount.Code{
-		ID:           row.ID,
-		Code:         row.Code,
-		DiscountType: discountType,
-		Value:        row.Value,
-		UsedCount:    row.UsedCount,
-		StartsAt:     row.StartsAt,
-		EndsAt:       row.EndsAt,
-		IsActive:     row.IsActive,
-		CreatedAt:    row.CreatedAt,
-		UpdatedAt:    row.UpdatedAt,
-	}
-	if row.MinOrderCents.Valid {
-		c.MinOrderCents = &row.MinOrderCents.Int64
-	}
-	if row.MaxUses.Valid {
-		c.MaxUses = &row.MaxUses.Int32
-	}
-	if row.MaxDiscountCents.Valid {
-		c.MaxDiscountCents = &row.MaxDiscountCents.Int64
-	}
-	if row.DeletedAt.Valid {
-		c.DeletedAt = &row.DeletedAt.Time
-	}
-	return c, nil
+	return &domaindiscount.Code{
+		ID:               row.ID,
+		Code:             row.Code,
+		DiscountType:     discountType,
+		Value:            row.Value,
+		UsedCount:        row.UsedCount,
+		StartsAt:         row.StartsAt,
+		EndsAt:           row.EndsAt,
+		IsActive:         row.IsActive,
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
+		MinOrderCents:    row.MinOrderCents,
+		MaxUses:          row.MaxUses,
+		MaxDiscountCents: row.MaxDiscountCents,
+		DeletedAt:        row.DeletedAt,
+	}, nil
 }
 
 func mapDiscountTypeToSQL(t domaindiscount.Type) (sqlcgen.DiscountType, error) {
@@ -200,18 +191,4 @@ func mapDiscountTypeFromSQL(t sqlcgen.DiscountType) (domaindiscount.Type, error)
 	default:
 		return "", apperrors.Errorf("unsupported discount type from db: %s", t)
 	}
-}
-
-func optionalInt64(value *int64) sql.NullInt64 {
-	if value == nil {
-		return sql.NullInt64{}
-	}
-	return sql.NullInt64{Int64: *value, Valid: true}
-}
-
-func optionalInt32(value *int32) sql.NullInt32 {
-	if value == nil {
-		return sql.NullInt32{}
-	}
-	return sql.NullInt32{Int32: *value, Valid: true}
 }

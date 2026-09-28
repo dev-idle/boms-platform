@@ -1,7 +1,6 @@
 package postgres
 
 import (
-	"database/sql"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
@@ -12,7 +11,7 @@ import (
 
 // mapRepoError maps sqlc/pgx failures to application errors for usecases and handlers.
 func mapRepoError(err error, op string) error {
-	if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return apperrors.ErrNotFound
 	}
 	var pgErr *pgconn.PgError

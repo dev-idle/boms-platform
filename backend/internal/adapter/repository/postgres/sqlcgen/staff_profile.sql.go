@@ -7,7 +7,6 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -19,10 +18,10 @@ RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 `
 
 type CreateStaffProfileParams struct {
-	UserID       uuid.UUID      `db:"user_id" json:"userId"`
-	FullName     string         `db:"full_name" json:"fullName"`
-	Phone        sql.NullString `db:"phone" json:"phone"`
-	EmployeeCode string         `db:"employee_code" json:"employeeCode"`
+	UserID       uuid.UUID `json:"userId"`
+	FullName     string    `json:"fullName"`
+	Phone        *string   `json:"phone"`
+	EmployeeCode string    `json:"employeeCode"`
 }
 
 // CreateStaffProfile
@@ -31,7 +30,7 @@ type CreateStaffProfileParams struct {
 //	VALUES ($1, $2, $3, $4)
 //	RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 func (q *Queries) CreateStaffProfile(ctx context.Context, arg CreateStaffProfileParams) (StaffProfile, error) {
-	row := q.db.QueryRowContext(ctx, createStaffProfile,
+	row := q.db.QueryRow(ctx, createStaffProfile,
 		arg.UserID,
 		arg.FullName,
 		arg.Phone,
@@ -59,11 +58,11 @@ WHERE user_id = $1
 //	DELETE FROM staff_profiles
 //	WHERE user_id = $1
 func (q *Queries) DeleteStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteStaffProfileByUserID, userID)
+	result, err := q.db.Exec(ctx, deleteStaffProfileByUserID, userID)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const getStaffProfileByUserID = `-- name: GetStaffProfileByUserID :one
@@ -78,7 +77,7 @@ WHERE user_id = $1
 //	FROM staff_profiles
 //	WHERE user_id = $1
 func (q *Queries) GetStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (StaffProfile, error) {
-	row := q.db.QueryRowContext(ctx, getStaffProfileByUserID, userID)
+	row := q.db.QueryRow(ctx, getStaffProfileByUserID, userID)
 	var i StaffProfile
 	err := row.Scan(
 		&i.UserID,
@@ -137,7 +136,7 @@ FROM (SELECT pg_advisory_xact_lock(8734211)) AS lock
 //	  )::text AS next_code
 //	FROM (SELECT pg_advisory_xact_lock(8734211)) AS lock
 func (q *Queries) NextEmployeeCode(ctx context.Context) (string, error) {
-	row := q.db.QueryRowContext(ctx, nextEmployeeCode)
+	row := q.db.QueryRow(ctx, nextEmployeeCode)
 	var next_code string
 	err := row.Scan(&next_code)
 	return next_code, err
@@ -154,10 +153,10 @@ RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 `
 
 type UpdateStaffProfileByUserIDParams struct {
-	UserID       uuid.UUID      `db:"user_id" json:"userId"`
-	FullName     string         `db:"full_name" json:"fullName"`
-	Phone        sql.NullString `db:"phone" json:"phone"`
-	EmployeeCode string         `db:"employee_code" json:"employeeCode"`
+	UserID       uuid.UUID `json:"userId"`
+	FullName     string    `json:"fullName"`
+	Phone        *string   `json:"phone"`
+	EmployeeCode string    `json:"employeeCode"`
 }
 
 // UpdateStaffProfileByUserID
@@ -170,7 +169,7 @@ type UpdateStaffProfileByUserIDParams struct {
 //	WHERE user_id = $1
 //	RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 func (q *Queries) UpdateStaffProfileByUserID(ctx context.Context, arg UpdateStaffProfileByUserIDParams) (StaffProfile, error) {
-	row := q.db.QueryRowContext(ctx, updateStaffProfileByUserID,
+	row := q.db.QueryRow(ctx, updateStaffProfileByUserID,
 		arg.UserID,
 		arg.FullName,
 		arg.Phone,

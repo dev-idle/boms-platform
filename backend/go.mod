@@ -12,9 +12,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.26.0
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
-	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -50,7 +48,6 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-sql-driver/mysql v1.9.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

@@ -21,7 +21,7 @@ WHERE product_id = $1
 //	DELETE FROM product_images
 //	WHERE product_id = $1
 func (q *Queries) DeleteProductImagesByProductID(ctx context.Context, productID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteProductImagesByProductID, productID)
+	_, err := q.db.Exec(ctx, deleteProductImagesByProductID, productID)
 	return err
 }
 
@@ -32,9 +32,9 @@ RETURNING id, product_id, sort_order, image_url, created_at, updated_at
 `
 
 type InsertProductImageParams struct {
-	ProductID uuid.UUID `db:"product_id" json:"productId"`
-	SortOrder int16     `db:"sort_order" json:"sortOrder"`
-	ImageUrl  string    `db:"image_url" json:"imageUrl"`
+	ProductID uuid.UUID `json:"productId"`
+	SortOrder int16     `json:"sortOrder"`
+	ImageUrl  string    `json:"imageUrl"`
 }
 
 // InsertProductImage
@@ -43,7 +43,7 @@ type InsertProductImageParams struct {
 //	VALUES ($1, $2, $3)
 //	RETURNING id, product_id, sort_order, image_url, created_at, updated_at
 func (q *Queries) InsertProductImage(ctx context.Context, arg InsertProductImageParams) (ProductImage, error) {
-	row := q.db.QueryRowContext(ctx, insertProductImage, arg.ProductID, arg.SortOrder, arg.ImageUrl)
+	row := q.db.QueryRow(ctx, insertProductImage, arg.ProductID, arg.SortOrder, arg.ImageUrl)
 	var i ProductImage
 	err := row.Scan(
 		&i.ID,
@@ -64,8 +64,8 @@ ORDER BY sort_order ASC
 `
 
 type ListProductImagesByProductIDRow struct {
-	ImageUrl  string `db:"image_url" json:"imageUrl"`
-	SortOrder int16  `db:"sort_order" json:"sortOrder"`
+	ImageUrl  string `json:"imageUrl"`
+	SortOrder int16  `json:"sortOrder"`
 }
 
 // ListProductImagesByProductID
@@ -75,7 +75,7 @@ type ListProductImagesByProductIDRow struct {
 //	WHERE product_id = $1
 //	ORDER BY sort_order ASC
 func (q *Queries) ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]ListProductImagesByProductIDRow, error) {
-	rows, err := q.db.QueryContext(ctx, listProductImagesByProductID, productID)
+	rows, err := q.db.Query(ctx, listProductImagesByProductID, productID)
 	if err != nil {
 		return nil, err
 	}
@@ -87,9 +87,6 @@ func (q *Queries) ListProductImagesByProductID(ctx context.Context, productID uu
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

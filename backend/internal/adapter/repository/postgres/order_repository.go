@@ -2,10 +2,10 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domaincart "github.com/boms/backend/internal/domain/cart"
@@ -13,7 +13,6 @@ import (
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/utils"
-	"github.com/google/uuid"
 )
 
 type OrderRepository struct {
@@ -42,9 +41,9 @@ func (r *OrderRepository) Create(ctx context.Context, params port.CreateOrderPar
 		SubtotalCents:        params.SubtotalCents,
 		DiscountCents:        params.DiscountCents,
 		TotalCents:           params.TotalCents,
-		DiscountCodeID:       optionalUUID(params.DiscountCodeID),
-		DiscountCodeSnapshot: optionalString(params.DiscountCodeSnapshot),
-		PickupAt:             optionalTime(params.PickupAt),
+		DiscountCodeID:       params.DiscountCodeID,
+		DiscountCodeSnapshot: params.DiscountCodeSnapshot,
+		PickupAt:             params.PickupAt,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create order")
@@ -183,9 +182,6 @@ func (r *OrderRepository) UpdateStatus(
 		ToStatus:   toStatus,
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, apperrors.ErrNotFound
-		}
 		return nil, mapRepoError(err, "update order status")
 	}
 	return mapOrder(row), nil
@@ -279,29 +275,19 @@ func (r *OrderRepository) ListItemsByOrderID(ctx context.Context, orderID uuid.U
 }
 
 func mapOrder(row sqlcgen.Order) *domainorder.Order {
-	o := &domainorder.Order{
-		ID:            row.ID,
-		UserID:        row.UserID,
-		Status:        mapOrderStatusFromSQL(row.Status),
-		SubtotalCents: row.SubtotalCents,
-		DiscountCents: row.DiscountCents,
-		TotalCents:    row.TotalCents,
-		CreatedAt:     row.CreatedAt,
-		UpdatedAt:     row.UpdatedAt,
+	return &domainorder.Order{
+		ID:                   row.ID,
+		UserID:               row.UserID,
+		Status:               mapOrderStatusFromSQL(row.Status),
+		SubtotalCents:        row.SubtotalCents,
+		DiscountCents:        row.DiscountCents,
+		TotalCents:           row.TotalCents,
+		CreatedAt:            row.CreatedAt,
+		UpdatedAt:            row.UpdatedAt,
+		DiscountCodeID:       row.DiscountCodeID,
+		DiscountCodeSnapshot: row.DiscountCodeSnapshot,
+		PickupAt:             row.PickupAt,
 	}
-	if row.DiscountCodeID.Valid {
-		id := row.DiscountCodeID.UUID
-		o.DiscountCodeID = &id
-	}
-	if row.DiscountCodeSnapshot.Valid {
-		s := row.DiscountCodeSnapshot.String
-		o.DiscountCodeSnapshot = &s
-	}
-	if row.PickupAt.Valid {
-		t := row.PickupAt.Time
-		o.PickupAt = &t
-	}
-	return o
 }
 
 func mapOrderItem(row sqlcgen.OrderItem) domainorder.Item {
@@ -316,14 +302,8 @@ func mapOrderItem(row sqlcgen.OrderItem) domainorder.Item {
 		UnitPriceCents: row.UnitPriceCents,
 		LineTotalCents: row.LineTotalCents,
 		CreatedAt:      row.CreatedAt,
-	}
-	if row.ProductID.Valid {
-		id := row.ProductID.UUID
-		item.ProductID = &id
-	}
-	if row.ComboID.Valid {
-		id := row.ComboID.UUID
-		item.ComboID = &id
+		ProductID:      row.ProductID,
+		ComboID:        row.ComboID,
 	}
 	if len(item.Configuration) == 0 {
 		item.Configuration = domaincart.EmptyConfiguration
@@ -408,57 +388,44 @@ func mapStaffOrderJoined(
 	id, userID uuid.UUID,
 	status sqlcgen.OrderStatus,
 	subtotalCents, discountCents, totalCents int64,
-	discountCodeID uuid.NullUUID,
-	discountCodeSnapshot sql.NullString,
-	pickupAt sql.NullTime,
+	discountCodeID *uuid.UUID,
+	discountCodeSnapshot *string,
+	pickupAt *time.Time,
 	createdAt, updatedAt time.Time,
 	customerEmail string,
-	customerDisplayName sql.NullString,
+	customerDisplayName *string,
 ) *port.StaffOrderListRow {
-	out := &port.StaffOrderListRow{
+	return &port.StaffOrderListRow{
 		Order: domainorder.Order{
-			ID:            id,
-			UserID:        userID,
-			Status:        mapOrderStatusFromSQL(status),
-			SubtotalCents: subtotalCents,
-			DiscountCents: discountCents,
-			TotalCents:    totalCents,
-			CreatedAt:     createdAt,
-			UpdatedAt:     updatedAt,
+			ID:                   id,
+			UserID:               userID,
+			Status:               mapOrderStatusFromSQL(status),
+			SubtotalCents:        subtotalCents,
+			DiscountCents:        discountCents,
+			TotalCents:           totalCents,
+			DiscountCodeID:       discountCodeID,
+			DiscountCodeSnapshot: discountCodeSnapshot,
+			PickupAt:             pickupAt,
+			CreatedAt:            createdAt,
+			UpdatedAt:            updatedAt,
 		},
-		CustomerEmail: customerEmail,
+		CustomerEmail:       customerEmail,
+		CustomerDisplayName: customerDisplayName,
 	}
-	if discountCodeID.Valid {
-		did := discountCodeID.UUID
-		out.Order.DiscountCodeID = &did
-	}
-	if discountCodeSnapshot.Valid {
-		s := discountCodeSnapshot.String
-		out.Order.DiscountCodeSnapshot = &s
-	}
-	if pickupAt.Valid {
-		t := pickupAt.Time
-		out.Order.PickupAt = &t
-	}
-	if customerDisplayName.Valid {
-		name := customerDisplayName.String
-		out.CustomerDisplayName = &name
-	}
-	return out
 }
 
-func optionalOrderStatus(status *domainorder.Status) (sqlcgen.NullOrderStatus, error) {
+func optionalOrderStatus(status *domainorder.Status) (*sqlcgen.OrderStatus, error) {
 	if status == nil {
-		return sqlcgen.NullOrderStatus{}, nil
+		return nil, nil
 	}
 	if !status.Valid() {
-		return sqlcgen.NullOrderStatus{}, apperrors.ErrValidation.WithDetail("status", "invalid order status")
+		return nil, apperrors.ErrValidation.WithDetail("status", "invalid order status")
 	}
 	mapped, err := mapOrderStatusToSQL(*status)
 	if err != nil {
-		return sqlcgen.NullOrderStatus{}, err
+		return nil, err
 	}
-	return sqlcgen.NullOrderStatus{OrderStatus: mapped, Valid: true}, nil
+	return &mapped, nil
 }
 
 func mapOrderStatusFromSQL(s sqlcgen.OrderStatus) domainorder.Status {

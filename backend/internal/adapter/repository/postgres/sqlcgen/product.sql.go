@@ -7,11 +7,9 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 const catalogGetProductByID = `-- name: CatalogGetProductByID :one
@@ -32,14 +30,14 @@ WHERE p.id = $1
 `
 
 type CatalogGetProductByIDRow struct {
-	ID           uuid.UUID      `db:"id" json:"id"`
-	CategoryID   uuid.UUID      `db:"category_id" json:"categoryId"`
-	Name         string         `db:"name" json:"name"`
-	Slug         string         `db:"slug" json:"slug"`
-	Description  sql.NullString `db:"description" json:"description"`
-	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	CategoryName string         `db:"category_name" json:"categoryName"`
-	CategorySlug string         `db:"category_slug" json:"categorySlug"`
+	ID           uuid.UUID `json:"id"`
+	CategoryID   uuid.UUID `json:"categoryId"`
+	Name         string    `json:"name"`
+	Slug         string    `json:"slug"`
+	Description  *string   `json:"description"`
+	PriceCents   int64     `json:"priceCents"`
+	CategoryName string    `json:"categoryName"`
+	CategorySlug string    `json:"categorySlug"`
 }
 
 // CatalogGetProductByID
@@ -59,7 +57,7 @@ type CatalogGetProductByIDRow struct {
 //	  AND p.deleted_at IS NULL
 //	  AND p.is_active = true
 func (q *Queries) CatalogGetProductByID(ctx context.Context, id uuid.UUID) (CatalogGetProductByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, catalogGetProductByID, id)
+	row := q.db.QueryRow(ctx, catalogGetProductByID, id)
 	var i CatalogGetProductByIDRow
 	err := row.Scan(
 		&i.ID,
@@ -92,14 +90,14 @@ WHERE p.id = ANY($1::uuid[])
 `
 
 type CatalogGetProductsByIDsRow struct {
-	ID           uuid.UUID      `db:"id" json:"id"`
-	CategoryID   uuid.UUID      `db:"category_id" json:"categoryId"`
-	Name         string         `db:"name" json:"name"`
-	Slug         string         `db:"slug" json:"slug"`
-	Description  sql.NullString `db:"description" json:"description"`
-	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	CategoryName string         `db:"category_name" json:"categoryName"`
-	CategorySlug string         `db:"category_slug" json:"categorySlug"`
+	ID           uuid.UUID `json:"id"`
+	CategoryID   uuid.UUID `json:"categoryId"`
+	Name         string    `json:"name"`
+	Slug         string    `json:"slug"`
+	Description  *string   `json:"description"`
+	PriceCents   int64     `json:"priceCents"`
+	CategoryName string    `json:"categoryName"`
+	CategorySlug string    `json:"categorySlug"`
 }
 
 // CatalogGetProductsByIDs
@@ -119,7 +117,7 @@ type CatalogGetProductsByIDsRow struct {
 //	  AND p.deleted_at IS NULL
 //	  AND p.is_active = true
 func (q *Queries) CatalogGetProductsByIDs(ctx context.Context, productIds []uuid.UUID) ([]CatalogGetProductsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, catalogGetProductsByIDs, pq.Array(productIds))
+	rows, err := q.db.Query(ctx, catalogGetProductsByIDs, productIds)
 	if err != nil {
 		return nil, err
 	}
@@ -140,9 +138,6 @@ func (q *Queries) CatalogGetProductsByIDs(ctx context.Context, productIds []uuid
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -197,22 +192,22 @@ ORDER BY page.category_sort_order ASC, page.name ASC
 `
 
 type CatalogListProductsParams struct {
-	Limit      int32          `db:"limit" json:"limit"`
-	Offset     int32          `db:"offset" json:"offset"`
-	CategoryID uuid.NullUUID  `db:"category_id" json:"categoryId"`
-	Search     sql.NullString `db:"search" json:"search"`
+	Limit      int32      `json:"limit"`
+	Offset     int32      `json:"offset"`
+	CategoryID *uuid.UUID `json:"categoryId"`
+	Search     *string    `json:"search"`
 }
 
 type CatalogListProductsRow struct {
-	ID           uuid.UUID      `db:"id" json:"id"`
-	CategoryID   uuid.UUID      `db:"category_id" json:"categoryId"`
-	Name         string         `db:"name" json:"name"`
-	Slug         string         `db:"slug" json:"slug"`
-	Description  sql.NullString `db:"description" json:"description"`
-	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	CategoryName string         `db:"category_name" json:"categoryName"`
-	CategorySlug string         `db:"category_slug" json:"categorySlug"`
-	ImageUrls    []string       `db:"image_urls" json:"imageUrls"`
+	ID           uuid.UUID `json:"id"`
+	CategoryID   uuid.UUID `json:"categoryId"`
+	Name         string    `json:"name"`
+	Slug         string    `json:"slug"`
+	Description  *string   `json:"description"`
+	PriceCents   int64     `json:"priceCents"`
+	CategoryName string    `json:"categoryName"`
+	CategorySlug string    `json:"categorySlug"`
+	ImageUrls    []string  `json:"imageUrls"`
 }
 
 // The page is cut first and the gallery gathered after: fetching images
@@ -263,7 +258,7 @@ type CatalogListProductsRow struct {
 //	) img ON true
 //	ORDER BY page.category_sort_order ASC, page.name ASC
 func (q *Queries) CatalogListProducts(ctx context.Context, arg CatalogListProductsParams) ([]CatalogListProductsRow, error) {
-	rows, err := q.db.QueryContext(ctx, catalogListProducts,
+	rows, err := q.db.Query(ctx, catalogListProducts,
 		arg.Limit,
 		arg.Offset,
 		arg.CategoryID,
@@ -285,14 +280,11 @@ func (q *Queries) CatalogListProducts(ctx context.Context, arg CatalogListProduc
 			&i.PriceCents,
 			&i.CategoryName,
 			&i.CategorySlug,
-			pq.Array(&i.ImageUrls),
+			&i.ImageUrls,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -318,8 +310,8 @@ WHERE p.deleted_at IS NULL
 `
 
 type CatalogListProductsCountParams struct {
-	CategoryID uuid.NullUUID  `db:"category_id" json:"categoryId"`
-	Search     sql.NullString `db:"search" json:"search"`
+	CategoryID *uuid.UUID `json:"categoryId"`
+	Search     *string    `json:"search"`
 }
 
 // CatalogListProductsCount
@@ -339,7 +331,7 @@ type CatalogListProductsCountParams struct {
 //	    OR p.slug ILIKE '%' || $2::text || '%'
 //	  )
 func (q *Queries) CatalogListProductsCount(ctx context.Context, arg CatalogListProductsCountParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, catalogListProductsCount, arg.CategoryID, arg.Search)
+	row := q.db.QueryRow(ctx, catalogListProductsCount, arg.CategoryID, arg.Search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -352,12 +344,12 @@ RETURNING id, category_id, name, slug, description, price_cents, is_active, crea
 `
 
 type CreateProductParams struct {
-	CategoryID  uuid.UUID      `db:"category_id" json:"categoryId"`
-	Name        string         `db:"name" json:"name"`
-	Slug        string         `db:"slug" json:"slug"`
-	Description sql.NullString `db:"description" json:"description"`
-	PriceCents  int64          `db:"price_cents" json:"priceCents"`
-	IsActive    bool           `db:"is_active" json:"isActive"`
+	CategoryID  uuid.UUID `json:"categoryId"`
+	Name        string    `json:"name"`
+	Slug        string    `json:"slug"`
+	Description *string   `json:"description"`
+	PriceCents  int64     `json:"priceCents"`
+	IsActive    bool      `json:"isActive"`
 }
 
 // CreateProduct
@@ -366,7 +358,7 @@ type CreateProductParams struct {
 //	VALUES ($1, $2, $3, $4, $5, $6)
 //	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
-	row := q.db.QueryRowContext(ctx, createProduct,
+	row := q.db.QueryRow(ctx, createProduct,
 		arg.CategoryID,
 		arg.Name,
 		arg.Slug,
@@ -404,7 +396,7 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, error) {
-	row := q.db.QueryRowContext(ctx, getProductByID, id)
+	row := q.db.QueryRow(ctx, getProductByID, id)
 	var i Product
 	err := row.Scan(
 		&i.ID,
@@ -441,17 +433,17 @@ WHERE p.id = $1
 `
 
 type ManagerGetProductByIDRow struct {
-	ID           uuid.UUID      `db:"id" json:"id"`
-	CategoryID   uuid.UUID      `db:"category_id" json:"categoryId"`
-	Name         string         `db:"name" json:"name"`
-	Slug         string         `db:"slug" json:"slug"`
-	Description  sql.NullString `db:"description" json:"description"`
-	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	IsActive     bool           `db:"is_active" json:"isActive"`
-	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
-	DeletedAt    sql.NullTime   `db:"deleted_at" json:"deletedAt"`
-	CategoryName string         `db:"category_name" json:"categoryName"`
+	ID           uuid.UUID  `json:"id"`
+	CategoryID   uuid.UUID  `json:"categoryId"`
+	Name         string     `json:"name"`
+	Slug         string     `json:"slug"`
+	Description  *string    `json:"description"`
+	PriceCents   int64      `json:"priceCents"`
+	IsActive     bool       `json:"isActive"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	UpdatedAt    time.Time  `json:"updatedAt"`
+	DeletedAt    *time.Time `json:"deletedAt"`
+	CategoryName string     `json:"categoryName"`
 }
 
 // ManagerGetProductByID
@@ -473,7 +465,7 @@ type ManagerGetProductByIDRow struct {
 //	WHERE p.id = $1
 //	  AND p.deleted_at IS NULL
 func (q *Queries) ManagerGetProductByID(ctx context.Context, id uuid.UUID) (ManagerGetProductByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, managerGetProductByID, id)
+	row := q.db.QueryRow(ctx, managerGetProductByID, id)
 	var i ManagerGetProductByIDRow
 	err := row.Scan(
 		&i.ID,
@@ -542,25 +534,25 @@ ORDER BY page.name ASC
 `
 
 type ManagerListProductsParams struct {
-	Limit      int32          `db:"limit" json:"limit"`
-	Offset     int32          `db:"offset" json:"offset"`
-	CategoryID uuid.NullUUID  `db:"category_id" json:"categoryId"`
-	Search     sql.NullString `db:"search" json:"search"`
+	Limit      int32      `json:"limit"`
+	Offset     int32      `json:"offset"`
+	CategoryID *uuid.UUID `json:"categoryId"`
+	Search     *string    `json:"search"`
 }
 
 type ManagerListProductsRow struct {
-	ID           uuid.UUID      `db:"id" json:"id"`
-	CategoryID   uuid.UUID      `db:"category_id" json:"categoryId"`
-	Name         string         `db:"name" json:"name"`
-	Slug         string         `db:"slug" json:"slug"`
-	Description  sql.NullString `db:"description" json:"description"`
-	PriceCents   int64          `db:"price_cents" json:"priceCents"`
-	IsActive     bool           `db:"is_active" json:"isActive"`
-	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
-	DeletedAt    sql.NullTime   `db:"deleted_at" json:"deletedAt"`
-	CategoryName string         `db:"category_name" json:"categoryName"`
-	ImageUrls    []string       `db:"image_urls" json:"imageUrls"`
+	ID           uuid.UUID  `json:"id"`
+	CategoryID   uuid.UUID  `json:"categoryId"`
+	Name         string     `json:"name"`
+	Slug         string     `json:"slug"`
+	Description  *string    `json:"description"`
+	PriceCents   int64      `json:"priceCents"`
+	IsActive     bool       `json:"isActive"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	UpdatedAt    time.Time  `json:"updatedAt"`
+	DeletedAt    *time.Time `json:"deletedAt"`
+	CategoryName string     `json:"categoryName"`
+	ImageUrls    []string   `json:"imageUrls"`
 }
 
 // ManagerListProducts
@@ -613,7 +605,7 @@ type ManagerListProductsRow struct {
 //	) img ON true
 //	ORDER BY page.name ASC
 func (q *Queries) ManagerListProducts(ctx context.Context, arg ManagerListProductsParams) ([]ManagerListProductsRow, error) {
-	rows, err := q.db.QueryContext(ctx, managerListProducts,
+	rows, err := q.db.Query(ctx, managerListProducts,
 		arg.Limit,
 		arg.Offset,
 		arg.CategoryID,
@@ -638,14 +630,11 @@ func (q *Queries) ManagerListProducts(ctx context.Context, arg ManagerListProduc
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.CategoryName,
-			pq.Array(&i.ImageUrls),
+			&i.ImageUrls,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -669,8 +658,8 @@ WHERE p.deleted_at IS NULL
 `
 
 type ManagerListProductsCountParams struct {
-	CategoryID uuid.NullUUID  `db:"category_id" json:"categoryId"`
-	Search     sql.NullString `db:"search" json:"search"`
+	CategoryID *uuid.UUID `json:"categoryId"`
+	Search     *string    `json:"search"`
 }
 
 // ManagerListProductsCount
@@ -688,7 +677,7 @@ type ManagerListProductsCountParams struct {
 //	    OR p.slug ILIKE '%' || $2::text || '%'
 //	  )
 func (q *Queries) ManagerListProductsCount(ctx context.Context, arg ManagerListProductsCountParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, managerListProductsCount, arg.CategoryID, arg.Search)
+	row := q.db.QueryRow(ctx, managerListProductsCount, arg.CategoryID, arg.Search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -710,11 +699,11 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) SoftDeleteProduct(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, softDeleteProduct, id)
+	result, err := q.db.Exec(ctx, softDeleteProduct, id)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const updateProduct = `-- name: UpdateProduct :one
@@ -732,13 +721,13 @@ RETURNING id, category_id, name, slug, description, price_cents, is_active, crea
 `
 
 type UpdateProductParams struct {
-	ID          uuid.UUID      `db:"id" json:"id"`
-	CategoryID  uuid.UUID      `db:"category_id" json:"categoryId"`
-	Name        string         `db:"name" json:"name"`
-	Slug        string         `db:"slug" json:"slug"`
-	Description sql.NullString `db:"description" json:"description"`
-	PriceCents  int64          `db:"price_cents" json:"priceCents"`
-	IsActive    bool           `db:"is_active" json:"isActive"`
+	ID          uuid.UUID `json:"id"`
+	CategoryID  uuid.UUID `json:"categoryId"`
+	Name        string    `json:"name"`
+	Slug        string    `json:"slug"`
+	Description *string   `json:"description"`
+	PriceCents  int64     `json:"priceCents"`
+	IsActive    bool      `json:"isActive"`
 }
 
 // UpdateProduct
@@ -755,7 +744,7 @@ type UpdateProductParams struct {
 //	  AND deleted_at IS NULL
 //	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error) {
-	row := q.db.QueryRowContext(ctx, updateProduct,
+	row := q.db.QueryRow(ctx, updateProduct,
 		arg.ID,
 		arg.CategoryID,
 		arg.Name,

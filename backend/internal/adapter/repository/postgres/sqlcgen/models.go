@@ -5,7 +5,6 @@
 package sqlcgen
 
 import (
-	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -190,151 +189,151 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 }
 
 type AdminProfile struct {
-	UserID    uuid.UUID      `db:"user_id" json:"userId"`
-	FullName  string         `db:"full_name" json:"fullName"`
-	Phone     sql.NullString `db:"phone" json:"phone"`
-	CreatedAt time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt time.Time      `db:"updated_at" json:"updatedAt"`
+	UserID    uuid.UUID `json:"userId"`
+	FullName  string    `json:"fullName"`
+	Phone     *string   `json:"phone"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Cart struct {
-	ID             uuid.UUID     `db:"id" json:"id"`
-	UserID         uuid.UUID     `db:"user_id" json:"userId"`
-	DiscountCodeID uuid.NullUUID `db:"discount_code_id" json:"discountCodeId"`
-	CreatedAt      time.Time     `db:"created_at" json:"createdAt"`
-	UpdatedAt      time.Time     `db:"updated_at" json:"updatedAt"`
+	ID             uuid.UUID  `json:"id"`
+	UserID         uuid.UUID  `json:"userId"`
+	DiscountCodeID *uuid.UUID `json:"discountCodeId"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
 }
 
 type CartItem struct {
-	ID            uuid.UUID       `db:"id" json:"id"`
-	CartID        uuid.UUID       `db:"cart_id" json:"cartId"`
-	LineType      LineType        `db:"line_type" json:"lineType"`
-	ProductID     uuid.NullUUID   `db:"product_id" json:"productId"`
-	ComboID       uuid.NullUUID   `db:"combo_id" json:"comboId"`
-	Quantity      int32           `db:"quantity" json:"quantity"`
-	Configuration json.RawMessage `db:"configuration" json:"configuration"`
-	CreatedAt     time.Time       `db:"created_at" json:"createdAt"`
-	UpdatedAt     time.Time       `db:"updated_at" json:"updatedAt"`
+	ID            uuid.UUID       `json:"id"`
+	CartID        uuid.UUID       `json:"cartId"`
+	LineType      LineType        `json:"lineType"`
+	ProductID     *uuid.UUID      `json:"productId"`
+	ComboID       *uuid.UUID      `json:"comboId"`
+	Quantity      int32           `json:"quantity"`
+	Configuration json.RawMessage `json:"configuration"`
+	CreatedAt     time.Time       `json:"createdAt"`
+	UpdatedAt     time.Time       `json:"updatedAt"`
 }
 
 type Category struct {
-	ID        uuid.UUID    `db:"id" json:"id"`
-	Name      string       `db:"name" json:"name"`
-	Slug      string       `db:"slug" json:"slug"`
-	SortOrder int32        `db:"sort_order" json:"sortOrder"`
-	IsActive  bool         `db:"is_active" json:"isActive"`
-	CreatedAt time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt time.Time    `db:"updated_at" json:"updatedAt"`
-	DeletedAt sql.NullTime `db:"deleted_at" json:"deletedAt"`
+	ID        uuid.UUID  `json:"id"`
+	Name      string     `json:"name"`
+	Slug      string     `json:"slug"`
+	SortOrder int32      `json:"sortOrder"`
+	IsActive  bool       `json:"isActive"`
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+	DeletedAt *time.Time `json:"deletedAt"`
 }
 
 type Combo struct {
-	ID         uuid.UUID      `db:"id" json:"id"`
-	Name       string         `db:"name" json:"name"`
-	Slug       string         `db:"slug" json:"slug"`
-	PriceCents int64          `db:"price_cents" json:"priceCents"`
-	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
-	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
-	IsActive   bool           `db:"is_active" json:"isActive"`
-	CreatedAt  time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt  time.Time      `db:"updated_at" json:"updatedAt"`
-	DeletedAt  sql.NullTime   `db:"deleted_at" json:"deletedAt"`
+	ID         uuid.UUID  `json:"id"`
+	Name       string     `json:"name"`
+	Slug       string     `json:"slug"`
+	PriceCents int64      `json:"priceCents"`
+	ImageUrl   *string    `json:"imageUrl"`
+	StartsAt   time.Time  `json:"startsAt"`
+	EndsAt     time.Time  `json:"endsAt"`
+	IsActive   bool       `json:"isActive"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt"`
+	DeletedAt  *time.Time `json:"deletedAt"`
 }
 
 type CustomerProfile struct {
-	UserID      uuid.UUID      `db:"user_id" json:"userId"`
-	DisplayName sql.NullString `db:"display_name" json:"displayName"`
-	Phone       sql.NullString `db:"phone" json:"phone"`
-	CreatedAt   time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt   time.Time      `db:"updated_at" json:"updatedAt"`
+	UserID      uuid.UUID `json:"userId"`
+	DisplayName *string   `json:"displayName"`
+	Phone       *string   `json:"phone"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 type DiscountCode struct {
-	ID               uuid.UUID     `db:"id" json:"id"`
-	Code             string        `db:"code" json:"code"`
-	DiscountType     DiscountType  `db:"discount_type" json:"discountType"`
-	Value            int64         `db:"value" json:"value"`
-	MinOrderCents    sql.NullInt64 `db:"min_order_cents" json:"minOrderCents"`
-	MaxUses          sql.NullInt32 `db:"max_uses" json:"maxUses"`
-	MaxDiscountCents sql.NullInt64 `db:"max_discount_cents" json:"maxDiscountCents"`
-	UsedCount        int32         `db:"used_count" json:"usedCount"`
-	StartsAt         time.Time     `db:"starts_at" json:"startsAt"`
-	EndsAt           time.Time     `db:"ends_at" json:"endsAt"`
-	IsActive         bool          `db:"is_active" json:"isActive"`
-	CreatedAt        time.Time     `db:"created_at" json:"createdAt"`
-	UpdatedAt        time.Time     `db:"updated_at" json:"updatedAt"`
-	DeletedAt        sql.NullTime  `db:"deleted_at" json:"deletedAt"`
+	ID               uuid.UUID    `json:"id"`
+	Code             string       `json:"code"`
+	DiscountType     DiscountType `json:"discountType"`
+	Value            int64        `json:"value"`
+	MinOrderCents    *int64       `json:"minOrderCents"`
+	MaxUses          *int32       `json:"maxUses"`
+	MaxDiscountCents *int64       `json:"maxDiscountCents"`
+	UsedCount        int32        `json:"usedCount"`
+	StartsAt         time.Time    `json:"startsAt"`
+	EndsAt           time.Time    `json:"endsAt"`
+	IsActive         bool         `json:"isActive"`
+	CreatedAt        time.Time    `json:"createdAt"`
+	UpdatedAt        time.Time    `json:"updatedAt"`
+	DeletedAt        *time.Time   `json:"deletedAt"`
 }
 
 type Order struct {
-	ID                   uuid.UUID      `db:"id" json:"id"`
-	UserID               uuid.UUID      `db:"user_id" json:"userId"`
-	Status               OrderStatus    `db:"status" json:"status"`
-	SubtotalCents        int64          `db:"subtotal_cents" json:"subtotalCents"`
-	DiscountCents        int64          `db:"discount_cents" json:"discountCents"`
-	TotalCents           int64          `db:"total_cents" json:"totalCents"`
-	DiscountCodeID       uuid.NullUUID  `db:"discount_code_id" json:"discountCodeId"`
-	DiscountCodeSnapshot sql.NullString `db:"discount_code_snapshot" json:"discountCodeSnapshot"`
-	PickupAt             sql.NullTime   `db:"pickup_at" json:"pickupAt"`
-	CreatedAt            time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt            time.Time      `db:"updated_at" json:"updatedAt"`
+	ID                   uuid.UUID   `json:"id"`
+	UserID               uuid.UUID   `json:"userId"`
+	Status               OrderStatus `json:"status"`
+	SubtotalCents        int64       `json:"subtotalCents"`
+	DiscountCents        int64       `json:"discountCents"`
+	TotalCents           int64       `json:"totalCents"`
+	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
+	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
+	PickupAt             *time.Time  `json:"pickupAt"`
+	CreatedAt            time.Time   `json:"createdAt"`
+	UpdatedAt            time.Time   `json:"updatedAt"`
 }
 
 type OrderItem struct {
-	ID             uuid.UUID       `db:"id" json:"id"`
-	OrderID        uuid.UUID       `db:"order_id" json:"orderId"`
-	LineType       LineType        `db:"line_type" json:"lineType"`
-	ProductID      uuid.NullUUID   `db:"product_id" json:"productId"`
-	ComboID        uuid.NullUUID   `db:"combo_id" json:"comboId"`
-	Configuration  json.RawMessage `db:"configuration" json:"configuration"`
-	Name           string          `db:"name" json:"name"`
-	Slug           string          `db:"slug" json:"slug"`
-	Quantity       int32           `db:"quantity" json:"quantity"`
-	UnitPriceCents int64           `db:"unit_price_cents" json:"unitPriceCents"`
-	LineTotalCents int64           `db:"line_total_cents" json:"lineTotalCents"`
-	CreatedAt      time.Time       `db:"created_at" json:"createdAt"`
+	ID             uuid.UUID       `json:"id"`
+	OrderID        uuid.UUID       `json:"orderId"`
+	LineType       LineType        `json:"lineType"`
+	ProductID      *uuid.UUID      `json:"productId"`
+	ComboID        *uuid.UUID      `json:"comboId"`
+	Configuration  json.RawMessage `json:"configuration"`
+	Name           string          `json:"name"`
+	Slug           string          `json:"slug"`
+	Quantity       int32           `json:"quantity"`
+	UnitPriceCents int64           `json:"unitPriceCents"`
+	LineTotalCents int64           `json:"lineTotalCents"`
+	CreatedAt      time.Time       `json:"createdAt"`
 }
 
 type Product struct {
-	ID          uuid.UUID      `db:"id" json:"id"`
-	CategoryID  uuid.UUID      `db:"category_id" json:"categoryId"`
-	Name        string         `db:"name" json:"name"`
-	Slug        string         `db:"slug" json:"slug"`
-	Description sql.NullString `db:"description" json:"description"`
-	PriceCents  int64          `db:"price_cents" json:"priceCents"`
-	IsActive    bool           `db:"is_active" json:"isActive"`
-	CreatedAt   time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt   time.Time      `db:"updated_at" json:"updatedAt"`
-	DeletedAt   sql.NullTime   `db:"deleted_at" json:"deletedAt"`
+	ID          uuid.UUID  `json:"id"`
+	CategoryID  uuid.UUID  `json:"categoryId"`
+	Name        string     `json:"name"`
+	Slug        string     `json:"slug"`
+	Description *string    `json:"description"`
+	PriceCents  int64      `json:"priceCents"`
+	IsActive    bool       `json:"isActive"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+	DeletedAt   *time.Time `json:"deletedAt"`
 }
 
 type ProductImage struct {
-	ID        uuid.UUID `db:"id" json:"id"`
-	ProductID uuid.UUID `db:"product_id" json:"productId"`
-	SortOrder int16     `db:"sort_order" json:"sortOrder"`
-	ImageUrl  string    `db:"image_url" json:"imageUrl"`
-	CreatedAt time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
+	ID        uuid.UUID `json:"id"`
+	ProductID uuid.UUID `json:"productId"`
+	SortOrder int16     `json:"sortOrder"`
+	ImageUrl  string    `json:"imageUrl"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type StaffProfile struct {
-	UserID       uuid.UUID      `db:"user_id" json:"userId"`
-	FullName     string         `db:"full_name" json:"fullName"`
-	Phone        sql.NullString `db:"phone" json:"phone"`
-	EmployeeCode string         `db:"employee_code" json:"employeeCode"`
-	CreatedAt    time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time      `db:"updated_at" json:"updatedAt"`
+	UserID       uuid.UUID `json:"userId"`
+	FullName     string    `json:"fullName"`
+	Phone        *string   `json:"phone"`
+	EmployeeCode string    `json:"employeeCode"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 type User struct {
-	ID                 uuid.UUID    `db:"id" json:"id"`
-	Email              string       `db:"email" json:"email"`
-	PasswordHash       string       `db:"password_hash" json:"passwordHash"`
-	Role               UserRole     `db:"role" json:"role"`
-	EmailVerifiedAt    sql.NullTime `db:"email_verified_at" json:"emailVerifiedAt"`
-	MustChangePassword bool         `db:"must_change_password" json:"mustChangePassword"`
-	CreatedAt          time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt          time.Time    `db:"updated_at" json:"updatedAt"`
-	DeletedAt          sql.NullTime `db:"deleted_at" json:"deletedAt"`
+	ID                 uuid.UUID  `json:"id"`
+	Email              string     `json:"email"`
+	PasswordHash       string     `json:"passwordHash"`
+	Role               UserRole   `json:"role"`
+	EmailVerifiedAt    *time.Time `json:"emailVerifiedAt"`
+	MustChangePassword bool       `json:"mustChangePassword"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
+	DeletedAt          *time.Time `json:"deletedAt"`
 }

@@ -7,11 +7,9 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 const catalogGetComboByID = `-- name: CatalogGetComboByID :one
@@ -25,13 +23,13 @@ WHERE id = $1
 `
 
 type CatalogGetComboByIDRow struct {
-	ID         uuid.UUID      `db:"id" json:"id"`
-	Name       string         `db:"name" json:"name"`
-	Slug       string         `db:"slug" json:"slug"`
-	PriceCents int64          `db:"price_cents" json:"priceCents"`
-	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
-	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
+	ID         uuid.UUID `json:"id"`
+	Name       string    `json:"name"`
+	Slug       string    `json:"slug"`
+	PriceCents int64     `json:"priceCents"`
+	ImageUrl   *string   `json:"imageUrl"`
+	StartsAt   time.Time `json:"startsAt"`
+	EndsAt     time.Time `json:"endsAt"`
 }
 
 // CatalogGetComboByID
@@ -44,7 +42,7 @@ type CatalogGetComboByIDRow struct {
 //	  AND starts_at <= now()
 //	  AND ends_at > now()
 func (q *Queries) CatalogGetComboByID(ctx context.Context, id uuid.UUID) (CatalogGetComboByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, catalogGetComboByID, id)
+	row := q.db.QueryRow(ctx, catalogGetComboByID, id)
 	var i CatalogGetComboByIDRow
 	err := row.Scan(
 		&i.ID,
@@ -76,13 +74,13 @@ WHERE c.id = ANY($1::uuid[])
 `
 
 type CatalogGetCombosByIDsRow struct {
-	ID         uuid.UUID      `db:"id" json:"id"`
-	Name       string         `db:"name" json:"name"`
-	Slug       string         `db:"slug" json:"slug"`
-	PriceCents int64          `db:"price_cents" json:"priceCents"`
-	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
-	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
+	ID         uuid.UUID `json:"id"`
+	Name       string    `json:"name"`
+	Slug       string    `json:"slug"`
+	PriceCents int64     `json:"priceCents"`
+	ImageUrl   *string   `json:"imageUrl"`
+	StartsAt   time.Time `json:"startsAt"`
+	EndsAt     time.Time `json:"endsAt"`
 }
 
 // CatalogGetCombosByIDs
@@ -102,7 +100,7 @@ type CatalogGetCombosByIDsRow struct {
 //	    WHERE ci.combo_id = c.id
 //	  )
 func (q *Queries) CatalogGetCombosByIDs(ctx context.Context, comboIds []uuid.UUID) ([]CatalogGetCombosByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, catalogGetCombosByIDs, pq.Array(comboIds))
+	rows, err := q.db.Query(ctx, catalogGetCombosByIDs, comboIds)
 	if err != nil {
 		return nil, err
 	}
@@ -122,9 +120,6 @@ func (q *Queries) CatalogGetCombosByIDs(ctx context.Context, comboIds []uuid.UUI
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -151,18 +146,18 @@ LIMIT $1 OFFSET $2
 `
 
 type CatalogListCombosParams struct {
-	Limit  int32 `db:"limit" json:"limit"`
-	Offset int32 `db:"offset" json:"offset"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
 }
 
 type CatalogListCombosRow struct {
-	ID         uuid.UUID      `db:"id" json:"id"`
-	Name       string         `db:"name" json:"name"`
-	Slug       string         `db:"slug" json:"slug"`
-	PriceCents int64          `db:"price_cents" json:"priceCents"`
-	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
-	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
+	ID         uuid.UUID `json:"id"`
+	Name       string    `json:"name"`
+	Slug       string    `json:"slug"`
+	PriceCents int64     `json:"priceCents"`
+	ImageUrl   *string   `json:"imageUrl"`
+	StartsAt   time.Time `json:"startsAt"`
+	EndsAt     time.Time `json:"endsAt"`
 }
 
 // CatalogListCombos
@@ -183,7 +178,7 @@ type CatalogListCombosRow struct {
 //	ORDER BY c.starts_at ASC, c.name ASC
 //	LIMIT $1 OFFSET $2
 func (q *Queries) CatalogListCombos(ctx context.Context, arg CatalogListCombosParams) ([]CatalogListCombosRow, error) {
-	rows, err := q.db.QueryContext(ctx, catalogListCombos, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, catalogListCombos, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -203,9 +198,6 @@ func (q *Queries) CatalogListCombos(ctx context.Context, arg CatalogListCombosPa
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -245,7 +237,7 @@ WHERE c.deleted_at IS NULL
 //	    WHERE ci.combo_id = c.id
 //	  )
 func (q *Queries) CatalogListCombosCount(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, catalogListCombosCount)
+	row := q.db.QueryRow(ctx, catalogListCombosCount)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -269,7 +261,7 @@ WHERE p.id = ANY($1::uuid[])
 //	  AND p.deleted_at IS NULL
 //	  AND p.is_active = true
 func (q *Queries) CountAvailableProductsForCombo(ctx context.Context, productIds []uuid.UUID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countAvailableProductsForCombo, pq.Array(productIds))
+	row := q.db.QueryRow(ctx, countAvailableProductsForCombo, productIds)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -282,13 +274,13 @@ RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active,
 `
 
 type CreateComboParams struct {
-	Name       string         `db:"name" json:"name"`
-	Slug       string         `db:"slug" json:"slug"`
-	PriceCents int64          `db:"price_cents" json:"priceCents"`
-	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
-	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
-	IsActive   bool           `db:"is_active" json:"isActive"`
+	Name       string    `json:"name"`
+	Slug       string    `json:"slug"`
+	PriceCents int64     `json:"priceCents"`
+	ImageUrl   *string   `json:"imageUrl"`
+	StartsAt   time.Time `json:"startsAt"`
+	EndsAt     time.Time `json:"endsAt"`
+	IsActive   bool      `json:"isActive"`
 }
 
 // CreateCombo
@@ -297,7 +289,7 @@ type CreateComboParams struct {
 //	VALUES ($1, $2, $3, $4, $5, $6, $7)
 //	RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 func (q *Queries) CreateCombo(ctx context.Context, arg CreateComboParams) (Combo, error) {
-	row := q.db.QueryRowContext(ctx, createCombo,
+	row := q.db.QueryRow(ctx, createCombo,
 		arg.Name,
 		arg.Slug,
 		arg.PriceCents,
@@ -333,7 +325,7 @@ WHERE combo_id = $1
 //	DELETE FROM combo_items
 //	WHERE combo_id = $1
 func (q *Queries) DeleteComboItemsByComboID(ctx context.Context, comboID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteComboItemsByComboID, comboID)
+	_, err := q.db.Exec(ctx, deleteComboItemsByComboID, comboID)
 	return err
 }
 
@@ -351,7 +343,7 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) GetComboByID(ctx context.Context, id uuid.UUID) (Combo, error) {
-	row := q.db.QueryRowContext(ctx, getComboByID, id)
+	row := q.db.QueryRow(ctx, getComboByID, id)
 	var i Combo
 	err := row.Scan(
 		&i.ID,
@@ -375,9 +367,9 @@ VALUES ($1, $2, $3)
 `
 
 type InsertComboItemParams struct {
-	ComboID   uuid.UUID `db:"combo_id" json:"comboId"`
-	ProductID uuid.UUID `db:"product_id" json:"productId"`
-	Quantity  int32     `db:"quantity" json:"quantity"`
+	ComboID   uuid.UUID `json:"comboId"`
+	ProductID uuid.UUID `json:"productId"`
+	Quantity  int32     `json:"quantity"`
 }
 
 // InsertComboItem
@@ -385,7 +377,7 @@ type InsertComboItemParams struct {
 //	INSERT INTO combo_items (combo_id, product_id, quantity)
 //	VALUES ($1, $2, $3)
 func (q *Queries) InsertComboItem(ctx context.Context, arg InsertComboItemParams) error {
-	_, err := q.db.ExecContext(ctx, insertComboItem, arg.ComboID, arg.ProductID, arg.Quantity)
+	_, err := q.db.Exec(ctx, insertComboItem, arg.ComboID, arg.ProductID, arg.Quantity)
 	return err
 }
 
@@ -406,13 +398,13 @@ ORDER BY ci.combo_id ASC, p.name ASC
 `
 
 type ListCatalogComboItemsByComboIDsRow struct {
-	ID          uuid.UUID `db:"id" json:"id"`
-	ComboID     uuid.UUID `db:"combo_id" json:"comboId"`
-	ProductID   uuid.UUID `db:"product_id" json:"productId"`
-	Quantity    int32     `db:"quantity" json:"quantity"`
-	ProductName string    `db:"product_name" json:"productName"`
-	ProductSlug string    `db:"product_slug" json:"productSlug"`
-	PriceCents  int64     `db:"price_cents" json:"priceCents"`
+	ID          uuid.UUID `json:"id"`
+	ComboID     uuid.UUID `json:"comboId"`
+	ProductID   uuid.UUID `json:"productId"`
+	Quantity    int32     `json:"quantity"`
+	ProductName string    `json:"productName"`
+	ProductSlug string    `json:"productSlug"`
+	PriceCents  int64     `json:"priceCents"`
 }
 
 // ListCatalogComboItemsByComboIDs
@@ -431,7 +423,7 @@ type ListCatalogComboItemsByComboIDsRow struct {
 //	WHERE ci.combo_id = ANY($1::uuid[])
 //	ORDER BY ci.combo_id ASC, p.name ASC
 func (q *Queries) ListCatalogComboItemsByComboIDs(ctx context.Context, comboIds []uuid.UUID) ([]ListCatalogComboItemsByComboIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCatalogComboItemsByComboIDs, pq.Array(comboIds))
+	rows, err := q.db.Query(ctx, listCatalogComboItemsByComboIDs, comboIds)
 	if err != nil {
 		return nil, err
 	}
@@ -451,9 +443,6 @@ func (q *Queries) ListCatalogComboItemsByComboIDs(ctx context.Context, comboIds 
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -477,13 +466,13 @@ ORDER BY p.name ASC
 `
 
 type ListComboItemsByComboIDRow struct {
-	ID          uuid.UUID `db:"id" json:"id"`
-	ComboID     uuid.UUID `db:"combo_id" json:"comboId"`
-	ProductID   uuid.UUID `db:"product_id" json:"productId"`
-	Quantity    int32     `db:"quantity" json:"quantity"`
-	ProductName string    `db:"product_name" json:"productName"`
-	ProductSlug string    `db:"product_slug" json:"productSlug"`
-	PriceCents  int64     `db:"price_cents" json:"priceCents"`
+	ID          uuid.UUID `json:"id"`
+	ComboID     uuid.UUID `json:"comboId"`
+	ProductID   uuid.UUID `json:"productId"`
+	Quantity    int32     `json:"quantity"`
+	ProductName string    `json:"productName"`
+	ProductSlug string    `json:"productSlug"`
+	PriceCents  int64     `json:"priceCents"`
 }
 
 // ListComboItemsByComboID
@@ -501,7 +490,7 @@ type ListComboItemsByComboIDRow struct {
 //	WHERE ci.combo_id = $1
 //	ORDER BY p.name ASC
 func (q *Queries) ListComboItemsByComboID(ctx context.Context, comboID uuid.UUID) ([]ListComboItemsByComboIDRow, error) {
-	rows, err := q.db.QueryContext(ctx, listComboItemsByComboID, comboID)
+	rows, err := q.db.Query(ctx, listComboItemsByComboID, comboID)
 	if err != nil {
 		return nil, err
 	}
@@ -521,9 +510,6 @@ func (q *Queries) ListComboItemsByComboID(ctx context.Context, comboID uuid.UUID
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -547,13 +533,13 @@ ORDER BY ci.combo_id ASC, p.name ASC
 `
 
 type ListComboItemsByComboIDsRow struct {
-	ID          uuid.UUID `db:"id" json:"id"`
-	ComboID     uuid.UUID `db:"combo_id" json:"comboId"`
-	ProductID   uuid.UUID `db:"product_id" json:"productId"`
-	Quantity    int32     `db:"quantity" json:"quantity"`
-	ProductName string    `db:"product_name" json:"productName"`
-	ProductSlug string    `db:"product_slug" json:"productSlug"`
-	PriceCents  int64     `db:"price_cents" json:"priceCents"`
+	ID          uuid.UUID `json:"id"`
+	ComboID     uuid.UUID `json:"comboId"`
+	ProductID   uuid.UUID `json:"productId"`
+	Quantity    int32     `json:"quantity"`
+	ProductName string    `json:"productName"`
+	ProductSlug string    `json:"productSlug"`
+	PriceCents  int64     `json:"priceCents"`
 }
 
 // ListComboItemsByComboIDs
@@ -571,7 +557,7 @@ type ListComboItemsByComboIDsRow struct {
 //	WHERE ci.combo_id = ANY($1::uuid[])
 //	ORDER BY ci.combo_id ASC, p.name ASC
 func (q *Queries) ListComboItemsByComboIDs(ctx context.Context, comboIds []uuid.UUID) ([]ListComboItemsByComboIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listComboItemsByComboIDs, pq.Array(comboIds))
+	rows, err := q.db.Query(ctx, listComboItemsByComboIDs, comboIds)
 	if err != nil {
 		return nil, err
 	}
@@ -591,9 +577,6 @@ func (q *Queries) ListComboItemsByComboIDs(ctx context.Context, comboIds []uuid.
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -615,9 +598,9 @@ LIMIT $1 OFFSET $2
 `
 
 type ManagerListCombosParams struct {
-	Limit  int32          `db:"limit" json:"limit"`
-	Offset int32          `db:"offset" json:"offset"`
-	Search sql.NullString `db:"search" json:"search"`
+	Limit  int32   `json:"limit"`
+	Offset int32   `json:"offset"`
+	Search *string `json:"search"`
 }
 
 // ManagerListCombos
@@ -633,7 +616,7 @@ type ManagerListCombosParams struct {
 //	ORDER BY starts_at DESC, name ASC
 //	LIMIT $1 OFFSET $2
 func (q *Queries) ManagerListCombos(ctx context.Context, arg ManagerListCombosParams) ([]Combo, error) {
-	rows, err := q.db.QueryContext(ctx, managerListCombos, arg.Limit, arg.Offset, arg.Search)
+	rows, err := q.db.Query(ctx, managerListCombos, arg.Limit, arg.Offset, arg.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -657,9 +640,6 @@ func (q *Queries) ManagerListCombos(ctx context.Context, arg ManagerListCombosPa
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -688,8 +668,8 @@ WHERE deleted_at IS NULL
 //	    OR name ILIKE '%' || $1::text || '%'
 //	    OR slug ILIKE '%' || $1::text || '%'
 //	  )
-func (q *Queries) ManagerListCombosCount(ctx context.Context, search sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, managerListCombosCount, search)
+func (q *Queries) ManagerListCombosCount(ctx context.Context, search *string) (int64, error) {
+	row := q.db.QueryRow(ctx, managerListCombosCount, search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -711,11 +691,11 @@ WHERE id = $1
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) SoftDeleteCombo(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, softDeleteCombo, id)
+	result, err := q.db.Exec(ctx, softDeleteCombo, id)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const updateCombo = `-- name: UpdateCombo :one
@@ -734,14 +714,14 @@ RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active,
 `
 
 type UpdateComboParams struct {
-	ID         uuid.UUID      `db:"id" json:"id"`
-	Name       string         `db:"name" json:"name"`
-	Slug       string         `db:"slug" json:"slug"`
-	PriceCents int64          `db:"price_cents" json:"priceCents"`
-	ImageUrl   sql.NullString `db:"image_url" json:"imageUrl"`
-	StartsAt   time.Time      `db:"starts_at" json:"startsAt"`
-	EndsAt     time.Time      `db:"ends_at" json:"endsAt"`
-	IsActive   bool           `db:"is_active" json:"isActive"`
+	ID         uuid.UUID `json:"id"`
+	Name       string    `json:"name"`
+	Slug       string    `json:"slug"`
+	PriceCents int64     `json:"priceCents"`
+	ImageUrl   *string   `json:"imageUrl"`
+	StartsAt   time.Time `json:"startsAt"`
+	EndsAt     time.Time `json:"endsAt"`
+	IsActive   bool      `json:"isActive"`
 }
 
 // UpdateCombo
@@ -759,7 +739,7 @@ type UpdateComboParams struct {
 //	  AND deleted_at IS NULL
 //	RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 func (q *Queries) UpdateCombo(ctx context.Context, arg UpdateComboParams) (Combo, error) {
-	row := q.db.QueryRowContext(ctx, updateCombo,
+	row := q.db.QueryRow(ctx, updateCombo,
 		arg.ID,
 		arg.Name,
 		arg.Slug,
