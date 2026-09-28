@@ -141,7 +141,9 @@ func clearSessionCookies(c fiber.Ctx, cfg *config.Config) {
 // logout would then leave the live token in the browser. The expiry goes out as
 // its own Set-Cookie header instead.
 func clearLegacyRefreshCookie(c fiber.Ctx, cfg *config.Config) {
-	legacy := &http.Cookie{
+	// G124: an empty, already-expired cookie; Secure follows the same config as every
+	// session cookie, which config.Validate requires to be true outside development.
+	legacy := &http.Cookie{ //nolint:gosec // G124: see above
 		Name:     cfg.Cookie.Name,
 		Path:     middleware.AuthCookieLegacyPath,
 		Domain:   cfg.Cookie.Domain,
