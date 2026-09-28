@@ -345,7 +345,8 @@ func mapStaffListOrdersRow(row sqlcgen.StaffListOrdersRow) *port.StaffOrderListR
 		row.UpdatedAt,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
-		row.CustomerPhone,
+		// The list never carries phones: staff open an order to call its customer.
+		nil,
 	)
 }
 

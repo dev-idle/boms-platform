@@ -656,8 +656,7 @@ SELECT
   o.created_at,
   o.updated_at,
   u.email AS customer_email,
-  cp.display_name AS customer_display_name,
-  cp.phone AS customer_phone
+  cp.display_name AS customer_display_name
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
@@ -689,7 +688,6 @@ type StaffListOrdersRow struct {
 	UpdatedAt            time.Time   `json:"updatedAt"`
 	CustomerEmail        string      `json:"customerEmail"`
 	CustomerDisplayName  *string     `json:"customerDisplayName"`
-	CustomerPhone        *string     `json:"customerPhone"`
 }
 
 // StaffListOrders
@@ -707,8 +705,7 @@ type StaffListOrdersRow struct {
 //	  o.created_at,
 //	  o.updated_at,
 //	  u.email AS customer_email,
-//	  cp.display_name AS customer_display_name,
-//	  cp.phone AS customer_phone
+//	  cp.display_name AS customer_display_name
 //	FROM orders o
 //	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 //	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
@@ -741,7 +738,6 @@ func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams
 			&i.UpdatedAt,
 			&i.CustomerEmail,
 			&i.CustomerDisplayName,
-			&i.CustomerPhone,
 		); err != nil {
 			return nil, err
 		}

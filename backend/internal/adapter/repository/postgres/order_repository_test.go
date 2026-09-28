@@ -171,6 +171,33 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 		assert.Equal(t, confirmed.ID, production[0].Order.ID)
 	})
 
+	t.Run("staff_see_the_phone_on_an_order_but_not_across_the_list", func(t *testing.T) {
+		caller, err := users.Create(ctx, port.CreateUserParams{
+			Email: "phone-on-file@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,
+		})
+		require.NoError(t, err)
+		phone := "+84901234567"
+		_, err = postgresadapter.NewCustomerProfileRepository(pool).Create(ctx, port.UpsertCustomerProfileParams{
+			UserID: caller.ID, Phone: &phone,
+		})
+		require.NoError(t, err)
+		order, err := orders.Create(ctx, port.CreateOrderParams{
+			UserID: caller.ID, Status: domainorder.StatusPending, SubtotalCents: 4500, TotalCents: 4500,
+		})
+		require.NoError(t, err)
+
+		detail, err := orders.StaffGetByID(ctx, order.ID)
+		require.NoError(t, err)
+		require.NotNil(t, detail.CustomerPhone)
+		assert.Equal(t, phone, *detail.CustomerPhone)
+
+		list, err := orders.StaffList(ctx, port.StaffListOrdersParams{Limit: 100})
+		require.NoError(t, err)
+		for _, row := range list {
+			assert.Nil(t, row.CustomerPhone, "one list page must not hand out every customer's number")
+		}
+	})
+
 	t.Run("sums_item_quantities_for_a_list_of_order_ids", func(t *testing.T) {
 		order, err := orders.Create(ctx, port.CreateOrderParams{
 			UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 12200, TotalCents: 12200,
