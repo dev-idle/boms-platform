@@ -25,6 +25,7 @@ type OrderUsecase struct {
 	discount port.DiscountCodeRepository
 	cartUC   *CartUsecase
 	tx       port.TxManager
+	events   port.EventOutbox
 }
 
 func NewOrderUsecase(
@@ -33,8 +34,9 @@ func NewOrderUsecase(
 	discount port.DiscountCodeRepository,
 	cartUC *CartUsecase,
 	tx port.TxManager,
+	events port.EventOutbox,
 ) *OrderUsecase {
-	return &OrderUsecase{orders: orders, carts: carts, discount: discount, cartUC: cartUC, tx: tx}
+	return &OrderUsecase{orders: orders, carts: carts, discount: discount, cartUC: cartUC, tx: tx, events: events}
 }
 
 func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt time.Time) (*dto.OrderResponse, error) {
@@ -99,6 +101,9 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 			return err
 		}
 		if err := u.carts.ClearDiscountCode(txCtx, cart.ID); err != nil {
+			return err
+		}
+		if err := u.events.Add(txCtx, domainorder.CreatedEvent(*order)); err != nil {
 			return err
 		}
 		created = order

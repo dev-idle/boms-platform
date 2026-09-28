@@ -1,5 +1,16 @@
 package order
 
+// VisibleToBaker reports whether an order in this status is production work the
+// kitchen may see: accepted, being made, or waiting at the counter.
+func (s Status) VisibleToBaker() bool {
+	switch s {
+	case StatusConfirmed, StatusInProduction, StatusReady:
+		return true
+	default:
+		return false
+	}
+}
+
 // CanStaffTransition reports whether staff may change order status at the counter.
 func CanStaffTransition(from, to Status) bool {
 	if from == to {

@@ -24,6 +24,7 @@ type Config struct {
 	Postgres   PostgresConfig
 	Redis      RedisConfig
 	Asynq      AsynqConfig
+	Outbox     OutboxConfig
 	Log        LogConfig
 	JWT        JWTConfig
 	Session    SessionConfig
@@ -118,6 +119,22 @@ type AsynqConfig struct {
 	Enabled bool
 }
 
+// maxOutboxSweepBatch bounds one sweep transaction, which holds row locks while it publishes.
+const maxOutboxSweepBatch = 1000
+
+// OutboxConfig tunes delivery of committed events. A post-commit delivery spends
+// up to DispatchTimeout publishing and as long again recording the outcome, so
+// SweepGrace must outlast twice DispatchTimeout: the sweeper then only picks up
+// events that delivery has finished with.
+type OutboxConfig struct {
+	DispatchTimeout time.Duration
+	SweepInterval   time.Duration
+	SweepGrace      time.Duration
+	SweepBatch      int32
+	Retention       time.Duration
+	PruneInterval   time.Duration
+}
+
 type LogConfig struct {
 	Level            string
 	Encoding         string
@@ -190,9 +207,33 @@ func (c CloudinaryConfig) ResolvedUploadFolder() string {
 	return strings.Trim(folder, "/")
 }
 
-// Load reads configuration from environment variables (set defaults with Viper;
-// load a local .env into the environment from cmd/api via godotenv before Load).
+// Load reads the API's configuration from environment variables (defaults set
+// with Viper; the command loads a local .env through godotenv before calling it)
+// and validates all of it.
 func Load() (*Config, error) {
+	cfg, err := load()
+	if err != nil {
+		return nil, err
+	}
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// LoadWorker reads the configuration and validates only what cmd/worker uses.
+func LoadWorker() (*Config, error) {
+	cfg, err := load()
+	if err != nil {
+		return nil, err
+	}
+	if err := cfg.ValidateWorker(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func load() (*Config, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -204,6 +245,10 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	minConns, err := int32FromInt("postgres.min_conns", v.GetInt("postgres.min_conns"))
+	if err != nil {
+		return nil, err
+	}
+	sweepBatch, err := int32FromInt("outbox.sweep_batch", v.GetInt("outbox.sweep_batch"))
 	if err != nil {
 		return nil, err
 	}
@@ -306,6 +351,14 @@ func Load() (*Config, error) {
 		Asynq: AsynqConfig{
 			Enabled: v.GetBool("asynq.enabled"),
 		},
+		Outbox: OutboxConfig{
+			DispatchTimeout: v.GetDuration("outbox.dispatch_timeout"),
+			SweepInterval:   v.GetDuration("outbox.sweep_interval"),
+			SweepGrace:      v.GetDuration("outbox.sweep_grace"),
+			SweepBatch:      sweepBatch,
+			Retention:       v.GetDuration("outbox.retention"),
+			PruneInterval:   v.GetDuration("outbox.prune_interval"),
+		},
 		Log: LogConfig{
 			Level:            v.GetString("log.level"),
 			Encoding:         v.GetString("log.encoding"),
@@ -349,11 +402,6 @@ func Load() (*Config, error) {
 			UploadFolder: v.GetString("cloudinary.upload_folder"),
 		},
 	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
 	return cfg, nil
 }
 
@@ -421,6 +469,13 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("asynq.enabled", false)
 
+	v.SetDefault("outbox.dispatch_timeout", 5*time.Second)
+	v.SetDefault("outbox.sweep_interval", 30*time.Second)
+	v.SetDefault("outbox.sweep_grace", 15*time.Second)
+	v.SetDefault("outbox.sweep_batch", 100)
+	v.SetDefault("outbox.retention", 7*24*time.Hour)
+	v.SetDefault("outbox.prune_interval", time.Hour)
+
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.encoding", "json")
 	v.SetDefault("log.enable_caller", false)
@@ -457,6 +512,41 @@ func setDefaults(v *viper.Viper) {
 }
 
 // Validate enforces production-safe constraints. Call after Load.
+// ValidateWorker checks only what cmd/worker uses — the database, Redis and the
+// outbox settings — so the worker never has to hold the API's signing key,
+// internal secret or Cloudinary credentials.
+func (c *Config) ValidateWorker() error {
+	return c.validateStores()
+}
+
+// validateStores checks the settings every process that touches the database
+// and the event bus shares.
+func (c *Config) validateStores() error {
+	if err := c.Outbox.validate(); err != nil {
+		return err
+	}
+	if strings.TrimSpace(c.Postgres.URL) == "" {
+		return errors.New("postgres.url is required")
+	}
+	if c.Postgres.MaxConns < 1 {
+		return errors.New("postgres.max_conns must be at least 1")
+	}
+	if c.Postgres.MinConns < 0 || c.Postgres.MinConns > c.Postgres.MaxConns {
+		return errors.New("postgres.min_conns must be between 0 and postgres.max_conns")
+	}
+	if strings.TrimSpace(c.Redis.Addr) == "" {
+		return errors.New("redis.addr is required")
+	}
+	if c.Redis.PoolSize < 1 {
+		return errors.New("redis.pool_size must be at least 1")
+	}
+	env := strings.ToLower(strings.TrimSpace(c.App.Env))
+	if (env == "production" || env == "staging") && postgresTLSExplicitlyDisabled(c.Postgres.URL) {
+		return errors.New("postgres.url must not disable TLS (sslmode=disable/allow) in staging/production")
+	}
+	return nil
+}
+
 func (c *Config) Validate() error {
 	if c.HTTP.Port <= 0 || c.HTTP.Port > 65535 {
 		return fmt.Errorf("http.port must be between 1 and 65535")
@@ -480,20 +570,8 @@ func (c *Config) Validate() error {
 	if err := c.RateRedis.validate(); err != nil {
 		return err
 	}
-	if strings.TrimSpace(c.Postgres.URL) == "" {
-		return errors.New("postgres.url is required")
-	}
-	if c.Postgres.MaxConns < 1 {
-		return errors.New("postgres.max_conns must be at least 1")
-	}
-	if c.Postgres.MinConns < 0 || c.Postgres.MinConns > c.Postgres.MaxConns {
-		return errors.New("postgres.min_conns must be between 0 and postgres.max_conns")
-	}
-	if strings.TrimSpace(c.Redis.Addr) == "" {
-		return errors.New("redis.addr is required")
-	}
-	if c.Redis.PoolSize < 1 {
-		return errors.New("redis.pool_size must be at least 1")
+	if err := c.validateStores(); err != nil {
+		return err
 	}
 	if c.JWT.AccessTTL <= 0 {
 		return errors.New("jwt.access_ttl must be positive")
@@ -590,9 +668,6 @@ func (c *Config) Validate() error {
 		if strings.TrimSpace(c.JWT.Audience) == "" {
 			return errors.New("jwt.audience is required in non-development environments")
 		}
-		if postgresTLSExplicitlyDisabled(c.Postgres.URL) {
-			return errors.New("postgres.url must not disable TLS (sslmode=disable/allow) in staging/production")
-		}
 		if !c.Cookie.Secure {
 			return errors.New("cookie.secure must be true in non-development environments")
 		}
@@ -604,6 +679,31 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	return nil
+}
+
+func (c OutboxConfig) validate() error {
+	positive := []struct {
+		name  string
+		value time.Duration
+	}{
+		{"outbox.dispatch_timeout", c.DispatchTimeout},
+		{"outbox.sweep_interval", c.SweepInterval},
+		{"outbox.sweep_grace", c.SweepGrace},
+		{"outbox.retention", c.Retention},
+		{"outbox.prune_interval", c.PruneInterval},
+	}
+	for _, d := range positive {
+		if d.value <= 0 {
+			return fmt.Errorf("%s must be positive", d.name)
+		}
+	}
+	if c.SweepBatch < 1 || c.SweepBatch > maxOutboxSweepBatch {
+		return fmt.Errorf("outbox.sweep_batch must be between 1 and %d", maxOutboxSweepBatch)
+	}
+	if c.SweepGrace <= 2*c.DispatchTimeout {
+		return errors.New("outbox.sweep_grace must be longer than twice outbox.dispatch_timeout, or the sweeper resends events still being delivered")
+	}
 	return nil
 }
 

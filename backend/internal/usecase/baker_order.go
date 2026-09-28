@@ -17,17 +17,25 @@ import (
 )
 
 type BakerOrderUsecase struct {
-	orders port.OrderRepository
-	audit  *auditlogger.Service
-	log    *zap.Logger
+	orders      port.OrderRepository
+	transitions orderTransitions
+	audit       *auditlogger.Service
+	log         *zap.Logger
 }
 
 func NewBakerOrderUsecase(
 	orders port.OrderRepository,
+	tx port.TxManager,
+	events port.EventOutbox,
 	audit *auditlogger.Service,
 	log *zap.Logger,
 ) *BakerOrderUsecase {
-	return &BakerOrderUsecase{orders: orders, audit: audit, log: log}
+	return &BakerOrderUsecase{
+		orders:      orders,
+		transitions: orderTransitions{tx: tx, orders: orders, events: events},
+		audit:       audit,
+		log:         log,
+	}
 }
 
 func (u *BakerOrderUsecase) List(
@@ -94,7 +102,7 @@ func (u *BakerOrderUsecase) Get(ctx context.Context, orderID uuid.UUID) (*dto.Ba
 		}
 		return nil, err
 	}
-	if !isBakerVisibleStatus(row.Order.Status) {
+	if !row.Order.Status.VisibleToBaker() {
 		return nil, domainorder.ErrNotFound
 	}
 	items, err := u.orders.ListItemsByOrderID(ctx, row.Order.ID)
@@ -122,22 +130,19 @@ func (u *BakerOrderUsecase) PatchStatus(
 		}
 		return nil, err
 	}
-	if !isBakerVisibleStatus(beforeRow.Order.Status) {
+	if !beforeRow.Order.Status.VisibleToBaker() {
 		return nil, domainorder.ErrNotFound
 	}
 	if !domainorder.CanBakerTransition(beforeRow.Order.Status, targetStatus) {
 		return nil, domainorder.ErrInvalidStatusTransition
 	}
 
-	updated, err := u.orders.UpdateStatus(ctx, port.UpdateOrderStatusParams{
+	updated, err := u.transitions.apply(ctx, port.UpdateOrderStatusParams{
 		OrderID:    orderID,
 		FromStatus: beforeRow.Order.Status,
 		ToStatus:   targetStatus,
 	})
 	if err != nil {
-		if errors.Is(err, apperrors.ErrNotFound) {
-			return nil, domainorder.ErrInvalidStatusTransition
-		}
 		return nil, err
 	}
 
@@ -153,15 +158,6 @@ func (u *BakerOrderUsecase) PatchStatus(
 		return nil, err
 	}
 	return toBakerOrderResponse(&afterRow, items), nil
-}
-
-func isBakerVisibleStatus(status domainorder.Status) bool {
-	switch status {
-	case domainorder.StatusConfirmed, domainorder.StatusInProduction, domainorder.StatusReady:
-		return true
-	default:
-		return false
-	}
 }
 
 func toBakerOrderCustomer(row *port.StaffOrderListRow) dto.BakerOrderCustomerResponse {

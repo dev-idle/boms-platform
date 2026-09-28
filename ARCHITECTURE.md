@@ -14,7 +14,7 @@ Authoritative reference for backend (Go/Fiber, Hexagonal) and frontend (Next.js 
 └────────────┬────────────┘                └──────────────┬─────────────┘
              │                                            │
        Proxy (Node runtime)                       Postgres (Atlas + sqlc)
-       Cookie session check                       Redis (sessions, rate limit)
+       Cookie session check                       Redis (sessions, rate limit, event bus)
        Cross-feature gates                        Asynq (foundation only)
 ```
 
@@ -26,12 +26,14 @@ Authoritative reference for backend (Go/Fiber, Hexagonal) and frontend (Next.js 
 backend/
 ├── cmd/
 │   ├── api/main.go              # HTTP entrypoint + composition root
+│   ├── worker/main.go           # Event worker: sweeps undelivered outbox events, prunes old ones
 │   └── genkey/main.go           # Ed25519 key generator CLI
 ├── db/schema.hcl                # Atlas declarative schema (source of truth)
 ├── migrations/                  # Atlas versioned SQL (timestamp_*.sql)
 ├── internal/
 │   ├── domain/                  # Entities, value objects, domain errors
 │   │   ├── user/                # user, role, audit, errors
+│   │   ├── event/               # generic change notice (topic, audience); topics live with their aggregate
 │   │   ├── catalog/             # slug, manager audit actions
 │   │   ├── category/            # category entity
 │   │   ├── product/             # product entity
@@ -39,12 +41,14 @@ backend/
 │   │   └── session/
 │   ├── port/                    # Interfaces (driven + driving)
 │   │   ├── user.go, *_profile.go, audit_log.go
+│   │   ├── outbox.go            # EventOutbox + EventPublisher
 │   │   ├── session.go, token.go, password.go, tx.go, health.go
 │   ├── usecase/                 # Application services (orchestration)
 │   │   ├── auth.go, me.go, admin_user.go, manager_category.go, manager_product.go, catalog.go, readiness.go
 │   ├── service/                 # Domain/application services
 │   │   ├── profilesvc/          # Role → profile dispatcher
-│   │   └── auditlogger/         # Audit log writer
+│   │   ├── auditlogger/         # Audit log writer
+│   │   └── eventdispatch/       # Delivers outbox events after commit; sweep + prune for the worker
 │   ├── handler/v1/              # HTTP handlers (driving adapters)
 │   │   ├── auth.go, me.go, admin_user.go, manager_category.go, manager_product.go, catalog.go, health.go
 │   ├── adapter/
@@ -53,6 +57,7 @@ backend/
 │   │   │   │   ├── sql/{query,schema}/
 │   │   │   │   └── sqlcgen/     # generated
 │   │   │   └── redis/           # sessions, client
+│   │   ├── eventbus/            # Redis Pub/Sub publisher; channel names + message shape
 │   │   └── queue/               # Asynq client (foundation)
 │   ├── infrastructure/          # Pure tech: jwt (EdDSA), crypto (argon2id), logger (zap)
 │   ├── middleware/              # auth, ratelimit, cors, security_headers, request_meta
@@ -293,7 +298,7 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 - **JWT:** stateless access JWT for read routes (`GET /me`); Redis session only on writes — limits Redis QPS.
 - **Frontend:** Turbopack build, RSC + Partial Prerendering, route-group code-split per role, Zod parse only at boundary.
 - **Polling avoidance:** TanStack Query cache + invalidation on mutation success.
-- **Concurrency:** Postgres transactions via `TxManager` for multi-table writes (auth register; admin role and profile edits, which lock the account row and edit the shared staff profile in place; phone writes, which take a per-number advisory lock before the duplicate check; enable, which restores the account and releases its phone if an active account took it meanwhile).
+- **Concurrency:** Postgres transactions via `TxManager` for multi-table writes (auth register; admin role and profile edits, which lock the account row and edit the shared staff profile in place; phone writes, which take a per-number advisory lock before the duplicate check; enable, which restores the account and releases its phone if an active account took it meanwhile; checkout and order status moves, which write their outbox event in the same transaction).
 
 ---
 
@@ -311,10 +316,34 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Staff order queue | `features/staff` (FE) + `usecase/staff_order` (BE) — `/staff/orders/*` (list, detail, status transitions) |
 | Baker production queue | `features/baker` (FE) + `usecase/baker_order` (BE) — `/baker/production/*` (list, detail, kitchen transitions) |
 | Audit logs | `service/auditlogger` (BE only) |
+| Event delivery | `domain/event` + `port/outbox.go` + `adapter/repository/postgres/outbox_repository.go` + `adapter/eventbus` + `service/eventdispatch` + `cmd/worker` (BE only) |
 | Profile entity dispatch | `service/profilesvc` (BE) |
 | Routes table | `constants/routes.ts` (FE) |
 | Roles enum | `constants/roles.ts` (FE) + `domain/user/role.go` (BE) |
 | Validation messages | `lib/validation/` (FE) + `shared/validator/` (BE) |
+
+### Event delivery (transactional outbox)
+
+A change other people must see writes an `outbox_events` row **in the same transaction** as the change, so an event exists exactly when the change committed.
+
+| Step | Where |
+|------|-------|
+| Record | usecase calls `EventOutbox.Add(txCtx, event)` inside `TxManager.WithTx`; outside a transaction it is refused |
+| Deliver | after the commit, `Pool.WithTx` hands the transaction's events to `eventdispatch.Dispatcher.AfterCommit`, which publishes them in the background (bounded by `OUTBOX_DISPATCH_TIMEOUT`) and then, on a fresh deadline of the same length, marks them published or records the failure on the row — a publish that timed out is still written down. A rollback publishes nothing. The API waits for these deliveries on shutdown |
+| Recover | `cmd/worker` sweeps rows still unpublished `OUTBOX_SWEEP_GRACE` (longer than twice the dispatch timeout) after they were written — at start and then every `OUTBOX_SWEEP_INTERVAL`, draining full batches at once. `FOR UPDATE SKIP LOCKED` means two workers never hold the same row at once; a sweep that published but could not mark rolls back and sends again. The worker validates only the database, Redis and outbox settings (`config.LoadWorker`) |
+| Retain | published rows are deleted after `OUTBOX_RETENTION` — delivery records, not business data, so no soft delete |
+| Clock | `created_at` defaults to `clock_timestamp()` and every age (sweep grace, retention) is measured in SQL, so the API and the worker never compare two hosts' clocks |
+
+Delivery is **at least once** and **unordered across transactions** (each commit is delivered on its own): an event may arrive twice or after a later one, and subscribers use it only as a hint to refetch through the API. The bus is Redis Pub/Sub (`adapter/eventbus`): channel `boms:events:user:{id}` per user and `boms:events:role:{role}` per role, message `{id, type, at, data}` — identifiers and labels, never the changed record.
+
+| Topic | Written by | Audience | Data |
+|-------|------------|----------|------|
+| `order.created` | checkout | the customer · staff | `order_id`, `status` |
+| `order.status_changed` | staff and baker status moves | the customer · staff · baker only when the order enters, leaves or moves within the statuses bakers see (`Status.VisibleToBaker`) | `order_id`, `status` |
+
+Topics and their audiences live with the aggregate that raises them (`domain/order/event.go`), as audit actions do.
+
+The API process delivers after commit; run `cmd/worker` beside it (`make run-worker`) to recover what that delivery missed.
 
 ### Fulfillment model (pickup-only — no Address module)
 
@@ -413,7 +442,7 @@ CI must run backend tests + frontend typecheck, lint, test, and build. Productio
 
 | Hook | Status | Next step |
 |------|--------|-----------|
-| Asynq queue | client only | add `cmd/worker` + task definitions |
+| Asynq queue | client only — `cmd/worker` runs the outbox sweeper, not Asynq tasks | add task handlers to the worker with the first background job |
 | WebSocket | n/a | add `internal/adapter/websocket/` when needed |
 | Server actions | DAL ready | wire mutations from RSC pages |
 | Pickup time | `orders.pickup_at` (required at checkout) | still **no** delivery addresses |

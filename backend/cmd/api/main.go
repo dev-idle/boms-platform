@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/boms/backend/internal/adapter/eventbus"
 	"github.com/boms/backend/internal/adapter/queue"
 	postgresrepo "github.com/boms/backend/internal/adapter/repository/postgres"
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
@@ -21,6 +22,7 @@ import (
 	"github.com/boms/backend/internal/middleware"
 	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/service/auditlogger"
+	"github.com/boms/backend/internal/service/eventdispatch"
 	"github.com/boms/backend/internal/usecase"
 
 	"github.com/gofiber/fiber/v3"
@@ -97,9 +99,12 @@ func main() {
 	cartRepo := postgresrepo.NewCartRepository(pgPool)
 	orderRepo := postgresrepo.NewOrderRepository(pgPool)
 	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo)
-	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool)
-	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, auditLogger, zlog)
-	bakerOrderUC := usecase.NewBakerOrderUsecase(orderRepo, auditLogger, zlog)
+	outboxRepo := postgresrepo.NewOutboxRepository(pgPool)
+	eventDispatcher := eventdispatch.New(outboxRepo, eventbus.NewRedisPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
+	pgPool.OnCommit(eventDispatcher.AfterCommit)
+	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo)
+	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
+	bakerOrderUC := usecase.NewBakerOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
 
 	if err := bootstrap.EnsureDevAdmin(rootCtx, cfg, userRepo, adminProfileRepo, hasher, pgPool); err != nil {
 		zlog.Fatal("seed_admin", zap.Error(err))
@@ -294,6 +299,8 @@ func main() {
 	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
 		zlog.Error("http_shutdown", zap.Error(err))
 	}
+	// Deliveries started by requests that just finished still need the pool.
+	eventDispatcher.Wait(shutdownCtx)
 	if asynqClose != nil {
 		if err := asynqClose(); err != nil {
 			zlog.Error("asynq_close", zap.Error(err))

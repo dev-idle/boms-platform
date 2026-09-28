@@ -1,4 +1,5 @@
-h1:POng1X3BgsBoC8geOwUjqNzPLlpbU7RK81u8CrQUELE=
+h1:sIiGt52nYtveL+RUuZISjs0te5AwZEi8TOMFh9+RKEY=
 20260601120000_initial_schema.sql h1:hWLNRIrLbMJTc/CLUGjWNH0Fb09J/y8XzuQEt/QGGrk=
 20260922102739_normalize_vietnam_phones.sql h1:4oExt+YB+B+QSWpmLCr5iOkIt9eXN1vbQEOgeop4cP0=
 20260923183657_add_combo_image_url.sql h1:NpmnOxO237rYpbOISIYiKx+e7OcCxw3JcWrpBlmMW9c=
+20260928144227_add_outbox_events.sql h1:j91CrKYLgCJtT+wVsQohYBUMUQt1L3fbChjRAWJPpLs=

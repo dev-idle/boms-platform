@@ -1,8 +1,9 @@
-.PHONY: help tidy build run dev test lint fmt vet clean docker-up docker-down seed sqlc sqlc-vet sqlc-check ci \
+.PHONY: help tidy build run run-worker dev test lint fmt vet clean docker-up docker-down seed sqlc sqlc-vet sqlc-check ci \
 	atlas-install atlas-diff atlas-validate atlas-apply atlas-hash
 
 APP_NAME := boms-api
 MAIN_PKG := ./cmd/api
+WORKER_PKG := ./cmd/worker
 
 # go.mod's `toolchain` line is a MINIMUM, not a pin: GOTOOLCHAIN=auto upgrades to a
 # newer installed Go and never downgrades to an older one. A machine running a newer
@@ -23,11 +24,15 @@ tidy: ## go mod tidy + verify (run when dependencies change)
 	go mod tidy
 	go mod verify
 
-build: ## Build API binary (fast — no tidy)
+build: ## Build the API and worker binaries (fast — no tidy)
 	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/$(APP_NAME) $(MAIN_PKG)
+	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/boms-worker $(WORKER_PKG)
 
 run: ## Run API (requires .env)
 	go run $(MAIN_PKG)
+
+run-worker: ## Run the event worker beside the API (requires .env)
+	go run $(WORKER_PKG)
 
 dev: ## Hot reload with Air
 	air -c air.toml

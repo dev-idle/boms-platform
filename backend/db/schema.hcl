@@ -963,3 +963,58 @@ table "order_items" {
     expr = "(line_type = 'product' AND product_id IS NOT NULL AND combo_id IS NULL) OR (line_type = 'combo' AND combo_id IS NOT NULL AND product_id IS NULL)"
   }
 }
+
+// Transactional outbox: a row is written in the same transaction as the change
+// it announces, so an event exists exactly when the change committed. Rows are
+// technical delivery records, not business data: published rows are deleted
+// after the retention window instead of being soft-deleted.
+table "outbox_events" {
+  schema = schema.public
+  column "id" {
+    type = uuid
+    null = false
+  }
+  column "topic" {
+    type = text
+    null = false
+  }
+  column "audience" {
+    type = jsonb
+    null = false
+  }
+  column "data" {
+    type = jsonb
+    null = false
+  }
+  column "created_at" {
+    type = timestamptz
+    null = false
+    // The database clock, so the API that writes a row and the worker that
+    // sweeps it compare times from one source.
+    default = sql("clock_timestamp()")
+  }
+  column "published_at" {
+    type = timestamptz
+    null = true
+  }
+  column "attempts" {
+    type    = integer
+    null    = false
+    default = 0
+  }
+  column "last_error" {
+    type = text
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "outbox_events_unpublished_idx" {
+    columns = [column.created_at]
+    where   = "(published_at IS NULL)"
+  }
+  index "outbox_events_published_idx" {
+    columns = [column.published_at]
+    where   = "(published_at IS NOT NULL)"
+  }
+}

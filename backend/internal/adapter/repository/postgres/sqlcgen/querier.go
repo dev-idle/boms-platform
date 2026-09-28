@@ -7,6 +7,7 @@ package sqlcgen
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -319,6 +320,17 @@ type Querier interface {
 	//      OR p.slug ILIKE '%' || $2::text || '%'
 	//    )
 	CatalogListProductsCount(ctx context.Context, arg CatalogListProductsCountParams) (int64, error)
+	// Rows another sweeper already holds are skipped, not waited on, so two workers
+	// never claim the same row at once.
+	//
+	//  SELECT id, topic, audience, data, created_at
+	//  FROM outbox_events
+	//  WHERE published_at IS NULL
+	//    AND created_at < clock_timestamp() - make_interval(secs => $1::double precision)
+	//  ORDER BY created_at ASC
+	//  LIMIT $2
+	//  FOR UPDATE SKIP LOCKED
+	ClaimUnpublishedOutboxEvents(ctx context.Context, arg ClaimUnpublishedOutboxEventsParams) ([]ClaimUnpublishedOutboxEventsRow, error)
 	//ClearCartDiscountCode
 	//
 	//  UPDATE carts
@@ -548,6 +560,11 @@ type Querier interface {
 	//  DELETE FROM product_images
 	//  WHERE product_id = $1
 	DeleteProductImagesByProductID(ctx context.Context, productID uuid.UUID) error
+	//DeletePublishedOutboxEvents
+	//
+	//  DELETE FROM outbox_events
+	//  WHERE published_at < clock_timestamp() - make_interval(secs => $1::double precision)
+	DeletePublishedOutboxEvents(ctx context.Context, retentionSeconds float64) (int64, error)
 	//DeleteStaffProfileByUserID
 	//
 	//  DELETE FROM staff_profiles
@@ -733,6 +750,15 @@ type Querier interface {
 	//  INSERT INTO combo_items (combo_id, product_id, quantity)
 	//  VALUES ($1, $2, $3)
 	InsertComboItem(ctx context.Context, arg InsertComboItemParams) error
+	// Every time below comes from the database clock (created_at defaults to
+	// clock_timestamp()), so the API writing rows and the worker sweeping them never
+	// compare two hosts' clocks.
+	//
+	//
+	//  INSERT INTO outbox_events (id, topic, audience, data)
+	//  VALUES ($1, $2, $3, $4)
+	//  RETURNING created_at
+	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (time.Time, error)
 	//InsertProductImage
 	//
 	//  INSERT INTO product_images (product_id, sort_order, image_url)
@@ -1034,6 +1060,13 @@ type Querier interface {
 	//      OR p.slug ILIKE '%' || $2::text || '%'
 	//    )
 	ManagerListProductsCount(ctx context.Context, arg ManagerListProductsCountParams) (int64, error)
+	//MarkOutboxEventsPublished
+	//
+	//  UPDATE outbox_events
+	//  SET published_at = clock_timestamp()
+	//  WHERE id = ANY($1::uuid[])
+	//    AND published_at IS NULL
+	MarkOutboxEventsPublished(ctx context.Context, ids []uuid.UUID) error
 	//NextEmployeeCode
 	//
 	//  SELECT
@@ -1073,6 +1106,14 @@ type Querier interface {
 	//      AND u.deleted_at IS NULL
 	//  ) AS held
 	PhoneHeldByOtherActiveUser(ctx context.Context, arg PhoneHeldByOtherActiveUserParams) (bool, error)
+	//RecordOutboxPublishFailure
+	//
+	//  UPDATE outbox_events
+	//  SET attempts = attempts + 1,
+	//      last_error = $1::text
+	//  WHERE id = ANY($2::uuid[])
+	//    AND published_at IS NULL
+	RecordOutboxPublishFailure(ctx context.Context, arg RecordOutboxPublishFailureParams) error
 	// Clears the phone on whichever profile the user has. Used when a returning
 	// account finds its number taken by an active one: the active holder keeps it.
 	//

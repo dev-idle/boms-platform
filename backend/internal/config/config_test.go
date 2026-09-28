@@ -31,6 +31,7 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 		},
 		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		RateRedis: defaultRateRedis(),
+		Outbox:    defaultOutbox(),
 		Postgres: config.PostgresConfig{
 			URL:                "postgres://host/db?sslmode=disable",
 			MaxConns:           5,
@@ -102,6 +103,17 @@ func TestValidate_ProductionRequiresCloudinary(t *testing.T) {
 	}
 }
 
+func defaultOutbox() config.OutboxConfig {
+	return config.OutboxConfig{
+		DispatchTimeout: 5 * time.Second,
+		SweepInterval:   30 * time.Second,
+		SweepGrace:      15 * time.Second,
+		SweepBatch:      100,
+		Retention:       7 * 24 * time.Hour,
+		PruneInterval:   time.Hour,
+	}
+}
+
 func defaultRateRedis() config.RateLimitRedisConfig {
 	return config.RateLimitRedisConfig{
 		AuthAttemptMax: 5, AuthAttemptWindow: time.Minute,
@@ -140,6 +152,7 @@ func minimalDevConfig() *config.Config {
 		},
 		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		RateRedis: defaultRateRedis(),
+		Outbox:    defaultOutbox(),
 		Postgres: config.PostgresConfig{
 			URL:      "postgres://host/db?sslmode=require",
 			MaxConns: 5, MinConns: 0,
@@ -223,5 +236,51 @@ func TestValidate_WildcardOriginStandsAlone(t *testing.T) {
 	cfg.CORS.AllowOrigins = []string{"*", "https://choux.example"}
 	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "cannot be listed with others") {
 		t.Fatalf("expected wildcard origin error, got: %v", err)
+	}
+}
+
+// The sweeper may only resend what the post-commit delivery gave up on.
+func TestValidate_OutboxSweepOutlastsDelivery(t *testing.T) {
+	t.Parallel()
+	cfg := minimalDevConfig()
+	cfg.Outbox.SweepGrace = 2 * cfg.Outbox.DispatchTimeout
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "sweep_grace must be longer than twice") {
+		t.Fatalf("expected sweep grace error, got: %v", err)
+	}
+}
+
+func TestValidate_OutboxBatch(t *testing.T) {
+	t.Parallel()
+	cfg := minimalDevConfig()
+	cfg.Outbox.SweepBatch = 0
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "outbox.sweep_batch") {
+		t.Fatalf("expected sweep batch error, got: %v", err)
+	}
+}
+
+func TestValidate_OutboxBatchIsBounded(t *testing.T) {
+	t.Parallel()
+	cfg := minimalDevConfig()
+	cfg.Outbox.SweepBatch = 1001
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "outbox.sweep_batch must be between") {
+		t.Fatalf("expected sweep batch bound error, got: %v", err)
+	}
+}
+
+// The worker never holds the API's signing key, internal secret or Cloudinary
+// credentials, so its validation must not ask for them.
+func TestValidateWorker_NeedsOnlyTheStores(t *testing.T) {
+	t.Parallel()
+	cfg := minimalProductionConfig()
+	cfg.JWT.Ed25519PrivateKey = ""
+	cfg.HTTP.InternalSecret = ""
+	cfg.Cloudinary = config.CloudinaryConfig{}
+	if err := cfg.ValidateWorker(); err != nil {
+		t.Fatalf("expected worker config to be valid without API secrets, got: %v", err)
+	}
+
+	cfg.Redis.Addr = ""
+	if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), "redis.addr") {
+		t.Fatalf("expected redis error, got: %v", err)
 	}
 }

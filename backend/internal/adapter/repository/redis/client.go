@@ -24,6 +24,9 @@ func NewClient(ctx context.Context, cfg config.RedisConfig) (*Client, error) {
 		DialTimeout:  cfg.DialTimeout,
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
+		// Without this go-redis ignores the caller's deadline on the socket, so a
+		// hung Redis would outlast request timeouts and event-delivery deadlines.
+		ContextTimeoutEnabled: true,
 	})
 
 	pingCtx, cancel := context.WithTimeout(ctx, cfg.HealthCheckTimeout)

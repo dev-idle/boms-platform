@@ -12,12 +12,20 @@ import (
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	"github.com/boms/backend/internal/config"
+	domainevent "github.com/boms/backend/internal/domain/event"
 )
 
 // Pool owns the pgx connection pool and the sqlc queries bound to it.
 type Pool struct {
-	inner   *pgxpool.Pool
-	queries *sqlcgen.Queries
+	inner    *pgxpool.Pool
+	queries  *sqlcgen.Queries
+	onCommit func(ctx context.Context, events []domainevent.Event)
+}
+
+// OnCommit registers fn to receive the events a transaction recorded, called
+// right after that transaction commits. Register it once, before serving.
+func (p *Pool) OnCommit(fn func(ctx context.Context, events []domainevent.Event)) {
+	p.onCommit = fn
 }
 
 // NewPool creates a PostgreSQL pool and the sqlc queries that run on it.
@@ -115,11 +123,15 @@ func (p *Pool) WithTx(ctx context.Context, fn func(txCtx context.Context) error)
 			err = errors.Join(err, fmt.Errorf("rollback tx: %w", rbErr))
 		}
 	}()
-	if err = fn(withTx(ctx, tx)); err != nil {
+	scope := &txScope{tx: tx}
+	if err = fn(withTx(ctx, scope)); err != nil {
 		return err
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit tx: %w", err)
+	}
+	if p.onCommit != nil && len(scope.events) > 0 {
+		p.onCommit(ctx, scope.events)
 	}
 	return nil
 }

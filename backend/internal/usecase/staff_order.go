@@ -17,17 +17,25 @@ import (
 )
 
 type StaffOrderUsecase struct {
-	orders port.OrderRepository
-	audit  *auditlogger.Service
-	log    *zap.Logger
+	orders      port.OrderRepository
+	transitions orderTransitions
+	audit       *auditlogger.Service
+	log         *zap.Logger
 }
 
 func NewStaffOrderUsecase(
 	orders port.OrderRepository,
+	tx port.TxManager,
+	events port.EventOutbox,
 	audit *auditlogger.Service,
 	log *zap.Logger,
 ) *StaffOrderUsecase {
-	return &StaffOrderUsecase{orders: orders, audit: audit, log: log}
+	return &StaffOrderUsecase{
+		orders:      orders,
+		transitions: orderTransitions{tx: tx, orders: orders, events: events},
+		audit:       audit,
+		log:         log,
+	}
 }
 
 func (u *StaffOrderUsecase) List(
@@ -123,15 +131,12 @@ func (u *StaffOrderUsecase) PatchStatus(
 		return nil, domainorder.ErrInvalidStatusTransition
 	}
 
-	updated, err := u.orders.UpdateStatus(ctx, port.UpdateOrderStatusParams{
+	updated, err := u.transitions.apply(ctx, port.UpdateOrderStatusParams{
 		OrderID:    orderID,
 		FromStatus: beforeRow.Order.Status,
 		ToStatus:   targetStatus,
 	})
 	if err != nil {
-		if errors.Is(err, apperrors.ErrNotFound) {
-			return nil, domainorder.ErrInvalidStatusTransition
-		}
 		return nil, err
 	}
 
