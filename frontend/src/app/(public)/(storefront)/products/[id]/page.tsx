@@ -35,7 +35,7 @@ export async function generateMetadata({
 }: ProductDetailPageProps): Promise<Metadata> {
   await connection();
   const { id } = await params;
-  if (!z.string().uuid().safeParse(id).success) {
+  if (!z.uuid().safeParse(id).success) {
     return { title: PAGE_TITLES.product };
   }
 
@@ -57,7 +57,7 @@ export default async function ProductDetailRoute({
 }: ProductDetailPageProps) {
   const { id } = await params;
 
-  if (!z.string().uuid().safeParse(id).success) {
+  if (!z.uuid().safeParse(id).success) {
     notFound();
   }
 

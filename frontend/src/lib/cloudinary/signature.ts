@@ -19,7 +19,7 @@ const cloudinaryUploadSignatureSchema = z.object({
   signature: z.string().min(1),
   timestamp: z.number().int().positive(),
   unique_filename: z.string().min(1),
-  upload_url: z.string().url(),
+  upload_url: z.url(),
 });
 
 export type CloudinaryUploadSignature = z.infer<

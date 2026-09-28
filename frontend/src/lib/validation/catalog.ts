@@ -1,10 +1,13 @@
 import { z } from "zod";
 
+/** The widest whole number the API stores (Postgres `integer`, Go `int32`). */
+export const CATALOG_INTEGER_MAX = 2_147_483_647;
+
 export const catalogSlugSchema = z
   .string()
   .trim()
   .min(1, "Slug is required")
-  .max(128)
+  .max(128, "Slug must be at most 128 characters")
   .regex(
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
     "Slug must be lowercase letters, numbers, and hyphens",

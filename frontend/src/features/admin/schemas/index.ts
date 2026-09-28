@@ -13,8 +13,8 @@ const optionalNullableTrimmedString = (max: number, label: string) =>
     .nullable();
 
 export const adminUserSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
+  id: z.uuid(),
+  email: z.email(),
   role: z.enum([
     USER_ROLE.customer,
     USER_ROLE.staff,
@@ -35,8 +35,15 @@ export const adminUserSchema = z.object({
 });
 
 const createOperationalBaseSchema = z.object({
-  email: z.string().trim().email("Enter a valid email").max(255),
-  full_name: z.string().trim().min(1, "Full name is required").max(255),
+  email: z
+    .string()
+    .trim()
+    .pipe(z.email("Enter a valid email").max(255, "Email must be at most 255 characters")),
+  full_name: z
+    .string()
+    .trim()
+    .min(1, "Full name is required")
+    .max(255, "Full name must be at most 255 characters"),
   phone: vietnamPhoneZodString(),
 });
 
@@ -97,11 +104,11 @@ export const listFilterSchema = z.object({
 });
 
 export const adminUserActivityLogSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   action: z.string().min(1),
   summary: z.string().min(1),
-  actor_id: z.string().uuid(),
-  actor_email: z.string().email(),
+  actor_id: z.uuid(),
+  actor_email: z.email(),
   actor_role: z.enum([
     USER_ROLE.customer,
     USER_ROLE.staff,

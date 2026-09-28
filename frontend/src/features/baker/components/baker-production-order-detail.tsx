@@ -38,7 +38,7 @@ function nextProductionActions(
 export function BakerProductionOrderDetail({
   orderId,
 }: BakerProductionOrderDetailProps) {
-  const isValidId = z.string().uuid().safeParse(orderId).success;
+  const isValidId = z.uuid().safeParse(orderId).success;
   const orderQuery = useBakerProductionOrder(orderId);
   const patchStatus = usePatchBakerOrderStatus(orderId);
 

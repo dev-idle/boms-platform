@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
+import { CATALOG_INTEGER_MAX } from "@/lib/validation/catalog";
 import { windowEndsInDays, windowStartsNow } from "@/lib/validation/datetime";
 
 import {
@@ -232,6 +233,7 @@ export function DiscountCodeForm({
                 optional
               >
                 <OptionalIntegerFieldInput
+                  max={CATALOG_INTEGER_MAX}
                   min={1}
                   {...field}
                   value={field.value ?? null}

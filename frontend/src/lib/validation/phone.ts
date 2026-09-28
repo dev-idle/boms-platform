@@ -110,7 +110,7 @@ export function vietnamPhoneZodString() {
       }
       const stored = normalizeVietnamPhone(value);
       if (stored === null) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: phoneFormatMessage(value) });
+        ctx.addIssue({ code: "custom", message: phoneFormatMessage(value) });
         return z.NEVER;
       }
       return stored;

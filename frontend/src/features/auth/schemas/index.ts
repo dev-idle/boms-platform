@@ -12,8 +12,8 @@ const userRoleSchema = z.enum([
 ]);
 
 export const userSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
+  id: z.uuid(),
+  email: z.email(),
   role: userRoleSchema,
   email_verified: z.boolean(),
   created_at: z.string(),
@@ -28,12 +28,19 @@ export const tokenResponseSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address").max(255),
+  email: z
+    .string()
+    .trim()
+    .pipe(
+      z
+        .email("Enter a valid email address")
+        .max(255, "Email must be at most 255 characters"),
+    ),
   password: newPasswordZodString(),
 });
 
 export const loginSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address"),
+  email: z.string().trim().pipe(z.email("Enter a valid email address")),
   password: z.string().min(1, "Password is required"),
 });
 

@@ -43,7 +43,7 @@ export async function listStaffOrders(
 }
 
 export async function getStaffOrder(id: string): Promise<StaffOrder> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   return browserRequest<StaffOrder>(`/api/v1/staff/orders/${parsedId}`, {
     method: "GET",
     schema: staffOrderSchema,
@@ -54,7 +54,7 @@ export async function patchStaffOrderStatus(
   id: string,
   input: PatchStaffOrderStatusInput,
 ): Promise<StaffOrder> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   const body = patchStaffOrderStatusInputSchema.parse(input);
   return browserRequest<StaffOrder>(`/api/v1/staff/orders/${parsedId}/status`, {
     method: "PATCH",

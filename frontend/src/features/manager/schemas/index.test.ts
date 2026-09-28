@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { comboFormSchema, discountCodeFormSchema, productFormSchema } from "./index";
+import {
+  categoryFormSchema,
+  comboFormSchema,
+  discountCodeFormSchema,
+  productFormSchema,
+} from "./index";
 
 /** The shape a valid product form submits, so each case changes one field. */
 const product = {
@@ -30,6 +35,11 @@ describe("catalog price", () => {
 
   it("accepts free, which the catalog allows", () => {
     expect(priceIssue(0)).toBeUndefined();
+  });
+
+  it("calls anything that is not a number missing, not malformed", () => {
+    expect(priceIssue("4.50")).toBe("Price is required");
+    expect(priceIssue(Number.NaN)).toBe("Price is required");
   });
 
   it("guards the combo price the same way", () => {
@@ -64,6 +74,62 @@ describe("catalog price", () => {
     expect(result.success).toBe(false);
     expect(result.success ? [] : result.error.issues.map((i) => i.message)).toContain(
       "Value is required",
+    );
+  });
+});
+
+/**
+ * The integer fields hand the form a number (or null when left empty), so the
+ * schemas take numbers as they come instead of coercing whatever arrives.
+ */
+describe("catalog integer fields", () => {
+  it("accept the number the sort-order field produces", () => {
+    const result = categoryFormSchema.safeParse({
+      name: "Breads",
+      slug: "breads",
+      sort_order: 0,
+      is_active: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("reject a string instead of reading a number out of it", () => {
+    const result = categoryFormSchema.safeParse({
+      name: "Breads",
+      slug: "breads",
+      sort_order: "3",
+      is_active: true,
+    });
+    expect(result.success).toBe(false);
+    expect(result.success ? [] : result.error.issues.map((i) => i.path)).toEqual([["sort_order"]]);
+  });
+
+  it("leave the optional discount limits empty as null", () => {
+    const result = discountCodeFormSchema.safeParse({
+      code: "SPRING",
+      discount_type: "fixed_cents",
+      value: 500,
+      min_order_cents: null,
+      max_uses: null,
+      max_discount_cents: null,
+      starts_at: "2026-09-27T00:00:00Z",
+      ends_at: "2026-10-04T00:00:00Z",
+      is_active: true,
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("catalog integer limits", () => {
+  it("say a sort order past what the API stores is too large", () => {
+    const result = categoryFormSchema.safeParse({
+      name: "Breads",
+      slug: "breads",
+      sort_order: 2_147_483_648,
+      is_active: true,
+    });
+    expect(result.success ? undefined : result.error.issues[0]?.message).toBe(
+      "Sort order is too large",
     );
   });
 });

@@ -61,7 +61,7 @@ export async function listUsers(input: ListFilterInput): Promise<UsersListResult
 }
 
 export async function getUserById(id: string): Promise<AdminUser> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
 
   return browserRequest<AdminUser>(`/api/v1/admin/users/${parsedId}`, {
     method: "GET",
@@ -91,7 +91,7 @@ export async function updateRole(
   id: string,
   input: UpdateRoleInput,
 ): Promise<AdminUser> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   const body = updateRoleSchema.parse(input);
   return browserRequest<AdminUser>(`/api/v1/admin/users/${parsedId}/role`, {
     method: "PATCH",
@@ -101,21 +101,21 @@ export async function updateRole(
 }
 
 export async function disableUser(id: string): Promise<void> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   await browserRequestVoid(`/api/v1/admin/users/${parsedId}/disable`, {
     method: "PATCH",
   });
 }
 
 export async function enableUser(id: string): Promise<void> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   await browserRequestVoid(`/api/v1/admin/users/${parsedId}/enable`, {
     method: "PATCH",
   });
 }
 
 export async function resetUserPassword(id: string): Promise<AdminResetPasswordResponse> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   return browserRequest<AdminResetPasswordResponse>(
     `/api/v1/admin/users/${parsedId}/reset-password`,
     {
@@ -126,7 +126,7 @@ export async function resetUserPassword(id: string): Promise<AdminResetPasswordR
 }
 
 export async function revokeUserSessions(id: string): Promise<void> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   await browserRequestVoid(`/api/v1/admin/users/${parsedId}/revoke-sessions`, {
     method: "POST",
   });
@@ -143,7 +143,7 @@ export async function listUserActivity(
   id: string,
   input: UserActivityFilterInput,
 ): Promise<UserActivityListResult> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   const filter = userActivityFilterSchema.parse(input);
 
   const result = await browserRequestWithMeta<AdminUserActivityLog[]>(

@@ -47,7 +47,7 @@ export const changePasswordFormSchema = changePasswordSchema
   .superRefine((input, ctx) => {
     if (input.new_password !== input.confirm_password) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Passwords do not match",
         path: ["confirm_password"],
       });

@@ -43,7 +43,7 @@ export async function listBakerProductionOrders(
 }
 
 export async function getBakerProductionOrder(id: string): Promise<BakerOrder> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   return browserRequest<BakerOrder>(`/api/v1/baker/production/${parsedId}`, {
     method: "GET",
     schema: bakerOrderSchema,
@@ -54,7 +54,7 @@ export async function patchBakerOrderStatus(
   id: string,
   input: PatchBakerOrderStatusInput,
 ): Promise<BakerOrder> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   const body = patchBakerOrderStatusInputSchema.parse(input);
   return browserRequest<BakerOrder>(`/api/v1/baker/production/${parsedId}/status`, {
     method: "PATCH",

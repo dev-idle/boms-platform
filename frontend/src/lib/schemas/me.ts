@@ -25,8 +25,8 @@ const adminProfileSchema = z.object({
 });
 
 const meBaseSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
+  id: z.uuid(),
+  email: z.email(),
   email_verified: z.boolean(),
   must_change_password: z.boolean(),
   disabled: z.boolean(),

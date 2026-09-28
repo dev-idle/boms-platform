@@ -28,7 +28,7 @@ export function ProductDetail({
   purchaseActions,
 }: ProductDetailProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const isValidId = z.string().uuid().safeParse(productId).success;
+  const isValidId = z.uuid().safeParse(productId).success;
   const productQuery = useCatalogProduct(productId, {
     enabled: isValidId && !initialProduct,
   });

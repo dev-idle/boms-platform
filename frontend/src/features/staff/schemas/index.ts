@@ -5,16 +5,16 @@ import { orderStatusSchema } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 const staffOrderCustomerSchema = z.object({
-  user_id: z.string().uuid(),
+  user_id: z.uuid(),
   email: z.string().min(1),
   display_name: z.string().nullable().optional(),
 });
 
 const staffOrderItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   line_type: z.enum(["product", "combo"]),
-  product_id: z.string().uuid().nullable().optional(),
-  combo_id: z.string().uuid().nullable().optional(),
+  product_id: z.uuid().nullable().optional(),
+  combo_id: z.uuid().nullable().optional(),
   name: z.string().min(1),
   slug: catalogSlugSchema,
   quantity: z.number().int().min(1),
@@ -23,7 +23,7 @@ const staffOrderItemSchema = z.object({
 });
 
 export const staffOrderSummarySchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   status: orderStatusSchema,
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
@@ -33,7 +33,7 @@ export const staffOrderSummarySchema = z.object({
 });
 
 export const staffOrderSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   status: orderStatusSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),

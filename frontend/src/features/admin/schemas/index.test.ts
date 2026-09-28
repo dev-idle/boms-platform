@@ -35,6 +35,19 @@ describe("operational full name", () => {
     );
   });
 
+  it("names a malformed email before its length when it is both", () => {
+    const result = createOperationalSchema.safeParse({
+      email: `${"m".repeat(300)}@`,
+      role: USER_ROLE.staff,
+      full_name: "Mai Tran",
+      phone: "",
+    });
+    expect(result.success).toBe(false);
+    expect(result.success ? undefined : result.error.issues[0]?.message).toBe(
+      "Enter a valid email",
+    );
+  });
+
   it("accepts a named role change, phone still optional", () => {
     const result = updateRoleSchema.safeParse({
       role: USER_ROLE.manager,

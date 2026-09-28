@@ -7,7 +7,6 @@ const DEV_FALLBACK_SECRET =
 
 const serverEnvSchema = z.object({
   BOMS_BACKEND_URL: z
-    .string()
     .url()
     .describe("Origin of the Go Fiber API (no trailing slash)"),
   INTERNAL_PROXY_SECRET: z
@@ -41,7 +40,7 @@ export function getServerEnv(): ServerEnv {
   const raw = resolveRawEnv();
   const parsed = serverEnvSchema.safeParse(raw);
   if (!parsed.success) {
-    const detail = parsed.error.flatten().fieldErrors;
+    const detail = z.flattenError(parsed.error).fieldErrors;
     throw new Error(
       `[BOMS] Invalid server environment: ${JSON.stringify(detail, null, 2)}`,
     );

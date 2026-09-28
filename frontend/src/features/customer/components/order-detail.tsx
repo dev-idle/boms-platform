@@ -21,7 +21,7 @@ type OrderDetailProps = {
 };
 
 export function OrderDetail({ orderId }: OrderDetailProps) {
-  const isValidId = z.string().uuid().safeParse(orderId).success;
+  const isValidId = z.uuid().safeParse(orderId).success;
   const orderQuery = useOrder(orderId);
 
   if (!isValidId) {

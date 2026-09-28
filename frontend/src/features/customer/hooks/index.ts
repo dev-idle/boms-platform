@@ -152,7 +152,7 @@ export function useOrders(input: OrdersListFilterInput = defaultOrdersFilter) {
 }
 
 export function useOrder(id: string) {
-  const isValidId = z.string().uuid().safeParse(id).success;
+  const isValidId = z.uuid().safeParse(id).success;
   return useQuery({
     queryKey: customerQueryKeys.order(id),
     queryFn: () => getOrder(id),

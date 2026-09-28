@@ -45,7 +45,7 @@ export async function updateCartItem(
   itemId: string,
   input: UpdateCartItemInput,
 ): Promise<Cart> {
-  const id = z.string().uuid().parse(itemId);
+  const id = z.uuid().parse(itemId);
   const body = updateCartItemInputSchema.parse(input);
   return browserRequest<Cart>(`/api/v1/cart/items/${id}`, {
     method: "PATCH",
@@ -55,7 +55,7 @@ export async function updateCartItem(
 }
 
 export async function removeCartItem(itemId: string): Promise<Cart> {
-  const id = z.string().uuid().parse(itemId);
+  const id = z.uuid().parse(itemId);
   return browserRequest<Cart>(`/api/v1/cart/items/${id}`, {
     method: "DELETE",
     schema: cartSchema,
@@ -112,7 +112,7 @@ export async function listOrders(
 }
 
 export async function getOrder(id: string): Promise<Order> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   return browserRequest<Order>(`/api/v1/orders/${parsedId}`, {
     method: "GET",
     schema: orderSchema,

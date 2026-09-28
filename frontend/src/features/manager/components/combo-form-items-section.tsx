@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/form";
 import { IntegerFieldInput } from "@/components/ui/integer-field-input";
 import { Label } from "@/components/ui/label";
+import { CATALOG_INTEGER_MAX } from "@/lib/validation/catalog";
 
 import type { ComboFormValues, ManagerCombo } from "../schemas";
 
@@ -125,6 +126,7 @@ export function ComboFormItemsSection({
                       <FormControl>
                         <IntegerFieldInput
                           aria-label={`Quantity for ${productName}`}
+                          max={CATALOG_INTEGER_MAX}
                           min={1}
                           {...quantityField}
                         />
@@ -157,6 +159,7 @@ export function ComboFormItemsSection({
           <IntegerFieldInput
             aria-label="Quantity to add"
             id={addQuantityId}
+            max={CATALOG_INTEGER_MAX}
             min={1}
             onChange={(value) => setDraftQuantity(value ?? 1)}
             value={draftQuantity}

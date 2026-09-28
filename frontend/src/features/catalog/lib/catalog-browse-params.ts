@@ -13,7 +13,6 @@ const catalogBrowseParamsSchema = z.object({
     .optional()
     .transform((value) => value?.trim() ?? ""),
   category: z
-    .string()
     .uuid()
     .optional()
     .or(z.literal("").transform(() => undefined)),

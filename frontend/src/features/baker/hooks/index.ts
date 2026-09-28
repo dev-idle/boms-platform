@@ -47,7 +47,7 @@ export function useBakerProductionOrders(
 }
 
 export function useBakerProductionOrder(id: string) {
-  const isValidId = z.string().uuid().safeParse(id).success;
+  const isValidId = z.uuid().safeParse(id).success;
   return useQuery({
     queryKey: bakerQueryKeys.productionOrder(id),
     queryFn: () => getBakerProductionOrder(id),

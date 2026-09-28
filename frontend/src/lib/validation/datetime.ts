@@ -2,9 +2,9 @@ import { z } from "zod";
 
 /**
  * RFC 3339 timestamps from the Go API (Fiber JSON) include a numeric offset
- * (e.g. `+07:00`). Zod's default `datetime()` only accepts UTC `Z` suffixes.
+ * (e.g. `+07:00`). `z.iso.datetime()` alone only accepts UTC `Z` suffixes.
  */
-export const apiDateTimeSchema = z.string().datetime({ offset: true });
+export const apiDateTimeSchema = z.iso.datetime({ offset: true });
 
 /**
  * The near end of a default promotion window. A combo or code a manager is

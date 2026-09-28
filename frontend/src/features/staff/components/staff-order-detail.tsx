@@ -48,7 +48,7 @@ function nextStatusActions(
 }
 
 export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
-  const isValidId = z.string().uuid().safeParse(orderId).success;
+  const isValidId = z.uuid().safeParse(orderId).success;
   const orderQuery = useStaffOrder(orderId);
   const patchStatus = usePatchStaffOrderStatus(orderId);
   const [cancelOpen, setCancelOpen] = useState(false);

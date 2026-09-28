@@ -11,7 +11,7 @@ const productImageItemSchema = z
   .string()
   .trim()
   .max(2048)
-  .url("Enter a valid URL")
+  .pipe(z.url("Enter a valid URL"))
   .refine(
     (value) => value.startsWith("http://") || value.startsWith("https://"),
     "URL must use HTTP or HTTPS",
@@ -22,7 +22,7 @@ const productImageItemSchema = z
     }
     if (!isCloudinaryDeliveryUrlInFolder(value)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: CLOUDINARY_UPLOAD_COPY.productImageValidation,
       });
     }
@@ -32,7 +32,7 @@ const productImageUrlResponseItemSchema = z
   .string()
   .trim()
   .max(2048)
-  .url()
+  .pipe(z.url())
   .refine(
     (value) => value.startsWith("http://") || value.startsWith("https://"),
     "URL must use HTTP or HTTPS",

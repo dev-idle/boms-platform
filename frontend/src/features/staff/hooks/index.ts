@@ -47,7 +47,7 @@ export function useStaffOrders(
 }
 
 export function useStaffOrder(id: string) {
-  const isValidId = z.string().uuid().safeParse(id).success;
+  const isValidId = z.uuid().safeParse(id).success;
   return useQuery({
     queryKey: staffQueryKeys.order(id),
     queryFn: () => getStaffOrder(id),

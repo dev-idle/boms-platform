@@ -12,16 +12,16 @@ const bakerOrderStatusSchema = orderStatusSchema.extract([
 ]);
 
 const bakerOrderCustomerSchema = z.object({
-  user_id: z.string().uuid(),
+  user_id: z.uuid(),
   email: z.string().min(1),
   display_name: z.string().nullable().optional(),
 });
 
 const bakerOrderItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   line_type: z.enum(["product", "combo"]),
-  product_id: z.string().uuid().nullable().optional(),
-  combo_id: z.string().uuid().nullable().optional(),
+  product_id: z.uuid().nullable().optional(),
+  combo_id: z.uuid().nullable().optional(),
   name: z.string().min(1),
   slug: catalogSlugSchema,
   quantity: z.number().int().min(1),
@@ -30,7 +30,7 @@ const bakerOrderItemSchema = z.object({
 });
 
 export const bakerOrderSummarySchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   status: bakerOrderStatusSchema,
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
@@ -40,7 +40,7 @@ export const bakerOrderSummarySchema = z.object({
 });
 
 export const bakerOrderSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   status: bakerOrderStatusSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),

@@ -51,7 +51,7 @@ export async function dalListCatalogProducts(
 }
 
 export async function dalGetCatalogProduct(id: string): Promise<CatalogProduct> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   const client = getBomsApiClient();
   return client.request<CatalogProduct>(
     `/api/v1/catalog/products/${parsedId}`,

@@ -5,10 +5,10 @@ import { orderStatusSchema } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 const cartItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   line_type: z.enum(["product", "combo"]),
-  product_id: z.string().uuid().nullable().optional(),
-  combo_id: z.string().uuid().nullable().optional(),
+  product_id: z.uuid().nullable().optional(),
+  combo_id: z.uuid().nullable().optional(),
   name: z.string(),
   slug: catalogSlugSchema,
   quantity: z.number().int().min(1).max(99),
@@ -25,7 +25,7 @@ const cartDiscountSchema = z.object({
 });
 
 export const cartSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   items: z.array(cartItemSchema),
   subtotal_cents: z.number().int().min(0),
   discount: cartDiscountSchema.nullable().optional(),
@@ -36,14 +36,14 @@ export const cartSchema = z.object({
 
 export const addCartItemInputSchema = z
   .object({
-    product_id: z.string().uuid().optional(),
-    combo_id: z.string().uuid().optional(),
+    product_id: z.uuid().optional(),
+    combo_id: z.uuid().optional(),
     quantity: z.number().int().min(1).max(99).default(1),
   })
   .refine(
     (value) =>
       (value.product_id !== undefined) !== (value.combo_id !== undefined),
-    { message: "Provide exactly one of product_id or combo_id" },
+    { error: "Provide exactly one of product_id or combo_id" },
   );
 
 export const updateCartItemInputSchema = z.object({
@@ -59,10 +59,10 @@ export const checkoutInputSchema = z.object({
 });
 
 const orderItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   line_type: z.enum(["product", "combo"]),
-  product_id: z.string().uuid().nullable().optional(),
-  combo_id: z.string().uuid().nullable().optional(),
+  product_id: z.uuid().nullable().optional(),
+  combo_id: z.uuid().nullable().optional(),
   name: z.string(),
   slug: catalogSlugSchema,
   quantity: z.number().int().min(1),
@@ -71,7 +71,7 @@ const orderItemSchema = z.object({
 });
 
 export const orderSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   status: orderStatusSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),
@@ -84,7 +84,7 @@ export const orderSchema = z.object({
 });
 
 export const orderSummarySchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   status: orderStatusSchema,
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),

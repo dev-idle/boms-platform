@@ -22,6 +22,7 @@ import {
 } from "@/constants/dashboard-form-copy";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
+import { CATALOG_INTEGER_MAX } from "@/lib/validation/catalog";
 
 import { useCreateCategory, useUpdateCategory } from "../hooks";
 import {
@@ -109,7 +110,7 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
                 label="Sort order"
                 optional
               >
-                <IntegerFieldInput min={0} {...field} />
+                <IntegerFieldInput max={CATALOG_INTEGER_MAX} min={0} {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>

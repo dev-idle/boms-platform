@@ -14,12 +14,12 @@ function cloudinaryUploadResultSchema(maxBytes: number) {
   return z
     .object({
       bytes: z.coerce.number().int().positive().optional(),
-      secure_url: z.string().url(),
+      secure_url: z.url(),
     })
     .superRefine((value, ctx) => {
       if (value.bytes != null && value.bytes > maxBytes) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: cloudinaryImageTooLargeMessage(maxBytes),
         });
       }

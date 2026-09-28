@@ -14,15 +14,15 @@ import {
 } from "@/lib/validation/cloudinary";
 
 export const catalogCategorySchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string().min(1),
   slug: catalogSlugSchema,
   sort_order: z.number().int().min(0),
 });
 
 export const catalogProductSchema = z.object({
-  id: z.string().uuid(),
-  category_id: z.string().uuid(),
+  id: z.uuid(),
+  category_id: z.uuid(),
   category_name: z.string(),
   category_slug: catalogSlugSchema,
   name: z.string().min(1),
@@ -40,12 +40,12 @@ export const catalogCategoriesListFilterSchema = z.object({
 export const catalogProductsListFilterSchema = z.object({
   page: z.number().int().min(1).default(1),
   page_size: z.number().int().min(1).max(100).default(CATALOG_PRODUCTS_PAGE_SIZE),
-  category_id: z.string().uuid().optional(),
+  category_id: z.uuid().optional(),
   search: z.string().max(100).optional().default(""),
 });
 
 const comboItemSchema = z.object({
-  product_id: z.string().uuid(),
+  product_id: z.uuid(),
   product_name: z.string().min(1),
   product_slug: catalogSlugSchema,
   quantity: z.number().int().min(1),
@@ -53,7 +53,7 @@ const comboItemSchema = z.object({
 });
 
 export const catalogComboSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string().min(1),
   slug: catalogSlugSchema,
   price_cents: z.number().int().min(0),

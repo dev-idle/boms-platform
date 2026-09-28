@@ -51,6 +51,6 @@ export function newPasswordZodString() {
       `Password must be at most ${PASSWORD_MAX_LENGTH} characters`,
     )
     .refine(meetsPasswordComplexity, {
-      message: fieldErrorFromTag("password_complexity"),
+      error: fieldErrorFromTag("password_complexity"),
     });
 }

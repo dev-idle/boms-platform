@@ -83,7 +83,7 @@ export async function listCatalogProducts(
 }
 
 export async function getCatalogProduct(id: string): Promise<CatalogProduct> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   return browserRequest<CatalogProduct>(`/api/v1/catalog/products/${parsedId}`, {
     method: "GET",
     schema: catalogProductSchema,

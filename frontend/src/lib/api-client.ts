@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { cookies } from "next/headers";
 import { connection } from "next/server";
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 
 import { parseApiEnvelope, parseResponseBody } from "@/lib/api-envelope";
 import { getServerEnv } from "@/lib/env";
@@ -123,7 +123,7 @@ export class BomsApiClient {
       if (!parsed.success) {
         throw new BomsValidationError(
           "Response failed Zod validation at DAL boundary",
-          parsed.error.flatten(),
+          z.flattenError(parsed.error),
         );
       }
       return parsed.data as T;

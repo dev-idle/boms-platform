@@ -81,7 +81,7 @@ export async function listCategories(
 }
 
 export async function getCategoryById(id: string): Promise<ManagerCategory> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   return browserRequest<ManagerCategory>(`/api/v1/manager/categories/${parsedId}`, {
     method: "GET",
     schema: managerCategorySchema,
@@ -103,7 +103,7 @@ export async function updateCategory(
   id: string,
   input: CategoryFormInput,
 ): Promise<ManagerCategory> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   const body = categoryFormSchema.parse(input);
   return browserRequest<ManagerCategory>(`/api/v1/manager/categories/${parsedId}`, {
     method: "PATCH",
@@ -113,7 +113,7 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   await browserRequestVoid(`/api/v1/manager/categories/${parsedId}`, {
     method: "DELETE",
   });
@@ -139,7 +139,7 @@ export async function listProducts(
 }
 
 export async function getProductById(id: string): Promise<ManagerProduct> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   return browserRequest<ManagerProduct>(`/api/v1/manager/products/${parsedId}`, {
     method: "GET",
     schema: managerProductSchema,
@@ -161,7 +161,7 @@ export async function updateProduct(
   id: string,
   input: ProductFormInput,
 ): Promise<ManagerProduct> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   const body = productFormSchema.parse(input);
   return browserRequest<ManagerProduct>(`/api/v1/manager/products/${parsedId}`, {
     method: "PATCH",
@@ -171,7 +171,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   await browserRequestVoid(`/api/v1/manager/products/${parsedId}`, {
     method: "DELETE",
   });
@@ -217,7 +217,7 @@ export async function listCombos(
 }
 
 export async function getComboById(id: string): Promise<ManagerCombo> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   return browserRequest<ManagerCombo>(`/api/v1/manager/combos/${parsedId}`, {
     method: "GET",
     schema: managerComboSchema,
@@ -237,7 +237,7 @@ export async function updateCombo(
   id: string,
   input: ComboFormInput,
 ): Promise<ManagerCombo> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   const body = comboFormSchema.parse(input);
   return browserRequest<ManagerCombo>(`/api/v1/manager/combos/${parsedId}`, {
     method: "PATCH",
@@ -247,7 +247,7 @@ export async function updateCombo(
 }
 
 export async function deleteCombo(id: string): Promise<void> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   await browserRequestVoid(`/api/v1/manager/combos/${parsedId}`, {
     method: "DELETE",
   });
@@ -275,7 +275,7 @@ export async function listDiscountCodes(
 export async function getDiscountCodeById(
   id: string,
 ): Promise<ManagerDiscountCode> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   return browserRequest<ManagerDiscountCode>(
     `/api/v1/manager/discount-codes/${parsedId}`,
     {
@@ -300,7 +300,7 @@ export async function updateDiscountCode(
   id: string,
   input: DiscountCodeFormInput,
 ): Promise<ManagerDiscountCode> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   const body = discountCodeFormSchema.parse(input);
   return browserRequest<ManagerDiscountCode>(
     `/api/v1/manager/discount-codes/${parsedId}`,
@@ -313,7 +313,7 @@ export async function updateDiscountCode(
 }
 
 export async function deleteDiscountCode(id: string): Promise<void> {
-  const parsedId = z.string().uuid().parse(id);
+  const parsedId = z.uuid().parse(id);
   await browserRequestVoid(`/api/v1/manager/discount-codes/${parsedId}`, {
     method: "DELETE",
   });

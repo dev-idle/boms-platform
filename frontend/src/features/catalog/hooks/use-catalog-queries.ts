@@ -36,7 +36,7 @@ export function useCatalogProduct(
   id: string,
   options?: { enabled?: boolean },
 ) {
-  const isValidId = z.string().uuid().safeParse(id).success;
+  const isValidId = z.uuid().safeParse(id).success;
   return useQuery({
     ...catalogProductQueryOptions(id, isValidId && (options?.enabled ?? true)),
     staleTime: 60_000,

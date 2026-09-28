@@ -3,7 +3,7 @@ import { z } from "zod";
 const apiErrorBodySchema = z.object({
   code: z.string(),
   message: z.string(),
-  details: z.record(z.string()).optional(),
+  details: z.record(z.string(), z.string()).optional(),
 });
 
 export const apiEnvelopeSchema = z.object({
@@ -11,11 +11,10 @@ export const apiEnvelopeSchema = z.object({
   data: z.unknown().optional(),
   error: apiErrorBodySchema.optional(),
   meta: z
-    .object({
+    .looseObject({
       request_id: z.string().optional(),
       trace_id: z.string().optional(),
     })
-    .passthrough()
     .optional(),
 });
 
@@ -37,6 +36,6 @@ export async function parseResponseBody(response: Response): Promise<unknown> {
 
 export function parseApiEnvelope(
   payload: unknown,
-): z.SafeParseReturnType<unknown, ApiEnvelope> {
+): z.ZodSafeParseResult<ApiEnvelope> {
   return apiEnvelopeSchema.safeParse(payload);
 }

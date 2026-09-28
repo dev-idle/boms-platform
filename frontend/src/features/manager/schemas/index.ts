@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { catalogSlugSchema } from "@/lib/validation/catalog";
+import { CATALOG_INTEGER_MAX, catalogSlugSchema } from "@/lib/validation/catalog";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 import {
   catalogImageUrlResponseSchema,
@@ -23,13 +23,15 @@ function requiredAmount(message: string, min: number, minMessage: string) {
   // default omits it — while the refine below is what makes it required. A
   // union would report `invalid_union` instead, which reads as "Invalid input".
   return z
-    .number({ invalid_type_error: message })
+    .number({ error: message })
     .int(minMessage)
     .min(min, minMessage)
     .optional()
-    .refine((value) => value !== undefined, { message })
+    .refine((value) => value !== undefined, { error: message })
     .transform((value) => value as number);
 }
+
+const NAME_MAX_MESSAGE = "Name must be at most 255 characters";
 
 const priceAmount = requiredAmount(
   "Price is required",
@@ -38,7 +40,7 @@ const priceAmount = requiredAmount(
 );
 
 export const managerCategorySchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string().min(1),
   slug: catalogSlugSchema,
   sort_order: z.number().int().min(0),
@@ -48,9 +50,13 @@ export const managerCategorySchema = z.object({
 });
 
 export const categoryFormSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(255),
+  name: z.string().trim().min(1, "Name is required").max(255, NAME_MAX_MESSAGE),
   slug: catalogSlugSchema,
-  sort_order: z.coerce.number().int().min(0),
+  sort_order: z
+    .number()
+    .int()
+    .min(0)
+    .max(CATALOG_INTEGER_MAX, "Sort order is too large"),
   is_active: z.boolean(),
 });
 
@@ -61,8 +67,8 @@ export const categoryListFilterSchema = z.object({
 });
 
 export const managerProductSchema = z.object({
-  id: z.string().uuid(),
-  category_id: z.string().uuid(),
+  id: z.uuid(),
+  category_id: z.uuid(),
   category_name: z.string().optional(),
   name: z.string().min(1),
   slug: catalogSlugSchema,
@@ -75,13 +81,13 @@ export const managerProductSchema = z.object({
 });
 
 export const productFormSchema = z.object({
-  category_id: z.string().uuid("Select a category"),
-  name: z.string().trim().min(1, "Name is required").max(255),
+  category_id: z.uuid("Select a category"),
+  name: z.string().trim().min(1, "Name is required").max(255, NAME_MAX_MESSAGE),
   slug: catalogSlugSchema,
   description: z
     .string()
     .trim()
-    .max(2000)
+    .max(2000, "Description must be at most 2000 characters")
     .optional()
     .nullable(),
   price_cents: priceAmount,
@@ -103,9 +109,7 @@ export type CategoryListFilterInput = z.infer<typeof categoryListFilterSchema>;
 export type ManagerProduct = z.infer<typeof managerProductSchema>;
 export type ProductFormInput = z.infer<typeof productFormSchema>;
 /** RHF defaults — `price_cents` unset on create until the manager enters it. */
-export type ProductFormValues = Omit<ProductFormInput, "price_cents"> & {
-  price_cents?: number;
-};
+export type ProductFormValues = z.input<typeof productFormSchema>;
 export type ProductListFilterInput = z.infer<typeof productListFilterSchema>;
 
 export type CategoriesListResult = {
@@ -131,7 +135,7 @@ export type ProductsListResult = {
 };
 
 const comboItemResponseSchema = z.object({
-  product_id: z.string().uuid(),
+  product_id: z.uuid(),
   product_name: z.string().min(1),
   product_slug: catalogSlugSchema,
   quantity: z.number().int().min(1),
@@ -139,12 +143,16 @@ const comboItemResponseSchema = z.object({
 });
 
 const comboItemFormSchema = z.object({
-  product_id: z.string().uuid("Select a product"),
-  quantity: z.coerce.number().int().min(1, "Quantity must be at least 1"),
+  product_id: z.uuid("Select a product"),
+  quantity: z
+    .number()
+    .int()
+    .min(1, "Quantity must be at least 1")
+    .max(CATALOG_INTEGER_MAX, "Quantity is too large"),
 });
 
 export const managerComboSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string().min(1),
   slug: catalogSlugSchema,
   price_cents: z.number().int().min(0),
@@ -159,7 +167,7 @@ export const managerComboSchema = z.object({
 
 export const comboFormSchema = z
   .object({
-    name: z.string().trim().min(1, "Name is required").max(255),
+    name: z.string().trim().min(1, "Name is required").max(255, NAME_MAX_MESSAGE),
     slug: catalogSlugSchema,
     price_cents: priceAmount,
     image_url: catalogImageUrlSchema,
@@ -169,11 +177,11 @@ export const comboFormSchema = z
     items: z.array(comboItemFormSchema).min(1, "Add at least one product"),
   })
   .refine((data) => isValidComboBundle(data.items), {
-    message: COMBO_BUNDLE_MIN_MESSAGE,
+    error: COMBO_BUNDLE_MIN_MESSAGE,
     path: ["items"],
   })
   .refine((data) => new Date(data.ends_at) > new Date(data.starts_at), {
-    message: "End time must be after start time",
+    error: "End time must be after start time",
     path: ["ends_at"],
   });
 
@@ -189,7 +197,7 @@ export const DISCOUNT_TYPE = {
 } as const;
 
 export const managerDiscountCodeSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   code: z.string().min(3),
   discount_type: z.enum([DISCOUNT_TYPE.percent, DISCOUNT_TYPE.fixedCents]),
   value: z.number().int().min(1),
@@ -206,33 +214,28 @@ export const managerDiscountCodeSchema = z.object({
 
 export const discountCodeFormSchema = z
   .object({
-    code: z.string().trim().min(3, "Code is required").max(64),
+    code: z
+      .string()
+      .trim()
+      .min(3, "Code is required")
+      .max(64, "Code must be at most 64 characters"),
     discount_type: z.enum([DISCOUNT_TYPE.percent, DISCOUNT_TYPE.fixedCents]),
     value: requiredAmount("Value is required", 1, "Value must be at least 1"),
-    min_order_cents: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .nullable(),
-    max_uses: z.coerce
+    min_order_cents: z.number().int().min(0).optional().nullable(),
+    max_uses: z
       .number()
       .int()
       .min(1)
+      .max(CATALOG_INTEGER_MAX, "Maximum uses is too large")
       .optional()
       .nullable(),
-    max_discount_cents: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .optional()
-      .nullable(),
+    max_discount_cents: z.number().int().min(1).optional().nullable(),
     starts_at: apiDateTimeSchema,
     ends_at: apiDateTimeSchema,
     is_active: z.boolean(),
   })
   .refine((data) => new Date(data.ends_at) > new Date(data.starts_at), {
-    message: "End time must be after start time",
+    error: "End time must be after start time",
     path: ["ends_at"],
   })
   .refine(
@@ -240,7 +243,7 @@ export const discountCodeFormSchema = z
       data.discount_type !== DISCOUNT_TYPE.percent ||
       (data.value >= 1 && data.value <= 100),
     {
-      message: "Percent must be between 1 and 100",
+      error: "Percent must be between 1 and 100",
       path: ["value"],
     },
   )
@@ -249,7 +252,7 @@ export const discountCodeFormSchema = z
       data.discount_type !== DISCOUNT_TYPE.fixedCents ||
       data.max_discount_cents == null,
     {
-      message: "Max discount cap applies to percent discounts only",
+      error: "Max discount cap applies to percent discounts only",
       path: ["max_discount_cents"],
     },
   );
@@ -263,17 +266,13 @@ export const discountCodeListFilterSchema = z.object({
 export type ManagerCombo = z.infer<typeof managerComboSchema>;
 export type ComboFormInput = z.infer<typeof comboFormSchema>;
 /** RHF defaults — `price_cents` unset on create until the manager enters it. */
-export type ComboFormValues = Omit<ComboFormInput, "price_cents"> & {
-  price_cents?: number;
-};
+export type ComboFormValues = z.input<typeof comboFormSchema>;
 export type ComboListFilterInput = z.infer<typeof comboListFilterSchema>;
 
 export type ManagerDiscountCode = z.infer<typeof managerDiscountCodeSchema>;
 export type DiscountCodeFormInput = z.infer<typeof discountCodeFormSchema>;
 /** RHF defaults — `value` unset on create until the manager enters it. */
-export type DiscountCodeFormValues = Omit<DiscountCodeFormInput, "value"> & {
-  value?: number;
-};
+export type DiscountCodeFormValues = z.input<typeof discountCodeFormSchema>;
 export type DiscountCodeListFilterInput = z.infer<
   typeof discountCodeListFilterSchema
 >;

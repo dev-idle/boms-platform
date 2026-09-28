@@ -15,6 +15,12 @@ describe("apiDateTimeSchema", () => {
     ).toBe(true);
   });
 
+  it("accepts the nanosecond precision Go writes with RFC3339Nano", () => {
+    expect(
+      apiDateTimeSchema.safeParse("2026-06-17T09:50:00.123456789+07:00").success,
+    ).toBe(true);
+  });
+
   it("rejects datetime-local without offset", () => {
     expect(apiDateTimeSchema.safeParse("2026-06-17T09:50:00").success).toBe(
       false,
