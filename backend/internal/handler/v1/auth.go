@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/boms/backend/internal/config"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -122,10 +123,10 @@ func toUserResponse(u *domainuser.User) dto.UserResponse {
 }
 
 func writeSessionCookies(c fiber.Ctx, cfg *config.Config, token string, role domainuser.Role) {
-	clearLegacyRefreshCookie(c, cfg)
 	ttl := int(cfg.JWT.RefreshTTL.Seconds())
 	c.Cookie(refreshCookie(cfg, token, ttl))
 	c.Cookie(roleCookie(cfg, string(role), ttl))
+	clearLegacyRefreshCookie(c, cfg)
 }
 
 func clearSessionCookies(c fiber.Ctx, cfg *config.Config) {
@@ -134,12 +135,26 @@ func clearSessionCookies(c fiber.Ctx, cfg *config.Config) {
 	clearLegacyRefreshCookie(c, cfg)
 }
 
+// clearLegacyRefreshCookie expires the refresh cookie an older build set under
+// AuthCookieLegacyPath. The response keeps one cookie per name, so a Cookie()
+// call here would replace the site-wide refresh cookie set just before it — and
+// logout would then leave the live token in the browser. The expiry goes out as
+// its own Set-Cookie header instead.
 func clearLegacyRefreshCookie(c fiber.Ctx, cfg *config.Config) {
-	c.Cookie(refreshCookieAtPath(cfg, "", -1, middleware.AuthCookieLegacyPath))
+	legacy := &http.Cookie{
+		Name:     cfg.Cookie.Name,
+		Path:     middleware.AuthCookieLegacyPath,
+		Domain:   cfg.Cookie.Domain,
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   cfg.Cookie.Secure,
+		SameSite: http.SameSiteLaxMode,
+	}
+	c.Response().Header.Add(fiber.HeaderSetCookie, legacy.String())
 }
 
 func refreshCookie(cfg *config.Config, token string, maxAge int) *fiber.Cookie {
-	return refreshCookieAtPath(cfg, token, maxAge, middleware.AuthCookiePath)
+	return cookieAtPath(cfg, token, maxAge, middleware.AuthCookiePath)
 }
 
 // roleCookie lets the Next.js proxy send a returning visitor straight to their
@@ -149,10 +164,6 @@ func roleCookie(cfg *config.Config, role string, maxAge int) *fiber.Cookie {
 	cookie := cookieAtPath(cfg, role, maxAge, middleware.AuthCookiePath)
 	cookie.Name = cfg.Cookie.RoleName
 	return cookie
-}
-
-func refreshCookieAtPath(cfg *config.Config, token string, maxAge int, path string) *fiber.Cookie {
-	return cookieAtPath(cfg, token, maxAge, path)
 }
 
 func cookieAtPath(cfg *config.Config, value string, maxAge int, path string) *fiber.Cookie {
