@@ -154,6 +154,7 @@ func toStaffOrderCustomer(row *port.StaffOrderListRow) dto.StaffOrderCustomerRes
 		UserID:      row.Order.UserID.String(),
 		Email:       row.CustomerEmail,
 		DisplayName: row.CustomerDisplayName,
+		Phone:       row.CustomerPhone,
 	}
 }
 

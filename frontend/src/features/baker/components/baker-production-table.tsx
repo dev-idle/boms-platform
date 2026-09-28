@@ -92,8 +92,7 @@ export function BakerProductionTable() {
             </div>
             <ul className="baker-production-list">
               {orders.map((order) => {
-                const customerName =
-                  order.customer.display_name ?? order.customer.email;
+                const customerName = order.customer.display_name || "Customer";
                 return (
                   <li key={order.id} className="baker-production-row">
                     <p className="baker-production-row__time">

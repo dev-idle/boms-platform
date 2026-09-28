@@ -83,12 +83,11 @@ export function BakerProductionOrderDetail({
           />
         </div>
         <p className="text-order-code">{order.id}</p>
-        <p className="text-sm text-muted">
-          Customer:{" "}
-          {order.customer.display_name
-            ? `${order.customer.display_name} | ${order.customer.email}`
-            : order.customer.email}
-        </p>
+        {order.customer.display_name ? (
+          <p className="text-sm text-muted">
+            Customer: {order.customer.display_name}
+          </p>
+        ) : null}
 
         <ul className="dashboard-order-line-items">
           {order.items.map((item) => (

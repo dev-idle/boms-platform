@@ -15,6 +15,7 @@ import { isApplyingOrderStatus, type OrderStatus } from "@/lib/schemas/order";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
+import { formatVietnamPhone } from "@/lib/validation/phone";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 
 import { usePatchStaffOrderStatus, useStaffOrder } from "../hooks";
@@ -97,9 +98,13 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
           <p className="text-order-code">{order.id}</p>
           <p className="text-sm text-muted">
             Customer:{" "}
-            {order.customer.display_name
-              ? `${order.customer.display_name} | ${order.customer.email}`
-              : order.customer.email}
+            {[
+              order.customer.display_name,
+              order.customer.email,
+              formatVietnamPhone(order.customer.phone),
+            ]
+              .filter(Boolean)
+              .join(" | ")}
           </p>
           {order.discount_code_snapshot ? (
             <p className="text-sm text-muted">

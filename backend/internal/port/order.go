@@ -50,6 +50,7 @@ type StaffOrderListRow struct {
 	Order               domainorder.Order
 	CustomerEmail       string
 	CustomerDisplayName *string
+	CustomerPhone       *string
 }
 
 type BakerListOrdersParams struct {

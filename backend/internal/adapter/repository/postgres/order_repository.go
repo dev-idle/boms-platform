@@ -345,6 +345,7 @@ func mapStaffListOrdersRow(row sqlcgen.StaffListOrdersRow) *port.StaffOrderListR
 		row.UpdatedAt,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
+		row.CustomerPhone,
 	)
 }
 
@@ -363,6 +364,7 @@ func mapStaffGetOrderByIDRow(row sqlcgen.StaffGetOrderByIDRow) *port.StaffOrderL
 		row.UpdatedAt,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
+		row.CustomerPhone,
 	)
 }
 
@@ -381,6 +383,7 @@ func mapBakerListProductionOrdersRow(row sqlcgen.BakerListProductionOrdersRow) *
 		row.UpdatedAt,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
+		nil,
 	)
 }
 
@@ -394,6 +397,7 @@ func mapStaffOrderJoined(
 	createdAt, updatedAt time.Time,
 	customerEmail string,
 	customerDisplayName *string,
+	customerPhone *string,
 ) *port.StaffOrderListRow {
 	return &port.StaffOrderListRow{
 		Order: domainorder.Order{
@@ -411,6 +415,7 @@ func mapStaffOrderJoined(
 		},
 		CustomerEmail:       customerEmail,
 		CustomerDisplayName: customerDisplayName,
+		CustomerPhone:       customerPhone,
 	}
 }
 

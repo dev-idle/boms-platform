@@ -78,7 +78,7 @@ func (u *BakerOrderUsecase) List(
 			Status:     string(row.Order.Status),
 			TotalCents: row.Order.TotalCents,
 			ItemCount:  itemCounts[row.Order.ID],
-			Customer:   toStaffOrderCustomer(&row),
+			Customer:   toBakerOrderCustomer(&row),
 			PickupAt:   row.Order.PickupAt,
 			CreatedAt:  row.Order.CreatedAt,
 		})
@@ -164,6 +164,10 @@ func isBakerVisibleStatus(status domainorder.Status) bool {
 	}
 }
 
+func toBakerOrderCustomer(row *port.StaffOrderListRow) dto.BakerOrderCustomerResponse {
+	return dto.BakerOrderCustomerResponse{DisplayName: row.CustomerDisplayName}
+}
+
 func toBakerOrderResponse(row *port.StaffOrderListRow, items []domainorder.Item) *dto.BakerOrderResponse {
 	return &dto.BakerOrderResponse{
 		ID:                   row.Order.ID.String(),
@@ -174,7 +178,7 @@ func toBakerOrderResponse(row *port.StaffOrderListRow, items []domainorder.Item)
 		DiscountCodeSnapshot: row.Order.DiscountCodeSnapshot,
 		PickupAt:             row.Order.PickupAt,
 		Items:                mapOrderItemsToDTO(items),
-		Customer:             toStaffOrderCustomer(row),
+		Customer:             toBakerOrderCustomer(row),
 		CreatedAt:            row.Order.CreatedAt,
 		UpdatedAt:            row.Order.UpdatedAt,
 	}

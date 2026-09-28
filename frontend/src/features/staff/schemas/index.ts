@@ -8,6 +8,7 @@ const staffOrderCustomerSchema = z.object({
   user_id: z.uuid(),
   email: z.string().min(1),
   display_name: z.string().nullable().optional(),
+  phone: z.string().optional(),
 });
 
 const staffOrderItemSchema = z.object({

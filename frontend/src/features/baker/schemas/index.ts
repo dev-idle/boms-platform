@@ -11,10 +11,9 @@ const bakerOrderStatusSchema = orderStatusSchema.extract([
   "ready",
 ]);
 
+/** The kitchen gets a name for the order and no way to contact the customer. */
 const bakerOrderCustomerSchema = z.object({
-  user_id: z.uuid(),
-  email: z.string().min(1),
-  display_name: z.string().nullable().optional(),
+  display_name: z.string().optional(),
 });
 
 const bakerOrderItemSchema = z.object({
