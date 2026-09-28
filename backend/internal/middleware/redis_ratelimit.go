@@ -146,6 +146,18 @@ func SelfWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fi
 	}, cfg.SelfWriteMax, cfg.SelfWriteWindow, true)
 }
 
+// DiscountAttemptRateLimit limits how often one customer may try a discount
+// code. Every attempt answers whether the code exists, so without a cap the
+// endpoint would let anyone walk the code space.
+func DiscountAttemptRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":discount_attempt"
+		}
+		return "rl:ip:" + ClientIP(c) + ":discount_attempt"
+	}, cfg.DiscountAttemptMax, cfg.DiscountAttemptWindow, true)
+}
+
 // OrderWriteRateLimit limits order mutations (checkout, status transitions) per user.
 func OrderWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c fiber.Ctx) string {

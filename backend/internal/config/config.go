@@ -67,24 +67,26 @@ type RateLimitConfig struct {
 
 // RateLimitRedisConfig tunes Redis sliding-window limiters on auth and admin routes.
 type RateLimitRedisConfig struct {
-	AuthAttemptMax     int
-	AuthAttemptWindow  time.Duration
-	AuthRefreshMax     int
-	AuthRefreshWindow  time.Duration
-	AuthLogoutMax      int
-	AuthLogoutWindow   time.Duration
-	AdminWriteMax      int
-	AdminWriteWindow   time.Duration
-	ManagerWriteMax    int
-	ManagerWriteWindow time.Duration
-	OrderWriteMax      int
-	OrderWriteWindow   time.Duration
-	SelfWriteMax       int
-	SelfWriteWindow    time.Duration
-	ManagerMediaMax    int
-	ManagerMediaWindow time.Duration
-	AuthUserMax        int
-	AuthUserWindow     time.Duration
+	AuthAttemptMax        int
+	AuthAttemptWindow     time.Duration
+	AuthRefreshMax        int
+	AuthRefreshWindow     time.Duration
+	AuthLogoutMax         int
+	AuthLogoutWindow      time.Duration
+	AdminWriteMax         int
+	AdminWriteWindow      time.Duration
+	ManagerWriteMax       int
+	ManagerWriteWindow    time.Duration
+	OrderWriteMax         int
+	OrderWriteWindow      time.Duration
+	SelfWriteMax          int
+	SelfWriteWindow       time.Duration
+	ManagerMediaMax       int
+	ManagerMediaWindow    time.Duration
+	AuthUserMax           int
+	AuthUserWindow        time.Duration
+	DiscountAttemptMax    int
+	DiscountAttemptWindow time.Duration
 }
 
 type PostgresConfig struct {
@@ -260,24 +262,26 @@ func Load() (*Config, error) {
 			WindowDuration: v.GetDuration("rate_limit.window"),
 		},
 		RateRedis: RateLimitRedisConfig{
-			AuthAttemptMax:     v.GetInt("rate_limit.redis.auth_attempt_max"),
-			AuthAttemptWindow:  v.GetDuration("rate_limit.redis.auth_attempt_window"),
-			AuthRefreshMax:     v.GetInt("rate_limit.redis.auth_refresh_max"),
-			AuthRefreshWindow:  v.GetDuration("rate_limit.redis.auth_refresh_window"),
-			AuthLogoutMax:      v.GetInt("rate_limit.redis.auth_logout_max"),
-			AuthLogoutWindow:   v.GetDuration("rate_limit.redis.auth_logout_window"),
-			AdminWriteMax:      v.GetInt("rate_limit.redis.admin_write_max"),
-			AdminWriteWindow:   v.GetDuration("rate_limit.redis.admin_write_window"),
-			ManagerWriteMax:    v.GetInt("rate_limit.redis.manager_write_max"),
-			ManagerWriteWindow: v.GetDuration("rate_limit.redis.manager_write_window"),
-			OrderWriteMax:      v.GetInt("rate_limit.redis.order_write_max"),
-			OrderWriteWindow:   v.GetDuration("rate_limit.redis.order_write_window"),
-			SelfWriteMax:       v.GetInt("rate_limit.redis.self_write_max"),
-			SelfWriteWindow:    v.GetDuration("rate_limit.redis.self_write_window"),
-			ManagerMediaMax:    v.GetInt("rate_limit.redis.manager_media_max"),
-			ManagerMediaWindow: v.GetDuration("rate_limit.redis.manager_media_window"),
-			AuthUserMax:        v.GetInt("rate_limit.redis.auth_user_max"),
-			AuthUserWindow:     v.GetDuration("rate_limit.redis.auth_user_window"),
+			AuthAttemptMax:        v.GetInt("rate_limit.redis.auth_attempt_max"),
+			AuthAttemptWindow:     v.GetDuration("rate_limit.redis.auth_attempt_window"),
+			AuthRefreshMax:        v.GetInt("rate_limit.redis.auth_refresh_max"),
+			AuthRefreshWindow:     v.GetDuration("rate_limit.redis.auth_refresh_window"),
+			AuthLogoutMax:         v.GetInt("rate_limit.redis.auth_logout_max"),
+			AuthLogoutWindow:      v.GetDuration("rate_limit.redis.auth_logout_window"),
+			AdminWriteMax:         v.GetInt("rate_limit.redis.admin_write_max"),
+			AdminWriteWindow:      v.GetDuration("rate_limit.redis.admin_write_window"),
+			ManagerWriteMax:       v.GetInt("rate_limit.redis.manager_write_max"),
+			ManagerWriteWindow:    v.GetDuration("rate_limit.redis.manager_write_window"),
+			OrderWriteMax:         v.GetInt("rate_limit.redis.order_write_max"),
+			OrderWriteWindow:      v.GetDuration("rate_limit.redis.order_write_window"),
+			SelfWriteMax:          v.GetInt("rate_limit.redis.self_write_max"),
+			SelfWriteWindow:       v.GetDuration("rate_limit.redis.self_write_window"),
+			ManagerMediaMax:       v.GetInt("rate_limit.redis.manager_media_max"),
+			ManagerMediaWindow:    v.GetDuration("rate_limit.redis.manager_media_window"),
+			AuthUserMax:           v.GetInt("rate_limit.redis.auth_user_max"),
+			AuthUserWindow:        v.GetDuration("rate_limit.redis.auth_user_window"),
+			DiscountAttemptMax:    v.GetInt("rate_limit.redis.discount_attempt_max"),
+			DiscountAttemptWindow: v.GetDuration("rate_limit.redis.discount_attempt_window"),
 		},
 		Postgres: PostgresConfig{
 			URL:                v.GetString("postgres.url"),
@@ -393,6 +397,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.redis.manager_media_window", time.Minute)
 	v.SetDefault("rate_limit.redis.auth_user_max", 60)
 	v.SetDefault("rate_limit.redis.auth_user_window", time.Minute)
+	v.SetDefault("rate_limit.redis.discount_attempt_max", 10)
+	v.SetDefault("rate_limit.redis.discount_attempt_window", 15*time.Minute)
 
 	// No default DB URL: use Neon (or any Postgres) via POSTGRES_URL in .env / environment.
 	v.SetDefault("postgres.url", "")
@@ -616,6 +622,7 @@ func (c RateLimitRedisConfig) validate() error {
 		{"rate_limit.redis.self_write", c.SelfWriteMax, c.SelfWriteWindow},
 		{"rate_limit.redis.manager_media", c.ManagerMediaMax, c.ManagerMediaWindow},
 		{"rate_limit.redis.auth_user", c.AuthUserMax, c.AuthUserWindow},
+		{"rate_limit.redis.discount_attempt", c.DiscountAttemptMax, c.DiscountAttemptWindow},
 	}
 	for _, chk := range checks {
 		if chk.max < 1 {

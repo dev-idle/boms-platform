@@ -241,7 +241,7 @@ features/<slice>/
 | Password attack | Argon2id (params from config); timing-safe dummy hash on login |
 | Replay | request-id propagation; refresh rotation |
 | CSRF | SameSite=Lax cookie, internal proxy secret on inbound headers, sanitize `X-User-Role`, `X-Request-ID`, `X-Auth-Hint` |
-| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout + staff/baker status (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + self-service account writes — `PATCH /me`, `PATCH /me/password`, `DELETE /me` (10/min, `RATE_LIMIT_REDIS_SELF_WRITE_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) |
+| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout + staff/baker status (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + self-service account writes — `PATCH /me`, `PATCH /me/password`, `DELETE /me` (10/min, `RATE_LIMIT_REDIS_SELF_WRITE_*`) + discount code attempts per customer — `PUT /cart/discount` (10/15 min, `RATE_LIMIT_REDIS_DISCOUNT_ATTEMPT_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) |
 | RBAC | `RequireRole(Admin)` on `/admin/*`; admin can't modify self; staff self-update only fills `full_name`, `phone` |
 | Forced password change | `must_change_password` flag → `RequirePasswordChanged` middleware blocks all routes except `/me` GET and `/me/password` PATCH |
 | Audit | All admin mutations write to `audit_logs` with actor/target/before/after |

@@ -205,7 +205,7 @@ func main() {
 	customerCart.Post("/items", cartHandler.AddItem)
 	customerCart.Patch("/items/:id", cartHandler.UpdateItem)
 	customerCart.Delete("/items/:id", cartHandler.RemoveItem)
-	customerCart.Put("/discount", cartHandler.ApplyDiscount)
+	customerCart.Put("/discount", middleware.DiscountAttemptRateLimit(rdb, cfg.RateRedis), cartHandler.ApplyDiscount)
 	customerCart.Delete("/discount", cartHandler.RemoveDiscount)
 
 	customerOrders := customerSessionGroup(apiV1, "/orders", tokenSigner, sessionStore, passwordChanged)
