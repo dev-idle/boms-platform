@@ -1,4 +1,4 @@
-# BOMS — Architecture Spec (Senior 2026+)
+# BOMS — Architecture Spec
 
 Authoritative reference for backend (Go/Fiber, Hexagonal) and frontend (Next.js App Router, Feature-Sliced). Derived from the current codebase.
 
