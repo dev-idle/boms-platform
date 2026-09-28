@@ -12,7 +12,7 @@ import {
   FORWARDING_HEADERS,
 } from "@/constants/http-headers";
 
-import { resolveClientIp } from "./client-ip";
+import { stampedClientIp } from "./client-ip";
 
 const INTERNAL_SECRET_HEADER = "X-Internal-Secret";
 const REQUEST_TIMEOUT_MS = 25_000;
@@ -96,8 +96,9 @@ export async function proxyRequestToBackend(
   headers.set(INTERNAL_SECRET_HEADER, env.INTERNAL_PROXY_SECRET);
 
   // The API sees only this proxy, so it reads the visitor from here: its
-  // rate-limit buckets and audit rows would otherwise all say "the BFF".
-  const clientIp = resolveClientIp(request.headers);
+  // rate-limit buckets and audit rows would otherwise all say "the BFF". The
+  // edge proxy resolved the address before it dropped the forwarding headers.
+  const clientIp = stampedClientIp(request.headers);
   if (clientIp) {
     headers.set(CLIENT_IP_HEADER, clientIp);
   }

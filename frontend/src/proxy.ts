@@ -4,12 +4,13 @@ import { NextResponse } from "next/server";
 import type { NextProxy, NextRequest } from "next/server";
 
 import { AUTH_REFRESH_COOKIE, AUTH_ROLE_COOKIE } from "@/constants/cookies";
-import { FORWARDING_HEADERS } from "@/constants/http-headers";
+import { CLIENT_IP_HEADER, FORWARDING_HEADERS } from "@/constants/http-headers";
 import type { UserRole } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
 import { getBackendOrigin, getServerEnv } from "@/lib/env";
 import { isProtectedPath } from "@/lib/routing/role-routes";
 import { parseRoleHint, signedInLanding } from "@/lib/routing/signed-in-landing";
+import { resolveClientIp } from "@/lib/server/client-ip";
 import { validateNext } from "@/lib/validate-next";
 
 function isApiPath(pathname: string): boolean {
@@ -36,7 +37,8 @@ function stripUntrustedInboundHeaders(request: NextRequest): Headers {
     "x-request-id",
     "x-auth-hint",
     // The edge owns these: a visitor that could set them would pick its own
-    // rate-limit bucket and the address written into audit rows.
+    // rate-limit bucket and the address written into audit rows. They are read
+    // once, into X-Client-IP, and nothing downstream sees the originals.
     ...FORWARDING_HEADERS,
   ] as const;
   for (const name of blocked) {
@@ -121,6 +123,13 @@ export const proxy: NextProxy = (request) => {
   }
 
   const requestHeaders = stripUntrustedInboundHeaders(request);
+  // The edge's report of the visitor is in the forwarding headers just dropped:
+  // resolve it from the original request and pass on only the checked address,
+  // which the BFF forwards to the API for rate limits and audit rows.
+  const clientIp = resolveClientIp(request.headers);
+  if (clientIp) {
+    requestHeaders.set(CLIENT_IP_HEADER, clientIp);
+  }
   requestHeaders.set("X-Request-ID", requestId);
   requestHeaders.set("X-Auth-Hint", authHint);
   // Signed shared secret — verified by Fiber middleware on every /api/v1/* request.

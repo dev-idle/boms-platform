@@ -1,4 +1,4 @@
-import { EDGE_CLIENT_IP_HEADER } from "@/constants/http-headers";
+import { CLIENT_IP_HEADER, EDGE_CLIENT_IP_HEADER } from "@/constants/http-headers";
 
 /** Resolving the visitor's address from what the hosting edge reported. */
 
@@ -43,4 +43,16 @@ export function resolveClientIp(headers: Headers): string | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * The address `proxy.ts` stamped on this request, or undefined.
+ *
+ * The edge proxy strips any copy a browser sent and runs on every `/api/*` path,
+ * so a value here is the edge's report resolved above — checked again so a
+ * malformed one can never reach the API.
+ */
+export function stampedClientIp(headers: Headers): string | undefined {
+  const value = headers.get(CLIENT_IP_HEADER)?.trim();
+  return value && isAddress(value) ? value : undefined;
 }

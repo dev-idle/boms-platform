@@ -36,29 +36,29 @@ afterEach(() => {
 });
 
 describe("proxyRequestToBackend", () => {
-  it("stamps the visitor's address for the API", async () => {
-    const headers = await forwardedHeaders({ "x-real-ip": "203.0.113.7" });
+  it("forwards the address the edge proxy stamped", async () => {
+    const headers = await forwardedHeaders({ "x-client-ip": "203.0.113.7" });
 
     expect(headers.get("x-client-ip")).toBe("203.0.113.7");
   });
 
-  it("drops what the browser claims about its own address", async () => {
-    // The API trusts this proxy, so a forwarded forgery would let a visitor pick
-    // its own rate-limit bucket and the address written into audit rows.
+  it("never reads or forwards the raw forwarding headers", async () => {
+    // proxy.ts resolved them into X-Client-IP already; reading them again here
+    // would take a value the edge proxy dropped.
     const headers = await forwardedHeaders({
-      "x-client-ip": "9.9.9.9",
       "x-forwarded-for": "9.9.9.9",
-      "x-real-ip": "203.0.113.7",
+      "x-real-ip": "9.9.9.9",
       forwarded: "for=9.9.9.9",
     });
 
-    expect(headers.get("x-client-ip")).toBe("203.0.113.7");
+    expect(headers.get("x-client-ip")).toBeNull();
     expect(headers.get("x-forwarded-for")).toBeNull();
+    expect(headers.get("x-real-ip")).toBeNull();
     expect(headers.get("forwarded")).toBeNull();
   });
 
-  it("sends no address when the edge reported none", async () => {
-    const headers = await forwardedHeaders({ "x-client-ip": "9.9.9.9" });
+  it("sends no address when the stamp is not one", async () => {
+    const headers = await forwardedHeaders({ "x-client-ip": "1.2.3.4 OR 1=1" });
 
     expect(headers.get("x-client-ip")).toBeNull();
   });
