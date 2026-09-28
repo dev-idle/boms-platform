@@ -1221,8 +1221,7 @@ type Querier interface {
 	//    o.created_at,
 	//    o.updated_at,
 	//    u.email AS customer_email,
-	//    cp.display_name AS customer_display_name,
-	//    cp.phone AS customer_phone
+	//    cp.display_name AS customer_display_name
 	//  FROM orders o
 	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
