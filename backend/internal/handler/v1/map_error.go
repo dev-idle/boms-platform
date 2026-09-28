@@ -12,12 +12,12 @@ import (
 	domainuser "github.com/boms/backend/internal/domain/user"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/usecase"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // writeMapUsecaseError maps known domain and AppError values to HTTP responses.
 // Unmapped errors propagate to fiber.ErrorHandler as internal_error with logging.
-func writeMapUsecaseError(c *fiber.Ctx, err error) error {
+func writeMapUsecaseError(c fiber.Ctx, err error) error {
 	if err == nil {
 		return nil
 	}

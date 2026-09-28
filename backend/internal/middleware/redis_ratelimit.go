@@ -10,7 +10,7 @@ import (
 	"github.com/boms/backend/internal/config"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -35,12 +35,12 @@ return 1
 
 // RedisRateLimit returns middleware that rate-limits using a Redis sliding window.
 // When failOpen is false, Redis errors return 503 (used for auth brute-force paths).
-func RedisRateLimit(rdb *goredis.Client, keyFn func(*fiber.Ctx) string, max int, window time.Duration, failOpen bool) fiber.Handler {
+func RedisRateLimit(rdb *goredis.Client, keyFn func(fiber.Ctx) string, max int, window time.Duration, failOpen bool) fiber.Handler {
 	windowMs := window.Milliseconds()
 	if windowMs < 1 {
 		windowMs = 1000
 	}
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		if rdb == nil {
 			return c.Next()
 		}
@@ -48,7 +48,7 @@ func RedisRateLimit(rdb *goredis.Client, keyFn func(*fiber.Ctx) string, max int,
 		if key == "" {
 			return c.Next()
 		}
-		ctx := c.UserContext()
+		ctx := c.Context()
 		if ctx == nil {
 			ctx = context.Background()
 		}
@@ -85,28 +85,28 @@ func RedisRateLimit(rdb *goredis.Client, keyFn func(*fiber.Ctx) string, max int,
 
 // AuthAttemptRateLimit limits login/register attempts per IP (fail-closed when Redis is down).
 func AuthAttemptRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
-	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
 		return "rl:ip:" + ClientIP(c) + ":auth_attempt"
 	}, cfg.AuthAttemptMax, cfg.AuthAttemptWindow, false)
 }
 
 // AuthRefreshRateLimit limits refresh calls per IP.
 func AuthRefreshRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
-	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
 		return "rl:ip:" + ClientIP(c) + ":auth_refresh"
 	}, cfg.AuthRefreshMax, cfg.AuthRefreshWindow, true)
 }
 
 // AuthLogoutRateLimit limits logout calls per IP.
 func AuthLogoutRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
-	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
 		return "rl:ip:" + ClientIP(c) + ":auth_logout"
 	}, cfg.AuthLogoutMax, cfg.AuthLogoutWindow, true)
 }
 
 // AdminWriteRateLimit limits admin write operations per user.
 func AdminWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
-	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":admin_write"
 		}
@@ -116,7 +116,7 @@ func AdminWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) f
 
 // ManagerMediaRateLimit limits Cloudinary signature issuance per manager (separate from catalog writes).
 func ManagerMediaRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
-	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":manager_media"
 		}
@@ -126,7 +126,7 @@ func ManagerMediaRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig)
 
 // ManagerWriteRateLimit limits manager catalog write operations per user.
 func ManagerWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
-	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":manager_write"
 		}
@@ -138,7 +138,7 @@ func ManagerWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig)
 // phone_exists for a number another account holds and PATCH /me/password checks
 // the old password, so both would otherwise be free oracles.
 func SelfWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
-	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":self_write"
 		}
@@ -148,7 +148,7 @@ func SelfWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fi
 
 // OrderWriteRateLimit limits order mutations (checkout, status transitions) per user.
 func OrderWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
-	return RedisRateLimit(rdb, func(c *fiber.Ctx) string {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
 		if uid, ok := GetUserID(c); ok {
 			return "rl:user:" + uid.String() + ":order_write"
 		}

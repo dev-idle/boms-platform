@@ -13,7 +13,7 @@ import (
 	"github.com/boms/backend/internal/middleware"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -90,7 +90,7 @@ func TestRequireAuth(t *testing.T) {
 		var gotUser, gotSession uuid.UUID
 		var gotRole domainuser.Role
 		app := fiber.New()
-		app.Get("/", middleware.RequireAuth(signer), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.RequireAuth(signer), func(c fiber.Ctx) error {
 			var ok bool
 			gotUser, ok = middleware.GetUserID(c)
 			require.True(t, ok)
@@ -114,7 +114,7 @@ func TestRequireAuth(t *testing.T) {
 	t.Run("missing token rejects", func(t *testing.T) {
 		t.Parallel()
 		app := fiber.New()
-		app.Get("/", middleware.RequireAuth(new(mockTokenSigner)), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.RequireAuth(new(mockTokenSigner)), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
@@ -129,7 +129,7 @@ func TestRequireAuth(t *testing.T) {
 		signer.On("ParseAccess", "expired").Return(port.AccessTokenClaims{}, apperrors.ErrUnauthorized)
 
 		app := fiber.New()
-		app.Get("/", middleware.RequireAuth(signer), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.RequireAuth(signer), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		req := testGet(t, "/")
@@ -145,7 +145,7 @@ func TestRequireAuth(t *testing.T) {
 		signer.On("ParseAccess", "bad").Return(port.AccessTokenClaims{}, apperrors.ErrUnauthorized)
 
 		app := fiber.New()
-		app.Get("/", middleware.RequireAuth(signer), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.RequireAuth(signer), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		req := testGet(t, "/")
@@ -171,7 +171,7 @@ func TestRequireAuthWithSession(t *testing.T) {
 		sessions.On("Get", mock.Anything, uid.String(), sid.String()).Return(domainsession.SessionMeta{RefreshJTI: "j"}, nil)
 
 		app := fiber.New()
-		app.Get("/", middleware.RequireAuthWithSession(signer, sessions), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.RequireAuthWithSession(signer, sessions), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		req := testGet(t, "/")
@@ -191,7 +191,7 @@ func TestRequireAuthWithSession(t *testing.T) {
 		sessions.On("Get", mock.Anything, uid.String(), sid.String()).Return(domainsession.SessionMeta{}, apperrors.ErrNotFound)
 
 		app := fiber.New()
-		app.Get("/", middleware.RequireAuthWithSession(signer, sessions), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.RequireAuthWithSession(signer, sessions), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		req := testGet(t, "/")
@@ -212,7 +212,7 @@ func TestRequireAuthWithSession(t *testing.T) {
 		sessions.On("Get", mock.Anything, uid.String(), sid.String()).Return(domainsession.SessionMeta{}, apperrors.Errorf("redis down"))
 
 		app := fiber.New()
-		app.Get("/", middleware.RequireAuthWithSession(signer, sessions), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.RequireAuthWithSession(signer, sessions), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		req := testGet(t, "/")
@@ -237,7 +237,7 @@ func TestOptionalAuth(t *testing.T) {
 
 		var got bool
 		app := fiber.New()
-		app.Get("/", middleware.OptionalAuth(signer), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.OptionalAuth(signer), func(c fiber.Ctx) error {
 			_, got = middleware.GetUserID(c)
 			return c.SendStatus(fiber.StatusOK)
 		})
@@ -253,7 +253,7 @@ func TestOptionalAuth(t *testing.T) {
 		t.Parallel()
 		var got bool
 		app := fiber.New()
-		app.Get("/", middleware.OptionalAuth(new(mockTokenSigner)), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.OptionalAuth(new(mockTokenSigner)), func(c fiber.Ctx) error {
 			_, got = middleware.GetUserID(c)
 			return c.SendStatus(fiber.StatusOK)
 		})
@@ -270,7 +270,7 @@ func TestOptionalAuth(t *testing.T) {
 
 		var got bool
 		app := fiber.New()
-		app.Get("/", middleware.OptionalAuth(signer), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.OptionalAuth(signer), func(c fiber.Ctx) error {
 			_, got = middleware.GetUserID(c)
 			return c.SendStatus(fiber.StatusOK)
 		})
@@ -289,10 +289,10 @@ func TestRequireRole(t *testing.T) {
 	t.Run("allowed role passes", func(t *testing.T) {
 		t.Parallel()
 		app := fiber.New()
-		app.Get("/", func(c *fiber.Ctx) error {
+		app.Get("/", func(c fiber.Ctx) error {
 			c.Locals("auth_role", domainuser.RoleAdmin)
 			return c.Next()
-		}, middleware.RequireRole(domainuser.RoleAdmin), func(c *fiber.Ctx) error {
+		}, middleware.RequireRole(domainuser.RoleAdmin), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
@@ -303,10 +303,10 @@ func TestRequireRole(t *testing.T) {
 	t.Run("wrong role returns 403", func(t *testing.T) {
 		t.Parallel()
 		app := fiber.New()
-		app.Get("/", func(c *fiber.Ctx) error {
+		app.Get("/", func(c fiber.Ctx) error {
 			c.Locals("auth_role", domainuser.RoleCustomer)
 			return c.Next()
-		}, middleware.RequireRole(domainuser.RoleAdmin), func(c *fiber.Ctx) error {
+		}, middleware.RequireRole(domainuser.RoleAdmin), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
@@ -318,7 +318,7 @@ func TestRequireRole(t *testing.T) {
 	t.Run("missing role returns 403", func(t *testing.T) {
 		t.Parallel()
 		app := fiber.New()
-		app.Get("/", middleware.RequireRole(domainuser.RoleAdmin), func(c *fiber.Ctx) error {
+		app.Get("/", middleware.RequireRole(domainuser.RoleAdmin), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
@@ -338,12 +338,12 @@ func TestRequirePasswordChanged(t *testing.T) {
 		store := new(mockSessionStore)
 
 		app := fiber.New()
-		app.Get("/", func(c *fiber.Ctx) error {
+		app.Get("/", func(c fiber.Ctx) error {
 			c.Locals("auth_user_id", userID)
 			c.Locals("auth_session_id", sessionID)
 			c.Locals("auth_session_meta", domainsession.SessionMeta{MustChangePassword: false})
 			return c.Next()
-		}, middleware.RequirePasswordChanged(store), func(c *fiber.Ctx) error {
+		}, middleware.RequirePasswordChanged(store), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
@@ -357,12 +357,12 @@ func TestRequirePasswordChanged(t *testing.T) {
 		store := new(mockSessionStore)
 
 		app := fiber.New()
-		app.Get("/", func(c *fiber.Ctx) error {
+		app.Get("/", func(c fiber.Ctx) error {
 			c.Locals("auth_user_id", userID)
 			c.Locals("auth_session_id", sessionID)
 			c.Locals("auth_session_meta", domainsession.SessionMeta{MustChangePassword: true})
 			return c.Next()
-		}, middleware.RequirePasswordChanged(store), func(c *fiber.Ctx) error {
+		}, middleware.RequirePasswordChanged(store), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
@@ -378,11 +378,11 @@ func TestRequirePasswordChanged(t *testing.T) {
 			Return(domainsession.SessionMeta{MustChangePassword: true}, nil)
 
 		app := fiber.New()
-		app.Get("/", func(c *fiber.Ctx) error {
+		app.Get("/", func(c fiber.Ctx) error {
 			c.Locals("auth_user_id", userID)
 			c.Locals("auth_session_id", sessionID)
 			return c.Next()
-		}, middleware.RequirePasswordChanged(store), func(c *fiber.Ctx) error {
+		}, middleware.RequirePasswordChanged(store), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {
@@ -399,11 +399,11 @@ func TestRequirePasswordChanged(t *testing.T) {
 			Return(domainsession.SessionMeta{}, apperrors.ErrNotFound)
 
 		app := fiber.New()
-		app.Get("/", func(c *fiber.Ctx) error {
+		app.Get("/", func(c fiber.Ctx) error {
 			c.Locals("auth_user_id", userID)
 			c.Locals("auth_session_id", sessionID)
 			return c.Next()
-		}, middleware.RequirePasswordChanged(store), func(c *fiber.Ctx) error {
+		}, middleware.RequirePasswordChanged(store), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		withTestResponse(t, app, testGet(t, "/"), func(t *testing.T, resp *http.Response) {

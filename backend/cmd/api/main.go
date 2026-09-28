@@ -23,8 +23,9 @@ import (
 	"github.com/boms/backend/internal/service/auditlogger"
 	"github.com/boms/backend/internal/usecase"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
@@ -273,9 +274,13 @@ func main() {
 	bakerOrders.Patch("/production/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), bakerOrderHandler.PatchStatus)
 
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
+	listenCfg := fiber.ListenConfig{
+		DisableStartupMessage: cfg.App.Env == "production" || cfg.App.Env == "staging",
+		EnablePrintRoutes:     cfg.App.Debug,
+	}
 	go func() {
 		zlog.Info("http_listen", zap.String("addr", addr), zap.String("env", cfg.App.Env))
-		if err := app.Listen(addr); err != nil {
+		if err := app.Listen(addr, listenCfg); err != nil {
 			zlog.Fatal("http_listen", zap.Error(err))
 		}
 	}()
@@ -299,21 +304,19 @@ func main() {
 
 func newFiberApp(cfg *config.Config, log *zap.Logger) *fiber.App {
 	fcfg := fiber.Config{
-		AppName:               cfg.App.Name,
-		ServerHeader:          "",
-		StrictRouting:         true,
-		ReadTimeout:           cfg.HTTP.ReadTimeout,
-		WriteTimeout:          cfg.HTTP.WriteTimeout,
-		IdleTimeout:           cfg.HTTP.IdleTimeout,
-		BodyLimit:             cfg.HTTP.BodyLimit,
-		DisableStartupMessage: cfg.App.Env == "production" || cfg.App.Env == "staging",
-		EnablePrintRoutes:     cfg.App.Debug,
-		ErrorHandler:          middleware.ErrorHandler(log),
+		AppName:       cfg.App.Name,
+		ServerHeader:  "",
+		StrictRouting: true,
+		ReadTimeout:   cfg.HTTP.ReadTimeout,
+		WriteTimeout:  cfg.HTTP.WriteTimeout,
+		IdleTimeout:   cfg.HTTP.IdleTimeout,
+		BodyLimit:     cfg.HTTP.BodyLimit,
+		ErrorHandler:  middleware.ErrorHandler(log),
 	}
 
 	if len(cfg.HTTP.TrustedProxies) > 0 {
-		fcfg.EnableTrustedProxyCheck = true
-		fcfg.TrustedProxies = cfg.HTTP.TrustedProxies
+		fcfg.TrustProxy = true
+		fcfg.TrustProxyConfig = fiber.TrustProxyConfig{Proxies: cfg.HTTP.TrustedProxies}
 		fcfg.ProxyHeader = fiber.HeaderXForwardedFor
 	}
 
@@ -321,7 +324,7 @@ func newFiberApp(cfg *config.Config, log *zap.Logger) *fiber.App {
 
 	// Order matters: requestid → recover (catches panics from everything below) →
 	// request deadline → request meta + headers → logger → cors → rate limit.
-	app.Use(requestid.New())
+	app.Use(requestid.New(requestid.Config{Generator: uuid.NewString}))
 	app.Use(middleware.Recover(log))
 	app.Use(middleware.RequestTimeout(cfg.HTTP.RequestTimeout))
 	app.Use(middleware.AttachRequestMeta())

@@ -11,7 +11,7 @@ import (
 	"github.com/boms/backend/internal/config"
 	"github.com/boms/backend/internal/service/cloudinary"
 	"github.com/boms/backend/internal/usecase"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

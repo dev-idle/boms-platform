@@ -3,7 +3,7 @@ package v1
 import (
 	"github.com/boms/backend/internal/shared/response"
 	"github.com/boms/backend/internal/usecase"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // HealthHandler exposes operational endpoints (no domain logic).
@@ -17,7 +17,7 @@ func NewHealthHandler(readiness *usecase.Readiness) *HealthHandler {
 }
 
 // Live handles GET /health (process liveness).
-func (h *HealthHandler) Live(c *fiber.Ctx) error {
+func (h *HealthHandler) Live(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	return response.OK(c, fiber.Map{
 		"status": "ok",
@@ -25,9 +25,9 @@ func (h *HealthHandler) Live(c *fiber.Ctx) error {
 }
 
 // Ready handles GET /ready (dependency readiness). Returns sanitized JSON only.
-func (h *HealthHandler) Ready(c *fiber.Ctx) error {
+func (h *HealthHandler) Ready(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
-	body := h.readiness.Execute(c.UserContext())
+	body := h.readiness.Execute(c.Context())
 	if body.Status != "ok" {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(body)
 	}

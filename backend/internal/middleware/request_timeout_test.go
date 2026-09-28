@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +21,7 @@ func TestRequestTimeout(t *testing.T) {
 		app.Get("/", handler)
 
 		request := httptest.NewRequestWithContext(t.Context(), fiber.MethodGet, "/", nil)
-		resp, err := app.Test(request, 2000)
+		resp, err := app.Test(request, fiber.TestConfig{Timeout: 2 * time.Second, FailOnTimeout: true})
 		require.NoError(t, err)
 		require.NoError(t, resp.Body.Close())
 	}
@@ -29,9 +29,9 @@ func TestRequestTimeout(t *testing.T) {
 	t.Run("cancels_the_work_a_handler_still_has_in_flight", func(t *testing.T) {
 		t.Parallel()
 		var err error
-		run(t, 50*time.Millisecond, func(c *fiber.Ctx) error {
-			<-c.UserContext().Done()
-			err = c.UserContext().Err()
+		run(t, 50*time.Millisecond, func(c fiber.Ctx) error {
+			<-c.Context().Done()
+			err = c.Context().Err()
 			return c.SendStatus(fiber.StatusOK)
 		})
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
@@ -40,8 +40,8 @@ func TestRequestTimeout(t *testing.T) {
 	t.Run("leaves_a_handler_alone_when_no_deadline_is_configured", func(t *testing.T) {
 		t.Parallel()
 		var deadlineSet bool
-		run(t, 0, func(c *fiber.Ctx) error {
-			_, deadlineSet = c.UserContext().Deadline()
+		run(t, 0, func(c fiber.Ctx) error {
+			_, deadlineSet = c.Context().Deadline()
 			return c.SendStatus(fiber.StatusOK)
 		})
 		assert.False(t, deadlineSet)
@@ -50,8 +50,8 @@ func TestRequestTimeout(t *testing.T) {
 	t.Run("a_fast_handler_keeps_its_deadline_unused", func(t *testing.T) {
 		t.Parallel()
 		var remaining time.Duration
-		run(t, time.Second, func(c *fiber.Ctx) error {
-			deadline, ok := c.UserContext().Deadline()
+		run(t, time.Second, func(c fiber.Ctx) error {
+			deadline, ok := c.Context().Deadline()
 			require.True(t, ok)
 			remaining = time.Until(deadline)
 			return c.SendStatus(fiber.StatusOK)

@@ -9,7 +9,7 @@ import (
 	"github.com/boms/backend/internal/shared/response"
 	sharevalidator "github.com/boms/backend/internal/shared/validator"
 	"github.com/boms/backend/internal/usecase"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type MeHandler struct {
@@ -20,27 +20,27 @@ func NewMeHandler(uc *usecase.MeUsecase) *MeHandler {
 	return &MeHandler{usecase: uc}
 }
 
-func (h *MeHandler) Get(c *fiber.Ctx) error {
+func (h *MeHandler) Get(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
-	user, profile, err := h.usecase.Get(c.UserContext(), userID)
+	user, profile, err := h.usecase.Get(c.Context(), userID)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, toMeResponse(user, profile))
 }
 
-func (h *MeHandler) Patch(c *fiber.Ctx) error {
+func (h *MeHandler) Patch(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	var req dto.UpdateMeRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
@@ -49,39 +49,39 @@ func (h *MeHandler) Patch(c *fiber.Ctx) error {
 	if role, ok := middleware.GetRole(c); ok {
 		sanitizeSelfProfileUpdate(role, &req)
 	}
-	user, profile, err := h.usecase.UpdateProfile(c.UserContext(), userID, req)
+	user, profile, err := h.usecase.UpdateProfile(c.Context(), userID, req)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, toMeResponse(user, profile))
 }
 
-func (h *MeHandler) PatchPassword(c *fiber.Ctx) error {
+func (h *MeHandler) PatchPassword(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	var req dto.ChangeMyPasswordRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	if err := h.usecase.ChangePassword(c.UserContext(), userID, req.OldPassword, req.NewPassword); err != nil {
+	if err := h.usecase.ChangePassword(c.Context(), userID, req.OldPassword, req.NewPassword); err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.NoContent(c)
 }
 
-func (h *MeHandler) Delete(c *fiber.Ctx) error {
+func (h *MeHandler) Delete(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
-	if err := h.usecase.SoftDeleteSelf(c.UserContext(), userID); err != nil {
+	if err := h.usecase.SoftDeleteSelf(c.Context(), userID); err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.NoContent(c)

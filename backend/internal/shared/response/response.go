@@ -1,7 +1,7 @@
 package response
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
@@ -21,12 +21,12 @@ type ErrorBody struct {
 }
 
 // OK sends a 200 response with optional data and meta merged with request id.
-func OK(c *fiber.Ctx, data any) error {
+func OK(c fiber.Ctx, data any) error {
 	return JSON(c, fiber.StatusOK, true, data, nil, MetaFromCtx(c, nil))
 }
 
 // OKPaginated sends a 200 response and injects meta.pagination.
-func OKPaginated(c *fiber.Ctx, data any, page, pageSize int, total int64) error {
+func OKPaginated(c fiber.Ctx, data any, page, pageSize int, total int64) error {
 	return JSON(c, fiber.StatusOK, true, data, nil, MetaFromCtx(c, map[string]any{
 		"pagination": map[string]any{
 			"page":      page,
@@ -37,13 +37,12 @@ func OKPaginated(c *fiber.Ctx, data any, page, pageSize int, total int64) error 
 }
 
 // MetaFromCtx builds meta including request_id for handlers outside middleware.
-func MetaFromCtx(c *fiber.Ctx, base map[string]any) map[string]any {
+func MetaFromCtx(c fiber.Ctx, base map[string]any) map[string]any {
 	return metaWithRequestID(c, base)
 }
 
 // JSON writes a typed envelope with the given HTTP status.
-func JSON(c *fiber.Ctx, status int, success bool, data any, err *ErrorBody, meta map[string]any) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
+func JSON(c fiber.Ctx, status int, success bool, data any, err *ErrorBody, meta map[string]any) error {
 	return c.Status(status).JSON(Envelope{
 		Success: success,
 		Data:    data,
@@ -53,7 +52,7 @@ func JSON(c *fiber.Ctx, status int, success bool, data any, err *ErrorBody, meta
 }
 
 // Error sends an error envelope. errBody may be nil (generic fallback applied by caller).
-func Error(c *fiber.Ctx, status int, err *ErrorBody) error {
+func Error(c fiber.Ctx, status int, err *ErrorBody) error {
 	if err == nil {
 		err = &ErrorBody{Code: "internal_error", Message: "An unexpected error occurred"}
 	}
@@ -61,16 +60,16 @@ func Error(c *fiber.Ctx, status int, err *ErrorBody) error {
 }
 
 // Created sends a 201 response with data.
-func Created(c *fiber.Ctx, data any) error {
+func Created(c fiber.Ctx, data any) error {
 	return JSON(c, fiber.StatusCreated, true, data, nil, MetaFromCtx(c, nil))
 }
 
 // NoContent sends 204 without a body.
-func NoContent(c *fiber.Ctx) error {
+func NoContent(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func metaWithRequestID(c *fiber.Ctx, base map[string]any) map[string]any {
+func metaWithRequestID(c fiber.Ctx, base map[string]any) map[string]any {
 	rid := RequestIDFromCtx(c)
 	if rid == "" {
 		return base
@@ -85,29 +84,18 @@ func metaWithRequestID(c *fiber.Ctx, base map[string]any) map[string]any {
 	return out
 }
 
-// RequestIDFromCtx returns the request correlation id if present.
-func RequestIDFromCtx(c *fiber.Ctx) string {
-	if v := c.Locals("requestid"); v != nil {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	if v := c.Locals("request_id"); v != nil {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return c.Get(fiber.HeaderXRequestID)
+// RequestIDFromCtx returns the request correlation id if present: the one the
+// requestid middleware or EnsureRequestID put on the response, else the caller's.
+func RequestIDFromCtx(c fiber.Ctx) string {
+	return c.RequestID()
 }
 
 // EnsureRequestID sets a request id on the context when middleware did not.
-func EnsureRequestID(c *fiber.Ctx) string {
+func EnsureRequestID(c fiber.Ctx) string {
 	if id := RequestIDFromCtx(c); id != "" {
 		return id
 	}
 	id := uuid.NewString()
-	c.Locals("requestid", id)
-	c.Locals("request_id", id)
 	c.Set(fiber.HeaderXRequestID, id)
 	return id
 }

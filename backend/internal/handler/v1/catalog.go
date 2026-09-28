@@ -5,7 +5,7 @@ import (
 	"github.com/boms/backend/internal/shared/response"
 	"github.com/boms/backend/internal/shared/utils"
 	"github.com/boms/backend/internal/usecase"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
@@ -17,7 +17,7 @@ func NewCatalogHandler(uc *usecase.CatalogUsecase) *CatalogHandler {
 	return &CatalogHandler{usecase: uc}
 }
 
-func (h *CatalogHandler) ListCategories(c *fiber.Ctx) error {
+func (h *CatalogHandler) ListCategories(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	page := utils.ParseQueryInt32(c.Query("page", "1"), 1)
 	pageSize := utils.ParseQueryInt32(
@@ -25,14 +25,14 @@ func (h *CatalogHandler) ListCategories(c *fiber.Ctx) error {
 		usecase.CatalogListDefaultPageSize,
 	)
 
-	items, total, page, pageSize, err := h.usecase.ListCategories(c.UserContext(), page, pageSize)
+	items, total, page, pageSize, err := h.usecase.ListCategories(c.Context(), page, pageSize)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OKPaginated(c, items, int(page), int(pageSize), total)
 }
 
-func (h *CatalogHandler) ListProducts(c *fiber.Ctx) error {
+func (h *CatalogHandler) ListProducts(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	page := utils.ParseQueryInt32(c.Query("page", "1"), 1)
 	pageSize := utils.ParseQueryInt32(
@@ -43,7 +43,7 @@ func (h *CatalogHandler) ListProducts(c *fiber.Ctx) error {
 	search := c.Query("search", "")
 
 	items, total, page, pageSize, err := h.usecase.ListProducts(
-		c.UserContext(),
+		c.Context(),
 		page,
 		pageSize,
 		categoryID,
@@ -55,20 +55,20 @@ func (h *CatalogHandler) ListProducts(c *fiber.Ctx) error {
 	return response.OKPaginated(c, items, int(page), int(pageSize), total)
 }
 
-func (h *CatalogHandler) GetProduct(c *fiber.Ctx) error {
+func (h *CatalogHandler) GetProduct(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid product id"))
 	}
-	out, err := h.usecase.GetProduct(c.UserContext(), id)
+	out, err := h.usecase.GetProduct(c.Context(), id)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, out)
 }
 
-func (h *CatalogHandler) ListCombos(c *fiber.Ctx) error {
+func (h *CatalogHandler) ListCombos(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	page := utils.ParseQueryInt32(c.Query("page", "1"), 1)
 	pageSize := utils.ParseQueryInt32(
@@ -76,20 +76,20 @@ func (h *CatalogHandler) ListCombos(c *fiber.Ctx) error {
 		usecase.CatalogListDefaultPageSize,
 	)
 
-	items, total, page, pageSize, err := h.usecase.ListCombos(c.UserContext(), page, pageSize)
+	items, total, page, pageSize, err := h.usecase.ListCombos(c.Context(), page, pageSize)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OKPaginated(c, items, int(page), int(pageSize), total)
 }
 
-func (h *CatalogHandler) GetCombo(c *fiber.Ctx) error {
+func (h *CatalogHandler) GetCombo(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid combo id"))
 	}
-	out, err := h.usecase.GetCombo(c.UserContext(), id)
+	out, err := h.usecase.GetCombo(c.Context(), id)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

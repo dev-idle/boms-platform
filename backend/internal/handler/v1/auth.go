@@ -11,7 +11,7 @@ import (
 	"github.com/boms/backend/internal/shared/response"
 	sharevalidator "github.com/boms/backend/internal/shared/validator"
 	"github.com/boms/backend/internal/usecase"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
@@ -27,16 +27,16 @@ func NewAuthHandler(uc *usecase.AuthUsecase, cfg *config.Config) *AuthHandler {
 }
 
 // Register handles POST /api/v1/auth/register.
-func (h *AuthHandler) Register(c *fiber.Ctx) error {
+func (h *AuthHandler) Register(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	var req dto.RegisterRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "invalid_body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	user, err := h.usecase.Register(c.UserContext(), req)
+	user, err := h.usecase.Register(c.Context(), req)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
@@ -44,16 +44,16 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 }
 
 // Login handles POST /api/v1/auth/login.
-func (h *AuthHandler) Login(c *fiber.Ctx) error {
+func (h *AuthHandler) Login(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	var req dto.LoginRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "invalid_body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	access, refresh, user, err := h.usecase.Login(c.UserContext(), req, c.Get(fiber.HeaderUserAgent), middleware.ClientIP(c))
+	access, refresh, user, err := h.usecase.Login(c.Context(), req, c.Get(fiber.HeaderUserAgent), middleware.ClientIP(c))
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
@@ -69,13 +69,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 }
 
 // Refresh handles POST /api/v1/auth/refresh (reads refresh cookie).
-func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
+func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	refresh := c.Cookies(h.cfg.Cookie.Name)
 	if refresh == "" {
 		return writeAppError(c, apperrors.ErrMissingRefreshToken)
 	}
-	refreshed, err := h.usecase.Refresh(c.UserContext(), refresh, c.Get(fiber.HeaderUserAgent), middleware.ClientIP(c))
+	refreshed, err := h.usecase.Refresh(c.Context(), refresh, c.Get(fiber.HeaderUserAgent), middleware.ClientIP(c))
 	if err != nil {
 		if errors.Is(err, apperrors.ErrInvalidRefreshToken) || errors.Is(err, apperrors.ErrSessionRevoked) {
 			clearSessionCookies(c, h.cfg)
@@ -94,16 +94,16 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 
 // noStore marks responses that carry credentials (access token) as non-cacheable.
 // Prevents browsers / reverse proxies from caching bearer tokens.
-func noStore(c *fiber.Ctx) {
+func noStore(c fiber.Ctx) {
 	c.Set(fiber.HeaderCacheControl, "no-store")
 	c.Set(fiber.HeaderPragma, "no-cache")
 }
 
 // Logout handles POST /api/v1/auth/logout (hybrid idempotent: Bearer preferred, cookie fallback).
-func (h *AuthHandler) Logout(c *fiber.Ctx) error {
+func (h *AuthHandler) Logout(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	bearerUserID, bearerSessionID, hasBearer := bearerSessionFromCtx(c)
-	h.usecase.LogoutHybrid(c.UserContext(), bearerUserID, bearerSessionID, hasBearer, c.Cookies(h.cfg.Cookie.Name))
+	h.usecase.LogoutHybrid(c.Context(), bearerUserID, bearerSessionID, hasBearer, c.Cookies(h.cfg.Cookie.Name))
 	clearSessionCookies(c, h.cfg)
 	return response.NoContent(c)
 }
@@ -121,20 +121,20 @@ func toUserResponse(u *domainuser.User) dto.UserResponse {
 	}
 }
 
-func writeSessionCookies(c *fiber.Ctx, cfg *config.Config, token string, role domainuser.Role) {
+func writeSessionCookies(c fiber.Ctx, cfg *config.Config, token string, role domainuser.Role) {
 	clearLegacyRefreshCookie(c, cfg)
 	ttl := int(cfg.JWT.RefreshTTL.Seconds())
 	c.Cookie(refreshCookie(cfg, token, ttl))
 	c.Cookie(roleCookie(cfg, string(role), ttl))
 }
 
-func clearSessionCookies(c *fiber.Ctx, cfg *config.Config) {
+func clearSessionCookies(c fiber.Ctx, cfg *config.Config) {
 	c.Cookie(refreshCookie(cfg, "", -1))
 	c.Cookie(roleCookie(cfg, "", -1))
 	clearLegacyRefreshCookie(c, cfg)
 }
 
-func clearLegacyRefreshCookie(c *fiber.Ctx, cfg *config.Config) {
+func clearLegacyRefreshCookie(c fiber.Ctx, cfg *config.Config) {
 	c.Cookie(refreshCookieAtPath(cfg, "", -1, middleware.AuthCookieLegacyPath))
 }
 
@@ -172,7 +172,7 @@ func cookieAtPath(cfg *config.Config, value string, maxAge int, path string) *fi
 }
 
 // bearerSessionFromCtx returns Bearer-derived session identity when OptionalAuth populated Locals.
-func bearerSessionFromCtx(c *fiber.Ctx) (userID, sessionID uuid.UUID, ok bool) {
+func bearerSessionFromCtx(c fiber.Ctx) (userID, sessionID uuid.UUID, ok bool) {
 	uid, uidOK := middleware.GetUserID(c)
 	sid, sidOK := middleware.GetSessionID(c)
 	if !uidOK || !sidOK {

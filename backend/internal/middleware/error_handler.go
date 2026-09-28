@@ -5,19 +5,18 @@ import (
 
 	"github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
 // ErrorHandler maps errors to the standard JSON envelope. Wire into fiber.Config.ErrorHandler.
 func ErrorHandler(log *zap.Logger) fiber.ErrorHandler {
-	return func(c *fiber.Ctx, err error) error {
+	return func(c fiber.Ctx, err error) error {
 		if err == nil {
 			return nil
 		}
 
 		response.EnsureRequestID(c)
-		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
 
 		var fe *fiber.Error
 		if stderrors.As(err, &fe) {
@@ -50,7 +49,7 @@ func ErrorHandler(log *zap.Logger) fiber.ErrorHandler {
 	}
 }
 
-func logError(log *zap.Logger, c *fiber.Ctx, err error, code string, status int) {
+func logError(log *zap.Logger, c fiber.Ctx, err error, code string, status int) {
 	fields := []zap.Field{
 		zap.Error(err),
 		zap.String("path", c.Path()),

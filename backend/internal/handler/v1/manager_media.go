@@ -3,7 +3,7 @@ package v1
 import (
 	"github.com/boms/backend/internal/shared/response"
 	"github.com/boms/backend/internal/usecase"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ManagerMediaHandler struct {
@@ -14,7 +14,7 @@ func NewManagerMediaHandler(uc *usecase.ManagerMediaUsecase) *ManagerMediaHandle
 	return &ManagerMediaHandler{usecase: uc}
 }
 
-func (h *ManagerMediaHandler) GetCloudinaryUploadSignature(c *fiber.Ctx) error {
+func (h *ManagerMediaHandler) GetCloudinaryUploadSignature(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	out, err := h.usecase.CloudinaryUploadSignature()
 	if err != nil {

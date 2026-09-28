@@ -4,13 +4,13 @@ import (
 	"time"
 
 	"github.com/boms/backend/internal/shared/response"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
 // RequestLogger logs one line per request with latency, status, and correlation id.
 func RequestLogger(log *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		start := time.Now()
 		err := c.Next()
 

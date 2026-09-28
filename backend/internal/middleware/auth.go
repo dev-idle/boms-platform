@@ -10,7 +10,7 @@ import (
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
@@ -38,7 +38,7 @@ type authLocals struct {
 // RequireAuth parses Bearer access JWT (stateless) and injects auth locals.
 // Does not consult Redis — suitable for read-only routes (e.g. GET /me).
 func RequireAuth(signer port.TokenSigner) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		locals, authErr := parseAccessToken(c, signer)
 		if authErr != nil {
 			return writeMiddlewareError(c, authErr)
@@ -52,12 +52,12 @@ func RequireAuth(signer port.TokenSigner) fiber.Handler {
 // Caches the session meta in Fiber Locals so downstream middleware (e.g. RequirePasswordChanged)
 // can avoid a second Redis/DB lookup.
 func RequireAuthWithSession(signer port.TokenSigner, sessions port.SessionStore) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		locals, authErr := parseAccessToken(c, signer)
 		if authErr != nil {
 			return writeMiddlewareError(c, authErr)
 		}
-		ctx := c.UserContext()
+		ctx := c.Context()
 		if ctx == nil {
 			ctx = context.Background()
 		}
@@ -76,7 +76,7 @@ func RequireAuthWithSession(signer port.TokenSigner, sessions port.SessionStore)
 
 // OptionalAuth parses Bearer token when present; missing or invalid token is allowed.
 func OptionalAuth(signer port.TokenSigner) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		if locals, authErr := parseAccessToken(c, signer); authErr == nil {
 			setAuthLocals(c, locals)
 		}
@@ -87,7 +87,7 @@ func OptionalAuth(signer port.TokenSigner) fiber.Handler {
 // RequireRole ensures the authenticated user has the expected role.
 // Pass exactly one role per call. Chain after RequireAuth or RequireAuthWithSession.
 func RequireRole(role domainuser.Role) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		actual, ok := GetRole(c)
 		if !ok || actual != role {
 			return forbidden(c)
@@ -97,26 +97,26 @@ func RequireRole(role domainuser.Role) fiber.Handler {
 }
 
 // GetUserID returns the authenticated user id from Locals.
-func GetUserID(c *fiber.Ctx) (uuid.UUID, bool) {
+func GetUserID(c fiber.Ctx) (uuid.UUID, bool) {
 	v, ok := c.Locals(localUserIDKey).(uuid.UUID)
 	return v, ok && v != uuid.Nil
 }
 
 // GetRole returns the authenticated role from Locals.
-func GetRole(c *fiber.Ctx) (domainuser.Role, bool) {
+func GetRole(c fiber.Ctx) (domainuser.Role, bool) {
 	v, ok := c.Locals(localRoleKey).(domainuser.Role)
 	return v, ok && v != ""
 }
 
 // GetSessionID returns the authenticated session id from Locals.
-func GetSessionID(c *fiber.Ctx) (uuid.UUID, bool) {
+func GetSessionID(c fiber.Ctx) (uuid.UUID, bool) {
 	v, ok := c.Locals(localSessionIDKey).(uuid.UUID)
 	return v, ok && v != uuid.Nil
 }
 
 // parseAccessToken returns the populated locals on success or a typed AppError on failure.
 // Callers translate the AppError directly so token_expired can be distinguished from generic unauthorized.
-func parseAccessToken(c *fiber.Ctx, signer port.TokenSigner) (authLocals, *apperrors.AppError) {
+func parseAccessToken(c fiber.Ctx, signer port.TokenSigner) (authLocals, *apperrors.AppError) {
 	token, ok := bearerToken(c)
 	if !ok {
 		return authLocals{}, apperrors.ErrUnauthorized
@@ -147,18 +147,18 @@ func parseAccessToken(c *fiber.Ctx, signer port.TokenSigner) (authLocals, *apper
 }
 
 // GetSessionMeta returns the session meta loaded by RequireAuthWithSession, if any.
-func GetSessionMeta(c *fiber.Ctx) (domainsession.SessionMeta, bool) {
+func GetSessionMeta(c fiber.Ctx) (domainsession.SessionMeta, bool) {
 	v, ok := c.Locals(localSessionMetaKey).(domainsession.SessionMeta)
 	return v, ok
 }
 
-func setAuthLocals(c *fiber.Ctx, locals authLocals) {
+func setAuthLocals(c fiber.Ctx, locals authLocals) {
 	c.Locals(localUserIDKey, locals.UserID)
 	c.Locals(localRoleKey, locals.Role)
 	c.Locals(localSessionIDKey, locals.SessionID)
 }
 
-func bearerToken(c *fiber.Ctx) (string, bool) {
+func bearerToken(c fiber.Ctx) (string, bool) {
 	auth := strings.TrimSpace(c.Get(fiber.HeaderAuthorization))
 	if auth == "" {
 		return "", false
@@ -171,15 +171,15 @@ func bearerToken(c *fiber.Ctx) (string, bool) {
 	return token, token != ""
 }
 
-func sessionRevoked(c *fiber.Ctx) error {
+func sessionRevoked(c fiber.Ctx) error {
 	return writeMiddlewareError(c, apperrors.ErrSessionRevoked)
 }
 
-func forbidden(c *fiber.Ctx) error {
+func forbidden(c fiber.Ctx) error {
 	return writeMiddlewareError(c, apperrors.ErrForbidden)
 }
 
-func writeMiddlewareError(c *fiber.Ctx, e *apperrors.AppError) error {
+func writeMiddlewareError(c fiber.Ctx, e *apperrors.AppError) error {
 	code, message, details := e.ToErrorBody()
 	return response.Error(c, e.StatusCode, &response.ErrorBody{
 		Code:    code,
@@ -199,7 +199,7 @@ func writeMiddlewareError(c *fiber.Ctx, e *apperrors.AppError) error {
 // The flag is set at session creation/rotation and reset when ChangePassword revokes all sessions,
 // so the cached value is always at most one refresh cycle stale.
 func RequirePasswordChanged(sessions port.SessionStore) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		userID, ok := GetUserID(c)
 		if !ok {
 			return c.Next()
@@ -217,7 +217,7 @@ func RequirePasswordChanged(sessions port.SessionStore) fiber.Handler {
 		if !hasSession || sessions == nil {
 			return writeMiddlewareError(c, apperrors.ErrInternal)
 		}
-		ctx := c.UserContext()
+		ctx := c.Context()
 		if ctx == nil {
 			ctx = context.Background()
 		}

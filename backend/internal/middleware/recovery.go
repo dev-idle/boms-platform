@@ -3,7 +3,7 @@ package middleware
 import (
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -11,7 +11,7 @@ import (
 // Register this as early as possible in the middleware chain so it catches panics
 // from downstream middleware (security headers, logging, cors, rate limit).
 func Recover(log *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		defer func() {
 			if r := recover(); r != nil {
 				fields := []zap.Field{

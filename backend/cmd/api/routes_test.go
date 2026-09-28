@@ -13,7 +13,7 @@ import (
 	"github.com/boms/backend/internal/middleware"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -64,7 +64,7 @@ func (m *routeTestSessionStore) Rotate(ctx context.Context, userID, oldSessionID
 func TestCatalogReadIsPublic(t *testing.T) {
 	t.Parallel()
 
-	okHandler := func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }
+	okHandler := func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }
 
 	app := fiber.New()
 	apiV1 := app.Group("/api/v1")
@@ -96,7 +96,7 @@ func TestCustomerSessionGroupDoesNotLeakRoleMiddleware(t *testing.T) {
 	sessions.On("Get", mock.Anything, uid.String(), sid.String()).
 		Return(domainsession.SessionMeta{RefreshJTI: "j"}, nil)
 
-	okHandler := func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }
+	okHandler := func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }
 	passwordChanged := middleware.RequirePasswordChanged(sessions)
 
 	app := fiber.New()

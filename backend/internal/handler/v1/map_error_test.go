@@ -19,7 +19,7 @@ import (
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
 	"github.com/boms/backend/internal/usecase"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -84,7 +84,7 @@ func invokeMapError(t *testing.T, err error) (status int, code string) {
 	t.Helper()
 	app := fiber.New()
 	var gotCode string
-	app.Get("/", func(c *fiber.Ctx) error {
+	app.Get("/", func(c fiber.Ctx) error {
 		mapErr := writeMapUsecaseError(c, err)
 		status = c.Response().StatusCode()
 		if mapErr != nil {
@@ -110,7 +110,7 @@ func invokeMapError(t *testing.T, err error) (status int, code string) {
 func invokeMapErrorViaErrorHandler(t *testing.T, err error) (status int, code string) {
 	t.Helper()
 	app := fiber.New(fiber.Config{ErrorHandler: middleware.ErrorHandler(zap.NewNop())})
-	app.Get("/", func(c *fiber.Ctx) error {
+	app.Get("/", func(c fiber.Ctx) error {
 		return writeMapUsecaseError(c, err)
 	})
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)

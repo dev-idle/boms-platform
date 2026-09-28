@@ -1,12 +1,12 @@
 package response
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
 // ZapCorrelationFields returns structured log fields for request/trace correlation.
-func ZapCorrelationFields(c *fiber.Ctx) []zap.Field {
+func ZapCorrelationFields(c fiber.Ctx) []zap.Field {
 	id := RequestIDFromCtx(c)
 	if id == "" {
 		return nil

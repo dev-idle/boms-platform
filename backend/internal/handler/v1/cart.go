@@ -7,7 +7,7 @@ import (
 	"github.com/boms/backend/internal/shared/response"
 	sharevalidator "github.com/boms/backend/internal/shared/validator"
 	"github.com/boms/backend/internal/usecase"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
@@ -19,40 +19,40 @@ func NewCartHandler(uc *usecase.CartUsecase) *CartHandler {
 	return &CartHandler{usecase: uc}
 }
 
-func (h *CartHandler) Get(c *fiber.Ctx) error {
+func (h *CartHandler) Get(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
-	out, err := h.usecase.Get(c.UserContext(), userID)
+	out, err := h.usecase.Get(c.Context(), userID)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, out)
 }
 
-func (h *CartHandler) AddItem(c *fiber.Ctx) error {
+func (h *CartHandler) AddItem(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	var req dto.AddCartItemRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	out, err := h.usecase.AddItem(c.UserContext(), userID, req)
+	out, err := h.usecase.AddItem(c.Context(), userID, req)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, out)
 }
 
-func (h *CartHandler) UpdateItem(c *fiber.Ctx) error {
+func (h *CartHandler) UpdateItem(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -63,20 +63,20 @@ func (h *CartHandler) UpdateItem(c *fiber.Ctx) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid cart item id"))
 	}
 	var req dto.UpdateCartItemRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	out, err := h.usecase.UpdateItem(c.UserContext(), userID, itemID, req)
+	out, err := h.usecase.UpdateItem(c.Context(), userID, itemID, req)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, out)
 }
 
-func (h *CartHandler) RemoveItem(c *fiber.Ctx) error {
+func (h *CartHandler) RemoveItem(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -86,40 +86,40 @@ func (h *CartHandler) RemoveItem(c *fiber.Ctx) error {
 	if err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid cart item id"))
 	}
-	out, err := h.usecase.RemoveItem(c.UserContext(), userID, itemID)
+	out, err := h.usecase.RemoveItem(c.Context(), userID, itemID)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, out)
 }
 
-func (h *CartHandler) ApplyDiscount(c *fiber.Ctx) error {
+func (h *CartHandler) ApplyDiscount(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
 	var req dto.ApplyCartDiscountRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
 	}
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	out, err := h.usecase.ApplyDiscount(c.UserContext(), userID, req)
+	out, err := h.usecase.ApplyDiscount(c.Context(), userID, req)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
 	return response.OK(c, out)
 }
 
-func (h *CartHandler) RemoveDiscount(c *fiber.Ctx) error {
+func (h *CartHandler) RemoveDiscount(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
-	out, err := h.usecase.RemoveDiscount(c.UserContext(), userID)
+	out, err := h.usecase.RemoveDiscount(c.Context(), userID)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

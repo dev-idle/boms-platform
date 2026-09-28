@@ -4,7 +4,7 @@ import (
 	"crypto/subtle"
 
 	apperrors "github.com/boms/backend/internal/shared/errors"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // InternalSecretHeader is the header name used between the Next.js proxy and this API.
@@ -21,10 +21,10 @@ const InternalSecretHeader = "X-Internal-Secret" //nolint:gosec // header name, 
 // Comparison is constant-time to avoid timing side-channels.
 func RequireInternalSecret(secret string) fiber.Handler {
 	if secret == "" {
-		return func(c *fiber.Ctx) error { return c.Next() }
+		return func(c fiber.Ctx) error { return c.Next() }
 	}
 	expected := []byte(secret)
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		got := []byte(c.Get(InternalSecretHeader))
 		if len(got) == 0 || subtle.ConstantTimeCompare(got, expected) != 1 {
 			return writeMiddlewareError(c, apperrors.ErrUnauthorized)
