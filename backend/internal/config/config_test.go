@@ -184,3 +184,43 @@ func TestValidate_RoleCookieName(t *testing.T) {
 		}
 	})
 }
+
+// Fiber silently drops a cookie net/http would reject, so these must fail at
+// startup instead of shipping a login that never sets its session cookie.
+func TestValidate_CookieSettingsTheBrowserAccepts(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]func(*config.Config){
+		"session_name_with_a_space":  func(c *config.Config) { c.Cookie.Name = "boms refresh" },
+		"role_name_with_a_semicolon": func(c *config.Config) { c.Cookie.RoleName = "boms;role" },
+		"domain_with_a_port":         func(c *config.Config) { c.Cookie.Domain = "choux.example:3000" },
+	}
+	for name, breakIt := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cfg := minimalDevConfig()
+			breakIt(cfg)
+			if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "never reach the browser") {
+				t.Fatalf("expected cookie settings error, got: %v", err)
+			}
+		})
+	}
+
+	t.Run("accepts_a_registrable_domain", func(t *testing.T) {
+		t.Parallel()
+		cfg := minimalDevConfig()
+		cfg.Cookie.Domain = "choux.example"
+		if err := cfg.Validate(); err != nil {
+			t.Fatalf("expected valid config, got: %v", err)
+		}
+	})
+}
+
+func TestValidate_WildcardOriginStandsAlone(t *testing.T) {
+	t.Parallel()
+	cfg := minimalDevConfig()
+	cfg.CORS.AllowOrigins = []string{"*", "https://choux.example"}
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "cannot be listed with others") {
+		t.Fatalf("expected wildcard origin error, got: %v", err)
+	}
+}

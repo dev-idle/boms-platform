@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -510,6 +512,25 @@ func (c *Config) Validate() error {
 	}
 	if c.Cookie.RoleName == c.Cookie.Name {
 		return errors.New("cookie.role_name must differ from cookie.name")
+	}
+	// Fiber drops a cookie that net/http would reject without a word, so a bad
+	// name or domain would ship a login that never sets its session cookie.
+	for _, name := range []string{c.Cookie.Name, c.Cookie.RoleName} {
+		probe := &http.Cookie{
+			Name:     name,
+			Value:    "v",
+			Path:     "/",
+			Domain:   c.Cookie.Domain,
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+		}
+		if err := probe.Valid(); err != nil {
+			return fmt.Errorf("cookie settings would never reach the browser: %w", err)
+		}
+	}
+	if slices.Contains(c.CORS.AllowOrigins, "*") && len(c.CORS.AllowOrigins) > 1 {
+		return errors.New("cors.allow_origins: \"*\" allows every origin and cannot be listed with others")
 	}
 	if c.Argon2.Memory < 8*1024 {
 		return errors.New("argon2.memory must be at least 8192 KiB")
