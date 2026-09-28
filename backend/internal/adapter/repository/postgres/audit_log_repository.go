@@ -42,7 +42,10 @@ func (r *AuditLogRepository) Create(ctx context.Context, params port.CreateAudit
 		Column8:     ip,
 		UserAgent:   params.UserAgent,
 	})
-	return mapRepoError(err, "create audit log")
+	if err != nil {
+		return mapRepoError(err, "create audit log")
+	}
+	return nil
 }
 
 func (r *AuditLogRepository) CountByTargetID(ctx context.Context, targetID uuid.UUID) (int64, error) {
