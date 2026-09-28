@@ -38,26 +38,26 @@ const productImageUrlResponseItemSchema = z
     "URL must use HTTP or HTTPS",
   );
 
-/** Lenient gallery URLs for API responses — backend already sanitizes on write. */
+/**
+ * Lenient gallery URLs for API responses — backend already sanitizes on write.
+ * The API omits the key for a product without images; `.nullish()` is what
+ * makes a missing key valid in Zod 4 (a union with `z.undefined()` does not).
+ */
 export const productImageUrlsResponseSchema = z
-  .union([
-    z
-      .array(productImageUrlResponseItemSchema)
-      .max(
-        CLOUDINARY_MAX_PRODUCT_IMAGES,
-        `Maximum ${CLOUDINARY_MAX_PRODUCT_IMAGES} images allowed`,
-      ),
-    z.null(),
-    z.undefined(),
-  ])
+  .array(productImageUrlResponseItemSchema)
+  .max(
+    CLOUDINARY_MAX_PRODUCT_IMAGES,
+    `Maximum ${CLOUDINARY_MAX_PRODUCT_IMAGES} images allowed`,
+  )
+  .nullish()
   .transform((urls) => urls ?? []);
 
 /** A combo carries one promotional image; "" means it has none. Same folder rules. */
 export const catalogImageUrlSchema = z.union([z.literal(""), productImageItemSchema]);
 
-/** Lenient single URL for API responses — null when nothing has been uploaded yet. */
-export const catalogImageUrlResponseSchema = z
-  .union([productImageUrlResponseItemSchema, z.null(), z.undefined()])
+/** Lenient single URL for API responses — null or absent when nothing has been uploaded yet. */
+export const catalogImageUrlResponseSchema = productImageUrlResponseItemSchema
+  .nullish()
   .transform((url) => url ?? null);
 
 /** Product gallery URLs for forms — Cloudinary folder rules apply when configured (max 5). */
