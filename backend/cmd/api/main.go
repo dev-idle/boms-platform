@@ -314,11 +314,7 @@ func newFiberApp(cfg *config.Config, log *zap.Logger) *fiber.App {
 		ErrorHandler:  middleware.ErrorHandler(log),
 	}
 
-	if len(cfg.HTTP.TrustedProxies) > 0 {
-		fcfg.TrustProxy = true
-		fcfg.TrustProxyConfig = fiber.TrustProxyConfig{Proxies: cfg.HTTP.TrustedProxies}
-		fcfg.ProxyHeader = fiber.HeaderXForwardedFor
-	}
+	trustProxies(&fcfg, cfg.HTTP.TrustedProxies)
 
 	app := fiber.New(fcfg)
 
@@ -334,6 +330,20 @@ func newFiberApp(cfg *config.Config, log *zap.Logger) *fiber.App {
 	app.Use(middleware.RateLimit(cfg.Rate))
 
 	return app
+}
+
+// trustProxies lets c.IP() read X-Forwarded-For only when the request comes from
+// one of the listed proxies. IP validation walks the header right to left past
+// those proxies and falls back to the socket address, so a caller cannot choose
+// the address its rate-limit bucket and audit rows are keyed by.
+func trustProxies(fcfg *fiber.Config, proxies []string) {
+	if len(proxies) == 0 {
+		return
+	}
+	fcfg.TrustProxy = true
+	fcfg.TrustProxyConfig = fiber.TrustProxyConfig{Proxies: proxies}
+	fcfg.ProxyHeader = fiber.HeaderXForwardedFor
+	fcfg.EnableIPValidation = true
 }
 
 // customerSessionGroup scopes customer session auth to an explicit sub-path.
