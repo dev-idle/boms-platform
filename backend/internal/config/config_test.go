@@ -32,6 +32,7 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		RateRedis: defaultRateRedis(),
 		Outbox:    defaultOutbox(),
+		Realtime:  defaultRealtime(),
 		Postgres: config.PostgresConfig{
 			URL:                "postgres://host/db?sslmode=disable",
 			MaxConns:           5,
@@ -103,6 +104,25 @@ func TestValidate_ProductionRequiresCloudinary(t *testing.T) {
 	}
 }
 
+func defaultRealtime() config.RealtimeConfig {
+	return config.RealtimeConfig{
+		Addr:                    "127.0.0.1:8081",
+		PublicURL:               "ws://localhost:8081/ws",
+		AllowedOrigins:          []string{"http://localhost:3000"},
+		TicketTTL:               30 * time.Second,
+		SessionCheckInterval:    30 * time.Second,
+		MaxLifetime:             time.Hour,
+		PingInterval:            25 * time.Second,
+		WriteTimeout:            10 * time.Second,
+		HandshakeTimeout:        10 * time.Second,
+		SendBuffer:              16,
+		MaxConnsPerUser:         20,
+		MaxConns:                10000,
+		AdmissionRate:           200,
+		AdmissionRatePerAddress: 10,
+	}
+}
+
 func defaultOutbox() config.OutboxConfig {
 	return config.OutboxConfig{
 		DispatchTimeout: 5 * time.Second,
@@ -126,6 +146,7 @@ func defaultRateRedis() config.RateLimitRedisConfig {
 		ManagerMediaMax: 20, ManagerMediaWindow: time.Minute,
 		AuthUserMax: 60, AuthUserWindow: time.Minute,
 		DiscountAttemptMax: 10, DiscountAttemptWindow: 15 * time.Minute,
+		RealtimeTicketMax: 60, RealtimeTicketWindow: time.Minute,
 	}
 }
 
@@ -133,6 +154,8 @@ func minimalProductionConfig() *config.Config {
 	cfg := minimalDevConfig()
 	cfg.App.Env = "production"
 	cfg.CORS = config.CORSConfig{AllowOrigins: []string{"https://app.example.com"}}
+	cfg.Realtime.PublicURL = "wss://app.example.com/ws"
+	cfg.Realtime.AllowedOrigins = []string{"https://app.example.com"}
 	cfg.HTTP.InternalSecret = strings.Repeat("a", 32)
 	cfg.HTTP.HSTSMaxAge = 31536000
 	cfg.Cookie.Secure = true
@@ -153,6 +176,7 @@ func minimalDevConfig() *config.Config {
 		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		RateRedis: defaultRateRedis(),
 		Outbox:    defaultOutbox(),
+		Realtime:  defaultRealtime(),
 		Postgres: config.PostgresConfig{
 			URL:      "postgres://host/db?sslmode=require",
 			MaxConns: 5, MinConns: 0,
@@ -282,5 +306,52 @@ func TestValidateWorker_NeedsOnlyTheStores(t *testing.T) {
 	cfg.Redis.Addr = ""
 	if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), "redis.addr") {
 		t.Fatalf("expected redis error, got: %v", err)
+	}
+}
+
+func TestValidate_Realtime(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		prod    bool
+		breakIt func(*config.Config)
+		want    string
+	}{
+		"plain_ws_in_production":   {prod: true, breakIt: func(c *config.Config) { c.Realtime.PublicURL = "ws://app.example.com/ws" }, want: "must use wss://"},
+		"not_a_websocket_url":      {breakIt: func(c *config.Config) { c.Realtime.PublicURL = "http://localhost:8081/ws" }, want: "ws:// or wss://"},
+		"no_allowed_origin":        {breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = nil }, want: "allowed_origins must list"},
+		"wildcard_origin":          {breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"https://*.example.com"} }, want: "not an exact http(s) origin"},
+		"origin_with_a_path":       {breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"http://localhost:3000/app"} }, want: "not an exact http(s) origin"},
+		"origin_with_a_query":      {breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"https://app.example.com?*"} }, want: "not an exact http(s) origin"},
+		"origin_with_a_slash":      {breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"http://localhost:3000/"} }, want: "not an exact http(s) origin"},
+		"origin_with_userinfo":     {breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"http://user@localhost:3000"} }, want: "not an exact http(s) origin"},
+		"plain_http_origin_live":   {prod: true, breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"http://app.example.com"} }, want: "must be an https origin"},
+		"loopback_origin_live":     {prod: true, breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"https://localhost:3000"} }, want: "must be an https origin"},
+		"loopback_ip_origin_live":  {prod: true, breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"https://127.0.0.1"} }, want: "must be an https origin"},
+		"no_ticket_lifetime":       {breakIt: func(c *config.Config) { c.Realtime.TicketTTL = 0 }, want: "realtime.ticket_ttl"},
+		"long_lived_ticket":        {breakIt: func(c *config.Config) { c.Realtime.TicketTTL = 24 * time.Hour }, want: "realtime.ticket_ttl must be at most"},
+		"slow_revocation":          {breakIt: func(c *config.Config) { c.Realtime.SessionCheckInterval = time.Hour }, want: "realtime.session_check_interval must be at most"},
+		"check_after_lifetime":     {breakIt: func(c *config.Config) { c.Realtime.MaxLifetime = 30 * time.Second }, want: "shorter than realtime.max_lifetime"},
+		"no_handshake_timeout":     {breakIt: func(c *config.Config) { c.Realtime.HandshakeTimeout = 0 }, want: "realtime.handshake_timeout"},
+		"no_room_to_queue_a_hint":  {breakIt: func(c *config.Config) { c.Realtime.SendBuffer = 0 }, want: "realtime.send_buffer"},
+		"cap_below_per_user_cap":   {breakIt: func(c *config.Config) { c.Realtime.MaxConns = 5 }, want: "realtime.max_conns must be at least"},
+		"no_admission_rate":        {breakIt: func(c *config.Config) { c.Realtime.AdmissionRate = 0 }, want: "realtime.admission_rate"},
+		"one_address_takes_all":    {breakIt: func(c *config.Config) { c.Realtime.AdmissionRatePerAddress = 500 }, want: "realtime.admission_rate_per_address"},
+		"no_share_per_address":     {breakIt: func(c *config.Config) { c.Realtime.AdmissionRatePerAddress = 0 }, want: "realtime.admission_rate_per_address"},
+		"uppercase_origin":         {breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"http://Localhost:3000"} }, want: "as a browser sends it"},
+		"origin_with_default_port": {prod: true, breakIt: func(c *config.Config) { c.Realtime.AllowedOrigins = []string{"https://app.example.com:443"} }, want: "as a browser sends it"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cfg := minimalDevConfig()
+			if tc.prod {
+				cfg = minimalProductionConfig()
+			}
+			tc.breakIt(cfg)
+			if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %q error, got: %v", tc.want, err)
+			}
+		})
 	}
 }

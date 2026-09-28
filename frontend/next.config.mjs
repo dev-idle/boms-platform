@@ -7,9 +7,23 @@ try {
   backendOrigin = "";
 }
 
+const isProd = process.env.NODE_ENV === "production";
+
 const connectSrc = ["'self'", "https:", "wss:"];
 if (backendOrigin && !connectSrc.includes(backendOrigin)) {
   connectSrc.push(backendOrigin);
+}
+
+// The realtime socket is dialled straight from the browser, not through the BFF.
+// `wss:` already covers it over TLS; plain `ws:` in development needs its origin.
+// Production has no local default: its socket is wss://, allowed by scheme.
+const realtimeUrl =
+  process.env.BOMS_REALTIME_URL ?? (isProd ? null : "ws://localhost:8081/ws");
+if (realtimeUrl !== null) {
+  const realtimeOrigin = new URL(realtimeUrl).origin;
+  if (!connectSrc.includes(realtimeOrigin)) {
+    connectSrc.push(realtimeOrigin);
+  }
 }
 
 const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -23,8 +37,6 @@ if (publicAppUrl) {
     /* invalid NEXT_PUBLIC_APP_URL at build time — skip */
   }
 }
-
-const isProd = process.env.NODE_ENV === "production";
 
 /**
  * Production drops `'unsafe-eval'` from `script-src` (dev keeps it for Turbopack / tooling).

@@ -29,10 +29,10 @@ func TestRedisPublisher_Publish(t *testing.T) {
 	event.OccurredAt = time.Date(2026, 9, 28, 9, 0, 0, 0, time.UTC)
 
 	sub := rdb.Subscribe(ctx,
-		userChannel(order.UserID),
-		roleChannel(domainuser.RoleStaff),
-		roleChannel(domainuser.RoleBaker),
-		userChannel(uuid.New()),
+		UserChannel(order.UserID),
+		RoleChannel(domainuser.RoleStaff),
+		RoleChannel(domainuser.RoleBaker),
+		UserChannel(uuid.New()),
 	)
 	t.Cleanup(func() { _ = sub.Close() })
 	_, err := sub.Receive(ctx)
@@ -56,9 +56,9 @@ func TestRedisPublisher_Publish(t *testing.T) {
 		Data: map[string]string{"order_id": order.ID.String(), "status": "ready"},
 	}
 	assert.Equal(t, map[string]message{
-		userChannel(order.UserID):         want,
-		roleChannel(domainuser.RoleStaff): want,
-		roleChannel(domainuser.RoleBaker): want,
+		UserChannel(order.UserID):         want,
+		RoleChannel(domainuser.RoleStaff): want,
+		RoleChannel(domainuser.RoleBaker): want,
 	}, got, "only the order's customer and the order roles hear about it")
 }
 

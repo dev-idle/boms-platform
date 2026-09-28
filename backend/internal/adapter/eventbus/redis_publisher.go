@@ -19,13 +19,13 @@ import (
 
 const channelPrefix = "boms:events:"
 
-// userChannel carries events meant for one user.
-func userChannel(id uuid.UUID) string {
+// UserChannel carries events meant for one user.
+func UserChannel(id uuid.UUID) string {
 	return channelPrefix + "user:" + id.String()
 }
 
-// roleChannel carries events meant for everyone holding a role.
-func roleChannel(role domainuser.Role) string {
+// RoleChannel carries events meant for everyone holding a role.
+func RoleChannel(role domainuser.Role) string {
 	return channelPrefix + "role:" + string(role)
 }
 
@@ -65,10 +65,10 @@ func (p *RedisPublisher) Publish(ctx context.Context, events []domainevent.Event
 			return fmt.Errorf("encode event %s: %w", e.ID, err)
 		}
 		for _, id := range e.Audience.UserIDs {
-			pipe.Publish(ctx, userChannel(id), payload)
+			pipe.Publish(ctx, UserChannel(id), payload)
 		}
 		for _, role := range e.Audience.Roles {
-			pipe.Publish(ctx, roleChannel(role), payload)
+			pipe.Publish(ctx, RoleChannel(role), payload)
 		}
 	}
 	if _, err := pipe.Exec(ctx); err != nil {

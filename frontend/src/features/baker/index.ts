@@ -1,4 +1,5 @@
 export {
+  BakerLiveUpdates,
   BakerProductionOrderDetail,
   BakerProductionTable,
 } from "./components";

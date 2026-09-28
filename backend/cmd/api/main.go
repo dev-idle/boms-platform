@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,6 +13,7 @@ import (
 
 	"github.com/boms/backend/internal/adapter/eventbus"
 	"github.com/boms/backend/internal/adapter/queue"
+	"github.com/boms/backend/internal/adapter/realtime"
 	postgresrepo "github.com/boms/backend/internal/adapter/repository/postgres"
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
 	"github.com/boms/backend/internal/bootstrap"
@@ -29,7 +33,9 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
+	goredis "github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+	"golang.org/x/net/netutil"
 )
 
 func main() {
@@ -105,6 +111,8 @@ func main() {
 	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo)
 	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerOrderUC := usecase.NewBakerOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
+	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
+	realtimeUC := usecase.NewRealtimeUsecase(realtimeTickets, cfg.Realtime.PublicURL, cfg.Realtime.TicketTTL)
 
 	if err := bootstrap.EnsureDevAdmin(rootCtx, cfg, userRepo, adminProfileRepo, hasher, pgPool); err != nil {
 		zlog.Fatal("seed_admin", zap.Error(err))
@@ -123,6 +131,7 @@ func main() {
 	orderHandler := v1.NewOrderHandler(orderUC)
 	staffOrderHandler := v1.NewStaffOrderHandler(staffOrderUC)
 	bakerOrderHandler := v1.NewBakerOrderHandler(bakerOrderUC)
+	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
 
 	var asynqClose func() error
 	if cfg.Asynq.Enabled {
@@ -163,6 +172,16 @@ func main() {
 	apiV1.Patch("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, selfWrite, meHandler.Patch)
 	apiV1.Patch("/me/password", middleware.RequireAuthWithSession(tokenSigner, sessionStore), selfWrite, meHandler.PatchPassword)
 	apiV1.Delete("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, selfWrite, meHandler.Delete)
+
+	// Any signed-in session may open the push socket: the ticket records its role,
+	// and the realtime listener picks the channels from it.
+	apiV1.Post(
+		"/realtime/tickets",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		passwordChanged,
+		middleware.RealtimeTicketRateLimit(rdb, cfg.RateRedis),
+		realtimeHandler.IssueTicket,
+	)
 
 	adminRead := apiV1.Group(
 		"/admin/users",
@@ -289,6 +308,7 @@ func main() {
 			zlog.Fatal("http_listen", zap.Error(err))
 		}
 	}()
+	stopRealtime := startRealtime(rootCtx, cfg, rdb, realtimeTickets, sessionStore, zlog)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -299,6 +319,7 @@ func main() {
 	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
 		zlog.Error("http_shutdown", zap.Error(err))
 	}
+	stopRealtime(shutdownCtx)
 	// Deliveries started by requests that just finished still need the pool.
 	eventDispatcher.Wait(shutdownCtx)
 	if asynqClose != nil {
@@ -369,4 +390,66 @@ func customerSessionGroup(
 		middleware.RequireRole(domainuser.RoleCustomer),
 		passwordChanged,
 	)
+}
+
+// realtimeMaxHeaderBytes bounds a WebSocket handshake. Browsers send the site's
+// cookies along, so it leaves room for them, but nothing near the 1 MB default.
+const realtimeMaxHeaderBytes = 32 << 10
+
+// startRealtime opens the push-only WebSocket listener and feeds it every event
+// on the bus. It runs apart from the API because browsers connect to it
+// directly, not through the BFF. The returned stop closes the listener, then
+// the open sockets, then the bus subscription.
+func startRealtime(
+	ctx context.Context,
+	cfg *config.Config,
+	rdb *goredis.Client,
+	tickets port.RealtimeTicketStore,
+	sessions port.SessionStore,
+	log *zap.Logger,
+) func(context.Context) {
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", cfg.Realtime.Addr)
+	if err != nil {
+		log.Fatal("realtime_listen", zap.Error(err))
+	}
+	hub := realtime.NewHub(cfg.Realtime.MaxConnsPerUser)
+	server := realtime.NewServer(hub, tickets, sessions, cfg.Realtime, log)
+	// The timeouts bound a handshake from its first byte to its answer. An
+	// upgraded socket is hijacked, which clears them; from then on its own
+	// write timeout and pings keep it honest.
+	handshake := cfg.Realtime.HandshakeTimeout
+	httpServer := &http.Server{
+		Handler:           server.Handler(),
+		ReadHeaderTimeout: handshake,
+		ReadTimeout:       handshake,
+		WriteTimeout:      handshake,
+		IdleTimeout:       handshake,
+		MaxHeaderBytes:    realtimeMaxHeaderBytes,
+		ErrorLog:          zap.NewStdLog(log),
+	}
+
+	busCtx, stopBus := context.WithCancel(context.Background())
+	busDone := make(chan struct{})
+	go func() {
+		defer close(busDone)
+		eventbus.Subscribe(busCtx, rdb, log, hub.Deliver)
+	}()
+	go func() {
+		log.Info("realtime_listen", zap.String("addr", cfg.Realtime.Addr))
+		// A hijacked socket keeps its slot until it closes, so this caps open
+		// sockets as well as handshakes in flight.
+		err := httpServer.Serve(netutil.LimitListener(listener, cfg.Realtime.MaxConns))
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal("realtime_listen", zap.Error(err))
+		}
+	}()
+
+	return func(ctx context.Context) {
+		if err := httpServer.Shutdown(ctx); err != nil {
+			log.Error("realtime_shutdown", zap.Error(err))
+		}
+		server.Close(ctx)
+		stopBus()
+		<-busDone
+	}
 }

@@ -1396,13 +1396,23 @@
     }
   }
 
+  /* Eyebrow and live status share one micro-label row above the nav. */
+  .storefront-customer-nav__header {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    justify-content: space-between;
+    margin: 0 0 1rem;
+  }
+
   .storefront-customer-nav__eyebrow {
     color: var(--color-brass);
     font-size: var(--label-size-sm);
     font-weight: var(--label-weight);
     letter-spacing: var(--label-tracking-sm);
     line-height: 1.4;
-    margin: 0 0 1rem;
+    margin: 0;
     text-transform: uppercase;
   }
 

@@ -1,4 +1,5 @@
 export {
+  StaffLiveUpdates,
   StaffOrderDetail,
   StaffOrdersTable,
 } from "./components";

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { LiveIndicator } from "@/components/ui/live-indicator";
 import { ROUTE } from "@/constants/routes";
 
 import { DashboardShell, type DashboardNavItem } from "./dashboard-shell";
@@ -25,6 +26,7 @@ export function BakerShell({ children }: BakerShellProps) {
       navItems={BAKER_NAV_ITEMS}
       profileHref={ROUTE.baker.account.profile}
       roleLabel="Baker"
+      sidebarStatus={<LiveIndicator />}
     >
       {children}
     </DashboardShell>

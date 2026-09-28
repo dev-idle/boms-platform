@@ -27,6 +27,8 @@ type DashboardShellProps = {
   profileHref: string;
   navItems: readonly DashboardNavItem[];
   roleLabel: string;
+  /** Shown under the role label, e.g. whether pushed updates reach this tab. */
+  sidebarStatus?: ReactNode;
   children: ReactNode;
 };
 
@@ -37,6 +39,7 @@ export function DashboardShell({
   profileHref,
   navItems,
   roleLabel,
+  sidebarStatus,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -56,6 +59,7 @@ export function DashboardShell({
             size="sm"
           />
           <p className="dashboard-sidebar-role">{roleLabel}</p>
+          {sidebarStatus}
         </div>
         {/* No visible "Menu" heading — the named landmark serves assistive tech. */}
         <nav aria-label="Dashboard" className="dashboard-nav">

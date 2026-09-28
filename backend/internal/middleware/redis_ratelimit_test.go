@@ -17,21 +17,39 @@ import (
 	"github.com/boms/backend/internal/config"
 )
 
-// The discount limiter counts attempts per customer; each answer says whether a
-// code exists, so the cap is what stops the code space being walked.
-func TestDiscountAttemptRateLimit(t *testing.T) {
+// Per-user limiters that fail open: the discount limiter, where each answer says
+// whether a code exists so the cap stops the code space being walked, and the
+// realtime ticket limiter, where each ticket costs a Redis write and a socket.
+func TestPerUserRateLimits(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.RateLimitRedisConfig{DiscountAttemptMax: 2, DiscountAttemptWindow: time.Minute}
+	cfg := config.RateLimitRedisConfig{
+		DiscountAttemptMax: 2, DiscountAttemptWindow: time.Minute,
+		RealtimeTicketMax: 2, RealtimeTicketWindow: time.Minute,
+	}
+	limiters := map[string]func(*goredis.Client, config.RateLimitRedisConfig) fiber.Handler{
+		"discount_attempts": DiscountAttemptRateLimit,
+		"realtime_tickets":  RealtimeTicketRateLimit,
+	}
+	for name, limiter := range limiters {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			testPerUserRateLimit(t, func(rdb *goredis.Client) fiber.Handler { return limiter(rdb, cfg) })
+		})
+	}
+}
+
+func testPerUserRateLimit(t *testing.T, limiter func(*goredis.Client) fiber.Handler) {
+	t.Helper()
 
 	newApp := func(rdb *goredis.Client) *fiber.App {
 		app := fiber.New()
-		app.Put("/cart/discount", func(c fiber.Ctx) error {
+		app.Post("/limited", func(c fiber.Ctx) error {
 			if id := c.Get("X-Test-User"); id != "" {
 				c.Locals(localUserIDKey, uuid.MustParse(id))
 			}
 			return c.Next()
-		}, DiscountAttemptRateLimit(rdb, cfg), func(c fiber.Ctx) error {
+		}, limiter(rdb), func(c fiber.Ctx) error {
 			return c.SendStatus(fiber.StatusOK)
 		})
 		return app
@@ -40,7 +58,7 @@ func TestDiscountAttemptRateLimit(t *testing.T) {
 	// attempt returns the status and headers of one try; the body is not needed.
 	attempt := func(t *testing.T, app *fiber.App, userID uuid.UUID) (int, http.Header) {
 		t.Helper()
-		req := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/cart/discount", nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/limited", nil)
 		req.Header.Set("X-Test-User", userID.String())
 		resp, err := app.Test(req)
 		require.NoError(t, err)
@@ -51,18 +69,18 @@ func TestDiscountAttemptRateLimit(t *testing.T) {
 	t.Run("refuses_attempts_past_the_cap_with_a_retry_hint", func(t *testing.T) {
 		t.Parallel()
 		app := newApp(goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()}))
-		customer := uuid.New()
+		user := uuid.New()
 
 		for range 2 {
-			status, _ := attempt(t, app, customer)
+			status, _ := attempt(t, app, user)
 			assert.Equal(t, fiber.StatusOK, status)
 		}
-		status, header := attempt(t, app, customer)
+		status, header := attempt(t, app, user)
 		assert.Equal(t, fiber.StatusTooManyRequests, status)
 		assert.Equal(t, "60", header.Get(fiber.HeaderRetryAfter))
 	})
 
-	t.Run("keeps_a_separate_count_per_customer", func(t *testing.T) {
+	t.Run("keeps_a_separate_count_per_user", func(t *testing.T) {
 		t.Parallel()
 		app := newApp(goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()}))
 

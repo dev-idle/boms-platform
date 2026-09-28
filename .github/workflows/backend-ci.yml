@@ -4,18 +4,24 @@ on:
   push:
     paths:
       - "backend/**"
-      # Contract tests read these: the shared phone cases and the frontend's
-      # mirror of the error codes (internal/shared/errors/contract_test.go).
+      # Contract tests read these: the shared phone cases, the frontend's
+      # mirror of the error codes (internal/shared/errors/contract_test.go) and
+      # of the realtime topics and close code (adapter/realtime/contract_test.go).
       - "contracts/**"
       - "frontend/src/lib/errors/api-error.ts"
+      - "frontend/src/lib/realtime/events.ts"
+      - "frontend/src/lib/realtime/connection.ts"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
-      # Contract tests read these: the shared phone cases and the frontend's
-      # mirror of the error codes (internal/shared/errors/contract_test.go).
+      # Contract tests read these: the shared phone cases, the frontend's
+      # mirror of the error codes (internal/shared/errors/contract_test.go) and
+      # of the realtime topics and close code (adapter/realtime/contract_test.go).
       - "contracts/**"
       - "frontend/src/lib/errors/api-error.ts"
+      - "frontend/src/lib/realtime/events.ts"
+      - "frontend/src/lib/realtime/connection.ts"
       - ".github/workflows/backend-ci.yml"
 
 defaults:

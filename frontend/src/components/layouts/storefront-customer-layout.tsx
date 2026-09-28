@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { StorefrontBrowseLink } from "@/components/layouts/storefront-browse-link";
 import { SignOutIcon } from "@/components/icons/storefront-icons";
+import { LiveIndicator } from "@/components/ui/live-indicator";
 import {
   isStorefrontCustomerNavActive,
   STOREFRONT_CUSTOMER_NAV,
@@ -41,7 +42,10 @@ export function StorefrontCustomerLayout({
   return (
     <div className="storefront-customer-layout">
       <nav aria-label="Your account" className="storefront-customer-nav">
-        <p className="storefront-customer-nav__eyebrow">Your shop</p>
+        <div className="storefront-customer-nav__header">
+          <p className="storefront-customer-nav__eyebrow">Your shop</p>
+          <LiveIndicator />
+        </div>
         <ul className="storefront-customer-nav__list">
           {STOREFRONT_CUSTOMER_NAV.map((item) => {
             const active = isStorefrontCustomerNavActive(pathname, item.href);

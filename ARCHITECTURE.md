@@ -16,6 +16,8 @@ Authoritative reference for backend (Go/Fiber, Hexagonal) and frontend (Next.js 
        Proxy (Node runtime)                       Postgres (Atlas + sqlc)
        Cookie session check                       Redis (sessions, rate limit, event bus)
        Cross-feature gates                        Asynq (foundation only)
+             │                                            │
+       Browser ── ws(s)://…/ws?ticket= ──▶  Realtime listener (push-only, own port)
 ```
 
 ---
@@ -56,8 +58,9 @@ backend/
 │   │   │   ├── postgres/        # sqlc-backed repos + tx context
 │   │   │   │   ├── sql/{query,schema}/
 │   │   │   │   └── sqlcgen/     # generated
-│   │   │   └── redis/           # sessions, client
-│   │   ├── eventbus/            # Redis Pub/Sub publisher; channel names + message shape
+│   │   │   └── redis/           # sessions, realtime tickets, client
+│   │   ├── eventbus/            # Redis Pub/Sub publisher + subscriber; channel names + message shape
+│   │   ├── realtime/            # Push-only WebSocket listener: ticket redemption, hub, sockets
 │   │   └── queue/               # Asynq client (foundation)
 │   ├── infrastructure/          # Pure tech: jwt (EdDSA), crypto (argon2id), logger (zap)
 │   ├── middleware/              # auth, ratelimit, cors, security_headers, request_meta
@@ -152,6 +155,7 @@ frontend/src/
 │   ├── api-client.ts, browser-api-client.ts, api-envelope.ts, env.ts, utils.ts
 │   ├── validate-next.ts
 │   ├── auth/                      # refresh-manager, cross-tab (refresh lock + shared token), session, end-local-session
+│   ├── realtime/                  # the tab's push socket: ticket via BFF, reconnect, useLiveQueries
 │   ├── server/backend-proxy.ts    # BFF forwarder (browser /api/v1)
 │   ├── routing/                   # role-routes.ts, post-auth-destination.ts
 │   ├── schemas/auth.ts            # refreshResponseSchema (lib/auth consumer)
@@ -193,6 +197,7 @@ features/<slice>/
 | Password complexity (forms) | `lib/validation/password.ts` (`newPasswordZodString`) |
 | Internal dashboard chrome | `components/layouts/dashboard-shell.tsx` (+ role shells) |
 | Auth refresh / session | `lib/auth/` + `lib/schemas/auth.ts` (`refreshResponseSchema`) |
+| Realtime push | `lib/realtime/` (socket, `useLiveQueries`, `LiveIndicator` status) + per slice `<slice>QueryKeysForEvent` in `hooks/query-options.ts` and `<Slice>LiveUpdates` mounted in the role layout |
 | RSC auth bootstrap | `features/auth/server.ts` → `provider/auth-bootstrap.tsx` (not `@/features/auth` barrel) |
 | Validation messages | `lib/validation/messages.ts` |
 | Identity API | `features/user` owns `GET /me` only |
@@ -246,11 +251,12 @@ features/<slice>/
 | Password attack | Argon2id (params from config); timing-safe dummy hash on login |
 | Replay | request-id propagation; refresh rotation |
 | CSRF | SameSite=Lax cookie, internal proxy secret on inbound headers, sanitize `X-User-Role`, `X-Request-ID`, `X-Auth-Hint` |
-| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout + staff/baker status (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + self-service account writes — `PATCH /me`, `PATCH /me/password`, `DELETE /me` (10/min, `RATE_LIMIT_REDIS_SELF_WRITE_*`) + discount code attempts per customer — `PUT /cart/discount` (10/15 min, `RATE_LIMIT_REDIS_DISCOUNT_ATTEMPT_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) |
+| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout + staff/baker status (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + self-service account writes — `PATCH /me`, `PATCH /me/password`, `DELETE /me` (10/min, `RATE_LIMIT_REDIS_SELF_WRITE_*`) + discount code attempts per customer — `PUT /cart/discount` (10/15 min, `RATE_LIMIT_REDIS_DISCOUNT_ATTEMPT_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) + realtime tickets per user (60/min, `RATE_LIMIT_REDIS_REALTIME_TICKET_*`) |
 | RBAC | `RequireRole(Admin)` on `/admin/*`; admin can't modify self; staff self-update only fills `full_name`, `phone` |
 | Forced password change | `must_change_password` flag → `RequirePasswordChanged` middleware blocks all routes except `/me` GET and `/me/password` PATCH |
 | Audit | All admin mutations write to `audit_logs` with actor/target/before/after |
 | Soft delete | `users.deleted_at` (no hard delete from app) |
+| Realtime socket | The only public surface besides `/health` and `/ready`, on its own port and path (`/ws`). Admission refuses a missing or unlisted `Origin`, a malformed token and anything over the per-address or per-process redeem rate before touching Redis, then needs a single-use ticket issued through the BFF to a signed-in session (32 random bytes, stored hashed, 30 s, redeemed with `GETDEL`) whose session still exists, and a free slot under the per-user and per-process caps. Handshakes are bounded by `REALTIME_HANDSHAKE_TIMEOUT`. Channels are chosen from the ticket, never from the browser; the socket carries change notices only and refuses any data frame from the browser |
 | Multi-tab sessions | Tabs share one refresh cookie and the API revokes every session when a refresh token is spent twice, so tabs refresh one at a time (Web Locks) and pass the new access token to the others (`BroadcastChannel`, same origin, adopted only by tabs of the same account) |
 | Inbound | Strip `x-internal-secret`, `x-user-role`, `x-auth-hint` and the forwarding headers (`x-forwarded-for`, `x-real-ip`, `forwarded`, `x-client-ip`) from client requests in proxy |
 | Landing flash | The access token is memory-only, so a returning visitor is anonymous until the session is restored. Fiber issues a role cookie beside the session cookie (`COOKIE_ROLE_NAME`) and `proxy.ts` lands them at the edge (`lib/routing/signed-in-landing.ts`). A **navigation hint only** — never authorization: every byte of data stays behind the API session check, and a forged or stale role reaches a page whose gate sends it back. **Document navigations only** (`Sec-Fetch-Dest: document`, never `/api/*`): on a client navigation the hint would fight the gate that knows the real session, and the two would bounce a visitor between them — including away from the sign-in page, exactly when the session cannot be restored. The redirect carries `Cache-Control: no-store, private` and `Vary: Cookie`, because a cookie decided it |
@@ -298,7 +304,7 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 - **Backend:** prepared statements via sqlc, paginated queries (max 100), single JOIN for admin user listing, `GET /me` JWT-only (no Redis), session meta cached in Fiber Locals.
 - **JWT:** stateless access JWT for read routes (`GET /me`); Redis session only on writes — limits Redis QPS.
 - **Frontend:** Turbopack build, RSC + Partial Prerendering, route-group code-split per role, Zod parse only at boundary.
-- **Polling avoidance:** TanStack Query cache + invalidation on mutation success.
+- **Polling avoidance:** TanStack Query cache + invalidation on mutation success and on pushed change notices (§6 Realtime push) — no polling.
 - **Concurrency:** Postgres transactions via `TxManager` for multi-table writes (auth register; admin role and profile edits, which lock the account row and edit the shared staff profile in place; phone writes, which take a per-number advisory lock before the duplicate check; enable, which restores the account and releases its phone if an active account took it meanwhile; checkout and order status moves, which write their outbox event in the same transaction).
 
 ---
@@ -318,6 +324,7 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Baker production queue | `features/baker` (FE) + `usecase/baker_order` (BE) — `/baker/production/*` (list, detail, kitchen transitions) |
 | Audit logs | `service/auditlogger` (BE only) |
 | Event delivery | `domain/event` + `port/outbox.go` + `adapter/repository/postgres/outbox_repository.go` + `adapter/eventbus` + `service/eventdispatch` + `cmd/worker` (BE only) |
+| Realtime push | `lib/realtime` + slice live updates (FE) + `usecase/realtime` + `adapter/realtime` + `adapter/eventbus` subscriber (BE) |
 | Profile entity dispatch | `service/profilesvc` (BE) |
 | Routes table | `constants/routes.ts` (FE) |
 | Roles enum | `constants/roles.ts` (FE) + `domain/user/role.go` (BE) |
@@ -345,6 +352,26 @@ Delivery is **at least once** and **unordered across transactions** (each commit
 Topics and their audiences live with the aggregate that raises them (`domain/order/event.go`), as audit actions do.
 
 The API process delivers after commit; run `cmd/worker` beside it (`make run-worker`) to recover what that delivery missed.
+
+### Realtime push (WebSocket)
+
+A Route Handler cannot accept a WebSocket upgrade, so the socket cannot pass through the BFF. The BFF stays the only way to *obtain* access; the socket gets its own small, push-only listener in `cmd/api` (second `http.Server` on `REALTIME_ADDR`, `github.com/coder/websocket`, `/ws` only).
+
+```
+browser ── POST /api/v1/realtime/tickets (BFF, signed-in session) ──▶ { ticket, url }
+browser ── GET url?ticket=… (WebSocket) ──▶ realtime listener ── redeem ticket, check Origin, per-user cap
+Redis boms:events:* ── one pattern subscription per API process ──▶ hub ──▶ sockets on the ticket's channels
+socket message ──▶ TanStack Query invalidation ──▶ refetch through the BFF (authorization stays on REST)
+```
+
+| Concern | Rule |
+|---------|------|
+| Channels | every ticket hears its own `boms:events:user:{id}`; staff and baker also hear their role channel. A customer never shares a channel |
+| Lifetime | the socket re-checks its session every `REALTIME_SESSION_CHECK_INTERVAL` and closes with `4001` once it is gone (logout, revocation, token refresh — every refresh rotates the session) or after `REALTIME_MAX_LIFETIME`; `4001` tells the tab to fetch a new ticket at once. A Redis error is tolerated for two checks in a row; the third closes the socket (`1013`) |
+| Liveness | ping every `REALTIME_PING_INTERVAL`; each socket has `REALTIME_SEND_BUFFER` queued events and is closed (`1013`) when it falls behind, instead of slowing the hub |
+| Browser | one socket per tab, opened by the first `<Slice>LiveUpdates` and closed a second after the last unmounts; reconnect waits grow to 30 s with jitter and are skipped when the tab returns or the network comes back; every (re)connect refetches what the page shows, since events sent meanwhile are gone |
+| Shutdown | the listener stops admitting, open sockets get `1001`, then the bus subscription ends — before the API waits for its outbox deliveries |
+| Deploy | browsers reach the listener directly: expose it as `wss://<site>/ws` (edge proxy, TLS), set `REALTIME_PUBLIC_URL` to that URL, `REALTIME_ALLOWED_ORIGINS` to the site origin exactly as browsers send it, `REALTIME_TRUSTED_PROXIES` to the edge so admission meters the real client address, and `BOMS_REALTIME_URL` on the frontend so CSP `connect-src` allows it in development (`wss:` is allowed by scheme). The `?ticket=` query must not be logged by the proxy |
 
 ### Fulfillment model (pickup-only — no Address module)
 
@@ -444,7 +471,6 @@ CI must run backend tests + frontend typecheck, lint, test, and build. Productio
 | Hook | Status | Next step |
 |------|--------|-----------|
 | Asynq queue | client only — `cmd/worker` runs the outbox sweeper, not Asynq tasks | add task handlers to the worker with the first background job |
-| WebSocket | n/a | add `internal/adapter/websocket/` when needed |
 | Server actions | DAL ready | wire mutations from RSC pages |
 | Pickup time | `orders.pickup_at` (required at checkout) | still **no** delivery addresses |
 | Custom line config | `cart_items.configuration`, `order_items.configuration` jsonb | custom cake templates/inquiries later |

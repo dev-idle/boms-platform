@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"slices"
 	"strings"
@@ -25,6 +27,7 @@ type Config struct {
 	Redis      RedisConfig
 	Asynq      AsynqConfig
 	Outbox     OutboxConfig
+	Realtime   RealtimeConfig
 	Log        LogConfig
 	JWT        JWTConfig
 	Session    SessionConfig
@@ -88,6 +91,8 @@ type RateLimitRedisConfig struct {
 	AuthUserWindow        time.Duration
 	DiscountAttemptMax    int
 	DiscountAttemptWindow time.Duration
+	RealtimeTicketMax     int
+	RealtimeTicketWindow  time.Duration
 }
 
 type PostgresConfig struct {
@@ -117,6 +122,35 @@ type RedisConfig struct {
 
 type AsynqConfig struct {
 	Enabled bool
+}
+
+// RealtimeConfig tunes the push-only WebSocket listener. It runs on its own port
+// so the API port stays private behind the BFF; browsers reach it with a
+// single-use ticket the BFF obtained for them.
+type RealtimeConfig struct {
+	Addr                 string
+	PublicURL            string
+	AllowedOrigins       []string
+	TicketTTL            time.Duration
+	SessionCheckInterval time.Duration
+	MaxLifetime          time.Duration
+	PingInterval         time.Duration
+	WriteTimeout         time.Duration
+	// HandshakeTimeout bounds reading a handshake request and answering it.
+	HandshakeTimeout time.Duration
+	SendBuffer       int
+	MaxConnsPerUser  int
+	// MaxConns caps the connections one process holds, open sockets included.
+	MaxConns int
+	// AdmissionRate is how many handshakes per second the process redeems, so a
+	// flood of forged tickets cannot starve the Redis pool the API shares.
+	AdmissionRate int
+	// AdmissionRatePerAddress is the share of it one client address may use, so
+	// a single host cannot hold the whole budget.
+	AdmissionRatePerAddress int
+	// TrustedProxies are the edge proxies whose X-Forwarded-For names the client
+	// address; any other peer is the client itself.
+	TrustedProxies []netip.Prefix
 }
 
 // maxOutboxSweepBatch bounds one sweep transaction, which holds row locks while it publishes.
@@ -248,6 +282,10 @@ func load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	realtimeProxies, err := parsePrefixes("realtime.trusted_proxies", splitAndTrim(v.GetString("realtime.trusted_proxies")))
+	if err != nil {
+		return nil, err
+	}
 	sweepBatch, err := int32FromInt("outbox.sweep_batch", v.GetInt("outbox.sweep_batch"))
 	if err != nil {
 		return nil, err
@@ -327,6 +365,8 @@ func load() (*Config, error) {
 			AuthUserWindow:        v.GetDuration("rate_limit.redis.auth_user_window"),
 			DiscountAttemptMax:    v.GetInt("rate_limit.redis.discount_attempt_max"),
 			DiscountAttemptWindow: v.GetDuration("rate_limit.redis.discount_attempt_window"),
+			RealtimeTicketMax:     v.GetInt("rate_limit.redis.realtime_ticket_max"),
+			RealtimeTicketWindow:  v.GetDuration("rate_limit.redis.realtime_ticket_window"),
 		},
 		Postgres: PostgresConfig{
 			URL:                v.GetString("postgres.url"),
@@ -358,6 +398,23 @@ func load() (*Config, error) {
 			SweepBatch:      sweepBatch,
 			Retention:       v.GetDuration("outbox.retention"),
 			PruneInterval:   v.GetDuration("outbox.prune_interval"),
+		},
+		Realtime: RealtimeConfig{
+			Addr:                    v.GetString("realtime.addr"),
+			PublicURL:               v.GetString("realtime.public_url"),
+			AllowedOrigins:          splitAndTrim(v.GetString("realtime.allowed_origins")),
+			TicketTTL:               v.GetDuration("realtime.ticket_ttl"),
+			SessionCheckInterval:    v.GetDuration("realtime.session_check_interval"),
+			MaxLifetime:             v.GetDuration("realtime.max_lifetime"),
+			PingInterval:            v.GetDuration("realtime.ping_interval"),
+			WriteTimeout:            v.GetDuration("realtime.write_timeout"),
+			HandshakeTimeout:        v.GetDuration("realtime.handshake_timeout"),
+			SendBuffer:              v.GetInt("realtime.send_buffer"),
+			MaxConnsPerUser:         v.GetInt("realtime.max_conns_per_user"),
+			MaxConns:                v.GetInt("realtime.max_conns"),
+			AdmissionRate:           v.GetInt("realtime.admission_rate"),
+			AdmissionRatePerAddress: v.GetInt("realtime.admission_rate_per_address"),
+			TrustedProxies:          realtimeProxies,
 		},
 		Log: LogConfig{
 			Level:            v.GetString("log.level"),
@@ -447,6 +504,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.redis.auth_user_window", time.Minute)
 	v.SetDefault("rate_limit.redis.discount_attempt_max", 10)
 	v.SetDefault("rate_limit.redis.discount_attempt_window", 15*time.Minute)
+	v.SetDefault("rate_limit.redis.realtime_ticket_max", 60)
+	v.SetDefault("rate_limit.redis.realtime_ticket_window", time.Minute)
 
 	// No default DB URL: use Neon (or any Postgres) via POSTGRES_URL in .env / environment.
 	v.SetDefault("postgres.url", "")
@@ -475,6 +534,21 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("outbox.sweep_batch", 100)
 	v.SetDefault("outbox.retention", 7*24*time.Hour)
 	v.SetDefault("outbox.prune_interval", time.Hour)
+
+	v.SetDefault("realtime.addr", "127.0.0.1:8081")
+	v.SetDefault("realtime.public_url", "ws://localhost:8081/ws")
+	v.SetDefault("realtime.allowed_origins", "http://localhost:3000")
+	v.SetDefault("realtime.ticket_ttl", 30*time.Second)
+	v.SetDefault("realtime.session_check_interval", 30*time.Second)
+	v.SetDefault("realtime.max_lifetime", time.Hour)
+	v.SetDefault("realtime.ping_interval", 25*time.Second)
+	v.SetDefault("realtime.write_timeout", 10*time.Second)
+	v.SetDefault("realtime.handshake_timeout", 10*time.Second)
+	v.SetDefault("realtime.send_buffer", 16)
+	v.SetDefault("realtime.max_conns_per_user", 20)
+	v.SetDefault("realtime.max_conns", 10000)
+	v.SetDefault("realtime.admission_rate", 200)
+	v.SetDefault("realtime.admission_rate_per_address", 10)
 
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.encoding", "json")
@@ -571,6 +645,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.validateStores(); err != nil {
+		return err
+	}
+	if err := c.Realtime.validate(c.App.Env); err != nil {
 		return err
 	}
 	if c.JWT.AccessTTL <= 0 {
@@ -682,6 +759,107 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+// Realtime bounds that keep revocation prompt and a ticket short-lived. A
+// ticket travels in a URL, so it must expire within the minute it was issued
+// for; an open socket must notice an ended session within a minute.
+const (
+	maxRealtimeTicketTTL       = time.Minute
+	maxRealtimeSessionInterval = time.Minute
+)
+
+func (c RealtimeConfig) validate(env string) error {
+	env = strings.ToLower(strings.TrimSpace(env))
+	deployed := env == "production" || env == "staging"
+	if strings.TrimSpace(c.Addr) == "" {
+		return errors.New("realtime.addr is required")
+	}
+	public, err := url.Parse(c.PublicURL)
+	if err != nil || (public.Scheme != "ws" && public.Scheme != "wss") || public.Host == "" {
+		return errors.New("realtime.public_url must be a ws:// or wss:// URL")
+	}
+	if deployed && public.Scheme != "wss" {
+		return errors.New("realtime.public_url must use wss:// in non-development environments")
+	}
+	if err := validateRealtimeOrigins(c.AllowedOrigins, deployed); err != nil {
+		return err
+	}
+	positive := []struct {
+		name  string
+		value time.Duration
+	}{
+		{"realtime.ticket_ttl", c.TicketTTL},
+		{"realtime.session_check_interval", c.SessionCheckInterval},
+		{"realtime.max_lifetime", c.MaxLifetime},
+		{"realtime.ping_interval", c.PingInterval},
+		{"realtime.write_timeout", c.WriteTimeout},
+		{"realtime.handshake_timeout", c.HandshakeTimeout},
+	}
+	for _, d := range positive {
+		if d.value <= 0 {
+			return fmt.Errorf("%s must be positive", d.name)
+		}
+	}
+	if c.TicketTTL > maxRealtimeTicketTTL {
+		return fmt.Errorf("realtime.ticket_ttl must be at most %s", maxRealtimeTicketTTL)
+	}
+	if c.SessionCheckInterval > maxRealtimeSessionInterval {
+		return fmt.Errorf("realtime.session_check_interval must be at most %s", maxRealtimeSessionInterval)
+	}
+	if c.SessionCheckInterval >= c.MaxLifetime {
+		return errors.New("realtime.session_check_interval must be shorter than realtime.max_lifetime")
+	}
+	if c.SendBuffer < 1 {
+		return errors.New("realtime.send_buffer must be at least 1")
+	}
+	if c.MaxConnsPerUser < 1 {
+		return errors.New("realtime.max_conns_per_user must be at least 1")
+	}
+	if c.MaxConns < c.MaxConnsPerUser {
+		return errors.New("realtime.max_conns must be at least realtime.max_conns_per_user")
+	}
+	if c.AdmissionRate < 1 {
+		return errors.New("realtime.admission_rate must be at least 1")
+	}
+	if c.AdmissionRatePerAddress < 1 || c.AdmissionRatePerAddress > c.AdmissionRate {
+		return errors.New("realtime.admission_rate_per_address must be between 1 and realtime.admission_rate")
+	}
+	return nil
+}
+
+// validateRealtimeOrigins accepts only origins exactly as a browser sends them —
+// scheme://host[:port], lowercase, no default port — because the listener
+// compares the Origin header byte for byte: anything else would silently refuse
+// every handshake. Deployed sites are served over https from a real host.
+func validateRealtimeOrigins(origins []string, deployed bool) error {
+	if len(origins) == 0 {
+		return errors.New("realtime.allowed_origins must list the site's origins")
+	}
+	for _, origin := range origins {
+		parsed, err := url.Parse(origin)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" ||
+			strings.ContainsAny(parsed.Host, "*?[]\\") || origin != parsed.Scheme+"://"+parsed.Host {
+			return fmt.Errorf("realtime.allowed_origins: %q is not an exact http(s) origin", origin)
+		}
+		if origin != strings.ToLower(origin) || parsed.Port() == defaultPorts[parsed.Scheme] {
+			return fmt.Errorf("realtime.allowed_origins: %q is not written as a browser sends it (lowercase, no default port)", origin)
+		}
+		if deployed && (parsed.Scheme != "https" || isLoopbackHost(parsed.Hostname())) {
+			return fmt.Errorf("realtime.allowed_origins: %q must be an https origin on a public host in non-development environments", origin)
+		}
+	}
+	return nil
+}
+
+var defaultPorts = map[string]string{"http": "80", "https": "443"}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") || strings.HasSuffix(strings.ToLower(host), ".localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 func (c OutboxConfig) validate() error {
 	positive := []struct {
 		name  string
@@ -723,6 +901,7 @@ func (c RateLimitRedisConfig) validate() error {
 		{"rate_limit.redis.manager_media", c.ManagerMediaMax, c.ManagerMediaWindow},
 		{"rate_limit.redis.auth_user", c.AuthUserMax, c.AuthUserWindow},
 		{"rate_limit.redis.discount_attempt", c.DiscountAttemptMax, c.DiscountAttemptWindow},
+		{"rate_limit.redis.realtime_ticket", c.RealtimeTicketMax, c.RealtimeTicketWindow},
 	}
 	for _, chk := range checks {
 		if chk.max < 1 {
@@ -763,6 +942,24 @@ func uint8FromInt(field string, n int) (uint8, error) {
 		return 0, fmt.Errorf("%s: value %d out of uint8 range", field, n)
 	}
 	return uint8(n), nil
+}
+
+// parsePrefixes reads addresses and CIDR ranges; a bare address is its own range.
+func parsePrefixes(field string, values []string) ([]netip.Prefix, error) {
+	prefixes := make([]netip.Prefix, 0, len(values))
+	for _, value := range values {
+		if prefix, err := netip.ParsePrefix(value); err == nil {
+			prefixes = append(prefixes, prefix.Masked())
+			continue
+		}
+		addr, err := netip.ParseAddr(value)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %q is not an IP address or CIDR range", field, value)
+		}
+		addr = addr.Unmap()
+		prefixes = append(prefixes, netip.PrefixFrom(addr, addr.BitLen()))
+	}
+	return prefixes, nil
 }
 
 func splitAndTrim(s string) []string {

@@ -5,6 +5,7 @@
  */
 export {
   CartView,
+  CustomerLiveUpdates,
   OrderDetail,
   OrderList,
   ProductPurchaseActions,
