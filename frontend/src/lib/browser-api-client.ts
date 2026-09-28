@@ -53,11 +53,9 @@ async function executeRequest<T>(
     headers.set("Accept", "application/json");
   }
 
-  if (!skipAuth) {
-    const token = useAuthStore.getState().accessToken;
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
+  const sentToken = skipAuth ? null : useAuthStore.getState().accessToken;
+  if (sentToken) {
+    headers.set("Authorization", `Bearer ${sentToken}`);
   }
 
   if (json !== undefined) {
@@ -92,7 +90,8 @@ async function executeRequest<T>(
   if (response.status === 401 && !skipRefreshRetry && !isAuthLoopPath(path)) {
     if (!isRetry) {
       const { refreshNow } = await import("@/lib/auth");
-      await refreshNow({ redirectOnFailure: false });
+      // Refresh only if no other tab has replaced the token this request carried.
+      await refreshNow({ redirectOnFailure: false, staleToken: sentToken });
       return executeRequest<T>(path, init, true);
     }
     throwApiErrorFromPayload(response.status, await parseResponseBody(response));
