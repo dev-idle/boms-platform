@@ -15,6 +15,7 @@ type CreateOrderParams struct {
 	UserID               uuid.UUID
 	Code                 string
 	Status               domainorder.Status
+	Type                 domainorder.Type
 	SubtotalCents        int64
 	DiscountCents        int64
 	TotalCents           int64
@@ -70,6 +71,12 @@ type BakerListOrdersParams struct {
 	Offset int32
 }
 
+// PickupCount is how many orders not cancelled are due at one pickup time.
+type PickupCount struct {
+	At     time.Time
+	Orders int
+}
+
 // AddOrderStatusEventParams records an order entering To. From is nil when the
 // order is being placed.
 type AddOrderStatusEventParams struct {
@@ -104,6 +111,16 @@ type OrderRepository interface {
 	// transaction runs on, and that day. It must run in the transaction that
 	// creates the order: the number is held until then.
 	NextDayNumber(ctx context.Context) (day time.Time, number int, err error)
+	// HoldPickupSlot locks the pickup slot [startsAt, startsAt+length) until
+	// the transaction ends and returns how many orders already hold it. It must
+	// run in the transaction that creates the order.
+	HoldPickupSlot(ctx context.Context, startsAt time.Time, length time.Duration) (int, error)
+	// CountCustomerOrdersBetween counts a customer's orders not cancelled with a
+	// pickup in [from, to).
+	CountCustomerOrdersBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) (int, error)
+	// CountByPickupTime returns how many orders not cancelled are due at each
+	// pickup time in [from, to).
+	CountByPickupTime(ctx context.Context, from, to time.Time) ([]PickupCount, error)
 	AddStatusEvent(ctx context.Context, params AddOrderStatusEventParams) error
 	ListStatusEvents(ctx context.Context, orderID uuid.UUID) ([]domainorder.StatusEvent, error)
 }

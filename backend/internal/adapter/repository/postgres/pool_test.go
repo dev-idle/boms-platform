@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 )
@@ -25,7 +26,7 @@ func TestPoolWithTx_Integration(t *testing.T) {
 	categories := postgresadapter.NewCategoryRepository(pool)
 
 	createIn := func(txCtx context.Context, slug string) (uuid.UUID, error) {
-		category, err := categories.Create(txCtx, port.CreateCategoryParams{Name: slug, Slug: slug, IsActive: true})
+		category, err := categories.Create(txCtx, port.CreateCategoryParams{Name: slug, Slug: slug, IsActive: true, Station: domaincategory.StationKitchen})
 		if err != nil {
 			return uuid.Nil, err
 		}

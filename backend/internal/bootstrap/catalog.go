@@ -89,6 +89,7 @@ func seedCategoriesInto(
 			Slug:      seed.Slug,
 			SortOrder: seed.SortOrder,
 			IsActive:  seed.IsActive,
+			Station:   seed.Station,
 		})
 		if err != nil {
 			return nil, created, err
@@ -139,6 +140,7 @@ func seedProductsInto(
 			Description: &description,
 			PriceCents:  seed.PriceCents,
 			IsActive:    seed.IsActive,
+			LeadTime:    time.Duration(seed.LeadTimeMinutes) * time.Minute,
 		})
 		if err != nil {
 			return nil, created, err

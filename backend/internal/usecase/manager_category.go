@@ -42,11 +42,17 @@ func (u *ManagerCategoryUsecase) Create(
 		return nil, err
 	}
 
+	station := domaincategory.Station(req.Station)
+	if !station.Valid() {
+		return nil, apperrors.ErrValidation.WithDetail("station", "kitchen or counter")
+	}
+
 	created, err := u.categories.Create(ctx, port.CreateCategoryParams{
 		Name:      name,
 		Slug:      slug,
 		SortOrder: req.SortOrder,
 		IsActive:  req.IsActive,
+		Station:   station,
 	})
 	if err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
@@ -127,12 +133,18 @@ func (u *ManagerCategoryUsecase) Update(
 		return nil, err
 	}
 
+	station := domaincategory.Station(req.Station)
+	if !station.Valid() {
+		return nil, apperrors.ErrValidation.WithDetail("station", "kitchen or counter")
+	}
+
 	updated, err := u.categories.Update(ctx, port.UpdateCategoryParams{
 		ID:        id,
 		Name:      name,
 		Slug:      slug,
 		SortOrder: req.SortOrder,
 		IsActive:  req.IsActive,
+		Station:   station,
 	})
 	if err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
@@ -187,6 +199,7 @@ func toCategoryResponse(cat *domaincategory.Category) *dto.CategoryResponse {
 		Slug:      cat.Slug,
 		SortOrder: cat.SortOrder,
 		IsActive:  cat.IsActive,
+		Station:   string(cat.Station),
 		CreatedAt: cat.CreatedAt,
 		UpdatedAt: cat.UpdatedAt,
 	}
@@ -198,6 +211,7 @@ func toCategoryAudit(cat *domaincategory.Category) map[string]any {
 		"slug":       cat.Slug,
 		"sort_order": cat.SortOrder,
 		"is_active":  cat.IsActive,
+		"station":    cat.Station,
 	}
 }
 

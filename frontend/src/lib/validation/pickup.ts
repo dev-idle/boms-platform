@@ -1,9 +1,8 @@
 import { PICKUP_ZONE } from "@/constants/pickup";
+import type { OrderType } from "@/lib/schemas/order";
 
 const MINUTE_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
-/** Suggested pickups fall on five-minute marks, so the default is a time people say. */
-const SUGGESTED_STEP_MS = 5 * MINUTE_MS;
 const BAKERY_OFFSET_MS = PICKUP_ZONE.utcOffsetMinutes * MINUTE_MS;
 
 /**
@@ -11,14 +10,27 @@ const BAKERY_OFFSET_MS = PICKUP_ZONE.utcOffsetMinutes * MINUTE_MS;
  * in bakery time. Mirrors backend `order.PickupPolicy`.
  */
 export type PickupWindow = {
-  /** Minutes after bakery midnight when pickups start. */
+  /** Minutes after bakery midnight when the first slot starts. */
   opensAtMinutes: number;
   /** Minutes after bakery midnight when pickups stop (exclusive). */
   closesAtMinutes: number;
-  minLeadMinutes: number;
+  /** Slots start every this many minutes from opening. */
+  slotMinutes: number;
+  /** Notice a pre-order needs. */
+  preorderLeadMinutes: number;
+  /** Notice the counter needs to pack a same-day order of ready-made items. */
+  instantPrepMinutes: number;
   maxAdvanceDays: number;
   /** Closed bakery days (YYYY-MM-DD) and the reason customers see. */
   closedDates: ReadonlyMap<string, string>;
+};
+
+/** What a cart's items ask of the bakery — backend `order.Fulfillment`. */
+export type PickupFulfillment = {
+  /** Any item is made in the kitchen. */
+  kitchen: boolean;
+  /** The longest notice any item needs. */
+  leadMinutes: number;
 };
 
 /** Why a pickup time cannot be used — the backend's pickup error codes, plus "missing". */
@@ -27,7 +39,8 @@ export type PickupProblem =
   | "too_soon"
   | "too_far"
   | "closed_day"
-  | "outside_hours";
+  | "outside_hours"
+  | "off_slot";
 
 function pad2(value: number): string {
   return String(value).padStart(2, "0");
@@ -48,10 +61,6 @@ function formatWallClock(wall: Date): string {
   );
 }
 
-function wallDay(wall: Date): string {
-  return formatWallClock(wall).slice(0, 10);
-}
-
 function wallMinutes(wall: Date): number {
   return wall.getUTCHours() * 60 + wall.getUTCMinutes();
 }
@@ -68,6 +77,11 @@ export function formatPickupLocalInputValue(date: Date): string {
   return formatWallClock(toBakeryWallClock(date));
 }
 
+/** The bakery day (YYYY-MM-DD) an instant falls on. */
+export function bakeryDayOf(date: Date): string {
+  return formatPickupLocalInputValue(date).slice(0, 10);
+}
+
 /** Serializes a bakery-local `datetime-local` value to an RFC3339 instant. */
 export function bakeryPickupISOFromLocalInput(localValue: string): string {
   return `${localValue}:00${bakeryOffsetSuffix()}`;
@@ -82,76 +96,104 @@ export function pickupInstantFromLocalInput(localValue: string): Date | null {
   return Number.isNaN(instant.getTime()) ? null : instant;
 }
 
+function orderTypeAt(instant: Date, now: Date, items: PickupFulfillment): OrderType {
+  return !items.kitchen && bakeryDayOf(instant) === bakeryDayOf(now) ? "instant" : "pre_order";
+}
+
 /**
- * What is wrong with a pickup time, or null when checkout would accept it.
- * Checked in the backend's order, so both sides name the same problem.
+ * How an order with these items is prepared if collected then: counter items
+ * only, collected the day they are ordered, make an instant order; anything
+ * else is a pre-order. Null for a value that is not a time.
+ */
+export function pickupOrderType(
+  localValue: string,
+  now: Date,
+  items: PickupFulfillment,
+): OrderType | null {
+  const instant = pickupInstantFromLocalInput(localValue);
+  return instant ? orderTypeAt(instant, now, items) : null;
+}
+
+/**
+ * What is wrong with a pickup time for these items, or null when checkout
+ * would accept it (bar a full slot, which only the API knows). Checked in the
+ * backend's order, so both sides name the same problem.
  */
 export function pickupProblem(
   localValue: string,
   pickupWindow: PickupWindow,
   now: Date,
+  items: PickupFulfillment,
 ): PickupProblem | null {
   const instant = pickupInstantFromLocalInput(localValue);
   if (!instant) {
     return "missing";
   }
-  if (instant.getTime() < now.getTime() + pickupWindow.minLeadMinutes * MINUTE_MS) {
+  const prep =
+    orderTypeAt(instant, now, items) === "instant"
+      ? pickupWindow.instantPrepMinutes
+      : pickupWindow.preorderLeadMinutes;
+  if (instant.getTime() < now.getTime() + Math.max(prep, items.leadMinutes) * MINUTE_MS) {
     return "too_soon";
   }
   if (instant.getTime() > now.getTime() + pickupWindow.maxAdvanceDays * DAY_MS) {
     return "too_far";
   }
   const wall = toBakeryWallClock(instant);
-  if (pickupWindow.closedDates.has(wallDay(wall))) {
+  if (pickupWindow.closedDates.has(formatWallClock(wall).slice(0, 10))) {
     return "closed_day";
   }
   const minutes = wallMinutes(wall);
   if (minutes < pickupWindow.opensAtMinutes || minutes >= pickupWindow.closesAtMinutes) {
     return "outside_hours";
   }
+  if ((minutes - pickupWindow.opensAtMinutes) % pickupWindow.slotMinutes !== 0) {
+    return "off_slot";
+  }
   return null;
 }
 
-/**
- * Earliest pickup checkout accepts: now plus the lead time, rounded up to a
- * five-minute mark, moved forward into opening hours and past closed days.
- * Empty when the booking window holds no open time.
- */
-export function defaultPickupLocalInputValue(
-  pickupWindow: PickupWindow,
-  now: Date,
-): string {
-  const latest = now.getTime() + pickupWindow.maxAdvanceDays * DAY_MS;
-  const earliest = now.getTime() + pickupWindow.minLeadMinutes * MINUTE_MS;
-  // The bakery's offset is whole hours, so marks on the epoch are marks on its clock.
-  const wall = toBakeryWallClock(
-    new Date(Math.ceil(earliest / SUGGESTED_STEP_MS) * SUGGESTED_STEP_MS),
-  );
-  while (wall.getTime() - BAKERY_OFFSET_MS <= latest) {
-    const minutes = wallMinutes(wall);
-    if (pickupWindow.closedDates.has(wallDay(wall)) || minutes >= pickupWindow.closesAtMinutes) {
-      wall.setUTCDate(wall.getUTCDate() + 1);
-      wall.setUTCHours(0, pickupWindow.opensAtMinutes, 0, 0);
-      continue;
-    }
-    if (minutes < pickupWindow.opensAtMinutes) {
-      // Opening may lie past the window; the loop checks again.
-      wall.setUTCHours(0, pickupWindow.opensAtMinutes, 0, 0);
-      continue;
-    }
-    return formatWallClock(wall);
+/** The slot starts of a bakery day (YYYY-MM-DD), as `datetime-local` values. */
+export function pickupSlotsOfDay(day: string, pickupWindow: PickupWindow): string[] {
+  const slots: string[] = [];
+  for (
+    let minutes = pickupWindow.opensAtMinutes;
+    minutes < pickupWindow.closesAtMinutes;
+    minutes += pickupWindow.slotMinutes
+  ) {
+    slots.push(`${day}T${pad2(Math.floor(minutes / 60))}:${pad2(minutes % 60)}`);
   }
-  return "";
+  return slots;
 }
 
-/** Latest pickup the booking window allows, as a `datetime-local` bound. */
-export function maxPickupLocalInputValue(
+/** The last bakery day (YYYY-MM-DD) the booking window reaches. */
+export function lastPickupDay(pickupWindow: PickupWindow, now: Date): string {
+  return bakeryDayOf(new Date(now.getTime() + pickupWindow.maxAdvanceDays * DAY_MS));
+}
+
+/**
+ * The first slot checkout would accept for these items, as a `datetime-local`
+ * value, whether or not it has room — only the API knows that. Empty when the
+ * booking window holds none.
+ */
+export function earliestPickupLocalValue(
   pickupWindow: PickupWindow,
   now: Date,
+  items: PickupFulfillment,
 ): string {
-  return formatPickupLocalInputValue(
-    new Date(now.getTime() + pickupWindow.maxAdvanceDays * DAY_MS),
-  );
+  for (let offset = 0; offset <= pickupWindow.maxAdvanceDays; offset += 1) {
+    const day = bakeryDayOf(new Date(now.getTime() + offset * DAY_MS));
+    if (pickupWindow.closedDates.has(day)) {
+      continue;
+    }
+    const open = pickupSlotsOfDay(day, pickupWindow).find(
+      (slot) => pickupProblem(slot, pickupWindow, now, items) === null,
+    );
+    if (open) {
+      return open;
+    }
+  }
+  return "";
 }
 
 /** Formats a pickup instant in bakery time so all roles see the scheduled wall-clock slot. */

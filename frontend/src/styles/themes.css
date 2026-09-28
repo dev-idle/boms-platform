@@ -65,6 +65,8 @@
   --db-table-col-actions-pair: 10.5rem;
   --db-table-col-actions-group: 17rem;
   --db-table-col-role: 9.25rem;
+  /* "Counter" as a micro-label plus the cell padding. */
+  --db-table-col-station: 7.5rem;
   /* A number column: the widest value ("$1,234.00") plus the 24px cell padding. */
   --db-table-col-number: 8rem;
   /* A timestamp column: "Sep 25, 2026" with its time below, plus that padding. */

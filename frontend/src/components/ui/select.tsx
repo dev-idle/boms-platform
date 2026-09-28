@@ -115,6 +115,8 @@ function ChevronDownIcon({ className }: { className?: string }) {
 
 /** Custom select — Radix listbox; keeps native `<option>` children for RHF compatibility. */
 export function Select({
+  "aria-busy": ariaBusy,
+  "aria-describedby": ariaDescribedBy,
   "aria-invalid": ariaInvalid,
   children,
   className,
@@ -125,6 +127,7 @@ export function Select({
   onBlur,
   onChange,
   required,
+  title,
   value,
   ref,
 }: SelectProps) {
@@ -190,6 +193,8 @@ export function Select({
       <div className="field-select">
         <SelectPrimitive.Trigger
           ref={ref}
+          aria-busy={ariaBusy}
+          aria-describedby={ariaDescribedBy}
           aria-invalid={ariaInvalid}
           aria-required={required ? true : undefined}
           className={cn(
@@ -199,6 +204,7 @@ export function Select({
             className,
           )}
           id={id}
+          title={title}
           onBlur={(event) => {
             onBlur?.(event as unknown as React.FocusEvent<HTMLSelectElement>);
           }}

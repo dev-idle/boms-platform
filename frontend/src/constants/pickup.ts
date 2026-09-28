@@ -6,9 +6,16 @@ export const PICKUP_ZONE = {
 } as const;
 
 export const PICKUP_COPY = {
+  dayLabel: "Pickup day",
   label: "Pickup time",
-  required: "Choose a pickup time to continue checkout.",
+  full: "Full",
+  tooSoon: "Too soon",
+  slotPlaceholder: "Choose a time",
+  required: "Choose a pickup day and time to continue checkout.",
   loading: "Loading pickup times…",
   unavailable: "Pickup times could not be loaded. Try again in a moment.",
+  slotsUnavailable: "The pickup slots for that day could not be loaded. Try again in a moment.",
   noOpenTime: "The bakery has no open pickup time in its booking window.",
+  noSlotLeft: "No pickup time is left on that day. Choose another day.",
+  slotFull: "That pickup time has just filled up. Choose another time.",
 } as const;

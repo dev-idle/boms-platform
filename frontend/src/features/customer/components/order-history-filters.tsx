@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { orderStatusSchema, type OrderStatus } from "@/lib/schemas/order";
-import { formatPickupLocalInputValue } from "@/lib/validation/pickup";
+import { bakeryDayOf } from "@/lib/validation/pickup";
 
 const ALL_STATUSES = "all";
 
@@ -42,7 +42,7 @@ type OrderHistoryFiltersProps = {
  * (a five-digit year) is ignored.
  */
 export function OrderHistoryFilters({ value, onChange }: OrderHistoryFiltersProps) {
-  const today = formatPickupLocalInputValue(new Date()).slice(0, 10);
+  const today = bakeryDayOf(new Date());
 
   return (
     <div className="storefront-orders__filters" role="group" aria-label="Filter orders">

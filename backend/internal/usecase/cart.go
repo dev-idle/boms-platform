@@ -177,7 +177,7 @@ func (u *CartUsecase) ApplyDiscount(ctx context.Context, userID uuid.UUID, req d
 	}
 	cart.DiscountCodeID = &discountCode.ID
 	totals := summarizeCart(loaded.lines, discountCode, now)
-	return u.buildCartResponseFromLines(cart, loaded.lines, discountCode, totals)
+	return u.buildCartResponseFromLines(ctx, cart, loaded.lines, discountCode, totals)
 }
 
 func (u *CartUsecase) RemoveDiscount(ctx context.Context, userID uuid.UUID) (*dto.CartResponse, error) {
@@ -283,7 +283,7 @@ func (u *CartUsecase) buildCartResponse(ctx context.Context, cart *domaincart.Ca
 			loaded.totals = summarizeCart(loaded.lines, discountCode, time.Now().UTC())
 		}
 	}
-	return u.buildCartResponseFromLines(cart, loaded.lines, discountCode, loaded.totals)
+	return u.buildCartResponseFromLines(ctx, cart, loaded.lines, discountCode, loaded.totals)
 }
 
 type loadedPricedCart struct {
@@ -306,11 +306,16 @@ func (u *CartUsecase) loadPricedCart(ctx context.Context, cart *domaincart.Cart)
 }
 
 func (u *CartUsecase) buildCartResponseFromLines(
+	ctx context.Context,
 	cart *domaincart.Cart,
 	lines []pricedCartLine,
 	discountCode *domaindiscount.Code,
 	totals cartTotals,
 ) (*dto.CartResponse, error) {
+	items, err := u.fulfillmentOf(ctx, lines)
+	if err != nil {
+		return nil, err
+	}
 	resp := &dto.CartResponse{
 		ID:            cart.ID.String(),
 		Items:         make([]dto.CartItemResponse, 0, len(lines)),
@@ -318,6 +323,10 @@ func (u *CartUsecase) buildCartResponseFromLines(
 		DiscountCents: totals.DiscountCents,
 		TotalCents:    totals.TotalCents,
 		CheckoutReady: totals.CheckoutReady,
+		Fulfillment: dto.CartFulfillmentResponse{
+			HasKitchenItems: items.Kitchen,
+			LeadMinutes:     int(items.Lead / time.Minute),
+		},
 	}
 	for _, line := range lines {
 		item := dto.CartItemResponse{

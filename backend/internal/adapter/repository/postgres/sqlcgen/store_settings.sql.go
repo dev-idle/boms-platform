@@ -48,7 +48,7 @@ func (q *Queries) CreateStoreClosedDate(ctx context.Context, arg CreateStoreClos
 }
 
 const getStoreSettings = `-- name: GetStoreSettings :one
-SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 FROM store_settings
 WHERE id = 1
 `
@@ -58,12 +58,15 @@ type GetStoreSettingsRow struct {
 	ClosesAtMinute         int16     `json:"closesAtMinute"`
 	PreorderMinLeadMinutes int32     `json:"preorderMinLeadMinutes"`
 	MaxAdvanceDays         int16     `json:"maxAdvanceDays"`
+	SlotMinutes            int16     `json:"slotMinutes"`
+	SlotCapacity           int16     `json:"slotCapacity"`
+	InstantPrepMinutes     int16     `json:"instantPrepMinutes"`
 	UpdatedAt              time.Time `json:"updatedAt"`
 }
 
 // GetStoreSettings
 //
-//	SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+//	SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 //	FROM store_settings
 //	WHERE id = 1
 func (q *Queries) GetStoreSettings(ctx context.Context) (GetStoreSettingsRow, error) {
@@ -74,13 +77,16 @@ func (q *Queries) GetStoreSettings(ctx context.Context) (GetStoreSettingsRow, er
 		&i.ClosesAtMinute,
 		&i.PreorderMinLeadMinutes,
 		&i.MaxAdvanceDays,
+		&i.SlotMinutes,
+		&i.SlotCapacity,
+		&i.InstantPrepMinutes,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getStoreSettingsForUpdate = `-- name: GetStoreSettingsForUpdate :one
-SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 FROM store_settings
 WHERE id = 1
 FOR UPDATE
@@ -91,12 +97,15 @@ type GetStoreSettingsForUpdateRow struct {
 	ClosesAtMinute         int16     `json:"closesAtMinute"`
 	PreorderMinLeadMinutes int32     `json:"preorderMinLeadMinutes"`
 	MaxAdvanceDays         int16     `json:"maxAdvanceDays"`
+	SlotMinutes            int16     `json:"slotMinutes"`
+	SlotCapacity           int16     `json:"slotCapacity"`
+	InstantPrepMinutes     int16     `json:"instantPrepMinutes"`
 	UpdatedAt              time.Time `json:"updatedAt"`
 }
 
 // Locks the row so two admins editing at once cannot undo each other.
 //
-//	SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+//	SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 //	FROM store_settings
 //	WHERE id = 1
 //	FOR UPDATE
@@ -108,6 +117,9 @@ func (q *Queries) GetStoreSettingsForUpdate(ctx context.Context) (GetStoreSettin
 		&i.ClosesAtMinute,
 		&i.PreorderMinLeadMinutes,
 		&i.MaxAdvanceDays,
+		&i.SlotMinutes,
+		&i.SlotCapacity,
+		&i.InstantPrepMinutes,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -207,9 +219,12 @@ SET opens_at_minute = $1,
     closes_at_minute = $2,
     preorder_min_lead_minutes = $3,
     max_advance_days = $4,
+    slot_minutes = $5,
+    slot_capacity = $6,
+    instant_prep_minutes = $7,
     updated_at = now()
 WHERE id = 1
-RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 `
 
 type UpdateStoreSettingsParams struct {
@@ -217,6 +232,9 @@ type UpdateStoreSettingsParams struct {
 	ClosesAtMinute         int16 `json:"closesAtMinute"`
 	PreorderMinLeadMinutes int32 `json:"preorderMinLeadMinutes"`
 	MaxAdvanceDays         int16 `json:"maxAdvanceDays"`
+	SlotMinutes            int16 `json:"slotMinutes"`
+	SlotCapacity           int16 `json:"slotCapacity"`
+	InstantPrepMinutes     int16 `json:"instantPrepMinutes"`
 }
 
 type UpdateStoreSettingsRow struct {
@@ -224,6 +242,9 @@ type UpdateStoreSettingsRow struct {
 	ClosesAtMinute         int16     `json:"closesAtMinute"`
 	PreorderMinLeadMinutes int32     `json:"preorderMinLeadMinutes"`
 	MaxAdvanceDays         int16     `json:"maxAdvanceDays"`
+	SlotMinutes            int16     `json:"slotMinutes"`
+	SlotCapacity           int16     `json:"slotCapacity"`
+	InstantPrepMinutes     int16     `json:"instantPrepMinutes"`
 	UpdatedAt              time.Time `json:"updatedAt"`
 }
 
@@ -234,15 +255,21 @@ type UpdateStoreSettingsRow struct {
 //	    closes_at_minute = $2,
 //	    preorder_min_lead_minutes = $3,
 //	    max_advance_days = $4,
+//	    slot_minutes = $5,
+//	    slot_capacity = $6,
+//	    instant_prep_minutes = $7,
 //	    updated_at = now()
 //	WHERE id = 1
-//	RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+//	RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 func (q *Queries) UpdateStoreSettings(ctx context.Context, arg UpdateStoreSettingsParams) (UpdateStoreSettingsRow, error) {
 	row := q.db.QueryRow(ctx, updateStoreSettings,
 		arg.OpensAtMinute,
 		arg.ClosesAtMinute,
 		arg.PreorderMinLeadMinutes,
 		arg.MaxAdvanceDays,
+		arg.SlotMinutes,
+		arg.SlotCapacity,
+		arg.InstantPrepMinutes,
 	)
 	var i UpdateStoreSettingsRow
 	err := row.Scan(
@@ -250,6 +277,9 @@ func (q *Queries) UpdateStoreSettings(ctx context.Context, arg UpdateStoreSettin
 		&i.ClosesAtMinute,
 		&i.PreorderMinLeadMinutes,
 		&i.MaxAdvanceDays,
+		&i.SlotMinutes,
+		&i.SlotCapacity,
+		&i.InstantPrepMinutes,
 		&i.UpdatedAt,
 	)
 	return i, err

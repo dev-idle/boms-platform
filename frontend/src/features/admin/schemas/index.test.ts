@@ -69,6 +69,9 @@ describe("store settings form", () => {
     closes_at: "18:00",
     preorder_min_lead_minutes: 120,
     max_advance_days: 14,
+    slot_minutes: 30,
+    slot_capacity: 10,
+    instant_prep_minutes: 20,
   };
 
   it("accepts the seeded rules", () => {
@@ -81,6 +84,10 @@ describe("store settings form", () => {
       return result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
     };
     expect(paths({ closes_at: "07:00" })).toEqual(["closes_at"]);
+    expect(paths({ opens_at: "17:45" })).toEqual(["slot_minutes"]);
+    expect(paths({ slot_minutes: 45 })).toEqual(["slot_minutes"]);
+    expect(paths({ slot_capacity: 0 })).toEqual(["slot_capacity"]);
+    expect(paths({ instant_prep_minutes: 241 })).toEqual(["instant_prep_minutes"]);
     expect(paths({ max_advance_days: 1, preorder_min_lead_minutes: 1440 })).toEqual([
       "preorder_min_lead_minutes",
     ]);

@@ -34,6 +34,7 @@ type StaffOrderResponse struct {
 	ID                   string                            `json:"id"`
 	Code                 string                            `json:"code"`
 	Status               string                            `json:"status"`
+	OrderType            string                            `json:"order_type"`
 	SubtotalCents        int64                             `json:"subtotal_cents"`
 	DiscountCents        int64                             `json:"discount_cents"`
 	TotalCents           int64                             `json:"total_cents"`

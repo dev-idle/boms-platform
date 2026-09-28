@@ -6,6 +6,7 @@ import {
   orderCodeSchema,
   orderStatusSchema,
   orderTimelineEntrySchema,
+  orderTypeSchema,
 } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
@@ -48,6 +49,7 @@ export const staffOrderSchema = z.object({
   id: z.uuid(),
   code: orderCodeSchema,
   status: orderStatusSchema,
+  order_type: orderTypeSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),
   total_cents: z.number().int().min(0),

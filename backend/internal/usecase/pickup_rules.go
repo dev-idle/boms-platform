@@ -45,7 +45,7 @@ func readPickupRules(
 		return domainstore.Settings{}, nil, err
 	}
 
-	last := domainstore.DayOf(now.Add(time.Duration(settings.MaxAdvanceDays) * 24 * time.Hour))
+	last := settings.LastPickupDay(now)
 	inWindow := closed[:0]
 	for _, c := range closed {
 		if !c.Day.After(last) {

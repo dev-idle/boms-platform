@@ -113,6 +113,7 @@ type Querier interface {
 	//    o.created_at,
 	//    o.updated_at,
 	//    o.code,
+	//    o.order_type,
 	//    u.email AS customer_email,
 	//    cp.display_name AS customer_display_name
 	//  FROM orders o
@@ -367,6 +368,33 @@ type Querier interface {
 	//  FROM cart_items
 	//  WHERE cart_id = $1
 	CountCartItems(ctx context.Context, cartID uuid.UUID) (int64, error)
+	// A customer's orders not cancelled with a pickup in [from_at, to_at).
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM orders
+	//  WHERE user_id = $1
+	//    AND pickup_at >= $2::timestamptz
+	//    AND pickup_at < $3::timestamptz
+	//    AND status <> 'cancelled'::order_status
+	CountCustomerOrdersBetween(ctx context.Context, arg CountCustomerOrdersBetweenParams) (int64, error)
+	//CountOrdersByPickupTime
+	//
+	//  SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
+	//  FROM orders
+	//  WHERE pickup_at >= $1::timestamptz
+	//    AND pickup_at < $2::timestamptz
+	//    AND status <> 'cancelled'::order_status
+	//  GROUP BY pickup_at
+	CountOrdersByPickupTime(ctx context.Context, arg CountOrdersByPickupTimeParams) ([]CountOrdersByPickupTimeRow, error)
+	// Orders holding the slot [from_at, to_at): every order not cancelled whose
+	// pickup falls in it, wherever in it an earlier slot grid put that pickup.
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM orders
+	//  WHERE pickup_at >= $1::timestamptz
+	//    AND pickup_at < $2::timestamptz
+	//    AND status <> 'cancelled'::order_status
+	CountOrdersInSlot(ctx context.Context, arg CountOrdersInSlotParams) (int64, error)
 	//CreateAdminProfile
 	//
 	//  INSERT INTO admin_profiles (user_id, full_name, phone)
@@ -402,9 +430,9 @@ type Querier interface {
 	CreateCartItem(ctx context.Context, arg CreateCartItemParams) (CartItem, error)
 	//CreateCategory
 	//
-	//  INSERT INTO categories (name, slug, sort_order, is_active)
-	//  VALUES ($1, $2, $3, $4)
-	//  RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+	//  INSERT INTO categories (name, slug, sort_order, is_active, station)
+	//  VALUES ($1, $2, $3, $4, $5)
+	//  RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	//CreateCombo
 	//
@@ -459,9 +487,10 @@ type Querier interface {
 	//    discount_code_id,
 	//    discount_code_snapshot,
 	//    pickup_at,
-	//    code
+	//    code,
+	//    order_type
 	//  )
-	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	//  RETURNING
 	//    id,
 	//    user_id,
@@ -474,7 +503,8 @@ type Querier interface {
 	//    pickup_at,
 	//    created_at,
 	//    updated_at,
-	//    code
+	//    code,
+	//    order_type
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
 	// One round trip for every checkout line: the items arrive as a JSON array and
 	// Postgres casts each field to the column type (constraints still apply per row).
@@ -528,9 +558,9 @@ type Querier interface {
 	CreateOrderStatusEvent(ctx context.Context, arg CreateOrderStatusEventParams) error
 	//CreateProduct
 	//
-	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_active)
-	//  VALUES ($1, $2, $3, $4, $5, $6)
-	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
+	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes)
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7)
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	//CreateStaffProfile
 	//
@@ -629,7 +659,7 @@ type Querier interface {
 	GetCartItemByProduct(ctx context.Context, arg GetCartItemByProductParams) (CartItem, error)
 	//GetCategoryByID
 	//
-	//  SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+	//  SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 	//  FROM categories
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -689,6 +719,23 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	GetDiscountCodeByID(ctx context.Context, id uuid.UUID) (DiscountCode, error)
+	// What these products and combos ask of the bakery, combos counted by what
+	// they hold: whether any comes from the kitchen, and the longest notice any needs.
+	//
+	//  WITH line_products AS (
+	//    SELECT unnest($1::uuid[]) AS product_id
+	//    UNION
+	//    SELECT ci.product_id
+	//    FROM combo_items ci
+	//    WHERE ci.combo_id = ANY($2::uuid[])
+	//  )
+	//  SELECT
+	//    COALESCE(bool_or(c.station = 'kitchen'::station), false)::bool AS has_kitchen_items,
+	//    COALESCE(max(p.lead_time_minutes), 0)::int AS lead_minutes
+	//  FROM line_products lp
+	//  INNER JOIN products p ON p.id = lp.product_id AND p.deleted_at IS NULL
+	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+	GetFulfillmentOf(ctx context.Context, arg GetFulfillmentOfParams) (GetFulfillmentOfRow, error)
 	//GetOrderByIDForUser
 	//
 	//  SELECT
@@ -703,13 +750,14 @@ type Querier interface {
 	//    pickup_at,
 	//    created_at,
 	//    updated_at,
-	//    code
+	//    code,
+	//    order_type
 	//  FROM orders
 	//  WHERE id = $1 AND user_id = $2
 	GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error)
 	//GetProductByID
 	//
-	//  SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
+	//  SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
 	//  FROM products
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -722,13 +770,13 @@ type Querier interface {
 	GetStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (StaffProfile, error)
 	//GetStoreSettings
 	//
-	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 	//  FROM store_settings
 	//  WHERE id = 1
 	GetStoreSettings(ctx context.Context) (GetStoreSettingsRow, error)
 	// Locks the row so two admins editing at once cannot undo each other.
 	//
-	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 	//  FROM store_settings
 	//  WHERE id = 1
 	//  FOR UPDATE
@@ -909,7 +957,8 @@ type Querier interface {
 	//    pickup_at,
 	//    created_at,
 	//    updated_at,
-	//    code
+	//    code,
+	//    order_type
 	//  FROM orders
 	//  WHERE user_id = $1
 	//    AND (
@@ -968,6 +1017,15 @@ type Querier interface {
 	//
 	//  SELECT pg_advisory_xact_lock(8734212, hashtext($1::text))
 	LockPhone(ctx context.Context, phone string) error
+	// Holds the slot starting at starts_at until the transaction ends, so two
+	// checkouts cannot both take its last place. The key is the slot's minute since
+	// the epoch, under a namespace of its own.
+	//
+	//  SELECT pg_advisory_xact_lock(
+	//    $1::int,
+	//    (extract(epoch FROM $2::timestamptz) / 60)::int
+	//  )
+	LockPickupSlot(ctx context.Context, arg LockPickupSlotParams) error
 	//ManagerGetProductByID
 	//
 	//  SELECT
@@ -981,6 +1039,7 @@ type Querier interface {
 	//      p.created_at,
 	//      p.updated_at,
 	//      p.deleted_at,
+	//      p.lead_time_minutes,
 	//      c.name AS category_name
 	//  FROM products p
 	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -989,7 +1048,7 @@ type Querier interface {
 	ManagerGetProductByID(ctx context.Context, id uuid.UUID) (ManagerGetProductByIDRow, error)
 	//ManagerListCategories
 	//
-	//  SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+	//  SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 	//  FROM categories
 	//  WHERE deleted_at IS NULL
 	//    AND (
@@ -1084,6 +1143,7 @@ type Querier interface {
 	//      page.created_at,
 	//      page.updated_at,
 	//      page.deleted_at,
+	//      page.lead_time_minutes,
 	//      page.category_name,
 	//      COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
 	//  FROM (
@@ -1098,6 +1158,7 @@ type Querier interface {
 	//          p.created_at,
 	//          p.updated_at,
 	//          p.deleted_at,
+	//          p.lead_time_minutes,
 	//          c.name AS category_name
 	//      FROM products p
 	//      INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -1293,6 +1354,7 @@ type Querier interface {
 	//    o.created_at,
 	//    o.updated_at,
 	//    o.code,
+	//    o.order_type,
 	//    u.email AS customer_email,
 	//    cp.display_name AS customer_display_name,
 	//    cp.phone AS customer_phone
@@ -1316,6 +1378,7 @@ type Querier interface {
 	//    o.created_at,
 	//    o.updated_at,
 	//    o.code,
+	//    o.order_type,
 	//    u.email AS customer_email,
 	//    cp.display_name AS customer_display_name
 	//  FROM orders o
@@ -1368,10 +1431,11 @@ type Querier interface {
 	//      slug       = $3,
 	//      sort_order = $4,
 	//      is_active  = $5,
+	//      station    = $6,
 	//      updated_at = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	//  RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+	//  RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error)
 	//UpdateCombo
 	//
@@ -1447,7 +1511,8 @@ type Querier interface {
 	//    pickup_at,
 	//    created_at,
 	//    updated_at,
-	//    code
+	//    code,
+	//    order_type
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	//UpdateProduct
 	//
@@ -1458,10 +1523,11 @@ type Querier interface {
 	//      description  = $5,
 	//      price_cents  = $6,
 	//      is_active    = $7,
+	//      lead_time_minutes = $8,
 	//      updated_at   = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
 	//UpdateRole
 	//
@@ -1488,9 +1554,12 @@ type Querier interface {
 	//      closes_at_minute = $2,
 	//      preorder_min_lead_minutes = $3,
 	//      max_advance_days = $4,
+	//      slot_minutes = $5,
+	//      slot_capacity = $6,
+	//      instant_prep_minutes = $7,
 	//      updated_at = now()
 	//  WHERE id = 1
-	//  RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+	//  RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 	UpdateStoreSettings(ctx context.Context, arg UpdateStoreSettingsParams) (UpdateStoreSettingsRow, error)
 	//UpdateUserPassword
 	//

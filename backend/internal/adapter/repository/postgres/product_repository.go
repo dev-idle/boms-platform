@@ -7,9 +7,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
+	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
+	"github.com/boms/backend/internal/shared/utils"
 )
 
 type ProductRepository struct {
@@ -29,12 +31,13 @@ func (r *ProductRepository) q(ctx context.Context) *sqlcgen.Queries {
 
 func (r *ProductRepository) Create(ctx context.Context, params port.CreateProductParams) (*domainproduct.Product, error) {
 	row, err := r.q(ctx).CreateProduct(ctx, sqlcgen.CreateProductParams{
-		CategoryID:  params.CategoryID,
-		Name:        params.Name,
-		Slug:        params.Slug,
-		Description: params.Description,
-		PriceCents:  params.PriceCents,
-		IsActive:    params.IsActive,
+		CategoryID:      params.CategoryID,
+		Name:            params.Name,
+		Slug:            params.Slug,
+		Description:     params.Description,
+		PriceCents:      params.PriceCents,
+		IsActive:        params.IsActive,
+		LeadTimeMinutes: leadTimeMinutes(params.LeadTime),
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create product")
@@ -52,13 +55,14 @@ func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainp
 
 func (r *ProductRepository) Update(ctx context.Context, params port.UpdateProductParams) (*domainproduct.Product, error) {
 	row, err := r.q(ctx).UpdateProduct(ctx, sqlcgen.UpdateProductParams{
-		ID:          params.ID,
-		CategoryID:  params.CategoryID,
-		Name:        params.Name,
-		Slug:        params.Slug,
-		Description: params.Description,
-		PriceCents:  params.PriceCents,
-		IsActive:    params.IsActive,
+		ID:              params.ID,
+		CategoryID:      params.CategoryID,
+		Name:            params.Name,
+		Slug:            params.Slug,
+		Description:     params.Description,
+		PriceCents:      params.PriceCents,
+		IsActive:        params.IsActive,
+		LeadTimeMinutes: leadTimeMinutes(params.LeadTime),
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update product")
@@ -205,6 +209,20 @@ func (r *ProductRepository) CatalogGetByIDs(ctx context.Context, ids []uuid.UUID
 	return out, nil
 }
 
+func (r *ProductRepository) FulfillmentOf(
+	ctx context.Context,
+	productIDs, comboIDs []uuid.UUID,
+) (domainorder.Fulfillment, error) {
+	row, err := r.q(ctx).GetFulfillmentOf(ctx, sqlcgen.GetFulfillmentOfParams{ProductIds: productIDs, ComboIds: comboIDs})
+	if err != nil {
+		return domainorder.Fulfillment{}, mapRepoError(err, "fulfillment of lines")
+	}
+	return domainorder.Fulfillment{
+		Kitchen: row.HasKitchenItems,
+		Lead:    time.Duration(row.LeadMinutes) * time.Minute,
+	}, nil
+}
+
 func mapManagerListProductsRow(row sqlcgen.ManagerListProductsRow) port.ManagerListProduct {
 	item := mapManagerJoinedProduct(
 		row.ID,
@@ -217,6 +235,7 @@ func mapManagerListProductsRow(row sqlcgen.ManagerListProductsRow) port.ManagerL
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.DeletedAt,
+		row.LeadTimeMinutes,
 		row.CategoryName,
 	)
 	item.ImageURLs = row.ImageUrls
@@ -235,6 +254,7 @@ func mapManagerGetProductRow(row sqlcgen.ManagerGetProductByIDRow) port.ManagerL
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.DeletedAt,
+		row.LeadTimeMinutes,
 		row.CategoryName,
 	)
 }
@@ -250,6 +270,7 @@ func mapManagerJoinedProduct(
 	createdAt time.Time,
 	updatedAt time.Time,
 	deletedAt *time.Time,
+	leadMinutes int32,
 	categoryName string,
 ) port.ManagerListProduct {
 	return port.ManagerListProduct{
@@ -264,6 +285,7 @@ func mapManagerJoinedProduct(
 			CreatedAt:   createdAt,
 			UpdatedAt:   updatedAt,
 			DeletedAt:   deletedAt,
+			LeadTime:    time.Duration(leadMinutes) * time.Minute,
 		},
 		CategoryName: categoryName,
 	}
@@ -281,7 +303,14 @@ func mapProduct(row sqlcgen.Product) *domainproduct.Product {
 		UpdatedAt:   row.UpdatedAt,
 		Description: row.Description,
 		DeletedAt:   row.DeletedAt,
+		LeadTime:    time.Duration(row.LeadTimeMinutes) * time.Minute,
 	}
+}
+
+// leadTimeMinutes stores a lead time the domain has bounded to a week, so the
+// minutes always fit.
+func leadTimeMinutes(d time.Duration) int32 {
+	return utils.Int32FromInt64(int64(d / time.Minute))
 }
 
 func mapCatalogListProductsRow(row sqlcgen.CatalogListProductsRow) port.CatalogListProduct {

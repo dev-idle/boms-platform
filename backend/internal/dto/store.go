@@ -1,14 +1,30 @@
 package dto
 
 // PickupRulesResponse is what a checkout picker needs to offer valid pickup
-// times: the opening hours (HH:MM, bakery time), the pre-order lead time, the
-// booking window, and the closed days inside it.
+// times: the opening hours (HH:MM, bakery time), the slot length, the notice
+// for pre-orders and for instant orders, the booking window, and the closed
+// days inside it.
 type PickupRulesResponse struct {
 	OpensAt                string                     `json:"opens_at"`
 	ClosesAt               string                     `json:"closes_at"`
+	SlotMinutes            int                        `json:"slot_minutes"`
 	PreorderMinLeadMinutes int                        `json:"preorder_min_lead_minutes"`
+	InstantPrepMinutes     int                        `json:"instant_prep_minutes"`
 	MaxAdvanceDays         int                        `json:"max_advance_days"`
 	ClosedDates            []PublicClosedDateResponse `json:"closed_dates"`
+}
+
+// PickupSlotsResponse is one day's pickup slots, each marked full when it takes
+// no more orders. A closed day has none.
+type PickupSlotsResponse struct {
+	Date  string               `json:"date"`
+	Slots []PickupSlotResponse `json:"slots"`
+}
+
+// PickupSlotResponse is a pickup slot by its start (RFC 3339).
+type PickupSlotResponse struct {
+	StartsAt string `json:"starts_at"`
+	Full     bool   `json:"full"`
 }
 
 // PublicClosedDateResponse is a closed day as customers see it.
@@ -23,6 +39,9 @@ type StoreSettingsResponse struct {
 	ClosesAt               string `json:"closes_at"`
 	PreorderMinLeadMinutes int    `json:"preorder_min_lead_minutes"`
 	MaxAdvanceDays         int    `json:"max_advance_days"`
+	SlotMinutes            int    `json:"slot_minutes"`
+	SlotCapacity           int    `json:"slot_capacity"`
+	InstantPrepMinutes     int    `json:"instant_prep_minutes"`
 	UpdatedAt              string `json:"updated_at"`
 }
 
@@ -32,6 +51,9 @@ type PatchStoreSettingsRequest struct {
 	ClosesAt               *string `json:"closes_at"`
 	PreorderMinLeadMinutes *int    `json:"preorder_min_lead_minutes"`
 	MaxAdvanceDays         *int    `json:"max_advance_days"`
+	SlotMinutes            *int    `json:"slot_minutes"`
+	SlotCapacity           *int    `json:"slot_capacity"`
+	InstantPrepMinutes     *int    `json:"instant_prep_minutes"`
 }
 
 // ClosedDateResponse is a closed day as admins manage it.

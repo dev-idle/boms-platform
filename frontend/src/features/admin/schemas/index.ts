@@ -158,13 +158,23 @@ export const storeSettingsSchema = z.object({
   closes_at: clockTimeSchema,
   preorder_min_lead_minutes: z.number().int().min(0),
   max_advance_days: z.number().int().min(1),
+  slot_minutes: z.number().int().min(1),
+  slot_capacity: z.number().int().min(1),
+  instant_prep_minutes: z.number().int().min(0),
   updated_at: apiDateTimeSchema,
 });
 
-/** Bounds of backend `store.Settings`: at most seven days' notice, 1 to 90 days ahead. */
+/**
+ * Bounds of backend `store.Settings`: at most seven days' notice, 1 to 90 days
+ * ahead, slots that divide an hour, 1 to 200 orders a slot, and at most four
+ * hours to pack an instant order.
+ */
 export const MAX_PREORDER_LEAD_MINUTES = 7 * 24 * 60;
 export const MIN_ADVANCE_DAYS = 1;
 export const MAX_ADVANCE_DAYS = 90;
+export const SLOT_MINUTE_OPTIONS = [10, 15, 20, 30, 60] as const;
+export const MAX_SLOT_CAPACITY = 200;
+export const MAX_INSTANT_PREP_MINUTES = 4 * 60;
 
 const storeSettingsFieldsSchema = z.object({
   opens_at: clockTimeSchema,
@@ -179,6 +189,19 @@ const storeSettingsFieldsSchema = z.object({
     .int()
     .min(MIN_ADVANCE_DAYS, `At least ${MIN_ADVANCE_DAYS} day`)
     .max(MAX_ADVANCE_DAYS, `At most ${MAX_ADVANCE_DAYS} days`),
+  slot_minutes: z
+    .number({ error: "Choose a slot length" })
+    .refine((minutes) => SLOT_MINUTE_OPTIONS.some((option) => option === minutes), "Choose a slot length"),
+  slot_capacity: z
+    .number({ error: "Enter the number of orders" })
+    .int()
+    .min(1, "At least 1 order")
+    .max(MAX_SLOT_CAPACITY, `At most ${MAX_SLOT_CAPACITY} orders`),
+  instant_prep_minutes: z
+    .number({ error: "Enter the time in minutes" })
+    .int()
+    .min(0)
+    .max(MAX_INSTANT_PREP_MINUTES, `At most ${MAX_INSTANT_PREP_MINUTES} minutes (4 hours)`),
 });
 
 /**
@@ -197,6 +220,12 @@ export const storeSettingsFormSchema = storeSettingsFieldsSchema
   .refine((v) => v.preorder_min_lead_minutes < v.max_advance_days * 24 * 60, {
     path: ["preorder_min_lead_minutes"],
     message: "Notice must be shorter than the booking window",
+  })
+  // Only once the hours are in order: an inverted pair is one mistake, already named.
+  .refine((v) => clockToMinutes(v.closes_at) <= clockToMinutes(v.opens_at) ||
+    clockToMinutes(v.closes_at) - clockToMinutes(v.opens_at) >= v.slot_minutes, {
+    path: ["slot_minutes"],
+    message: "The opening hours must hold at least one slot",
   });
 
 /** GET /api/v1/admin/closed-dates — a day the bakery takes no pickups. */

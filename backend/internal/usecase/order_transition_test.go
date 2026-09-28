@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,8 @@ func (f *transitionOrders) UpdateStatus(_ context.Context, params port.UpdateOrd
 	if f.err != nil {
 		return nil, f.err
 	}
-	f.updated = &domainorder.Order{ID: params.OrderID, UserID: uuid.New(), Status: params.ToStatus}
+	pickupAt := time.Date(2026, 7, 10, 3, 0, 0, 0, time.UTC)
+	f.updated = &domainorder.Order{ID: params.OrderID, UserID: uuid.New(), Status: params.ToStatus, PickupAt: &pickupAt}
 	return f.updated, nil
 }
 
@@ -92,6 +94,21 @@ func TestOrderTransitions_Apply(t *testing.T) {
 			ActorID:   baker,
 			ActorRole: domainuser.RoleBaker,
 		}, orders.history[0], "the history names the move and who made it")
+	})
+
+	t.Run("a_cancelled_order_frees_its_pickup_slot", func(t *testing.T) {
+		t.Parallel()
+		orders, outbox := &transitionOrders{}, &recordingOutbox{}
+		transitions := orderTransitions{tx: inlineTx{}, orders: orders, events: outbox}
+
+		_, err := transitions.apply(context.Background(), uuid.New(), domainuser.RoleStaff, port.UpdateOrderStatusParams{
+			OrderID: uuid.New(), FromStatus: domainorder.StatusConfirmed, ToStatus: domainorder.StatusCancelled,
+		})
+
+		require.NoError(t, err)
+		require.Len(t, outbox.added, 2)
+		assert.Equal(t, domainorder.TopicSlotsChanged, outbox.added[1].Topic)
+		assert.Equal(t, "2026-07-10", outbox.added[1].Data["date"], "the bakery day of the freed slot")
 	})
 
 	t.Run("reports_a_move_someone_else_made_first_as_invalid", func(t *testing.T) {

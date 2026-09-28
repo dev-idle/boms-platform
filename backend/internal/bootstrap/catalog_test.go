@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	domainproduct "github.com/boms/backend/internal/domain/product"
 )
 
 func TestBundlePriceCents(t *testing.T) {
@@ -111,5 +113,17 @@ func TestSeedDataIsInternallyConsistent(t *testing.T) {
 		if code.MaxDiscountCents != nil {
 			assert.Equal(t, "percent", string(code.DiscountType), "code %q caps a non-percent discount", code.Code)
 		}
+	}
+}
+
+func TestSeedFulfillment(t *testing.T) {
+	t.Parallel()
+
+	for _, category := range seedCategories {
+		assert.True(t, category.Station.Valid(), "category %q needs a station", category.Slug)
+	}
+	for _, product := range seedProducts {
+		lead := time.Duration(product.LeadTimeMinutes) * time.Minute
+		assert.True(t, lead >= 0 && lead <= domainproduct.MaxLeadTime, "product %q lead time", product.Slug)
 	}
 }

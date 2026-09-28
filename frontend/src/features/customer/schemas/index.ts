@@ -5,6 +5,7 @@ import {
   orderCodeSchema,
   orderStatusSchema,
   orderTimelineEntrySchema,
+  orderTypeSchema,
 } from "@/lib/schemas/order";
 import { clockTimeSchema } from "@/lib/validation/clock";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
@@ -37,6 +38,11 @@ export const cartSchema = z.object({
   discount_cents: z.number().int().min(0),
   total_cents: z.number().int().min(0),
   checkout_ready: z.boolean(),
+  /** What the items ask of the bakery; the pickup picker offers times to suit. */
+  fulfillment: z.object({
+    has_kitchen_items: z.boolean(),
+    lead_minutes: z.number().int().min(0),
+  }),
 });
 
 export const addCartItemInputSchema = z
@@ -79,6 +85,7 @@ export const orderSchema = z.object({
   id: z.uuid(),
   code: orderCodeSchema,
   status: orderStatusSchema,
+  order_type: orderTypeSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),
   total_cents: z.number().int().min(0),
@@ -104,12 +111,25 @@ export const orderSummarySchema = z.object({
 export const pickupRulesSchema = z.object({
   opens_at: clockTimeSchema,
   closes_at: clockTimeSchema,
+  slot_minutes: z.number().int().min(1),
   preorder_min_lead_minutes: z.number().int().min(0),
+  instant_prep_minutes: z.number().int().min(0),
   max_advance_days: z.number().int().min(1),
   closed_dates: z.array(
     z.object({
       date: z.iso.date(),
       reason: z.string().min(1),
+    }),
+  ),
+});
+
+/** GET /api/v1/store/pickup-slots?date= — one day's slots, full ones marked. */
+export const pickupSlotsSchema = z.object({
+  date: z.iso.date(),
+  slots: z.array(
+    z.object({
+      starts_at: apiDateTimeSchema,
+      full: z.boolean(),
     }),
   ),
 });
@@ -138,6 +158,7 @@ export type Order = z.infer<typeof orderSchema>;
 type OrderSummary = z.infer<typeof orderSummarySchema>;
 export type OrdersListFilterInput = z.infer<typeof ordersListFilterSchema>;
 export type PickupRules = z.infer<typeof pickupRulesSchema>;
+export type PickupSlots = z.infer<typeof pickupSlotsSchema>;
 
 export type OrdersListResult = {
   orders: OrderSummary[];

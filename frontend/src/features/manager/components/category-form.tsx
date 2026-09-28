@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
 import { IntegerFieldInput } from "@/components/ui/integer-field-input";
+import { Select } from "@/components/ui/select";
 import {
   FORM_FIELD_HINT,
   FORM_SWITCH_HINT,
@@ -27,6 +28,8 @@ import { CATALOG_INTEGER_MAX } from "@/lib/validation/catalog";
 import { useCreateCategory, useUpdateCategory } from "../hooks";
 import {
   categoryFormSchema,
+  STATION_LABEL,
+  stationSchema,
   type CategoryFormInput,
   type ManagerCategory,
 } from "../schemas";
@@ -42,6 +45,7 @@ const CATEGORY_FORM_FIELDS = [
   "slug",
   "sort_order",
   "is_active",
+  "station",
 ] as const;
 
 export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
@@ -53,6 +57,7 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
     slug: category?.slug ?? "",
     sort_order: category?.sort_order ?? 0,
     is_active: category?.is_active ?? true,
+    station: category?.station ?? "kitchen",
   };
 
   const form = useForm<CategoryFormInput>({
@@ -111,6 +116,29 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
                 optional
               >
                 <IntegerFieldInput max={CATALOG_INTEGER_MAX} min={0} {...field} />
+              </FieldControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="station"
+          render={({ field }) => (
+            <FormItem>
+              <FieldControl
+                hint={FORM_FIELD_HINT.catalogStation}
+                hintId="category-station-hint"
+                label="Station"
+              >
+                <Select {...field}>
+                  {stationSchema.options.map((station) => (
+                    <option key={station} value={station}>
+                      {STATION_LABEL[station]}
+                    </option>
+                  ))}
+                </Select>
               </FieldControl>
               <FormMessage />
             </FormItem>

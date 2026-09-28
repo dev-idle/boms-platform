@@ -15,6 +15,15 @@ func NewStoreHandler(uc *usecase.StoreUsecase) *StoreHandler {
 	return &StoreHandler{usecase: uc}
 }
 
+// PickupSlots handles GET /api/v1/store/pickup-slots?date=YYYY-MM-DD for anyone.
+func (h *StoreHandler) PickupSlots(c fiber.Ctx) error {
+	out, err := h.usecase.PickupSlots(c.Context(), c.Query("date"))
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OK(c, out)
+}
+
 // PickupRules handles GET /api/v1/store/pickup-rules for anyone, signed in or not.
 func (h *StoreHandler) PickupRules(c fiber.Ctx) error {
 	out, err := h.usecase.PickupRules(c.Context())

@@ -12,6 +12,7 @@ type CreateCategoryParams struct {
 	Slug      string
 	SortOrder int32
 	IsActive  bool
+	Station   domaincategory.Station
 }
 
 type UpdateCategoryParams struct {
@@ -20,6 +21,7 @@ type UpdateCategoryParams struct {
 	Slug      string
 	SortOrder int32
 	IsActive  bool
+	Station   domaincategory.Station
 }
 
 type ManagerListCategoriesParams struct {

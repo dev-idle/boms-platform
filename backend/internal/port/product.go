@@ -2,7 +2,9 @@ package port
 
 import (
 	"context"
+	"time"
 
+	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	"github.com/google/uuid"
 )
@@ -14,6 +16,7 @@ type CreateProductParams struct {
 	Description *string
 	PriceCents  int64
 	IsActive    bool
+	LeadTime    time.Duration
 }
 
 type UpdateProductParams struct {
@@ -24,6 +27,7 @@ type UpdateProductParams struct {
 	Description *string
 	PriceCents  int64
 	IsActive    bool
+	LeadTime    time.Duration
 }
 
 type ManagerListProductsParams struct {
@@ -72,4 +76,7 @@ type ProductRepository interface {
 	CatalogGetByIDs(ctx context.Context, ids []uuid.UUID) ([]CatalogListProduct, error)
 	ReplaceProductImages(ctx context.Context, productID uuid.UUID, imageURLs []string) error
 	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]string, error)
+	// FulfillmentOf is what these products and combos ask of the bakery, combos
+	// counted by the products they hold.
+	FulfillmentOf(ctx context.Context, productIDs, comboIDs []uuid.UUID) (domainorder.Fulfillment, error)
 }

@@ -1,17 +1,25 @@
+import { formatOrderTypeLabel, type OrderType } from "@/lib/schemas/order";
 import { clockToMinutes, formatClockMinutes } from "@/lib/validation/clock";
-import type { PickupProblem, PickupWindow } from "@/lib/validation/pickup";
+import type { PickupFulfillment, PickupProblem, PickupWindow } from "@/lib/validation/pickup";
 
-import type { PickupRules } from "../schemas";
+import type { Cart, PickupRules } from "../schemas";
 
 /** The API's pickup rules in the shape the pickup checks read. */
 export function toPickupWindow(rules: PickupRules): PickupWindow {
   return {
     opensAtMinutes: clockToMinutes(rules.opens_at),
     closesAtMinutes: clockToMinutes(rules.closes_at),
-    minLeadMinutes: rules.preorder_min_lead_minutes,
+    slotMinutes: rules.slot_minutes,
+    preorderLeadMinutes: rules.preorder_min_lead_minutes,
+    instantPrepMinutes: rules.instant_prep_minutes,
     maxAdvanceDays: rules.max_advance_days,
     closedDates: new Map(rules.closed_dates.map((closed) => [closed.date, closed.reason])),
   };
+}
+
+/** What the cart's items ask of the bakery, in the shape the pickup checks read. */
+export function toPickupFulfillment(fulfillment: Cart["fulfillment"]): PickupFulfillment {
+  return { kitchen: fulfillment.has_kitchen_items, leadMinutes: fulfillment.lead_minutes };
 }
 
 /** A duration in minutes as people say it, e.g. 90 → "1 hour 30 minutes". */
@@ -29,24 +37,48 @@ function hoursRange(pickupWindow: PickupWindow): string {
   return `${formatClockMinutes(pickupWindow.opensAtMinutes)}–${formatClockMinutes(pickupWindow.closesAtMinutes)}`;
 }
 
+/** The notice an order of this type with these items waits. */
+function noticeMinutes(type: OrderType, pickupWindow: PickupWindow, items: PickupFulfillment): number {
+  const prep = type === "instant" ? pickupWindow.instantPrepMinutes : pickupWindow.preorderLeadMinutes;
+  return Math.max(prep, items.leadMinutes);
+}
+
 /** The hint under the pickup picker, built from the rules in force. */
 export function pickupHint(pickupWindow: PickupWindow): string {
   return (
-    `Collect your order at the bakery between ${hoursRange(pickupWindow)} bakery time, ` +
-    `at least ${formatLead(pickupWindow.minLeadMinutes)} from now and up to ` +
-    `${pickupWindow.maxAdvanceDays} day${pickupWindow.maxAdvanceDays === 1 ? "" : "s"} ahead.`
+    `Pickup slots every ${pickupWindow.slotMinutes} minutes, ${hoursRange(pickupWindow)} bakery time, ` +
+    `up to ${pickupWindow.maxAdvanceDays} day${pickupWindow.maxAdvanceDays === 1 ? "" : "s"} ahead.`
   );
+}
+
+/** How the order will be prepared at the chosen time, and the notice it needs. */
+export function orderTypeNote(
+  type: OrderType,
+  pickupWindow: PickupWindow,
+  items: PickupFulfillment,
+): string {
+  const minutes = noticeMinutes(type, pickupWindow, items);
+  const notice = formatLead(minutes);
+  const how =
+    type === "instant"
+      ? minutes === 0
+        ? "ready-made items, ready as soon as you order"
+        : `ready-made items, packed ${notice} after you order`
+      : `place it at least ${notice} before pickup`;
+  return `${formatOrderTypeLabel(type)}: ${how}.`;
 }
 
 /** What to tell the customer about a pickup time checkout would refuse. */
 export function pickupProblemMessage(
   problem: Exclude<PickupProblem, "missing">,
   pickupWindow: PickupWindow,
+  items: PickupFulfillment,
+  type: OrderType,
   closedReason?: string,
 ): string {
   switch (problem) {
     case "too_soon":
-      return `Pickup must be at least ${formatLead(pickupWindow.minLeadMinutes)} from now.`;
+      return `Pickup must be at least ${formatLead(noticeMinutes(type, pickupWindow, items))} from now.`;
     case "too_far":
       return `Pickup can be at most ${pickupWindow.maxAdvanceDays} day${pickupWindow.maxAdvanceDays === 1 ? "" : "s"} ahead.`;
     case "closed_day":
@@ -55,5 +87,7 @@ export function pickupProblemMessage(
         : "The bakery is closed that day. Choose another day.";
     case "outside_hours":
       return `Pickup must be between ${hoursRange(pickupWindow)} bakery time.`;
+    case "off_slot":
+      return "Choose one of the pickup slots.";
   }
 }

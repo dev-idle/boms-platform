@@ -1777,8 +1777,12 @@
 
   .db-table--categories {
     --db-table-categories-fixed-cols: calc(
-      var(--db-table-col-number) + var(--db-table-col-status-pill) + var(--db-table-col-actions-pair)
+      var(--db-table-col-station) + var(--db-table-col-number) + var(--db-table-col-status-pill) +
+        var(--db-table-col-actions-pair)
     );
+
+    /* Room for the name and slug before the wrapper scrolls. */
+    min-width: calc(var(--db-table-categories-fixed-cols) + 20rem);
     --db-table-categories-name-share: 0.54;
     --db-table-categories-slug-share: 0.46;
   }
@@ -1793,6 +1797,11 @@
     width: calc(
       (100% - var(--db-table-categories-fixed-cols)) * var(--db-table-categories-slug-share)
     );
+  }
+
+  /* A station reads like a role: one micro-label. */
+  .db-table--categories col.db-table-col-station {
+    width: var(--db-table-col-station);
   }
 
   .db-table--categories col.db-table-col-status {
@@ -2031,7 +2040,8 @@
     --status-color: var(--color-status-cancelled);
   }
 
-  .db-table-cell-role {
+  .db-table-cell-role,
+  .db-table-cell-station {
     color: var(--color-ink-2);
     font-size: var(--label-size);
     font-weight: var(--label-weight);

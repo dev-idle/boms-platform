@@ -5,6 +5,7 @@ export const REALTIME_EVENT_TYPE = {
   orderCreated: "order.created",
   orderStatusChanged: "order.status_changed",
   settingsUpdated: "settings.updated",
+  slotsChanged: "slots.changed",
 } as const;
 
 /**

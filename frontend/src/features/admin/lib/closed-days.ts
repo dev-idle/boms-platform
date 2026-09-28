@@ -1,4 +1,4 @@
-import { formatPickupLocalInputValue } from "@/lib/validation/pickup";
+import { bakeryDayOf } from "@/lib/validation/pickup";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** How far ahead a closure may be planned — backend `store.ClosedDateWindow`. */
@@ -6,7 +6,7 @@ const CLOSED_DAY_HORIZON_DAYS = 365;
 
 /** The days a closure may be added for: bakery-local today through a year ahead. */
 export function closedDayBounds(now = new Date()): { min: string; max: string } {
-  const today = formatPickupLocalInputValue(now).slice(0, 10);
+  const today = bakeryDayOf(now);
   const last = new Date(Date.parse(`${today}T00:00:00Z`) + CLOSED_DAY_HORIZON_DAYS * DAY_MS);
   return { min: today, max: last.toISOString().slice(0, 10) };
 }

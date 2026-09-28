@@ -3,6 +3,7 @@
 package store
 
 import (
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -26,6 +27,17 @@ const MaxAdvanceDaysLimit = 90
 // MaxPreorderMinLead is the longest pre-order notice an admin may require.
 const MaxPreorderMinLead = 7 * 24 * time.Hour
 
+// slotLengths are the pickup slot lengths an admin may choose: each divides an
+// hour, so slots start at times people say.
+var slotLengths = []time.Duration{10 * time.Minute, 15 * time.Minute, 20 * time.Minute, 30 * time.Minute, time.Hour}
+
+const (
+	// MaxSlotCapacity is the most orders one pickup slot may take.
+	MaxSlotCapacity = 200
+	// MaxInstantPrep is the longest the counter may take to pack an instant order.
+	MaxInstantPrep = 4 * time.Hour
+)
+
 const (
 	minAdvanceDays = 1
 	// maxClosedDateAhead bounds how far ahead a closure may be planned, which
@@ -35,13 +47,18 @@ const (
 )
 
 // Settings are the pickup rules in force. Hours are offsets from local
-// midnight within one day: a pickup is allowed from OpensAt up to, not
-// including, ClosesAt.
+// midnight within one day: pickups start on SlotLength marks from OpensAt, up
+// to, not including, ClosesAt. SlotCapacity orders may share a slot.
+// InstantPrep is how long the counter needs to pack a same-day order of
+// ready-made items; every other order waits PreorderMinLead.
 type Settings struct {
 	OpensAt         time.Duration
 	ClosesAt        time.Duration
 	PreorderMinLead time.Duration
 	MaxAdvanceDays  int
+	SlotLength      time.Duration
+	SlotCapacity    int
+	InstantPrep     time.Duration
 	UpdatedAt       time.Time
 }
 
@@ -60,7 +77,45 @@ func (s Settings) Validate() error {
 		s.PreorderMinLead >= time.Duration(s.MaxAdvanceDays)*24*time.Hour {
 		return ErrInvalidLeadTime
 	}
+	if !slices.Contains(slotLengths, s.SlotLength) || s.ClosesAt-s.OpensAt < s.SlotLength {
+		return ErrInvalidSlotLength
+	}
+	if s.SlotCapacity < 1 || s.SlotCapacity > MaxSlotCapacity {
+		return ErrInvalidSlotCapacity
+	}
+	if !wholeMinutes(s.InstantPrep) || s.InstantPrep < 0 || s.InstantPrep > MaxInstantPrep {
+		return ErrInvalidInstantPrep
+	}
 	return nil
+}
+
+// LastPickupDay is the last bakery day the booking window reaches from now.
+func (s Settings) LastPickupDay(now time.Time) time.Time {
+	return DayOf(now.Add(time.Duration(s.MaxAdvanceDays) * 24 * time.Hour))
+}
+
+// SlotStartOf is the start of the slot that at falls in, and whether it falls
+// in one at all (inside the opening hours). An order booked before the hours
+// or the slot length changed still counts against the slot now covering it.
+func (s Settings) SlotStartOf(at time.Time) (time.Time, bool) {
+	local := at.In(Location)
+	midnight := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, Location)
+	since := local.Sub(midnight)
+	if since < s.OpensAt || since >= s.ClosesAt {
+		return time.Time{}, false
+	}
+	return midnight.Add(s.OpensAt + (since-s.OpensAt)/s.SlotLength*s.SlotLength), true
+}
+
+// SlotStarts are the pickup times of a bakery day (as DayOf returns it), in
+// order: OpensAt and every SlotLength after it that starts before ClosesAt.
+func (s Settings) SlotStarts(day time.Time) []time.Time {
+	midnight := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, Location)
+	starts := make([]time.Time, 0, int((s.ClosesAt-s.OpensAt)/s.SlotLength)+1)
+	for offset := s.OpensAt; offset < s.ClosesAt; offset += s.SlotLength {
+		starts = append(starts, midnight.Add(offset))
+	}
+	return starts
 }
 
 func wholeMinutes(d time.Duration) bool {

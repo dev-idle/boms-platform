@@ -110,7 +110,7 @@ func main() {
 	eventDispatcher := eventdispatch.New(outboxRepo, eventbus.NewRedisPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
 	pgPool.OnCommit(eventDispatcher.AfterCommit)
 	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo)
-	storeUC := usecase.NewStoreUsecase(storeSettingsRepo)
+	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerOrderUC := usecase.NewBakerOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
@@ -250,6 +250,7 @@ func main() {
 
 	// Public: the checkout picker needs the pickup rules before anyone signs in.
 	apiV1.Get("/store/pickup-rules", storeHandler.PickupRules)
+	apiV1.Get("/store/pickup-slots", storeHandler.PickupSlots)
 
 	customerCart := customerSessionGroup(apiV1, "/cart", tokenSigner, sessionStore, passwordChanged)
 	customerCart.Get("", cartHandler.Get)

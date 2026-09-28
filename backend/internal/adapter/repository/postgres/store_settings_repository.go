@@ -36,7 +36,7 @@ func (r *StoreSettingsRepository) GetSettings(ctx context.Context) (domainstore.
 	if err != nil {
 		return domainstore.Settings{}, mapRepoError(err, "get store settings")
 	}
-	return settingsFromRow(row.OpensAtMinute, row.ClosesAtMinute, row.PreorderMinLeadMinutes, row.MaxAdvanceDays, row.UpdatedAt), nil
+	return settingsFromRow(row), nil
 }
 
 func (r *StoreSettingsRepository) GetSettingsForUpdate(ctx context.Context) (domainstore.Settings, error) {
@@ -47,7 +47,7 @@ func (r *StoreSettingsRepository) GetSettingsForUpdate(ctx context.Context) (dom
 	if err != nil {
 		return domainstore.Settings{}, mapRepoError(err, "lock store settings")
 	}
-	return settingsFromRow(row.OpensAtMinute, row.ClosesAtMinute, row.PreorderMinLeadMinutes, row.MaxAdvanceDays, row.UpdatedAt), nil
+	return settingsFromRow(sqlcgen.GetStoreSettingsRow(row)), nil
 }
 
 func (r *StoreSettingsRepository) UpdateSettings(ctx context.Context, s domainstore.Settings) (domainstore.Settings, error) {
@@ -59,7 +59,7 @@ func (r *StoreSettingsRepository) UpdateSettings(ctx context.Context, s domainst
 	if err != nil {
 		return domainstore.Settings{}, mapRepoError(err, "update store settings")
 	}
-	return settingsFromRow(row.OpensAtMinute, row.ClosesAtMinute, row.PreorderMinLeadMinutes, row.MaxAdvanceDays, row.UpdatedAt), nil
+	return settingsFromRow(sqlcgen.GetStoreSettingsRow(row)), nil
 }
 
 func (r *StoreSettingsRepository) ListClosedDates(ctx context.Context, from, to time.Time) ([]domainstore.ClosedDate, error) {
@@ -94,13 +94,18 @@ func (r *StoreSettingsRepository) RemoveClosedDate(ctx context.Context, id uuid.
 	return domainstore.ClosedDate{ID: row.ID, Day: row.ClosedOn, Reason: row.Reason, CreatedAt: row.CreatedAt}, nil
 }
 
-func settingsFromRow(opens, closes int16, lead int32, advance int16, updatedAt time.Time) domainstore.Settings {
+// settingsFromRow reads the settings row; the lock and update queries return
+// the same columns, so their rows convert to this one.
+func settingsFromRow(row sqlcgen.GetStoreSettingsRow) domainstore.Settings {
 	return domainstore.Settings{
-		OpensAt:         time.Duration(opens) * time.Minute,
-		ClosesAt:        time.Duration(closes) * time.Minute,
-		PreorderMinLead: time.Duration(lead) * time.Minute,
-		MaxAdvanceDays:  int(advance),
-		UpdatedAt:       updatedAt,
+		OpensAt:         time.Duration(row.OpensAtMinute) * time.Minute,
+		ClosesAt:        time.Duration(row.ClosesAtMinute) * time.Minute,
+		PreorderMinLead: time.Duration(row.PreorderMinLeadMinutes) * time.Minute,
+		MaxAdvanceDays:  int(row.MaxAdvanceDays),
+		SlotLength:      time.Duration(row.SlotMinutes) * time.Minute,
+		SlotCapacity:    int(row.SlotCapacity),
+		InstantPrep:     time.Duration(row.InstantPrepMinutes) * time.Minute,
+		UpdatedAt:       row.UpdatedAt,
 	}
 }
 
@@ -117,6 +122,18 @@ func settingsParams(s domainstore.Settings) (sqlcgen.UpdateStoreSettingsParams, 
 	if err != nil {
 		return sqlcgen.UpdateStoreSettingsParams{}, err
 	}
+	slot, err := int16Of("slot_minutes", int64(s.SlotLength/time.Minute))
+	if err != nil {
+		return sqlcgen.UpdateStoreSettingsParams{}, err
+	}
+	capacity, err := int16Of("slot_capacity", int64(s.SlotCapacity))
+	if err != nil {
+		return sqlcgen.UpdateStoreSettingsParams{}, err
+	}
+	prep, err := int16Of("instant_prep_minutes", int64(s.InstantPrep/time.Minute))
+	if err != nil {
+		return sqlcgen.UpdateStoreSettingsParams{}, err
+	}
 	lead := int64(s.PreorderMinLead / time.Minute)
 	if lead < math.MinInt32 || lead > math.MaxInt32 {
 		return sqlcgen.UpdateStoreSettingsParams{}, apperrors.Errorf("preorder_min_lead_minutes %d out of range", lead)
@@ -126,6 +143,9 @@ func settingsParams(s domainstore.Settings) (sqlcgen.UpdateStoreSettingsParams, 
 		ClosesAtMinute:         closes,
 		PreorderMinLeadMinutes: int32(lead),
 		MaxAdvanceDays:         advance,
+		SlotMinutes:            slot,
+		SlotCapacity:           capacity,
+		InstantPrepMinutes:     prep,
 	}, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -21,7 +22,8 @@ type orderTransitions struct {
 
 // apply moves an order to params.ToStatus and records the move in the order's
 // history and the change notice in the same transaction, so both exist exactly
-// when the move committed. A concurrent move that got there first leaves no row
+// when the move committed. A cancelled order frees its pickup slot, which open
+// checkouts are told. A concurrent move that got there first leaves no row
 // in FromStatus and is reported as an invalid transition.
 func (t orderTransitions) apply(
 	ctx context.Context,
@@ -48,7 +50,13 @@ func (t orderTransitions) apply(
 		}); err != nil {
 			return err
 		}
-		return t.events.Add(txCtx, domainorder.StatusChangedEvent(params.FromStatus, *order))
+		if err := t.events.Add(txCtx, domainorder.StatusChangedEvent(params.FromStatus, *order)); err != nil {
+			return err
+		}
+		if order.Status == domainorder.StatusCancelled && order.PickupAt != nil {
+			return t.events.Add(txCtx, domainorder.SlotsChangedEvent(domainstore.DayOf(*order.PickupAt)))
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

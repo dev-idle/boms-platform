@@ -7,6 +7,7 @@ type CreateCategoryRequest struct {
 	Slug      string `json:"slug" validate:"omitempty,max=128"`
 	SortOrder int32  `json:"sort_order" validate:"min=0"`
 	IsActive  bool   `json:"is_active"`
+	Station   string `json:"station" validate:"required,oneof=kitchen counter"`
 }
 
 type UpdateCategoryRequest struct {
@@ -14,6 +15,7 @@ type UpdateCategoryRequest struct {
 	Slug      string `json:"slug" validate:"required,max=128"`
 	SortOrder int32  `json:"sort_order" validate:"min=0"`
 	IsActive  bool   `json:"is_active"`
+	Station   string `json:"station" validate:"required,oneof=kitchen counter"`
 }
 
 type CategoryResponse struct {
@@ -22,42 +24,48 @@ type CategoryResponse struct {
 	Slug      string    `json:"slug"`
 	SortOrder int32     `json:"sort_order"`
 	IsActive  bool      `json:"is_active"`
+	Station   string    `json:"station"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type CreateProductRequest struct {
-	CategoryID  string   `json:"category_id" validate:"required,uuid"`
-	Name        string   `json:"name" validate:"required,max=255"`
-	Slug        string   `json:"slug" validate:"omitempty,max=128"`
-	Description *string  `json:"description,omitempty" validate:"omitempty,max=2000"`
-	PriceCents  int64    `json:"price_cents" validate:"min=0"`
-	IsActive    bool     `json:"is_active"`
-	ImageURLs   []string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
+	CategoryID  string  `json:"category_id" validate:"required,uuid"`
+	Name        string  `json:"name" validate:"required,max=255"`
+	Slug        string  `json:"slug" validate:"omitempty,max=128"`
+	Description *string `json:"description,omitempty" validate:"omitempty,max=2000"`
+	PriceCents  int64   `json:"price_cents" validate:"min=0"`
+	IsActive    bool    `json:"is_active"`
+	// LeadTimeMinutes is the notice the product needs before pickup, up to a week.
+	LeadTimeMinutes int32    `json:"lead_time_minutes" validate:"min=0,max=10080"`
+	ImageURLs       []string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
 }
 
 type UpdateProductRequest struct {
-	CategoryID  string    `json:"category_id" validate:"required,uuid"`
-	Name        string    `json:"name" validate:"required,max=255"`
-	Slug        string    `json:"slug" validate:"required,max=128"`
-	Description *string   `json:"description,omitempty" validate:"omitempty,max=2000"`
-	PriceCents  int64     `json:"price_cents" validate:"min=0"`
-	IsActive    bool      `json:"is_active"`
-	ImageURLs   *[]string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
+	CategoryID  string  `json:"category_id" validate:"required,uuid"`
+	Name        string  `json:"name" validate:"required,max=255"`
+	Slug        string  `json:"slug" validate:"required,max=128"`
+	Description *string `json:"description,omitempty" validate:"omitempty,max=2000"`
+	PriceCents  int64   `json:"price_cents" validate:"min=0"`
+	IsActive    bool    `json:"is_active"`
+	// LeadTimeMinutes is the notice the product needs before pickup, up to a week.
+	LeadTimeMinutes int32     `json:"lead_time_minutes" validate:"min=0,max=10080"`
+	ImageURLs       *[]string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
 }
 
 type ProductResponse struct {
-	ID           string    `json:"id"`
-	CategoryID   string    `json:"category_id"`
-	CategoryName string    `json:"category_name,omitempty"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	Description  *string   `json:"description,omitempty"`
-	PriceCents   int64     `json:"price_cents"`
-	IsActive     bool      `json:"is_active"`
-	ImageURLs    []string  `json:"image_urls,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	CategoryID      string    `json:"category_id"`
+	CategoryName    string    `json:"category_name,omitempty"`
+	Name            string    `json:"name"`
+	Slug            string    `json:"slug"`
+	Description     *string   `json:"description,omitempty"`
+	PriceCents      int64     `json:"price_cents"`
+	IsActive        bool      `json:"is_active"`
+	LeadTimeMinutes int32     `json:"lead_time_minutes"`
+	ImageURLs       []string  `json:"image_urls,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type CatalogCategoryResponse struct {

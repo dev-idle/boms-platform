@@ -9,14 +9,18 @@ import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { IntegerFieldInput } from "@/components/ui/integer-field-input";
+import { Select } from "@/components/ui/select";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
 import { usePatchStoreSettings } from "../hooks";
 import {
   MAX_ADVANCE_DAYS,
+  MAX_INSTANT_PREP_MINUTES,
   MAX_PREORDER_LEAD_MINUTES,
+  MAX_SLOT_CAPACITY,
   MIN_ADVANCE_DAYS,
+  SLOT_MINUTE_OPTIONS,
   storeSettingsFormSchema,
   type StoreSettings,
   type StoreSettingsFormInput,
@@ -26,7 +30,10 @@ import {
 const STORE_SETTINGS_FIELDS = [
   "opens_at",
   "closes_at",
+  "slot_minutes",
+  "slot_capacity",
   "preorder_min_lead_minutes",
+  "instant_prep_minutes",
   "max_advance_days",
 ] as const;
 
@@ -40,10 +47,13 @@ function formValues(settings: StoreSettings): StoreSettingsFormInput {
     closes_at: settings.closes_at,
     preorder_min_lead_minutes: settings.preorder_min_lead_minutes,
     max_advance_days: settings.max_advance_days,
+    slot_minutes: settings.slot_minutes,
+    slot_capacity: settings.slot_capacity,
+    instant_prep_minutes: settings.instant_prep_minutes,
   };
 }
 
-/** Opening hours, pre-order notice and booking window — checkout enforces them at once. */
+/** Opening hours, slots, notice and booking window — checkout enforces them at once. */
 export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
   const patchSettings = usePatchStoreSettings();
   const form = useForm<StoreSettingsFormInput>({
@@ -107,7 +117,7 @@ export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
           render={({ field }) => (
             <FormItem>
               <FieldControl
-                hint="Pickups stop at this time; the last slot is a minute before."
+                hint="Pickups stop at this time; the last slot starts on the last mark before it."
                 hintId="store-closes-at-hint"
                 label="Pickups close"
               >
@@ -120,15 +130,78 @@ export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
 
         <FormField
           control={form.control}
+          name="slot_minutes"
+          render={({ field }) => (
+            <FormItem>
+              <FieldControl
+                hint="Pickups start on these marks from opening time."
+                hintId="store-slot-minutes-hint"
+                label="Slot length"
+              >
+                <Select
+                  name={field.name}
+                  ref={field.ref}
+                  value={String(field.value)}
+                  onBlur={field.onBlur}
+                  onChange={(event) => field.onChange(Number(event.target.value))}
+                >
+                  {SLOT_MINUTE_OPTIONS.map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      {minutes} minutes
+                    </option>
+                  ))}
+                </Select>
+              </FieldControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="slot_capacity"
+          render={({ field }) => (
+            <FormItem>
+              <FieldControl
+                hint={`How many orders one slot takes before it shows as full (1–${MAX_SLOT_CAPACITY}).`}
+                hintId="store-slot-capacity-hint"
+                label="Orders per slot"
+              >
+                <IntegerFieldInput max={MAX_SLOT_CAPACITY} min={1} {...field} />
+              </FieldControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="preorder_min_lead_minutes"
           render={({ field }) => (
             <FormItem>
               <FieldControl
-                hint={`How long before pickup an order must be placed, in minutes (at most ${MAX_PREORDER_LEAD_MINUTES}).`}
+                hint={`How long before pickup a pre-order must be placed, in minutes (at most ${MAX_PREORDER_LEAD_MINUTES}).`}
                 hintId="store-lead-hint"
                 label="Pre-order notice"
               >
                 <IntegerFieldInput max={MAX_PREORDER_LEAD_MINUTES} min={0} {...field} />
+              </FieldControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="instant_prep_minutes"
+          render={({ field }) => (
+            <FormItem>
+              <FieldControl
+                hint={`How long the counter needs to pack a same-day order of ready-made items, in minutes (at most ${MAX_INSTANT_PREP_MINUTES}).`}
+                hintId="store-instant-prep-hint"
+                label="Instant pickup notice"
+              >
+                <IntegerFieldInput max={MAX_INSTANT_PREP_MINUTES} min={0} {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>

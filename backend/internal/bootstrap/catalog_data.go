@@ -1,6 +1,9 @@
 package bootstrap
 
-import domaindiscount "github.com/boms/backend/internal/domain/discount"
+import (
+	domaincategory "github.com/boms/backend/internal/domain/category"
+	domaindiscount "github.com/boms/backend/internal/domain/discount"
+)
 
 // Catalog seed data — development only. Prices are USD cents, matching the storefront formatter.
 // Slugs are the identity used for idempotent re-runs, so they never change once shipped.
@@ -10,6 +13,7 @@ type seedCategory struct {
 	Name      string
 	SortOrder int32
 	IsActive  bool
+	Station   domaincategory.Station
 }
 
 type seedProduct struct {
@@ -19,6 +23,8 @@ type seedProduct struct {
 	Description  string
 	PriceCents   int64
 	IsActive     bool
+	// LeadTimeMinutes is the notice a made-to-order product needs; zero for the rest.
+	LeadTimeMinutes int32
 }
 
 type seedComboItem struct {
@@ -46,23 +52,24 @@ type seedCombo struct {
 }
 
 var seedCategories = []seedCategory{
-	{Slug: "birthday-cakes", Name: "Birthday Cakes", SortOrder: 10, IsActive: true},
-	{Slug: "sponge-and-slices", Name: "Sponge & Slices", SortOrder: 20, IsActive: true},
-	{Slug: "mini-pastries", Name: "Mini Pastries", SortOrder: 30, IsActive: true},
-	{Slug: "croissants", Name: "Croissants & Laminated", SortOrder: 40, IsActive: true},
-	{Slug: "cookies", Name: "Cookies", SortOrder: 50, IsActive: true},
-	{Slug: "cup-desserts", Name: "Cup Desserts", SortOrder: 60, IsActive: true},
-	{Slug: "seasonal", Name: "Seasonal", SortOrder: 70, IsActive: false},
+	// Cakes are baked to order in the kitchen; the rest is on the counter each morning.
+	{Slug: "birthday-cakes", Name: "Birthday Cakes", SortOrder: 10, IsActive: true, Station: domaincategory.StationKitchen},
+	{Slug: "sponge-and-slices", Name: "Sponge & Slices", SortOrder: 20, IsActive: true, Station: domaincategory.StationCounter},
+	{Slug: "mini-pastries", Name: "Mini Pastries", SortOrder: 30, IsActive: true, Station: domaincategory.StationCounter},
+	{Slug: "croissants", Name: "Croissants & Laminated", SortOrder: 40, IsActive: true, Station: domaincategory.StationCounter},
+	{Slug: "cookies", Name: "Cookies", SortOrder: 50, IsActive: true, Station: domaincategory.StationCounter},
+	{Slug: "cup-desserts", Name: "Cup Desserts", SortOrder: 60, IsActive: true, Station: domaincategory.StationCounter},
+	{Slug: "seasonal", Name: "Seasonal", SortOrder: 70, IsActive: false, Station: domaincategory.StationKitchen},
 }
 
 var seedProducts = []seedProduct{
 	// Birthday cakes — one product per size, since a product carries a single price.
-	{Slug: "bento-cake-two-servings", CategorySlug: "birthday-cakes", Name: "Bento Cake, Two Servings", Description: "A 10 cm cake in a takeaway box, piped to order with a short message. Ready in two hours.", PriceCents: 1200, IsActive: true},
-	{Slug: "strawberry-shortcake-16", CategorySlug: "birthday-cakes", Name: "Strawberry Shortcake 16 cm", Description: "Vanilla sponge layered with lightly whipped cream and fresh strawberries. Serves four to six.", PriceCents: 2800, IsActive: true},
-	{Slug: "strawberry-shortcake-20", CategorySlug: "birthday-cakes", Name: "Strawberry Shortcake 20 cm", Description: "The house strawberry cake in the party size. Serves eight to ten.", PriceCents: 3800, IsActive: true},
-	{Slug: "korean-cream-cake-16", CategorySlug: "birthday-cakes", Name: "Korean Cream Cake 16 cm", Description: "Minimalist finish in ivory buttercream with a single piped line of colour. Serves four to six.", PriceCents: 3200, IsActive: true},
-	{Slug: "chocolate-fudge-cake-16", CategorySlug: "birthday-cakes", Name: "Chocolate Fudge Cake 16 cm", Description: "Dark chocolate sponge, fudge ganache, cocoa nib crown. Serves four to six.", PriceCents: 3000, IsActive: true},
-	{Slug: "tiramisu-whole-cake-16", CategorySlug: "birthday-cakes", Name: "Tiramisu Whole Cake 16 cm", Description: "Espresso-soaked savoiardi under mascarpone cream, dusted at the counter. Serves four to six.", PriceCents: 3400, IsActive: true},
+	{Slug: "bento-cake-two-servings", CategorySlug: "birthday-cakes", Name: "Bento Cake, Two Servings", Description: "A 10 cm cake in a takeaway box, piped to order with a short message. Ready in two hours.", PriceCents: 1200, IsActive: true, LeadTimeMinutes: 120},
+	{Slug: "strawberry-shortcake-16", CategorySlug: "birthday-cakes", Name: "Strawberry Shortcake 16 cm", Description: "Vanilla sponge layered with lightly whipped cream and fresh strawberries. Serves four to six.", PriceCents: 2800, IsActive: true, LeadTimeMinutes: 1440},
+	{Slug: "strawberry-shortcake-20", CategorySlug: "birthday-cakes", Name: "Strawberry Shortcake 20 cm", Description: "The house strawberry cake in the party size. Serves eight to ten.", PriceCents: 3800, IsActive: true, LeadTimeMinutes: 1440},
+	{Slug: "korean-cream-cake-16", CategorySlug: "birthday-cakes", Name: "Korean Cream Cake 16 cm", Description: "Minimalist finish in ivory buttercream with a single piped line of colour. Serves four to six.", PriceCents: 3200, IsActive: true, LeadTimeMinutes: 1440},
+	{Slug: "chocolate-fudge-cake-16", CategorySlug: "birthday-cakes", Name: "Chocolate Fudge Cake 16 cm", Description: "Dark chocolate sponge, fudge ganache, cocoa nib crown. Serves four to six.", PriceCents: 3000, IsActive: true, LeadTimeMinutes: 1440},
+	{Slug: "tiramisu-whole-cake-16", CategorySlug: "birthday-cakes", Name: "Tiramisu Whole Cake 16 cm", Description: "Espresso-soaked savoiardi under mascarpone cream, dusted at the counter. Serves four to six.", PriceCents: 3400, IsActive: true, LeadTimeMinutes: 1440},
 
 	// Sponge and sliced cakes.
 	{Slug: "salted-egg-sponge-cake", CategorySlug: "sponge-and-slices", Name: "Salted Egg Sponge Cake", Description: "Cotton-soft sponge with salted egg custard and pork floss.", PriceCents: 1800, IsActive: true},
@@ -102,8 +109,8 @@ var seedProducts = []seedProduct{
 	{Slug: "almond-jelly-lychee-cup", CategorySlug: "cup-desserts", Name: "Almond Jelly and Lychee Cup", Description: "Almond milk jelly with lychee and toasted almond slices.", PriceCents: 420, IsActive: true},
 
 	// Seasonal — the category is off-menu, so these sit behind it.
-	{Slug: "mooncake-gift-box", CategorySlug: "seasonal", Name: "Mooncake Gift Box, Four Pieces", Description: "Four baked mooncakes boxed for the mid-autumn table.", PriceCents: 3600, IsActive: true},
-	{Slug: "christmas-yule-log", CategorySlug: "seasonal", Name: "Christmas Yule Log", Description: "Chocolate sponge rolled with chestnut cream, finished as a log.", PriceCents: 2800, IsActive: true},
+	{Slug: "mooncake-gift-box", CategorySlug: "seasonal", Name: "Mooncake Gift Box, Four Pieces", Description: "Four baked mooncakes boxed for the mid-autumn table.", PriceCents: 3600, IsActive: true, LeadTimeMinutes: 2880},
+	{Slug: "christmas-yule-log", CategorySlug: "seasonal", Name: "Christmas Yule Log", Description: "Chocolate sponge rolled with chestnut cream, finished as a log.", PriceCents: 2800, IsActive: true, LeadTimeMinutes: 2880},
 }
 
 var seedCombos = []seedCombo{

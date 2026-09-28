@@ -6,6 +6,7 @@ const order = {
   id: "00000000-0000-4000-8000-000000000001",
   code: "CH-260928-001",
   status: "confirmed",
+  order_type: "pre_order",
   subtotal_cents: 4500,
   discount_cents: 0,
   total_cents: 4500,

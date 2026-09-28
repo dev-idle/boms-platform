@@ -6,6 +6,7 @@ import (
 	"time"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
@@ -48,13 +49,15 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 	if err != nil {
 		return nil, err
 	}
-	if err := pickupPolicy(settings, closed).Validate(pickupAt, now); err != nil {
-		return nil, err
-	}
+	policy := pickupPolicy(settings, closed)
 
 	var created *domainorder.Order
 	err = u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		cart, lines, discountCode, totals, err := u.cartUC.pricedCartForCheckout(txCtx, userID)
+		if err != nil {
+			return err
+		}
+		booking, err := u.bookPickup(txCtx, userID, lines, pickupAt, now, policy)
 		if err != nil {
 			return err
 		}
@@ -76,6 +79,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 			UserID:               userID,
 			Code:                 domainorder.Code(day, number),
 			Status:               domainorder.StatusPending,
+			Type:                 booking.orderType,
 			SubtotalCents:        totals.SubtotalCents,
 			DiscountCents:        totals.DiscountCents,
 			TotalCents:           totals.TotalCents,
@@ -128,6 +132,11 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 		if err := u.events.Add(txCtx, domainorder.CreatedEvent(*order)); err != nil {
 			return err
 		}
+		if booking.fillsSlot {
+			if err := u.events.Add(txCtx, domainorder.SlotsChangedEvent(domainstore.DayOf(pickupAt))); err != nil {
+				return err
+			}
+		}
 		created = order
 		return nil
 	})
@@ -135,6 +144,52 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 		return nil, err
 	}
 	return u.orderResponse(ctx, userID, created.ID)
+}
+
+// pickupBooking is what booking a pickup decided: the order's type, and
+// whether the order takes the slot's last place.
+type pickupBooking struct {
+	orderType domainorder.Type
+	fillsSlot bool
+}
+
+// bookPickup decides the order's type from the priced lines of the locked
+// cart, checks the pickup time against the rules for that type, and holds its
+// slot until the transaction ends. It refuses a slot that is already full and
+// a customer who already holds as many orders for that day as one may. The
+// cart lock serializes one customer's checkouts, so the day count cannot race.
+func (u *OrderUsecase) bookPickup(
+	txCtx context.Context,
+	userID uuid.UUID,
+	lines []pricedCartLine,
+	pickupAt, now time.Time,
+	policy domainorder.PickupPolicy,
+) (pickupBooking, error) {
+	items, err := u.cartUC.fulfillmentOf(txCtx, lines)
+	if err != nil {
+		return pickupBooking{}, err
+	}
+	orderType, err := policy.Validate(pickupAt, now, items)
+	if err != nil {
+		return pickupBooking{}, err
+	}
+	day := domainstore.DayOf(pickupAt)
+	dayStart := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, domainstore.Location)
+	mine, err := u.orders.CountCustomerOrdersBetween(txCtx, userID, dayStart, dayStart.AddDate(0, 0, 1))
+	if err != nil {
+		return pickupBooking{}, err
+	}
+	if mine >= domainorder.MaxOrdersPerCustomerPerDay {
+		return pickupBooking{}, domainorder.ErrPickupDayLimit
+	}
+	held, err := u.orders.HoldPickupSlot(txCtx, pickupAt, policy.Settings.SlotLength)
+	if err != nil {
+		return pickupBooking{}, err
+	}
+	if held >= policy.Settings.SlotCapacity {
+		return pickupBooking{}, domainorder.ErrPickupSlotFull
+	}
+	return pickupBooking{orderType: orderType, fillsSlot: held+1 == policy.Settings.SlotCapacity}, nil
 }
 
 // List returns a page of the customer's orders, newest first, narrowed by query.
@@ -208,6 +263,7 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		ID:                   order.ID.String(),
 		Code:                 order.Code,
 		Status:               string(order.Status),
+		OrderType:            string(order.Type),
 		SubtotalCents:        order.SubtotalCents,
 		DiscountCents:        order.DiscountCents,
 		TotalCents:           order.TotalCents,

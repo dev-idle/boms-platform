@@ -143,6 +143,90 @@ func (ns NullOrderStatus) Value() (driver.Value, error) {
 	return string(ns.OrderStatus), nil
 }
 
+type OrderType string
+
+const (
+	OrderTypeInstant  OrderType = "instant"
+	OrderTypePreOrder OrderType = "pre_order"
+)
+
+func (e *OrderType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrderType(s)
+	case string:
+		*e = OrderType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrderType: %T", src)
+	}
+	return nil
+}
+
+type NullOrderType struct {
+	OrderType OrderType `json:"orderType"`
+	Valid     bool      `json:"valid"` // Valid is true if OrderType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrderType) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrderType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrderType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrderType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrderType), nil
+}
+
+type Station string
+
+const (
+	StationKitchen Station = "kitchen"
+	StationCounter Station = "counter"
+)
+
+func (e *Station) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Station(s)
+	case string:
+		*e = Station(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Station: %T", src)
+	}
+	return nil
+}
+
+type NullStation struct {
+	Station Station `json:"station"`
+	Valid   bool    `json:"valid"` // Valid is true if Station is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullStation) Scan(value interface{}) error {
+	if value == nil {
+		ns.Station, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Station.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullStation) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Station), nil
+}
+
 type UserRole string
 
 const (
@@ -225,6 +309,7 @@ type Category struct {
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt time.Time  `json:"updatedAt"`
 	DeletedAt *time.Time `json:"deletedAt"`
+	Station   Station    `json:"station"`
 }
 
 type Combo struct {
@@ -279,6 +364,7 @@ type Order struct {
 	CreatedAt            time.Time   `json:"createdAt"`
 	UpdatedAt            time.Time   `json:"updatedAt"`
 	Code                 string      `json:"code"`
+	OrderType            OrderType   `json:"orderType"`
 }
 
 type OrderDayCounter struct {
@@ -302,16 +388,17 @@ type OrderItem struct {
 }
 
 type Product struct {
-	ID          uuid.UUID  `json:"id"`
-	CategoryID  uuid.UUID  `json:"categoryId"`
-	Name        string     `json:"name"`
-	Slug        string     `json:"slug"`
-	Description *string    `json:"description"`
-	PriceCents  int64      `json:"priceCents"`
-	IsActive    bool       `json:"isActive"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
-	DeletedAt   *time.Time `json:"deletedAt"`
+	ID              uuid.UUID  `json:"id"`
+	CategoryID      uuid.UUID  `json:"categoryId"`
+	Name            string     `json:"name"`
+	Slug            string     `json:"slug"`
+	Description     *string    `json:"description"`
+	PriceCents      int64      `json:"priceCents"`
+	IsActive        bool       `json:"isActive"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+	DeletedAt       *time.Time `json:"deletedAt"`
+	LeadTimeMinutes int32      `json:"leadTimeMinutes"`
 }
 
 type ProductImage struct {

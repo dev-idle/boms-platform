@@ -257,6 +257,12 @@ table "audit_logs" {
   }
 }
 
+// Where a category's products come from — the kitchen or the counter.
+enum "station" {
+  schema = schema.public
+  values = ["kitchen", "counter"]
+}
+
 table "categories" {
   schema = schema.public
   column "id" {
@@ -295,6 +301,13 @@ table "categories" {
   column "deleted_at" {
     type = timestamptz
     null = true
+  }
+  // Where the category's products are made: the kitchen bakes to order, the
+  // counter sells what is ready.
+  column "station" {
+    type    = enum.station
+    null    = false
+    default = sql("'kitchen'::station")
   }
   primary_key {
     columns = [column.id]
@@ -356,6 +369,12 @@ table "products" {
     type = timestamptz
     null = true
   }
+  // The notice this product needs before pickup, on top of the bakery's.
+  column "lead_time_minutes" {
+    type    = int
+    null    = false
+    default = 0
+  }
   primary_key {
     columns = [column.id]
   }
@@ -375,6 +394,9 @@ table "products" {
   }
   check "products_price_cents_check" {
     expr = "price_cents >= 0"
+  }
+  check "products_lead_time_minutes_check" {
+    expr = "lead_time_minutes >= 0 AND lead_time_minutes <= 10080"
   }
 }
 
@@ -670,6 +692,12 @@ enum "order_status" {
   values = ["pending", "confirmed", "in_production", "ready", "fulfilled", "cancelled"]
 }
 
+// How an order is prepared: instant (ready-made, collected the same day) or a pre-order.
+enum "order_type" {
+  schema = schema.public
+  values = ["instant", "pre_order"]
+}
+
 table "carts" {
   schema = schema.public
   column "id" {
@@ -851,6 +879,10 @@ table "orders" {
     type = text
     null = false
   }
+  column "order_type" {
+    type = enum.order_type
+    null = false
+  }
   primary_key {
     columns = [column.id]
   }
@@ -880,6 +912,11 @@ table "orders" {
   index "orders_code_idx" {
     unique  = true
     columns = [column.code]
+  }
+  // Orders holding a pickup slot, counted when a checkout takes one.
+  index "orders_pickup_slot_idx" {
+    columns = [column.pickup_at]
+    where   = "status <> 'cancelled'::order_status"
   }
   check "orders_code_check" {
     expr = "code ~ '^CH-[0-9]{6}-[0-9]{3,}$'"
@@ -1136,6 +1173,21 @@ table "store_settings" {
     null    = false
     default = sql("now()")
   }
+  column "slot_minutes" {
+    type    = smallint
+    null    = false
+    default = 30
+  }
+  column "slot_capacity" {
+    type    = smallint
+    null    = false
+    default = 10
+  }
+  column "instant_prep_minutes" {
+    type    = smallint
+    null    = false
+    default = 20
+  }
   primary_key {
     columns = [column.id]
   }
@@ -1150,6 +1202,15 @@ table "store_settings" {
   }
   check "store_settings_advance_check" {
     expr = "max_advance_days >= 1 AND max_advance_days <= 90"
+  }
+  check "store_settings_slot_check" {
+    expr = "slot_minutes IN (10, 15, 20, 30, 60) AND closes_at_minute - opens_at_minute >= slot_minutes"
+  }
+  check "store_settings_capacity_check" {
+    expr = "slot_capacity >= 1 AND slot_capacity <= 200"
+  }
+  check "store_settings_instant_prep_check" {
+    expr = "instant_prep_minutes >= 0 AND instant_prep_minutes <= 240"
   }
 }
 

@@ -14,6 +14,8 @@ CREATE TYPE "order_status" AS ENUM (
   'fulfilled',
   'cancelled'
 );
+CREATE TYPE "station" AS ENUM ('kitchen', 'counter');
+CREATE TYPE "order_type" AS ENUM ('instant', 'pre_order');
 
 CREATE TABLE "users" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -89,6 +91,7 @@ CREATE TABLE "categories" (
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now(),
   "deleted_at" timestamptz NULL,
+  "station" "station" NOT NULL DEFAULT 'kitchen',
   PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "categories_slug_active_idx" ON "categories" ("slug") WHERE (deleted_at IS NULL);
@@ -105,9 +108,11 @@ CREATE TABLE "products" (
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now(),
   "deleted_at" timestamptz NULL,
+  "lead_time_minutes" integer NOT NULL DEFAULT 0,
   PRIMARY KEY ("id"),
   CONSTRAINT "products_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories" ("id") ON DELETE RESTRICT,
-  CONSTRAINT "products_price_cents_check" CHECK (price_cents >= 0)
+  CONSTRAINT "products_price_cents_check" CHECK (price_cents >= 0),
+  CONSTRAINT "products_lead_time_minutes_check" CHECK ((lead_time_minutes >= 0) AND (lead_time_minutes <= 10080))
 );
 CREATE UNIQUE INDEX "products_slug_active_idx" ON "products" ("slug") WHERE (deleted_at IS NULL);
 CREATE INDEX "products_category_active_idx" ON "products" ("category_id") WHERE (deleted_at IS NULL);
@@ -238,6 +243,7 @@ CREATE TABLE "orders" (
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now(),
   "code" text NOT NULL,
+  "order_type" "order_type" NOT NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "orders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "orders_discount_code_id_fkey" FOREIGN KEY ("discount_code_id") REFERENCES "discount_codes" ("id") ON DELETE SET NULL,
@@ -248,6 +254,7 @@ CREATE TABLE "orders" (
   CONSTRAINT "orders_code_check" CHECK (code ~ '^CH-[0-9]{6}-[0-9]{3,}$'::text)
 );
 CREATE UNIQUE INDEX "orders_code_idx" ON "orders" ("code");
+CREATE INDEX "orders_pickup_slot_idx" ON "orders" ("pickup_at") WHERE (status <> 'cancelled'::order_status);
 CREATE INDEX "orders_user_id_created_at_idx" ON "orders" ("user_id", "created_at" DESC);
 CREATE INDEX "orders_production_pickup_idx" ON "orders" ("status", "pickup_at") WHERE (
   status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
@@ -337,8 +344,14 @@ CREATE TABLE "store_settings" (
   "preorder_min_lead_minutes" integer NOT NULL,
   "max_advance_days" smallint NOT NULL,
   "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "slot_minutes" smallint NOT NULL DEFAULT 30,
+  "slot_capacity" smallint NOT NULL DEFAULT 10,
+  "instant_prep_minutes" smallint NOT NULL DEFAULT 20,
   PRIMARY KEY ("id"),
   CONSTRAINT "store_settings_advance_check" CHECK ((max_advance_days >= 1) AND (max_advance_days <= 90)),
+  CONSTRAINT "store_settings_capacity_check" CHECK ((slot_capacity >= 1) AND (slot_capacity <= 200)),
+  CONSTRAINT "store_settings_instant_prep_check" CHECK ((instant_prep_minutes >= 0) AND (instant_prep_minutes <= 240)),
+  CONSTRAINT "store_settings_slot_check" CHECK ((slot_minutes = ANY (ARRAY[10, 15, 20, 30, 60])) AND ((closes_at_minute - opens_at_minute) >= slot_minutes)),
   CONSTRAINT "store_settings_hours_check" CHECK ((opens_at_minute >= 0) AND (closes_at_minute < 1440) AND (opens_at_minute < closes_at_minute)),
   CONSTRAINT "store_settings_lead_check" CHECK ((preorder_min_lead_minutes >= 0) AND (preorder_min_lead_minutes <= 10080)),
   CONSTRAINT "store_settings_singleton_check" CHECK (id = 1)

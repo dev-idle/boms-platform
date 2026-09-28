@@ -14,6 +14,16 @@ export const orderStatusSchema = z.enum([
 
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
+/** How an order is prepared — mirrors backend `domain/order.Type`. */
+export const orderTypeSchema = z.enum(["instant", "pre_order"]);
+
+export type OrderType = z.infer<typeof orderTypeSchema>;
+
+/** The order type as the customer and the counter read it. */
+export function formatOrderTypeLabel(type: OrderType): string {
+  return type === "instant" ? "Instant pickup" : "Pre-order";
+}
+
 /** CH-YYMMDD-NNN: the bakery day an order was placed and its number that day (backend `order.Code`). */
 export const orderCodeSchema = z.string().regex(/^CH-\d{6}-\d{3,}$/);
 

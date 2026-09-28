@@ -33,6 +33,13 @@ describe("customerQueryKeysForEvent for settings", () => {
   it("refreshes the pickup window when an admin changes it", () => {
     expect(customerQueryKeysForEvent({ type: "settings.updated", data: {} })).toEqual([
       customerQueryKeys.pickupRules,
+      customerQueryKeys.pickupSlotsRoot,
+    ]);
+  });
+
+  it("refreshes the slots of the day an order took or freed", () => {
+    expect(customerQueryKeysForEvent({ type: "slots.changed", data: { date: "2026-07-10" } })).toEqual([
+      customerQueryKeys.pickupSlots("2026-07-10"),
     ]);
   });
 });

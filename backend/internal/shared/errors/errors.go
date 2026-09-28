@@ -101,6 +101,9 @@ var (
 	ErrPickupTooFar                 = New(http.StatusUnprocessableEntity, "pickup_too_far", "Pickup time is further ahead than the bakery takes orders")
 	ErrPickupClosedDay              = New(http.StatusUnprocessableEntity, "pickup_closed_day", "The bakery is closed on that day")
 	ErrPickupOutsideHours           = New(http.StatusUnprocessableEntity, "pickup_outside_hours", "Pickup time is outside opening hours")
+	ErrPickupOffSlot                = New(http.StatusUnprocessableEntity, "pickup_off_slot", "Pickup time is not one of the pickup slots")
+	ErrPickupSlotFull               = New(http.StatusConflict, "pickup_slot_full", "That pickup slot is full")
+	ErrPickupDayLimit               = New(http.StatusUnprocessableEntity, "pickup_day_limit", "You already have as many orders as one customer can book for that day")
 	ErrClosedDateExists             = New(http.StatusConflict, "closed_date_exists", "That day is already closed")
 )
 

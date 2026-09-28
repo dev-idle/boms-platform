@@ -27,6 +27,7 @@ SELECT
   o.created_at,
   o.updated_at,
   o.code,
+  o.order_type,
   u.email AS customer_email,
   cp.display_name AS customer_display_name
 FROM orders o
@@ -64,6 +65,7 @@ type BakerListProductionOrdersRow struct {
 	CreatedAt            time.Time   `json:"createdAt"`
 	UpdatedAt            time.Time   `json:"updatedAt"`
 	Code                 string      `json:"code"`
+	OrderType            OrderType   `json:"orderType"`
 	CustomerEmail        string      `json:"customerEmail"`
 	CustomerDisplayName  *string     `json:"customerDisplayName"`
 }
@@ -83,6 +85,7 @@ type BakerListProductionOrdersRow struct {
 //	  o.created_at,
 //	  o.updated_at,
 //	  o.code,
+//	  o.order_type,
 //	  u.email AS customer_email,
 //	  cp.display_name AS customer_display_name
 //	FROM orders o
@@ -121,6 +124,7 @@ func (q *Queries) BakerListProductionOrders(ctx context.Context, arg BakerListPr
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Code,
+			&i.OrderType,
 			&i.CustomerEmail,
 			&i.CustomerDisplayName,
 		); err != nil {
@@ -170,6 +174,111 @@ func (q *Queries) BakerListProductionOrdersCount(ctx context.Context, status *Or
 	return count, err
 }
 
+const countCustomerOrdersBetween = `-- name: CountCustomerOrdersBetween :one
+SELECT count(*)::bigint AS count
+FROM orders
+WHERE user_id = $1
+  AND pickup_at >= $2::timestamptz
+  AND pickup_at < $3::timestamptz
+  AND status <> 'cancelled'::order_status
+`
+
+type CountCustomerOrdersBetweenParams struct {
+	UserID uuid.UUID `json:"userId"`
+	FromAt time.Time `json:"fromAt"`
+	ToAt   time.Time `json:"toAt"`
+}
+
+// A customer's orders not cancelled with a pickup in [from_at, to_at).
+//
+//	SELECT count(*)::bigint AS count
+//	FROM orders
+//	WHERE user_id = $1
+//	  AND pickup_at >= $2::timestamptz
+//	  AND pickup_at < $3::timestamptz
+//	  AND status <> 'cancelled'::order_status
+func (q *Queries) CountCustomerOrdersBetween(ctx context.Context, arg CountCustomerOrdersBetweenParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCustomerOrdersBetween, arg.UserID, arg.FromAt, arg.ToAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countOrdersByPickupTime = `-- name: CountOrdersByPickupTime :many
+SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
+FROM orders
+WHERE pickup_at >= $1::timestamptz
+  AND pickup_at < $2::timestamptz
+  AND status <> 'cancelled'::order_status
+GROUP BY pickup_at
+`
+
+type CountOrdersByPickupTimeParams struct {
+	FromAt time.Time `json:"fromAt"`
+	ToAt   time.Time `json:"toAt"`
+}
+
+type CountOrdersByPickupTimeRow struct {
+	PickupAt time.Time `json:"pickupAt"`
+	Count    int64     `json:"count"`
+}
+
+// CountOrdersByPickupTime
+//
+//	SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
+//	FROM orders
+//	WHERE pickup_at >= $1::timestamptz
+//	  AND pickup_at < $2::timestamptz
+//	  AND status <> 'cancelled'::order_status
+//	GROUP BY pickup_at
+func (q *Queries) CountOrdersByPickupTime(ctx context.Context, arg CountOrdersByPickupTimeParams) ([]CountOrdersByPickupTimeRow, error) {
+	rows, err := q.db.Query(ctx, countOrdersByPickupTime, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountOrdersByPickupTimeRow{}
+	for rows.Next() {
+		var i CountOrdersByPickupTimeRow
+		if err := rows.Scan(&i.PickupAt, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countOrdersInSlot = `-- name: CountOrdersInSlot :one
+SELECT count(*)::bigint AS count
+FROM orders
+WHERE pickup_at >= $1::timestamptz
+  AND pickup_at < $2::timestamptz
+  AND status <> 'cancelled'::order_status
+`
+
+type CountOrdersInSlotParams struct {
+	FromAt time.Time `json:"fromAt"`
+	ToAt   time.Time `json:"toAt"`
+}
+
+// Orders holding the slot [from_at, to_at): every order not cancelled whose
+// pickup falls in it, wherever in it an earlier slot grid put that pickup.
+//
+//	SELECT count(*)::bigint AS count
+//	FROM orders
+//	WHERE pickup_at >= $1::timestamptz
+//	  AND pickup_at < $2::timestamptz
+//	  AND status <> 'cancelled'::order_status
+func (q *Queries) CountOrdersInSlot(ctx context.Context, arg CountOrdersInSlotParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrdersInSlot, arg.FromAt, arg.ToAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createOrder = `-- name: CreateOrder :one
 INSERT INTO orders (
   user_id,
@@ -180,9 +289,10 @@ INSERT INTO orders (
   discount_code_id,
   discount_code_snapshot,
   pickup_at,
-  code
+  code,
+  order_type
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING
   id,
   user_id,
@@ -195,7 +305,8 @@ RETURNING
   pickup_at,
   created_at,
   updated_at,
-  code
+  code,
+  order_type
 `
 
 type CreateOrderParams struct {
@@ -208,6 +319,7 @@ type CreateOrderParams struct {
 	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
 	PickupAt             *time.Time  `json:"pickupAt"`
 	Code                 string      `json:"code"`
+	OrderType            OrderType   `json:"orderType"`
 }
 
 // CreateOrder
@@ -221,9 +333,10 @@ type CreateOrderParams struct {
 //	  discount_code_id,
 //	  discount_code_snapshot,
 //	  pickup_at,
-//	  code
+//	  code,
+//	  order_type
 //	)
-//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 //	RETURNING
 //	  id,
 //	  user_id,
@@ -236,7 +349,8 @@ type CreateOrderParams struct {
 //	  pickup_at,
 //	  created_at,
 //	  updated_at,
-//	  code
+//	  code,
+//	  order_type
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
 	row := q.db.QueryRow(ctx, createOrder,
 		arg.UserID,
@@ -248,6 +362,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		arg.DiscountCodeSnapshot,
 		arg.PickupAt,
 		arg.Code,
+		arg.OrderType,
 	)
 	var i Order
 	err := row.Scan(
@@ -263,6 +378,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Code,
+		&i.OrderType,
 	)
 	return i, err
 }
@@ -404,7 +520,8 @@ SELECT
   pickup_at,
   created_at,
   updated_at,
-  code
+  code,
+  order_type
 FROM orders
 WHERE id = $1 AND user_id = $2
 `
@@ -428,7 +545,8 @@ type GetOrderByIDForUserParams struct {
 //	  pickup_at,
 //	  created_at,
 //	  updated_at,
-//	  code
+//	  code,
+//	  order_type
 //	FROM orders
 //	WHERE id = $1 AND user_id = $2
 func (q *Queries) GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error) {
@@ -447,6 +565,7 @@ func (q *Queries) GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUs
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Code,
+		&i.OrderType,
 	)
 	return i, err
 }
@@ -573,7 +692,8 @@ SELECT
   pickup_at,
   created_at,
   updated_at,
-  code
+  code,
+  order_type
 FROM orders
 WHERE user_id = $1
   AND (
@@ -615,7 +735,8 @@ type ListOrdersByUserParams struct {
 //	  pickup_at,
 //	  created_at,
 //	  updated_at,
-//	  code
+//	  code,
+//	  order_type
 //	FROM orders
 //	WHERE user_id = $1
 //	  AND (
@@ -661,6 +782,7 @@ func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserPara
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Code,
+			&i.OrderType,
 		); err != nil {
 			return nil, err
 		}
@@ -726,6 +848,31 @@ func (q *Queries) ListOrdersByUserCount(ctx context.Context, arg ListOrdersByUse
 	return count, err
 }
 
+const lockPickupSlot = `-- name: LockPickupSlot :exec
+SELECT pg_advisory_xact_lock(
+  $1::int,
+  (extract(epoch FROM $2::timestamptz) / 60)::int
+)
+`
+
+type LockPickupSlotParams struct {
+	Namespace int32     `json:"namespace"`
+	StartsAt  time.Time `json:"startsAt"`
+}
+
+// Holds the slot starting at starts_at until the transaction ends, so two
+// checkouts cannot both take its last place. The key is the slot's minute since
+// the epoch, under a namespace of its own.
+//
+//	SELECT pg_advisory_xact_lock(
+//	  $1::int,
+//	  (extract(epoch FROM $2::timestamptz) / 60)::int
+//	)
+func (q *Queries) LockPickupSlot(ctx context.Context, arg LockPickupSlotParams) error {
+	_, err := q.db.Exec(ctx, lockPickupSlot, arg.Namespace, arg.StartsAt)
+	return err
+}
+
 const nextOrderDayNumber = `-- name: NextOrderDayNumber :one
 INSERT INTO order_day_counters (day, last_number)
 VALUES ((now() AT TIME ZONE $1::text)::date, 1)
@@ -765,6 +912,7 @@ SELECT
   o.created_at,
   o.updated_at,
   o.code,
+  o.order_type,
   u.email AS customer_email,
   cp.display_name AS customer_display_name,
   cp.phone AS customer_phone
@@ -787,6 +935,7 @@ type StaffGetOrderByIDRow struct {
 	CreatedAt            time.Time   `json:"createdAt"`
 	UpdatedAt            time.Time   `json:"updatedAt"`
 	Code                 string      `json:"code"`
+	OrderType            OrderType   `json:"orderType"`
 	CustomerEmail        string      `json:"customerEmail"`
 	CustomerDisplayName  *string     `json:"customerDisplayName"`
 	CustomerPhone        *string     `json:"customerPhone"`
@@ -807,6 +956,7 @@ type StaffGetOrderByIDRow struct {
 //	  o.created_at,
 //	  o.updated_at,
 //	  o.code,
+//	  o.order_type,
 //	  u.email AS customer_email,
 //	  cp.display_name AS customer_display_name,
 //	  cp.phone AS customer_phone
@@ -830,6 +980,7 @@ func (q *Queries) StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGet
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Code,
+		&i.OrderType,
 		&i.CustomerEmail,
 		&i.CustomerDisplayName,
 		&i.CustomerPhone,
@@ -851,6 +1002,7 @@ SELECT
   o.created_at,
   o.updated_at,
   o.code,
+  o.order_type,
   u.email AS customer_email,
   cp.display_name AS customer_display_name
 FROM orders o
@@ -883,6 +1035,7 @@ type StaffListOrdersRow struct {
 	CreatedAt            time.Time   `json:"createdAt"`
 	UpdatedAt            time.Time   `json:"updatedAt"`
 	Code                 string      `json:"code"`
+	OrderType            OrderType   `json:"orderType"`
 	CustomerEmail        string      `json:"customerEmail"`
 	CustomerDisplayName  *string     `json:"customerDisplayName"`
 }
@@ -902,6 +1055,7 @@ type StaffListOrdersRow struct {
 //	  o.created_at,
 //	  o.updated_at,
 //	  o.code,
+//	  o.order_type,
 //	  u.email AS customer_email,
 //	  cp.display_name AS customer_display_name
 //	FROM orders o
@@ -935,6 +1089,7 @@ func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Code,
+			&i.OrderType,
 			&i.CustomerEmail,
 			&i.CustomerDisplayName,
 		); err != nil {
@@ -1030,7 +1185,8 @@ RETURNING
   pickup_at,
   created_at,
   updated_at,
-  code
+  code,
+  order_type
 `
 
 type UpdateOrderStatusParams struct {
@@ -1058,7 +1214,8 @@ type UpdateOrderStatusParams struct {
 //	  pickup_at,
 //	  created_at,
 //	  updated_at,
-//	  code
+//	  code,
+//	  order_type
 func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error) {
 	row := q.db.QueryRow(ctx, updateOrderStatus, arg.ToStatus, arg.ID, arg.FromStatus)
 	var i Order
@@ -1075,6 +1232,7 @@ func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Code,
+		&i.OrderType,
 	)
 	return i, err
 }

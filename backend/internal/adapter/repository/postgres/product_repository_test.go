@@ -3,11 +3,13 @@ package postgres_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	"github.com/boms/backend/internal/port"
 )
 
@@ -28,6 +30,7 @@ func TestProductRepository_ListGallery_Integration(t *testing.T) {
 		Slug:      "gallery",
 		SortOrder: 10,
 		IsActive:  true,
+		Station:   domaincategory.StationKitchen,
 	})
 	require.NoError(t, err)
 
@@ -112,4 +115,38 @@ func TestProductRepository_ListGallery_Integration(t *testing.T) {
 			assert.NotEqual(t, doomed.ID, row.ID)
 		}
 	})
+}
+
+// Where a category's products are made and the notice a product needs are kept
+// through every write and read a manager makes.
+func TestCatalogFulfillmentFields_Integration(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	pool := newIntegrationPool(t, 2)
+	categories := postgresadapter.NewCategoryRepository(pool)
+	products := postgresadapter.NewProductRepository(pool)
+
+	category, err := categories.Create(ctx, port.CreateCategoryParams{
+		Name: "Breads", Slug: "breads", IsActive: true, Station: domaincategory.StationCounter,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, domaincategory.StationCounter, category.Station)
+	moved, err := categories.Update(ctx, port.UpdateCategoryParams{
+		ID: category.ID, Name: "Breads", Slug: "breads", IsActive: true, Station: domaincategory.StationKitchen,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, domaincategory.StationKitchen, moved.Station)
+
+	loaf, err := products.Create(ctx, port.CreateProductParams{
+		CategoryID: category.ID, Name: "Sourdough", Slug: "sourdough", PriceCents: 900, IsActive: true, LeadTime: 12 * time.Hour,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 12*time.Hour, loaf.LeadTime)
+	_, err = products.Update(ctx, port.UpdateProductParams{
+		ID: loaf.ID, CategoryID: category.ID, Name: "Sourdough", Slug: "sourdough", PriceCents: 900, IsActive: true, LeadTime: 24 * time.Hour,
+	})
+	require.NoError(t, err)
+	managed, err := products.ManagerGetByID(ctx, loaf.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 24*time.Hour, managed.Product.LeadTime)
 }

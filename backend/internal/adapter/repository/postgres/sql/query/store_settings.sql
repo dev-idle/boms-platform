@@ -1,11 +1,11 @@
 -- name: GetStoreSettings :one
-SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 FROM store_settings
 WHERE id = 1;
 
 -- name: GetStoreSettingsForUpdate :one
 -- Locks the row so two admins editing at once cannot undo each other.
-SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 FROM store_settings
 WHERE id = 1
 FOR UPDATE;
@@ -16,9 +16,12 @@ SET opens_at_minute = sqlc.arg(opens_at_minute),
     closes_at_minute = sqlc.arg(closes_at_minute),
     preorder_min_lead_minutes = sqlc.arg(preorder_min_lead_minutes),
     max_advance_days = sqlc.arg(max_advance_days),
+    slot_minutes = sqlc.arg(slot_minutes),
+    slot_capacity = sqlc.arg(slot_capacity),
+    instant_prep_minutes = sqlc.arg(instant_prep_minutes),
     updated_at = now()
 WHERE id = 1
-RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at;
+RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at;
 
 -- name: ListStoreClosedDates :many
 -- Days in [from_day, to_day]; the caller bounds the window, and one row per

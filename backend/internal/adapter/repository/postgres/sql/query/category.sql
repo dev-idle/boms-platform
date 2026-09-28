@@ -1,10 +1,10 @@
 -- name: CreateCategory :one
-INSERT INTO categories (name, slug, sort_order, is_active)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at;
+INSERT INTO categories (name, slug, sort_order, is_active, station)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station;
 
 -- name: GetCategoryByID :one
-SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 FROM categories
 WHERE id = $1
   AND deleted_at IS NULL;
@@ -15,10 +15,11 @@ SET name       = $2,
     slug       = $3,
     sort_order = $4,
     is_active  = $5,
+    station    = $6,
     updated_at = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at;
+RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station;
 
 -- name: SoftDeleteCategoryIfNoProducts :execrows
 UPDATE categories
@@ -34,7 +35,7 @@ WHERE categories.id = $1
   );
 
 -- name: ManagerListCategories :many
-SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 FROM categories
 WHERE deleted_at IS NULL
   AND (

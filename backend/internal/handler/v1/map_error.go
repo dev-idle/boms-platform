@@ -115,12 +115,24 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrPickupClosedDay)
 	case errors.Is(err, domainorder.ErrPickupOutsideHours):
 		return writeAppError(c, apperrors.ErrPickupOutsideHours)
+	case errors.Is(err, domainorder.ErrPickupOffSlot):
+		return writeAppError(c, apperrors.ErrPickupOffSlot)
+	case errors.Is(err, domainorder.ErrPickupSlotFull):
+		return writeAppError(c, apperrors.ErrPickupSlotFull)
+	case errors.Is(err, domainorder.ErrPickupDayLimit):
+		return writeAppError(c, apperrors.ErrPickupDayLimit)
 	case errors.Is(err, domainstore.ErrInvalidHours):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("closes_at", "must be after the opening time, within the day"))
 	case errors.Is(err, domainstore.ErrInvalidLeadTime):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("preorder_min_lead_minutes", "must be 0 to 10080 minutes and shorter than the booking window"))
 	case errors.Is(err, domainstore.ErrInvalidAdvanceDays):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("max_advance_days", "must be between 1 and 90"))
+	case errors.Is(err, domainstore.ErrInvalidSlotLength):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("slot_minutes", "must be 10, 15, 20, 30 or 60 and fit in the opening hours"))
+	case errors.Is(err, domainstore.ErrInvalidSlotCapacity):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("slot_capacity", "must be between 1 and 200"))
+	case errors.Is(err, domainstore.ErrInvalidInstantPrep):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("instant_prep_minutes", "must be 0 to 240 minutes"))
 	case errors.Is(err, domainstore.ErrClosedDateOutOfRange):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("date", "must be between today and a year ahead"))
 	case errors.Is(err, domainstore.ErrInvalidClosedDateReason):

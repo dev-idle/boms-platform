@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/boms/backend/internal/config"
 	domaincatalog "github.com/boms/backend/internal/domain/catalog"
@@ -68,6 +69,10 @@ func (u *ManagerProductUsecase) Create(
 	if err != nil {
 		return nil, err
 	}
+	leadTime, err := productLeadTime(req.LeadTimeMinutes)
+	if err != nil {
+		return nil, err
+	}
 	imageURLs, err := sanitizeManagerProductImageURLs(u.cloudinary, req.ImageURLs)
 	if err != nil {
 		return nil, err
@@ -82,6 +87,7 @@ func (u *ManagerProductUsecase) Create(
 			Description: req.Description,
 			PriceCents:  req.PriceCents,
 			IsActive:    req.IsActive,
+			LeadTime:    leadTime,
 		})
 		if createErr != nil {
 			if errors.Is(createErr, apperrors.ErrConflict) {
@@ -187,6 +193,10 @@ func (u *ManagerProductUsecase) Update(
 	if err != nil {
 		return nil, err
 	}
+	leadTime, err := productLeadTime(req.LeadTimeMinutes)
+	if err != nil {
+		return nil, err
+	}
 	var imageURLs []string
 	replaceImages := req.ImageURLs != nil
 	if replaceImages {
@@ -205,6 +215,7 @@ func (u *ManagerProductUsecase) Update(
 			Description: req.Description,
 			PriceCents:  req.PriceCents,
 			IsActive:    req.IsActive,
+			LeadTime:    leadTime,
 		})
 		if updateErr != nil {
 			if errors.Is(updateErr, apperrors.ErrConflict) {
@@ -299,30 +310,42 @@ func (u *ManagerProductUsecase) managerProductResponse(ctx context.Context, id u
 	return toProductResponse(&item.Product, item.CategoryName, imageURLs), nil
 }
 
+// productLeadTime reads the notice a product needs, in minutes. The request
+// validator bounds it too; the usecase does not rely on that.
+func productLeadTime(minutes int32) (time.Duration, error) {
+	lead := time.Duration(minutes) * time.Minute
+	if lead < 0 || lead > domainproduct.MaxLeadTime {
+		return 0, apperrors.ErrValidation.WithDetail("lead_time_minutes", "between 0 and 10080")
+	}
+	return lead, nil
+}
+
 func toProductResponse(product *domainproduct.Product, categoryName string, imageURLs []string) *dto.ProductResponse {
 	return &dto.ProductResponse{
-		ID:           product.ID.String(),
-		CategoryID:   product.CategoryID.String(),
-		CategoryName: categoryName,
-		Name:         product.Name,
-		Slug:         product.Slug,
-		Description:  product.Description,
-		PriceCents:   product.PriceCents,
-		IsActive:     product.IsActive,
-		ImageURLs:    imageURLs,
-		CreatedAt:    product.CreatedAt,
-		UpdatedAt:    product.UpdatedAt,
+		ID:              product.ID.String(),
+		CategoryID:      product.CategoryID.String(),
+		CategoryName:    categoryName,
+		Name:            product.Name,
+		Slug:            product.Slug,
+		Description:     product.Description,
+		PriceCents:      product.PriceCents,
+		IsActive:        product.IsActive,
+		LeadTimeMinutes: utils.Int32FromInt64(int64(product.LeadTime / time.Minute)),
+		ImageURLs:       imageURLs,
+		CreatedAt:       product.CreatedAt,
+		UpdatedAt:       product.UpdatedAt,
 	}
 }
 
 func toProductAuditFromResponse(resp *dto.ProductResponse) map[string]any {
 	return map[string]any{
-		"category_id": resp.CategoryID,
-		"name":        resp.Name,
-		"slug":        resp.Slug,
-		"price_cents": resp.PriceCents,
-		"is_active":   resp.IsActive,
-		"image_urls":  resp.ImageURLs,
+		"category_id":       resp.CategoryID,
+		"name":              resp.Name,
+		"slug":              resp.Slug,
+		"price_cents":       resp.PriceCents,
+		"is_active":         resp.IsActive,
+		"lead_time_minutes": resp.LeadTimeMinutes,
+		"image_urls":        resp.ImageURLs,
 	}
 }
 

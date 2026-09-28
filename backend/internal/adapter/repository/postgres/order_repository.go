@@ -36,9 +36,14 @@ func (r *OrderRepository) Create(ctx context.Context, params port.CreateOrderPar
 	if err != nil {
 		return nil, err
 	}
+	orderType, err := mapOrderTypeToSQL(params.Type)
+	if err != nil {
+		return nil, err
+	}
 	row, err := r.q(ctx).CreateOrder(ctx, sqlcgen.CreateOrderParams{
 		UserID:               params.UserID,
 		Code:                 params.Code,
+		OrderType:            orderType,
 		Status:               status,
 		SubtotalCents:        params.SubtotalCents,
 		DiscountCents:        params.DiscountCents,
@@ -307,6 +312,53 @@ func (r *OrderRepository) NextDayNumber(ctx context.Context) (time.Time, int, er
 	return row.Day, int(row.LastNumber), nil
 }
 
+// pickupSlotLockNamespace keeps slot locks apart from any other advisory lock.
+const pickupSlotLockNamespace = 1101
+
+func (r *OrderRepository) HoldPickupSlot(ctx context.Context, startsAt time.Time, length time.Duration) (int, error) {
+	if txFromContext(ctx) == nil {
+		return 0, apperrors.Errorf("hold pickup slot: requires a transaction")
+	}
+	if err := r.q(ctx).LockPickupSlot(ctx, sqlcgen.LockPickupSlotParams{
+		Namespace: pickupSlotLockNamespace,
+		StartsAt:  startsAt,
+	}); err != nil {
+		return 0, mapRepoError(err, "lock pickup slot")
+	}
+	count, err := r.q(ctx).CountOrdersInSlot(ctx, sqlcgen.CountOrdersInSlotParams{
+		FromAt: startsAt,
+		ToAt:   startsAt.Add(length),
+	})
+	if err != nil {
+		return 0, mapRepoError(err, "count orders in slot")
+	}
+	return int(count), nil
+}
+
+func (r *OrderRepository) CountCustomerOrdersBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) (int, error) {
+	count, err := r.q(ctx).CountCustomerOrdersBetween(ctx, sqlcgen.CountCustomerOrdersBetweenParams{
+		UserID: userID,
+		FromAt: from,
+		ToAt:   to,
+	})
+	if err != nil {
+		return 0, mapRepoError(err, "count customer orders between")
+	}
+	return int(count), nil
+}
+
+func (r *OrderRepository) CountByPickupTime(ctx context.Context, from, to time.Time) ([]port.PickupCount, error) {
+	rows, err := r.q(ctx).CountOrdersByPickupTime(ctx, sqlcgen.CountOrdersByPickupTimeParams{FromAt: from, ToAt: to})
+	if err != nil {
+		return nil, mapRepoError(err, "count orders by pickup time")
+	}
+	out := make([]port.PickupCount, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, port.PickupCount{At: row.PickupAt, Orders: int(row.Count)})
+	}
+	return out, nil
+}
+
 func (r *OrderRepository) AddStatusEvent(ctx context.Context, params port.AddOrderStatusEventParams) error {
 	var from *sqlcgen.OrderStatus
 	if params.From != nil {
@@ -357,6 +409,7 @@ func mapOrder(row sqlcgen.Order) *domainorder.Order {
 	return &domainorder.Order{
 		ID:                   row.ID,
 		Code:                 row.Code,
+		Type:                 domainorder.Type(row.OrderType),
 		UserID:               row.UserID,
 		Status:               mapOrderStatusFromSQL(row.Status),
 		SubtotalCents:        row.SubtotalCents,
@@ -389,6 +442,17 @@ func mapOrderItem(row sqlcgen.OrderItem) domainorder.Item {
 		item.Configuration = domaincart.EmptyConfiguration
 	}
 	return item
+}
+
+func mapOrderTypeToSQL(t domainorder.Type) (sqlcgen.OrderType, error) {
+	switch t {
+	case domainorder.TypeInstant:
+		return sqlcgen.OrderTypeInstant, nil
+	case domainorder.TypePreOrder:
+		return sqlcgen.OrderTypePreOrder, nil
+	default:
+		return "", apperrors.Errorf("unsupported order type: %s", t)
+	}
 }
 
 func mapOrderStatusToSQL(s domainorder.Status) (sqlcgen.OrderStatus, error) {
@@ -424,6 +488,7 @@ func mapStaffListOrdersRow(row sqlcgen.StaffListOrdersRow) *port.StaffOrderListR
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.Code,
+		row.OrderType,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
 		// The list never carries phones: staff open an order to call its customer.
@@ -445,6 +510,7 @@ func mapStaffGetOrderByIDRow(row sqlcgen.StaffGetOrderByIDRow) *port.StaffOrderL
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.Code,
+		row.OrderType,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
 		row.CustomerPhone,
@@ -465,6 +531,7 @@ func mapBakerListProductionOrdersRow(row sqlcgen.BakerListProductionOrdersRow) *
 		row.CreatedAt,
 		row.UpdatedAt,
 		row.Code,
+		row.OrderType,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
 		nil,
@@ -480,6 +547,7 @@ func mapStaffOrderJoined(
 	pickupAt *time.Time,
 	createdAt, updatedAt time.Time,
 	code string,
+	orderType sqlcgen.OrderType,
 	customerEmail string,
 	customerDisplayName *string,
 	customerPhone *string,
@@ -498,6 +566,7 @@ func mapStaffOrderJoined(
 			CreatedAt:            createdAt,
 			UpdatedAt:            updatedAt,
 			Code:                 code,
+			Type:                 domainorder.Type(orderType),
 		},
 		CustomerEmail:       customerEmail,
 		CustomerDisplayName: customerDisplayName,

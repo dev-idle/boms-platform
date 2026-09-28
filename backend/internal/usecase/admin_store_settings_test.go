@@ -49,6 +49,7 @@ func TestAdminStoreSettingsUsecase_PatchSettings(t *testing.T) {
 		assert.Equal(t, "21:30", out.ClosesAt)
 		assert.Equal(t, 120, out.PreorderMinLeadMinutes)
 		assert.Equal(t, 30, out.MaxAdvanceDays)
+		assert.Equal(t, 30, out.SlotMinutes, "untouched settings keep their values")
 		assert.Equal(t, 21*time.Hour+30*time.Minute, store.settings.ClosesAt)
 		require.Len(t, outbox.events, 1)
 		assert.Equal(t, domainstore.TopicSettingsUpdated, outbox.events[0].Topic)
@@ -65,6 +66,11 @@ func TestAdminStoreSettingsUsecase_PatchSettings(t *testing.T) {
 		"lead_time_that_would_wrap":  {dto.PatchStoreSettingsRequest{PreorderMinLeadMinutes: ptr(1 << 62)}, domainstore.ErrInvalidLeadTime},
 		"lead_time_fills_the_window": {dto.PatchStoreSettingsRequest{MaxAdvanceDays: ptr(1), PreorderMinLeadMinutes: ptr(24 * 60)}, domainstore.ErrInvalidLeadTime},
 		"negative_lead_time":         {dto.PatchStoreSettingsRequest{PreorderMinLeadMinutes: ptr(-1)}, domainstore.ErrInvalidLeadTime},
+		"slot_of_45_minutes":         {dto.PatchStoreSettingsRequest{SlotMinutes: ptr(45)}, domainstore.ErrInvalidSlotLength},
+		"slot_that_would_wrap":       {dto.PatchStoreSettingsRequest{SlotMinutes: ptr(1 << 62)}, domainstore.ErrInvalidSlotLength},
+		"slot_without_room":          {dto.PatchStoreSettingsRequest{SlotCapacity: ptr(0)}, domainstore.ErrInvalidSlotCapacity},
+		"instant_prep_too_long":      {dto.PatchStoreSettingsRequest{InstantPrepMinutes: ptr(241)}, domainstore.ErrInvalidInstantPrep},
+		"instant_prep_that_wraps":    {dto.PatchStoreSettingsRequest{InstantPrepMinutes: ptr(1 << 62)}, domainstore.ErrInvalidInstantPrep},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -79,6 +85,24 @@ func TestAdminStoreSettingsUsecase_PatchSettings(t *testing.T) {
 			assert.Empty(t, outbox.events)
 		})
 	}
+}
+
+func TestAdminStoreSettingsUsecase_PatchSettings_Slots(t *testing.T) {
+	t.Parallel()
+	store := newMemoryStore()
+	uc := usecase.NewAdminStoreSettingsUsecase(store, passthroughTxManager{}, &recordingOutbox{}, nil, nil)
+
+	out, err := uc.PatchSettings(context.Background(), uuid.New(), domainuser.RoleAdmin, dto.PatchStoreSettingsRequest{
+		SlotMinutes: ptr(15), SlotCapacity: ptr(4), InstantPrepMinutes: ptr(45),
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 15, out.SlotMinutes)
+	assert.Equal(t, 4, out.SlotCapacity)
+	assert.Equal(t, 45, out.InstantPrepMinutes)
+	assert.Equal(t, 15*time.Minute, store.settings.SlotLength)
+	assert.Equal(t, 4, store.settings.SlotCapacity)
+	assert.Equal(t, 45*time.Minute, store.settings.InstantPrep)
 }
 
 func TestAdminStoreSettingsUsecase_PatchSettings_Unreadable(t *testing.T) {

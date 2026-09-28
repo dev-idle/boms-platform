@@ -29,6 +29,7 @@ import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 
 import { useCategories, useDeleteCategory } from "../hooks";
+import { STATION_LABEL } from "../schemas";
 
 const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 
@@ -95,6 +96,7 @@ export function ManagerCategoriesTable() {
             <colgroup>
               <col className="db-table-col-name" />
               <col className="db-table-col-slug" />
+              <col className="db-table-col-station" />
               <col className="db-table-col-number" />
               <col className="db-table-col-status" />
               <col className="db-table-col-actions" />
@@ -103,6 +105,7 @@ export function ManagerCategoriesTable() {
               <tr>
                 <th>Name</th>
                 <th>Slug</th>
+                <th>Station</th>
                 <th className="db-table-num">Order</th>
                 <th className="db-table-status">Status</th>
                 <th className="db-table-detail">Actions</th>
@@ -110,7 +113,7 @@ export function ManagerCategoriesTable() {
             </thead>
             <tbody>
               <DashboardTableStateRows
-                columnCount={5}
+                columnCount={6}
                 entityLabel="categories"
                 hasActiveFilter={Boolean(search)}
                 isEmpty={categories.length === 0}
@@ -127,6 +130,7 @@ export function ManagerCategoriesTable() {
                     >
                       {category.slug}
                     </td>
+                    <td className="db-table-cell-station">{STATION_LABEL[category.station]}</td>
                     <td className="db-table-num">{category.sort_order}</td>
                     <td className="db-table-status">
                       <EntityActivePill active={category.is_active} />
@@ -152,7 +156,7 @@ export function ManagerCategoriesTable() {
                 ))
                 : null}
               <DashboardTablePagePlaceholders
-                columnCount={5}
+                columnCount={6}
                 count={pagePlaceholderCount}
               />
             </tbody>

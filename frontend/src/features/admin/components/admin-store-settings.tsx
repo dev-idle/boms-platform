@@ -15,7 +15,7 @@ function PickupRulesBody() {
   const settingsQuery = useStoreSettings();
 
   if (settingsQuery.isPending) {
-    return <DashboardProfileFormSkeleton fields={4} label="Loading pickup rules" />;
+    return <DashboardProfileFormSkeleton fields={7} label="Loading pickup rules" />;
   }
   if (settingsQuery.isError) {
     return (
@@ -41,7 +41,7 @@ export function AdminStoreSettings() {
       title={PAGE_TITLES.settings}
     >
       <DashboardProfileSection
-        description="When customers can collect orders and how far ahead they can book."
+        description="When customers can collect orders, how many each pickup slot takes, and how far ahead they can book."
         id="store-pickup-rules"
         title="Pickup rules"
         variant="plain"

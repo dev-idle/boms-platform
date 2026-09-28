@@ -18,6 +18,7 @@ import {
   getCart,
   getOrder,
   getPickupRules,
+  getPickupSlots,
   listOrders,
   removeCartDiscount,
   removeCartItem,
@@ -128,6 +129,9 @@ const PICKUP_REFUSALS: ReadonlySet<string> = new Set([
   ApiErrorCode.PickupTooFar,
   ApiErrorCode.PickupClosedDay,
   ApiErrorCode.PickupOutsideHours,
+  ApiErrorCode.PickupOffSlot,
+  ApiErrorCode.PickupSlotFull,
+  ApiErrorCode.PickupDayLimit,
 ]);
 
 export function useCheckoutCart() {
@@ -140,9 +144,12 @@ export function useCheckoutCart() {
       toast.success("Order placed");
     },
     onError: (error) => {
-      // The pickup rules on screen may be older than the ones checkout used.
+      // The rules, the slots, or what the cart's items need (a manager may have
+      // moved a category or changed a lead time) may be older than checkout's.
       if (isApiError(error) && PICKUP_REFUSALS.has(error.code)) {
         void queryClient.invalidateQueries({ queryKey: customerQueryKeys.pickupRules });
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.pickupSlotsRoot });
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.cart });
       }
       toast.error(cartMutationErrorMessage(error, "Checkout failed"));
     },
@@ -170,6 +177,16 @@ export function useOrder(id: string) {
     queryFn: () => getOrder(id),
     enabled: isValidId,
     retry: false,
+  });
+}
+
+/** A bakery day's pickup slots; refreshed live as orders take and free them. */
+export function usePickupSlots(date: string) {
+  return useQuery({
+    queryKey: customerQueryKeys.pickupSlots(date),
+    queryFn: () => getPickupSlots(date),
+    enabled: date !== "",
+    placeholderData: keepPreviousData,
   });
 }
 

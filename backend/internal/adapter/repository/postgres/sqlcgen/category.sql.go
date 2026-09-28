@@ -86,29 +86,31 @@ func (q *Queries) CatalogListCategoriesCount(ctx context.Context) (int64, error)
 }
 
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO categories (name, slug, sort_order, is_active)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+INSERT INTO categories (name, slug, sort_order, is_active, station)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 `
 
 type CreateCategoryParams struct {
-	Name      string `json:"name"`
-	Slug      string `json:"slug"`
-	SortOrder int32  `json:"sortOrder"`
-	IsActive  bool   `json:"isActive"`
+	Name      string  `json:"name"`
+	Slug      string  `json:"slug"`
+	SortOrder int32   `json:"sortOrder"`
+	IsActive  bool    `json:"isActive"`
+	Station   Station `json:"station"`
 }
 
 // CreateCategory
 //
-//	INSERT INTO categories (name, slug, sort_order, is_active)
-//	VALUES ($1, $2, $3, $4)
-//	RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+//	INSERT INTO categories (name, slug, sort_order, is_active, station)
+//	VALUES ($1, $2, $3, $4, $5)
+//	RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
 	row := q.db.QueryRow(ctx, createCategory,
 		arg.Name,
 		arg.Slug,
 		arg.SortOrder,
 		arg.IsActive,
+		arg.Station,
 	)
 	var i Category
 	err := row.Scan(
@@ -120,12 +122,13 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Station,
 	)
 	return i, err
 }
 
 const getCategoryByID = `-- name: GetCategoryByID :one
-SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 FROM categories
 WHERE id = $1
   AND deleted_at IS NULL
@@ -133,7 +136,7 @@ WHERE id = $1
 
 // GetCategoryByID
 //
-//	SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+//	SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 //	FROM categories
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -149,12 +152,13 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Station,
 	)
 	return i, err
 }
 
 const managerListCategories = `-- name: ManagerListCategories :many
-SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 FROM categories
 WHERE deleted_at IS NULL
   AND (
@@ -174,7 +178,7 @@ type ManagerListCategoriesParams struct {
 
 // ManagerListCategories
 //
-//	SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+//	SELECT id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 //	FROM categories
 //	WHERE deleted_at IS NULL
 //	  AND (
@@ -202,6 +206,7 @@ func (q *Queries) ManagerListCategories(ctx context.Context, arg ManagerListCate
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.Station,
 		); err != nil {
 			return nil, err
 		}
@@ -282,10 +287,11 @@ SET name       = $2,
     slug       = $3,
     sort_order = $4,
     is_active  = $5,
+    station    = $6,
     updated_at = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 `
 
 type UpdateCategoryParams struct {
@@ -294,6 +300,7 @@ type UpdateCategoryParams struct {
 	Slug      string    `json:"slug"`
 	SortOrder int32     `json:"sortOrder"`
 	IsActive  bool      `json:"isActive"`
+	Station   Station   `json:"station"`
 }
 
 // UpdateCategory
@@ -303,10 +310,11 @@ type UpdateCategoryParams struct {
 //	    slug       = $3,
 //	    sort_order = $4,
 //	    is_active  = $5,
+//	    station    = $6,
 //	    updated_at = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
-//	RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at
+//	RETURNING id, name, slug, sort_order, is_active, created_at, updated_at, deleted_at, station
 func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error) {
 	row := q.db.QueryRow(ctx, updateCategory,
 		arg.ID,
@@ -314,6 +322,7 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		arg.Slug,
 		arg.SortOrder,
 		arg.IsActive,
+		arg.Station,
 	)
 	var i Category
 	err := row.Scan(
@@ -325,6 +334,7 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Station,
 	)
 	return i, err
 }

@@ -10,7 +10,10 @@ import (
 )
 
 func validSettings() Settings {
-	return Settings{OpensAt: 8 * time.Hour, ClosesAt: 18 * time.Hour, PreorderMinLead: 2 * time.Hour, MaxAdvanceDays: 14}
+	return Settings{
+		OpensAt: 8 * time.Hour, ClosesAt: 18 * time.Hour, PreorderMinLead: 2 * time.Hour, MaxAdvanceDays: 14,
+		SlotLength: 30 * time.Minute, SlotCapacity: 10, InstantPrep: 20 * time.Minute,
+	}
 }
 
 func TestSettingsValidate(t *testing.T) {
@@ -31,6 +34,14 @@ func TestSettingsValidate(t *testing.T) {
 		"negative_lead_time":         {func(s *Settings) { s.PreorderMinLead = -time.Minute }, ErrInvalidLeadTime},
 		"lead_time_over_a_week":      {func(s *Settings) { s.PreorderMinLead = 7*24*time.Hour + time.Minute }, ErrInvalidLeadTime},
 		"lead_time_fills_the_window": {func(s *Settings) { s.MaxAdvanceDays = 1; s.PreorderMinLead = 24 * time.Hour }, ErrInvalidLeadTime},
+		"slot_not_dividing_an_hour":  {func(s *Settings) { s.SlotLength = 45 * time.Minute }, ErrInvalidSlotLength},
+		"no_slot_length":             {func(s *Settings) { s.SlotLength = 0 }, ErrInvalidSlotLength},
+		"slot_longer_than_the_hours": {func(s *Settings) { s.OpensAt = 17*time.Hour + 30*time.Minute; s.SlotLength = time.Hour }, ErrInvalidSlotLength},
+		"slot_takes_no_orders":       {func(s *Settings) { s.SlotCapacity = 0 }, ErrInvalidSlotCapacity},
+		"slot_takes_too_many":        {func(s *Settings) { s.SlotCapacity = MaxSlotCapacity + 1 }, ErrInvalidSlotCapacity},
+		"negative_instant_prep":      {func(s *Settings) { s.InstantPrep = -time.Minute }, ErrInvalidInstantPrep},
+		"instant_prep_over_4_hours":  {func(s *Settings) { s.InstantPrep = MaxInstantPrep + time.Minute }, ErrInvalidInstantPrep},
+		"instant_prep_with_seconds":  {func(s *Settings) { s.InstantPrep = time.Minute + time.Second }, ErrInvalidInstantPrep},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -43,9 +54,57 @@ func TestSettingsValidate(t *testing.T) {
 
 	t.Run("allows_open_all_day_and_no_lead_time", func(t *testing.T) {
 		t.Parallel()
-		s := Settings{OpensAt: 0, ClosesAt: 23*time.Hour + 59*time.Minute, PreorderMinLead: 0, MaxAdvanceDays: 1}
+		s := Settings{
+			OpensAt: 0, ClosesAt: 23*time.Hour + 59*time.Minute, PreorderMinLead: 0, MaxAdvanceDays: 1,
+			SlotLength: 10 * time.Minute, SlotCapacity: 1, InstantPrep: 0,
+		}
 		require.NoError(t, s.Validate())
 	})
+}
+
+func TestSettingsSlotStartOf(t *testing.T) {
+	t.Parallel()
+	s := validSettings()
+	s.OpensAt = 8*time.Hour + 15*time.Minute
+	at := func(clock string) time.Time {
+		parsed, err := time.ParseInLocation("2006-01-02T15:04", "2026-07-10T"+clock, Location)
+		require.NoError(t, err)
+		return parsed
+	}
+
+	for clock, want := range map[string]string{"08:15": "08:15", "08:30": "08:15", "08:44": "08:15", "08:45": "08:45", "17:59": "17:45"} {
+		start, ok := s.SlotStartOf(at(clock))
+		require.True(t, ok, clock)
+		assert.Equal(t, want, start.In(Location).Format("15:04"), "an order at %s", clock)
+	}
+	for _, clock := range []string{"08:14", "18:00", "23:00"} {
+		_, ok := s.SlotStartOf(at(clock))
+		assert.False(t, ok, "%s is outside the hours", clock)
+	}
+}
+
+func TestSettingsLastPickupDay(t *testing.T) {
+	t.Parallel()
+	s := validSettings()
+	// 23:30 at the bakery on the 10th: fourteen days on is the 24th.
+	now := time.Date(2026, 7, 10, 23, 30, 0, 0, Location)
+	assert.Equal(t, time.Date(2026, 7, 24, 0, 0, 0, 0, time.UTC), s.LastPickupDay(now))
+}
+
+func TestSettingsSlotStarts(t *testing.T) {
+	t.Parallel()
+	s := validSettings()
+	s.OpensAt = 8*time.Hour + 15*time.Minute
+	s.ClosesAt = 10 * time.Hour
+
+	starts := s.SlotStarts(time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC))
+
+	got := make([]string, 0, len(starts))
+	for _, start := range starts {
+		got = append(got, start.In(Location).Format("2006-01-02T15:04"))
+	}
+	assert.Equal(t, []string{"2026-07-10T08:15", "2026-07-10T08:45", "2026-07-10T09:15", "2026-07-10T09:45"}, got,
+		"slots count from opening; the last one starts before closing")
 }
 
 func TestDayOf(t *testing.T) {

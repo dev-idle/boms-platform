@@ -28,8 +28,11 @@ type memoryStore struct {
 
 func newMemoryStore() *memoryStore {
 	return &memoryStore{
-		settings: domainstore.Settings{OpensAt: 8 * time.Hour, ClosesAt: 18 * time.Hour, PreorderMinLead: 2 * time.Hour, MaxAdvanceDays: 14},
-		closed:   map[uuid.UUID]domainstore.ClosedDate{},
+		settings: domainstore.Settings{
+			OpensAt: 8 * time.Hour, ClosesAt: 18 * time.Hour, PreorderMinLead: 2 * time.Hour, MaxAdvanceDays: 14,
+			SlotLength: 30 * time.Minute, SlotCapacity: 10, InstantPrep: 20 * time.Minute,
+		},
+		closed: map[uuid.UUID]domainstore.ClosedDate{},
 	}
 }
 

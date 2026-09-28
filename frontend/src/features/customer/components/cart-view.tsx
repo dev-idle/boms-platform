@@ -192,7 +192,7 @@ export function CartView() {
                 </span>
               </div>
 
-              <CartCheckoutPanel checkoutReady={cart.checkout_ready} />
+              <CartCheckoutPanel checkoutReady={cart.checkout_ready} fulfillment={cart.fulfillment} />
             </div>
           </aside>
         </div>

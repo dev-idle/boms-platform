@@ -1,9 +1,12 @@
 package order
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 
 	domainevent "github.com/boms/backend/internal/domain/event"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 )
 
@@ -12,7 +15,19 @@ const (
 	TopicOrderCreated domainevent.Topic = "order.created"
 	// TopicOrderStatusChanged announces an order moving to another status.
 	TopicOrderStatusChanged domainevent.Topic = "order.status_changed"
+	// TopicSlotsChanged announces that the free pickup slots of a day changed.
+	TopicSlotsChanged domainevent.Topic = "slots.changed"
 )
+
+// SlotsChangedEvent tells every open checkout that a pickup slot on day (a
+// bakery day, as domainstore.DayOf returns it) filled up or may have freed a
+// place, so pickers showing that day refresh. It names the day only: what it
+// reveals is what the slot list already shows.
+func SlotsChangedEvent(day time.Time) domainevent.Event {
+	return domainevent.New(TopicSlotsChanged, domainevent.Audience{Public: true}, map[string]string{
+		"date": day.Format(domainstore.DayLayout),
+	})
+}
 
 // CreatedEvent announces order to its customer and the counter. The kitchen is
 // not told: a new order is not yet production work it may see.

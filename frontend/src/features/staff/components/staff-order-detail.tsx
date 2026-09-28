@@ -11,7 +11,7 @@ import {
   StatusPill,
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
-import { isApplyingOrderStatus, type OrderStatus } from "@/lib/schemas/order";
+import { formatOrderTypeLabel, isApplyingOrderStatus, type OrderStatus } from "@/lib/schemas/order";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -91,6 +91,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
                 Pickup {formatPickupDateTime(order.pickup_at)}
               </p>
             ) : null}
+            <p className="text-sm text-muted">{formatOrderTypeLabel(order.order_type)}</p>
             <StatusPill
               label={formatOrderStatusLabel(order.status)}
               variant={orderStatusToPillVariant(order.status)}

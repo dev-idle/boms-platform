@@ -9,6 +9,7 @@ import {
   StatusPill,
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
+import { formatOrderTypeLabel } from "@/lib/schemas/order";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -50,14 +51,17 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
       <div className="storefront-panel storefront-order-detail__card">
         <p className="text-order-code">{order.code}</p>
         <div className="storefront-order-detail__meta">
-          <p className="text-caption">
-            Placed {formatDateTime(order.created_at)}
-          </p>
-          {order.pickup_at ? (
+          <div className="storefront-order-detail__facts">
             <p className="text-caption">
-              Pickup {formatPickupDateTime(order.pickup_at)}
+              Placed {formatDateTime(order.created_at)}
             </p>
-          ) : null}
+            {order.pickup_at ? (
+              <p className="text-caption">
+                Pickup {formatPickupDateTime(order.pickup_at)}
+              </p>
+            ) : null}
+            <p className="text-caption">{formatOrderTypeLabel(order.order_type)}</p>
+          </div>
           <StatusPill
             label={formatOrderStatusLabel(order.status)}
             variant={orderStatusToPillVariant(order.status)}

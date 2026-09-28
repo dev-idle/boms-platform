@@ -6,6 +6,7 @@ import (
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
+	domainorder "github.com/boms/backend/internal/domain/order"
 	"github.com/boms/backend/internal/port"
 	"github.com/google/uuid"
 )
@@ -110,6 +111,23 @@ func (p *cartPricer) priceLines(ctx context.Context, items []domaincart.Item) ([
 		out = append(out, line)
 	}
 	return out, nil
+}
+
+// fulfillmentOf is what the priced lines ask of the bakery. Checkout reads it
+// from the lines it turns into the order, so an edit to the cart racing the
+// checkout cannot change the order's type without changing its items.
+func (u *CartUsecase) fulfillmentOf(ctx context.Context, lines []pricedCartLine) (domainorder.Fulfillment, error) {
+	productIDs := make([]uuid.UUID, 0, len(lines))
+	comboIDs := make([]uuid.UUID, 0, len(lines))
+	for _, line := range lines {
+		if line.Item.ProductID != nil {
+			productIDs = append(productIDs, *line.Item.ProductID)
+		}
+		if line.Item.ComboID != nil {
+			comboIDs = append(comboIDs, *line.Item.ComboID)
+		}
+	}
+	return u.products.FulfillmentOf(ctx, productIDs, comboIDs)
 }
 
 func summarizeCart(lines []pricedCartLine, discount *domaindiscount.Code, now time.Time) cartTotals {

@@ -173,6 +173,7 @@ func toStaffOrderResponse(
 		ID:                   row.Order.ID.String(),
 		Code:                 row.Order.Code,
 		Status:               string(row.Order.Status),
+		OrderType:            string(row.Order.Type),
 		SubtotalCents:        row.Order.SubtotalCents,
 		DiscountCents:        row.Order.DiscountCents,
 		TotalCents:           row.Order.TotalCents,

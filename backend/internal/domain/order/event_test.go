@@ -3,6 +3,7 @@ package order
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -67,4 +68,15 @@ func TestStatus_VisibleToBaker(t *testing.T) {
 	for status, want := range visible {
 		assert.Equal(t, want, status.VisibleToBaker(), status)
 	}
+}
+
+func TestSlotsChangedEvent(t *testing.T) {
+	t.Parallel()
+	e := SlotsChangedEvent(time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC))
+
+	assert.Equal(t, TopicSlotsChanged, e.Topic)
+	assert.True(t, e.Audience.Public, "every open checkout may be showing that day")
+	assert.Empty(t, e.Audience.UserIDs)
+	assert.Empty(t, e.Audience.Roles)
+	assert.Equal(t, map[string]string{"date": "2026-07-10"}, e.Data, "the day only: no order, no customer")
 }

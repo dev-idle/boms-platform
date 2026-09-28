@@ -35,6 +35,7 @@ type Order struct {
 	Code                 string
 	UserID               uuid.UUID
 	Status               Status
+	Type                 Type
 	SubtotalCents        int64
 	DiscountCents        int64
 	TotalCents           int64

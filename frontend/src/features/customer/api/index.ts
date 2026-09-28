@@ -15,6 +15,7 @@ import {
   orderSummarySchema,
   ordersListFilterSchema,
   pickupRulesSchema,
+  pickupSlotsSchema,
   updateCartItemInputSchema,
   type AddCartItemInput,
   type ApplyCartDiscountInput,
@@ -24,6 +25,7 @@ import {
   type OrdersListFilterInput,
   type OrdersListResult,
   type PickupRules,
+  type PickupSlots,
   type UpdateCartItemInput,
 } from "../schemas";
 
@@ -127,6 +129,15 @@ export async function getOrder(id: string): Promise<Order> {
   return browserRequest<Order>(`/api/v1/orders/${parsedId}`, {
     method: "GET",
     schema: orderSchema,
+  });
+}
+
+/** One bakery day's pickup slots and which are full; public, like the rules. */
+export async function getPickupSlots(date: string): Promise<PickupSlots> {
+  const day = z.iso.date().parse(date);
+  return browserRequest<PickupSlots>(`/api/v1/store/pickup-slots?date=${day}`, {
+    method: "GET",
+    schema: pickupSlotsSchema,
   });
 }
 

@@ -7,6 +7,8 @@ import type { OrdersListFilterInput } from "../schemas";
 export const customerQueryKeys = {
   cart: ["customer", "cart"] as const,
   pickupRules: ["customer", "pickup-rules"] as const,
+  pickupSlotsRoot: ["customer", "pickup-slots"] as const,
+  pickupSlots: (date: string) => [...customerQueryKeys.pickupSlotsRoot, date] as const,
   ordersRoot: ["customer", "orders"] as const,
   orders: (filter: OrdersListFilterInput) =>
     [...customerQueryKeys.ordersRoot, filter] as const,
@@ -18,6 +20,7 @@ export const customerQueryKeys = {
 export const customerLiveQueryKeys: readonly QueryKey[] = [
   customerQueryKeys.cart,
   customerQueryKeys.pickupRules,
+  customerQueryKeys.pickupSlotsRoot,
   customerQueryKeys.ordersRoot,
   customerQueryKeys.orderRoot,
 ];
@@ -25,7 +28,8 @@ export const customerLiveQueryKeys: readonly QueryKey[] = [
 /**
  * Queries a pushed event makes stale in a customer tab. Checkout empties the
  * cart, so a new order placed in another tab refreshes the cart here too; a
- * settings change refreshes the pickup window the cart offers.
+ * settings change refreshes the pickup window the cart offers, and an order
+ * taking or freeing a slot refreshes that day's slots.
  */
 export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -39,7 +43,11 @@ export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
       ];
     }
     case REALTIME_EVENT_TYPE.settingsUpdated:
-      return [customerQueryKeys.pickupRules];
+      return [customerQueryKeys.pickupRules, customerQueryKeys.pickupSlotsRoot];
+    case REALTIME_EVENT_TYPE.slotsChanged: {
+      const date = event.data.date;
+      return [date ? customerQueryKeys.pickupSlots(date) : customerQueryKeys.pickupSlotsRoot];
+    }
     default:
       return [];
   }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/boms/backend/internal/adapter/eventbus"
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -99,7 +100,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 		Email: "outbox-checkout@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,
 	})
 	require.NoError(t, err)
-	category, err := categories.Create(ctx, port.CreateCategoryParams{Name: "Cakes", Slug: "cakes", IsActive: true})
+	category, err := categories.Create(ctx, port.CreateCategoryParams{Name: "Cakes", Slug: "cakes", IsActive: true, Station: domaincategory.StationKitchen})
 	require.NoError(t, err)
 	cake, err := products.Create(ctx, port.CreateProductParams{
 		CategoryID: category.ID, Name: "Matcha cake", Slug: "matcha-cake", PriceCents: 4500, IsActive: true,

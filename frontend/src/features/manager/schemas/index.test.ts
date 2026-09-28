@@ -15,6 +15,7 @@ const product = {
   description: null,
   price_cents: 450,
   is_active: true,
+  lead_time_minutes: 0,
   image_urls: [],
 };
 
@@ -89,6 +90,7 @@ describe("catalog integer fields", () => {
       slug: "breads",
       sort_order: 0,
       is_active: true,
+      station: "counter",
     });
     expect(result.success).toBe(true);
   });
@@ -99,6 +101,7 @@ describe("catalog integer fields", () => {
       slug: "breads",
       sort_order: "3",
       is_active: true,
+      station: "kitchen",
     });
     expect(result.success).toBe(false);
     expect(result.success ? [] : result.error.issues.map((i) => i.path)).toEqual([["sort_order"]]);
@@ -131,5 +134,20 @@ describe("catalog integer limits", () => {
     expect(result.success ? undefined : result.error.issues[0]?.message).toBe(
       "Sort order is too large",
     );
+  });
+});
+
+describe("fulfillment fields", () => {
+  it("name where a category is made", () => {
+    const category = { name: "Breads", slug: "breads", sort_order: 0, is_active: true };
+    expect(categoryFormSchema.safeParse({ ...category, station: "kitchen" }).success).toBe(true);
+    expect(categoryFormSchema.safeParse({ ...category, station: "bar" }).success).toBe(false);
+    expect(categoryFormSchema.safeParse(category).success).toBe(false);
+  });
+
+  it("bound the notice a product needs to a week", () => {
+    expect(productFormSchema.safeParse({ ...product, lead_time_minutes: 10080 }).success).toBe(true);
+    expect(productFormSchema.safeParse({ ...product, lead_time_minutes: 10081 }).success).toBe(false);
+    expect(productFormSchema.safeParse({ ...product, lead_time_minutes: -1 }).success).toBe(false);
   });
 });

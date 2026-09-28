@@ -51,7 +51,8 @@ func (u *AdminStoreSettingsUsecase) PatchSettings(
 	actorRole domainuser.Role,
 	req dto.PatchStoreSettingsRequest,
 ) (*dto.StoreSettingsResponse, error) {
-	if req.OpensAt == nil && req.ClosesAt == nil && req.PreorderMinLeadMinutes == nil && req.MaxAdvanceDays == nil {
+	if req.OpensAt == nil && req.ClosesAt == nil && req.PreorderMinLeadMinutes == nil && req.MaxAdvanceDays == nil &&
+		req.SlotMinutes == nil && req.SlotCapacity == nil && req.InstantPrepMinutes == nil {
 		return nil, apperrors.ErrValidation.WithDetail("body", "name at least one setting to change")
 	}
 	var before, after domainstore.Settings
@@ -112,6 +113,23 @@ func patchedSettings(current domainstore.Settings, req dto.PatchStoreSettingsReq
 	}
 	if req.MaxAdvanceDays != nil {
 		next.MaxAdvanceDays = *req.MaxAdvanceDays
+	}
+	if req.SlotMinutes != nil {
+		minutes := *req.SlotMinutes
+		if minutes < 0 || minutes > int(time.Hour/time.Minute) {
+			return domainstore.Settings{}, domainstore.ErrInvalidSlotLength
+		}
+		next.SlotLength = time.Duration(minutes) * time.Minute
+	}
+	if req.SlotCapacity != nil {
+		next.SlotCapacity = *req.SlotCapacity
+	}
+	if req.InstantPrepMinutes != nil {
+		minutes := *req.InstantPrepMinutes
+		if minutes < 0 || minutes > int(domainstore.MaxInstantPrep/time.Minute) {
+			return domainstore.Settings{}, domainstore.ErrInvalidInstantPrep
+		}
+		next.InstantPrep = time.Duration(minutes) * time.Minute
 	}
 	return next, nil
 }
@@ -198,6 +216,9 @@ func toStoreSettingsResponse(s domainstore.Settings) *dto.StoreSettingsResponse 
 		ClosesAt:               domainstore.FormatClock(s.ClosesAt),
 		PreorderMinLeadMinutes: int(s.PreorderMinLead / time.Minute),
 		MaxAdvanceDays:         s.MaxAdvanceDays,
+		SlotMinutes:            int(s.SlotLength / time.Minute),
+		SlotCapacity:           s.SlotCapacity,
+		InstantPrepMinutes:     int(s.InstantPrep / time.Minute),
 		UpdatedAt:              s.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }

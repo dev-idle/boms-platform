@@ -8,9 +8,10 @@ INSERT INTO orders (
   discount_code_id,
   discount_code_snapshot,
   pickup_at,
-  code
+  code,
+  order_type
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING
   id,
   user_id,
@@ -23,7 +24,8 @@ RETURNING
   pickup_at,
   created_at,
   updated_at,
-  code;
+  code,
+  order_type;
 
 -- name: GetOrderByIDForUser :one
 SELECT
@@ -38,7 +40,8 @@ SELECT
   pickup_at,
   created_at,
   updated_at,
-  code
+  code,
+  order_type
 FROM orders
 WHERE id = $1 AND user_id = $2;
 
@@ -55,7 +58,8 @@ SELECT
   pickup_at,
   created_at,
   updated_at,
-  code
+  code,
+  order_type
 FROM orders
 WHERE user_id = sqlc.arg('user_id')
   AND (
@@ -167,6 +171,7 @@ SELECT
   o.created_at,
   o.updated_at,
   o.code,
+  o.order_type,
   u.email AS customer_email,
   cp.display_name AS customer_display_name
 FROM orders o
@@ -202,6 +207,7 @@ SELECT
   o.created_at,
   o.updated_at,
   o.code,
+  o.order_type,
   u.email AS customer_email,
   cp.display_name AS customer_display_name,
   cp.phone AS customer_phone
@@ -228,7 +234,8 @@ RETURNING
   pickup_at,
   created_at,
   updated_at,
-  code;
+  code,
+  order_type;
 
 -- name: BakerListProductionOrders :many
 SELECT
@@ -244,6 +251,7 @@ SELECT
   o.created_at,
   o.updated_at,
   o.code,
+  o.order_type,
   u.email AS customer_email,
   cp.display_name AS customer_display_name
 FROM orders o
@@ -301,3 +309,38 @@ SELECT to_status, actor_role, created_at
 FROM order_status_events
 WHERE order_id = $1
 ORDER BY created_at ASC, id ASC;
+
+-- name: LockPickupSlot :exec
+-- Holds the slot starting at starts_at until the transaction ends, so two
+-- checkouts cannot both take its last place. The key is the slot's minute since
+-- the epoch, under a namespace of its own.
+SELECT pg_advisory_xact_lock(
+  sqlc.arg('namespace')::int,
+  (extract(epoch FROM sqlc.arg('starts_at')::timestamptz) / 60)::int
+);
+
+-- name: CountOrdersInSlot :one
+-- Orders holding the slot [from_at, to_at): every order not cancelled whose
+-- pickup falls in it, wherever in it an earlier slot grid put that pickup.
+SELECT count(*)::bigint AS count
+FROM orders
+WHERE pickup_at >= sqlc.arg('from_at')::timestamptz
+  AND pickup_at < sqlc.arg('to_at')::timestamptz
+  AND status <> 'cancelled'::order_status;
+
+-- name: CountCustomerOrdersBetween :one
+-- A customer's orders not cancelled with a pickup in [from_at, to_at).
+SELECT count(*)::bigint AS count
+FROM orders
+WHERE user_id = sqlc.arg('user_id')
+  AND pickup_at >= sqlc.arg('from_at')::timestamptz
+  AND pickup_at < sqlc.arg('to_at')::timestamptz
+  AND status <> 'cancelled'::order_status;
+
+-- name: CountOrdersByPickupTime :many
+SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
+FROM orders
+WHERE pickup_at >= sqlc.arg('from_at')::timestamptz
+  AND pickup_at < sqlc.arg('to_at')::timestamptz
+  AND status <> 'cancelled'::order_status
+GROUP BY pickup_at;

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -28,7 +29,7 @@ func TestComboRepository_Integration(t *testing.T) {
 	combos := postgresadapter.NewComboRepository(pool)
 
 	category, err := categories.Create(ctx, port.CreateCategoryParams{
-		Name: "Boxes", Slug: "boxes", SortOrder: 1, IsActive: true,
+		Name: "Boxes", Slug: "boxes", SortOrder: 1, IsActive: true, Station: domaincategory.StationCounter,
 	})
 	require.NoError(t, err)
 	croissant, err := products.Create(ctx, port.CreateProductParams{

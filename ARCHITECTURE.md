@@ -318,7 +318,7 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Session identity (`/me`) | `features/user` (FE) + `usecase/me` (BE) |
 | Auth (login/register/logout) | `features/auth` (FE) + `usecase/auth` (BE) |
 | Admin user CRUD | `features/admin` (FE) + `usecase/admin_user` (BE) |
-| Store settings (pickup rules) | `features/admin` settings + `features/customer` checkout panel (FE) + `domain/store` + `usecase/admin_store_settings` + `usecase/store` (BE) — `/admin/settings`, `/admin/closed-dates/*`, public `/store/pickup-rules` |
+| Store settings (pickup rules) | `features/admin` settings + `features/customer` checkout panel (FE) + `domain/store` + `usecase/admin_store_settings` + `usecase/store` (BE) — `/admin/settings`, `/admin/closed-dates/*`, public `/store/pickup-rules` and `/store/pickup-slots` |
 | Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` + `manager_combo` + `manager_discount_code` (BE) |
 | Product images (Cloudinary) | `lib/cloudinary/*` + `components/ui/catalog-image-list-field` (FE) + `usecase/manager_media` + `service/cloudinary` (BE) |
 | Storefront catalog browse | `features/catalog` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
@@ -352,6 +352,7 @@ Delivery is **at least once** and **unordered across transactions** (each commit
 | `order.created` | checkout | the customer · staff | `order_id`, `status` |
 | `order.status_changed` | staff and baker status moves | the customer · staff · baker only when the order enters, leaves or moves within the statuses bakers see (`Status.VisibleToBaker`) | `order_id`, `status` |
 | `settings.updated` | admin settings and closed-day changes | everyone with a page open (public channel) | none |
+| `slots.changed` | a checkout that takes a slot's last place, and any cancellation | everyone with a page open (public channel) | `date` (the bakery day of the slot) |
 
 Topics and their audiences live with the aggregate that raises them (`domain/order/event.go`, `domain/store/event.go`), as audit actions do.
 
@@ -386,11 +387,13 @@ BOMS is a **bakery pickup** flow, not delivery or shipping.
 | **Fulfillment** | Customer orders for **in-store / counter pickup** at the bakery. |
 | **No Address module** | No `addresses` table, no shipping/delivery address on profile or orders, no geocoding, no carrier integration. **Do not add** unless this document is updated first. |
 | **Customer profile** | `customer_profiles`: `display_name`, `phone` (+ account `email` on `users`). Phone is contact info for pickup coordination — **not** a delivery address. |
-| **Checkout / orders** | `orders`: `code`, pricing, discount snapshot, `status`, required `pickup_at` at checkout, held to the Admin pickup rules below, line items with `configuration` jsonb — **no** shipping/delivery address fields. |
+| **Checkout / orders** | `orders`: `code`, `order_type`, pricing, discount snapshot, `status`, required `pickup_at` at checkout, held to the Admin pickup rules below, line items with `configuration` jsonb — **no** shipping/delivery address fields. |
 | **Storefront `BRAND.addressLine`** | Static marketing copy for footer “Visit us” (`constants/brand.ts`) — the **bakery location**, not per-customer data. |
 | **Marketing copy** | UI may say “pickup” but must not imply saved delivery addresses or ship-to-door unless a feature is implemented. |
 
-**Pickup rules (Admin settings, `store_settings` + `store_closed_dates`):** opening hours, pre-order notice and booking window live in one settings row (migration defaults: 08:00–18:00, 2 h, 14 days), plus closed days with a reason customers see. Checkout reads them per request — one primary-key row and the closed days inside the window, fetched together — so an edit applies to the next checkout at once; open carts refresh through `settings.updated`. Refusals are specific: `pickup_too_soon`, `pickup_too_far`, `pickup_closed_day`, `pickup_outside_hours`. The time zone is fixed (Asia/Ho_Chi_Minh, no DST): the bakery does not move, and every stored hour is read in it.
+**Pickup rules (Admin settings, `store_settings` + `store_closed_dates`):** opening hours, slot length and capacity, pre-order notice, the counter's instant preparation time and booking window live in one settings row (migration defaults: 08:00–18:00, 30-minute slots of 10 orders, 2 h, 20 min, 14 days), plus closed days with a reason customers see. Checkout reads them per request — one primary-key row and the closed days inside the window, fetched together — so an edit applies to the next checkout at once; open carts refresh through `settings.updated`. Refusals are specific: `pickup_too_soon`, `pickup_too_far`, `pickup_closed_day`, `pickup_outside_hours`, `pickup_off_slot`, `pickup_slot_full`, `pickup_day_limit`.
+
+**Order type and slots:** categories name their station (`kitchen` makes to order, `counter` sells ready-made) and products their own notice (`lead_time_minutes`). Checkout decides the order type from the locked cart's items: counter items only, collected the day they are ordered, make an **instant** order that waits the counter's preparation time; anything else is a **pre-order** that waits the pre-order notice — either waits the longest notice an item needs (combos count by what they hold). Pickups start on slot marks from opening; checkout holds its slot with a transaction-scoped advisory lock and refuses it once the slot holds as many orders as it takes — every order not cancelled whose pickup falls in the slot, so orders booked on an older grid still count. One customer may hold at most three orders for a bakery day (`order.MaxOrdersPerCustomerPerDay`), so no single account can fill the day's slots. `GET /store/pickup-slots?date=` lists a day's slots marked full, the cart reports what its items need (`fulfillment`), and the picker offers the slots that suit them; `slots.changed` goes out when a checkout fills a slot or an order is cancelled, so it tells no more than the slot list shows. The time zone is fixed (Asia/Ho_Chi_Minh, no DST): the bakery does not move, and every stored hour is read in it.
 
 **Order status (schema v2):** `pending` → `confirmed` → `in_production` → `ready` → `fulfilled` | `cancelled`.
 

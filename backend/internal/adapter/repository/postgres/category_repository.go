@@ -31,6 +31,7 @@ func (r *CategoryRepository) Create(ctx context.Context, params port.CreateCateg
 		Slug:      params.Slug,
 		SortOrder: params.SortOrder,
 		IsActive:  params.IsActive,
+		Station:   sqlcgen.Station(params.Station),
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create category")
@@ -53,6 +54,7 @@ func (r *CategoryRepository) Update(ctx context.Context, params port.UpdateCateg
 		Slug:      params.Slug,
 		SortOrder: params.SortOrder,
 		IsActive:  params.IsActive,
+		Station:   sqlcgen.Station(params.Station),
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update category")
@@ -128,6 +130,7 @@ func mapCategory(row sqlcgen.Category) *domaincategory.Category {
 		Slug:      row.Slug,
 		SortOrder: row.SortOrder,
 		IsActive:  row.IsActive,
+		Station:   domaincategory.Station(row.Station),
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
 		DeletedAt: row.DeletedAt,

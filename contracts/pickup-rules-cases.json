@@ -1,5 +1,5 @@
 {
-  "$comment": "One set of cases for both implementations of the pickup rules: backend/internal/domain/store/clock.go + backend/internal/domain/order/pickup.go (PickupPolicy.Validate), and frontend/src/lib/validation/clock.ts + frontend/src/lib/validation/pickup.ts (pickupProblem). Both test suites read this file. Times are bakery wall-clock (Asia/Ho_Chi_Minh, YYYY-MM-DDTHH:MM); a problem is the backend error code without its pickup_ prefix, or null when checkout accepts the time. Add cases here, not in either test.",
+  "$comment": "One set of cases for both implementations of the pickup rules: backend/internal/domain/store/clock.go + backend/internal/domain/order/pickup.go (PickupPolicy.Validate), and frontend/src/lib/validation/clock.ts + frontend/src/lib/validation/pickup.ts (pickupProblem, pickupOrderType). Both test suites read this file. Times are bakery wall-clock (Asia/Ho_Chi_Minh, YYYY-MM-DDTHH:MM). Each case names the cart it is checked for: whether any item comes from the kitchen, and the longest notice an item needs. A problem is the backend error code without its pickup_ prefix, or null when checkout accepts the time; type is the order type checkout records then (null with a problem). Add cases here, not in either test.",
   "clock": {
     "valid": [
       { "text": "00:00", "minutes": 0 },
@@ -15,23 +15,39 @@
       "closes_at": "18:00",
       "preorder_min_lead_minutes": 120,
       "max_advance_days": 14,
+      "slot_minutes": 30,
+      "instant_prep_minutes": 20,
       "closed_dates": ["2026-07-13"]
     },
     "now": "2026-07-10T10:00",
     "cases": [
-      { "at": "", "problem": "missing" },
-      { "at": "2026-07-10T11:59", "problem": "too_soon" },
-      { "at": "2026-07-10T12:00", "problem": null },
-      { "at": "2026-07-10T14:00", "problem": null },
-      { "at": "2026-07-10T17:59", "problem": null },
-      { "at": "2026-07-10T18:00", "problem": "outside_hours" },
-      { "at": "2026-07-11T07:59", "problem": "outside_hours" },
-      { "at": "2026-07-11T08:00", "problem": null },
-      { "at": "2026-07-13T12:00", "problem": "closed_day" },
-      { "at": "2026-07-13T03:00", "problem": "closed_day" },
-      { "at": "2026-07-14T12:00", "problem": null },
-      { "at": "2026-07-24T10:00", "problem": null },
-      { "at": "2026-07-24T10:01", "problem": "too_far" }
+      { "at": "", "kitchen": true, "lead_minutes": 0, "problem": "missing", "type": null },
+
+      { "at": "2026-07-10T11:59", "kitchen": true, "lead_minutes": 0, "problem": "too_soon", "type": null },
+      { "at": "2026-07-10T12:00", "kitchen": true, "lead_minutes": 0, "problem": null, "type": "pre_order" },
+      { "at": "2026-07-10T17:30", "kitchen": true, "lead_minutes": 0, "problem": null, "type": "pre_order" },
+      { "at": "2026-07-10T17:59", "kitchen": true, "lead_minutes": 0, "problem": "off_slot", "type": null },
+      { "at": "2026-07-10T18:00", "kitchen": true, "lead_minutes": 0, "problem": "outside_hours", "type": null },
+      { "at": "2026-07-11T07:59", "kitchen": true, "lead_minutes": 0, "problem": "outside_hours", "type": null },
+      { "at": "2026-07-11T08:00", "kitchen": true, "lead_minutes": 0, "problem": null, "type": "pre_order" },
+      { "at": "2026-07-11T12:15", "kitchen": true, "lead_minutes": 0, "problem": "off_slot", "type": null },
+      { "at": "2026-07-13T12:00", "kitchen": true, "lead_minutes": 0, "problem": "closed_day", "type": null },
+      { "at": "2026-07-13T03:00", "kitchen": true, "lead_minutes": 0, "problem": "closed_day", "type": null },
+      { "at": "2026-07-14T12:00", "kitchen": true, "lead_minutes": 0, "problem": null, "type": "pre_order" },
+      { "at": "2026-07-24T10:00", "kitchen": true, "lead_minutes": 0, "problem": null, "type": "pre_order" },
+      { "at": "2026-07-24T10:01", "kitchen": true, "lead_minutes": 0, "problem": "too_far", "type": null },
+
+      { "at": "2026-07-10T10:00", "kitchen": false, "lead_minutes": 0, "problem": "too_soon", "type": null },
+      { "at": "2026-07-10T10:15", "kitchen": false, "lead_minutes": 0, "problem": "too_soon", "type": null },
+      { "at": "2026-07-10T10:20", "kitchen": false, "lead_minutes": 0, "problem": "off_slot", "type": null },
+      { "at": "2026-07-10T10:30", "kitchen": false, "lead_minutes": 0, "problem": null, "type": "instant" },
+      { "at": "2026-07-10T17:30", "kitchen": false, "lead_minutes": 0, "problem": null, "type": "instant" },
+      { "at": "2026-07-11T08:00", "kitchen": false, "lead_minutes": 0, "problem": null, "type": "pre_order" },
+
+      { "at": "2026-07-10T10:30", "kitchen": false, "lead_minutes": 60, "problem": "too_soon", "type": null },
+      { "at": "2026-07-10T11:00", "kitchen": false, "lead_minutes": 60, "problem": null, "type": "instant" },
+      { "at": "2026-07-11T09:30", "kitchen": true, "lead_minutes": 1440, "problem": "too_soon", "type": null },
+      { "at": "2026-07-11T10:00", "kitchen": true, "lead_minutes": 1440, "problem": null, "type": "pre_order" }
     ]
   }
 }

@@ -28,10 +28,15 @@ func TestStoreSettingsRepository_Settings_Integration(t *testing.T) {
 	assert.Equal(t, 18*time.Hour, seeded.ClosesAt)
 	assert.Equal(t, 2*time.Hour, seeded.PreorderMinLead)
 	assert.Equal(t, 14, seeded.MaxAdvanceDays)
+	assert.Equal(t, 30*time.Minute, seeded.SlotLength)
+	assert.Equal(t, 10, seeded.SlotCapacity)
+	assert.Equal(t, 20*time.Minute, seeded.InstantPrep)
+	require.NoError(t, seeded.Validate(), "the migration seeds rules an admin could save")
 
 	edited := domainstore.Settings{
 		OpensAt: 7*time.Hour + 30*time.Minute, ClosesAt: 22 * time.Hour,
 		PreorderMinLead: 90 * time.Minute, MaxAdvanceDays: 30,
+		SlotLength: 15 * time.Minute, SlotCapacity: 6, InstantPrep: 45 * time.Minute,
 	}
 	var saved domainstore.Settings
 	require.NoError(t, pool.WithTx(ctx, func(txCtx context.Context) error {
@@ -49,6 +54,9 @@ func TestStoreSettingsRepository_Settings_Integration(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, saved.ClosesAt, reread.ClosesAt)
 	assert.Equal(t, saved.MaxAdvanceDays, reread.MaxAdvanceDays)
+	assert.Equal(t, 15*time.Minute, reread.SlotLength)
+	assert.Equal(t, 6, reread.SlotCapacity)
+	assert.Equal(t, 45*time.Minute, reread.InstantPrep)
 
 	_, err = repo.GetSettingsForUpdate(ctx)
 	require.Error(t, err, "locking outside a transaction is refused")

@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
+import { IntegerFieldInput } from "@/components/ui/integer-field-input";
 import { MoneyFieldInput } from "@/components/ui/money-field-input";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,6 +32,7 @@ import { applyFormFieldErrors } from "@/lib/validation";
 
 import { useCategories, useCreateProduct, useUpdateProduct } from "../hooks";
 import {
+  MAX_PRODUCT_LEAD_MINUTES,
   productFormSchema,
   type ManagerProduct,
   type ProductFormInput,
@@ -43,6 +45,7 @@ const CREATE_PRODUCT_EMPTY_VALUES: ProductFormValues = {
   slug: "",
   description: null,
   is_active: true,
+  lead_time_minutes: 0,
   image_urls: [],
 };
 
@@ -58,6 +61,7 @@ const PRODUCT_FORM_FIELDS = [
   "slug",
   "description",
   "price_cents",
+  "lead_time_minutes",
   "is_active",
   "image_urls",
 ] as const;
@@ -75,6 +79,7 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           description: product?.description ?? null,
           price_cents: product?.price_cents,
           is_active: product?.is_active ?? true,
+          lead_time_minutes: product?.lead_time_minutes ?? 0,
           image_urls: product?.image_urls ?? [],
         };
 
@@ -221,6 +226,22 @@ function ProductFormFields({
             <FormItem>
               <FieldControl hint={FORM_FIELD_HINT.catalogPrice} label="Price">
                 <MoneyFieldInput {...field} />
+              </FieldControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="lead_time_minutes"
+          render={({ field }) => (
+            <FormItem>
+              <FieldControl
+                hint={FORM_FIELD_HINT.productLeadTime}
+                hintId="product-lead-time-hint"
+                label="Lead time"
+              >
+                <IntegerFieldInput max={MAX_PRODUCT_LEAD_MINUTES} min={0} {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>
