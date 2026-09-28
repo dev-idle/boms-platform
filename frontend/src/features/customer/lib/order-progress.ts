@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@/lib/schemas/order";
+import type { OrderStatus, OrderTimelineEntry } from "@/lib/schemas/order";
 
 export const ORDER_PROGRESS_STEPS = [
   { key: "pending", label: "Placed" },
@@ -17,4 +17,12 @@ export function activeOrderProgressIndex(status: OrderStatus): number {
 
 export function isOrderCancelled(status: OrderStatus): boolean {
   return status === "cancelled";
+}
+
+/** When the order entered status, from its timeline; undefined while it has not. */
+export function statusReachedAt(
+  timeline: ReadonlyArray<OrderTimelineEntry>,
+  status: OrderStatus,
+): string | undefined {
+  return timeline.find((entry) => entry.status === status)?.at;
 }

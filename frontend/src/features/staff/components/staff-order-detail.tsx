@@ -20,6 +20,7 @@ import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-
 
 import { usePatchStaffOrderStatus, useStaffOrder } from "../hooks";
 import type { PatchStaffOrderStatusInput } from "../schemas";
+import { StaffOrderHistory } from "./staff-order-history";
 
 type StaffOrderDetailProps = {
   orderId: string;
@@ -78,7 +79,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
   const actions = nextStatusActions(order.status);
 
   return (
-    <>
+    <div className="dashboard-profile-section-stack">
       <DashboardProfileSection id="staff-order-summary" title="Order summary">
         <div className="dashboard-order-summary">
           <div className="flex flex-wrap items-center gap-2">
@@ -95,7 +96,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
               variant={orderStatusToPillVariant(order.status)}
             />
           </div>
-          <p className="text-order-code">{order.id}</p>
+          <p className="text-order-code">{order.code}</p>
           <p className="text-sm text-muted">
             Customer:{" "}
             {[
@@ -176,6 +177,8 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
         </div>
       </DashboardProfileSection>
 
+      <StaffOrderHistory timeline={order.timeline} />
+
       <ConfirmDialog
         cancelLabel="Keep order"
         confirmLabel="Cancel order"
@@ -192,6 +195,6 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
         open={cancelOpen}
         title="Cancel this order?"
       />
-    </>
+    </div>
   );
 }

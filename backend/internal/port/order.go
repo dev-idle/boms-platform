@@ -7,11 +7,13 @@ import (
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/google/uuid"
 )
 
 type CreateOrderParams struct {
 	UserID               uuid.UUID
+	Code                 string
 	Status               domainorder.Status
 	SubtotalCents        int64
 	DiscountCents        int64
@@ -34,8 +36,17 @@ type CreateOrderItemParams struct {
 	LineTotalCents int64
 }
 
+// OrderHistoryFilter narrows a customer's order history. Nil fields do not
+// filter; PlacedBefore is exclusive.
+type OrderHistoryFilter struct {
+	Status       *domainorder.Status
+	PlacedFrom   *time.Time
+	PlacedBefore *time.Time
+}
+
 type ListOrdersParams struct {
 	UserID uuid.UUID
+	Filter OrderHistoryFilter
 	Limit  int32
 	Offset int32
 }
@@ -59,6 +70,16 @@ type BakerListOrdersParams struct {
 	Offset int32
 }
 
+// AddOrderStatusEventParams records an order entering To. From is nil when the
+// order is being placed.
+type AddOrderStatusEventParams struct {
+	OrderID   uuid.UUID
+	From      *domainorder.Status
+	To        domainorder.Status
+	ActorID   uuid.UUID
+	ActorRole domainuser.Role
+}
+
 type UpdateOrderStatusParams struct {
 	OrderID    uuid.UUID
 	FromStatus domainorder.Status
@@ -70,7 +91,7 @@ type OrderRepository interface {
 	GetByIDForUser(ctx context.Context, userID, orderID uuid.UUID) (*domainorder.Order, error)
 	StaffGetByID(ctx context.Context, orderID uuid.UUID) (*StaffOrderListRow, error)
 	ListByUser(ctx context.Context, params ListOrdersParams) ([]domainorder.Order, error)
-	ListCountByUser(ctx context.Context, userID uuid.UUID) (int64, error)
+	ListCountByUser(ctx context.Context, userID uuid.UUID, filter OrderHistoryFilter) (int64, error)
 	StaffList(ctx context.Context, params StaffListOrdersParams) ([]StaffOrderListRow, error)
 	StaffListCount(ctx context.Context, status *domainorder.Status) (int64, error)
 	BakerListProduction(ctx context.Context, params BakerListOrdersParams) ([]StaffOrderListRow, error)
@@ -79,4 +100,10 @@ type OrderRepository interface {
 	CreateItems(ctx context.Context, items []CreateOrderItemParams) error
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domainorder.Item, error)
 	SumItemQuantitiesByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID]int32, error)
+	// NextDayNumber hands out the next order number of the bakery day the
+	// transaction runs on, and that day. It must run in the transaction that
+	// creates the order: the number is held until then.
+	NextDayNumber(ctx context.Context) (day time.Time, number int, err error)
+	AddStatusEvent(ctx context.Context, params AddOrderStatusEventParams) error
+	ListStatusEvents(ctx context.Context, orderID uuid.UUID) ([]domainorder.StatusEvent, error)
 }

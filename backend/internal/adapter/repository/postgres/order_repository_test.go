@@ -50,7 +50,7 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 
 	t.Run("create_items_inserts_every_line_in_one_statement", func(t *testing.T) {
 		order, err := orders.Create(ctx, port.CreateOrderParams{
-			UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 12200, TotalCents: 12200,
+			Code: "CH-260101-001", UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 12200, TotalCents: 12200,
 		})
 		require.NoError(t, err)
 
@@ -79,7 +79,7 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 
 	t.Run("create_items_is_atomic_when_a_line_violates_a_constraint", func(t *testing.T) {
 		order, err := orders.Create(ctx, port.CreateOrderParams{
-			UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 4500, TotalCents: 4500,
+			Code: "CH-260101-002", UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 4500, TotalCents: 4500,
 		})
 		require.NoError(t, err)
 
@@ -144,7 +144,7 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 
 	t.Run("staff_and_baker_lists_filter_by_an_optional_status", func(t *testing.T) {
 		confirmed, err := orders.Create(ctx, port.CreateOrderParams{
-			UserID: customer.ID, Status: domainorder.StatusConfirmed, SubtotalCents: 4500, TotalCents: 4500,
+			Code: "CH-260101-003", UserID: customer.ID, Status: domainorder.StatusConfirmed, SubtotalCents: 4500, TotalCents: 4500,
 		})
 		require.NoError(t, err)
 		status := domainorder.StatusConfirmed
@@ -182,7 +182,7 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 		})
 		require.NoError(t, err)
 		order, err := orders.Create(ctx, port.CreateOrderParams{
-			UserID: caller.ID, Status: domainorder.StatusPending, SubtotalCents: 4500, TotalCents: 4500,
+			Code: "CH-260101-004", UserID: caller.ID, Status: domainorder.StatusPending, SubtotalCents: 4500, TotalCents: 4500,
 		})
 		require.NoError(t, err)
 
@@ -200,7 +200,7 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 
 	t.Run("sums_item_quantities_for_a_list_of_order_ids", func(t *testing.T) {
 		order, err := orders.Create(ctx, port.CreateOrderParams{
-			UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 12200, TotalCents: 12200,
+			Code: "CH-260101-005", UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 12200, TotalCents: 12200,
 		})
 		require.NoError(t, err)
 		require.NoError(t, orders.CreateItems(ctx, []port.CreateOrderItemParams{

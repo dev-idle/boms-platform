@@ -82,7 +82,7 @@ export function BakerProductionOrderDetail({
             variant={orderStatusToPillVariant(order.status)}
           />
         </div>
-        <p className="text-order-code">{order.id}</p>
+        <p className="text-order-code">{order.code}</p>
         {order.customer.display_name ? (
           <p className="text-sm text-muted">
             Customer: {order.customer.display_name}

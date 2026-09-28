@@ -29,3 +29,23 @@ func mapOrderItemsToDTO(items []domainorder.Item) []dto.OrderItemResponse {
 	}
 	return out
 }
+
+func mapOrderTimelineToDTO(events []domainorder.StatusEvent) []dto.OrderTimelineEntryResponse {
+	out := make([]dto.OrderTimelineEntryResponse, 0, len(events))
+	for _, event := range events {
+		out = append(out, dto.OrderTimelineEntryResponse{Status: string(event.To), At: event.At})
+	}
+	return out
+}
+
+func mapStaffOrderTimelineToDTO(events []domainorder.StatusEvent) []dto.StaffOrderTimelineEntryResponse {
+	out := make([]dto.StaffOrderTimelineEntryResponse, 0, len(events))
+	for _, event := range events {
+		out = append(out, dto.StaffOrderTimelineEntryResponse{
+			Status:    string(event.To),
+			ActorRole: string(event.ActorRole),
+			At:        event.At,
+		})
+	}
+	return out
+}

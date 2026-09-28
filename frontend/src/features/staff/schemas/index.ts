@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
-import { orderStatusSchema } from "@/lib/schemas/order";
+import { USER_ROLE } from "@/constants/roles";
+import {
+  orderCodeSchema,
+  orderStatusSchema,
+  orderTimelineEntrySchema,
+} from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 const staffOrderCustomerSchema = z.object({
@@ -23,8 +28,14 @@ const staffOrderItemSchema = z.object({
   line_total_cents: z.number().int().min(0),
 });
 
+/** The counter also sees which role made each move. */
+const staffOrderTimelineEntrySchema = orderTimelineEntrySchema.extend({
+  actor_role: z.enum(USER_ROLE),
+});
+
 export const staffOrderSummarySchema = z.object({
   id: z.uuid(),
+  code: orderCodeSchema,
   status: orderStatusSchema,
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
@@ -35,6 +46,7 @@ export const staffOrderSummarySchema = z.object({
 
 export const staffOrderSchema = z.object({
   id: z.uuid(),
+  code: orderCodeSchema,
   status: orderStatusSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),
@@ -42,6 +54,7 @@ export const staffOrderSchema = z.object({
   discount_code_snapshot: z.string().nullable().optional(),
   pickup_at: apiDateTimeSchema.nullable().optional(),
   items: z.array(staffOrderItemSchema),
+  timeline: z.array(staffOrderTimelineEntrySchema),
   customer: staffOrderCustomerSchema,
   created_at: apiDateTimeSchema,
   updated_at: apiDateTimeSchema,

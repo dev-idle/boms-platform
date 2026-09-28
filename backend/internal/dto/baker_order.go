@@ -10,6 +10,7 @@ type BakerOrderCustomerResponse struct {
 
 type BakerOrderSummaryResponse struct {
 	ID         string                     `json:"id"`
+	Code       string                     `json:"code"`
 	Status     string                     `json:"status"`
 	TotalCents int64                      `json:"total_cents"`
 	ItemCount  int32                      `json:"item_count"`
@@ -20,6 +21,7 @@ type BakerOrderSummaryResponse struct {
 
 type BakerOrderResponse struct {
 	ID                   string                     `json:"id"`
+	Code                 string                     `json:"code"`
 	Status               string                     `json:"status"`
 	SubtotalCents        int64                      `json:"subtotal_cents"`
 	DiscountCents        int64                      `json:"discount_cents"`

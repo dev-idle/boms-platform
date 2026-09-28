@@ -112,6 +112,7 @@ type Querier interface {
 	//    o.pickup_at,
 	//    o.created_at,
 	//    o.updated_at,
+	//    o.code,
 	//    u.email AS customer_email,
 	//    cp.display_name AS customer_display_name
 	//  FROM orders o
@@ -457,9 +458,10 @@ type Querier interface {
 	//    total_cents,
 	//    discount_code_id,
 	//    discount_code_snapshot,
-	//    pickup_at
+	//    pickup_at,
+	//    code
 	//  )
-	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	//  RETURNING
 	//    id,
 	//    user_id,
@@ -471,7 +473,8 @@ type Querier interface {
 	//    discount_code_snapshot,
 	//    pickup_at,
 	//    created_at,
-	//    updated_at
+	//    updated_at,
+	//    code
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
 	// One round trip for every checkout line: the items arrive as a JSON array and
 	// Postgres casts each field to the column type (constraints still apply per row).
@@ -512,6 +515,17 @@ type Querier interface {
 	//    line_total_cents bigint
 	//  )
 	CreateOrderItems(ctx context.Context, items json.RawMessage) (int64, error)
+	//CreateOrderStatusEvent
+	//
+	//  INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role)
+	//  VALUES (
+	//    $1,
+	//    $2::order_status,
+	//    $3::order_status,
+	//    $4,
+	//    $5::user_role
+	//  )
+	CreateOrderStatusEvent(ctx context.Context, arg CreateOrderStatusEventParams) error
 	//CreateProduct
 	//
 	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_active)
@@ -688,7 +702,8 @@ type Querier interface {
 	//    discount_code_snapshot,
 	//    pickup_at,
 	//    created_at,
-	//    updated_at
+	//    updated_at,
+	//    code
 	//  FROM orders
 	//  WHERE id = $1 AND user_id = $2
 	GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error)
@@ -873,6 +888,13 @@ type Querier interface {
 	//  WHERE order_id = $1
 	//  ORDER BY created_at ASC
 	ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]OrderItem, error)
+	//ListOrderStatusEvents
+	//
+	//  SELECT to_status, actor_role, created_at
+	//  FROM order_status_events
+	//  WHERE order_id = $1
+	//  ORDER BY created_at ASC, id ASC
+	ListOrderStatusEvents(ctx context.Context, orderID uuid.UUID) ([]ListOrderStatusEventsRow, error)
 	//ListOrdersByUser
 	//
 	//  SELECT
@@ -886,18 +908,43 @@ type Querier interface {
 	//    discount_code_snapshot,
 	//    pickup_at,
 	//    created_at,
-	//    updated_at
+	//    updated_at,
+	//    code
 	//  FROM orders
 	//  WHERE user_id = $1
+	//    AND (
+	//      $2::order_status IS NULL
+	//      OR status = $2::order_status
+	//    )
+	//    AND (
+	//      $3::timestamptz IS NULL
+	//      OR created_at >= $3::timestamptz
+	//    )
+	//    AND (
+	//      $4::timestamptz IS NULL
+	//      OR created_at < $4::timestamptz
+	//    )
 	//  ORDER BY created_at DESC
-	//  LIMIT $2 OFFSET $3
+	//  LIMIT $6 OFFSET $5
 	ListOrdersByUser(ctx context.Context, arg ListOrdersByUserParams) ([]Order, error)
 	//ListOrdersByUserCount
 	//
 	//  SELECT COUNT(*)::bigint AS count
 	//  FROM orders
 	//  WHERE user_id = $1
-	ListOrdersByUserCount(ctx context.Context, userID uuid.UUID) (int64, error)
+	//    AND (
+	//      $2::order_status IS NULL
+	//      OR status = $2::order_status
+	//    )
+	//    AND (
+	//      $3::timestamptz IS NULL
+	//      OR created_at >= $3::timestamptz
+	//    )
+	//    AND (
+	//      $4::timestamptz IS NULL
+	//      OR created_at < $4::timestamptz
+	//    )
+	ListOrdersByUserCount(ctx context.Context, arg ListOrdersByUserCountParams) (int64, error)
 	//ListProductImagesByProductID
 	//
 	//  SELECT image_url, sort_order
@@ -1119,6 +1166,17 @@ type Querier interface {
 	//    )::text AS next_code
 	//  FROM (SELECT pg_advisory_xact_lock(8734211)) AS lock
 	NextEmployeeCode(ctx context.Context) (string, error)
+	// The day is read from the transaction's clock, the instant orders.created_at
+	// takes, so a code and its created_at always name the same bakery day. The row
+	// lock taken by the upsert holds every other checkout on that day until this
+	// transaction ends, so numbers are unique and follow each other.
+	//
+	//  INSERT INTO order_day_counters (day, last_number)
+	//  VALUES ((now() AT TIME ZONE $1::text)::date, 1)
+	//  ON CONFLICT (day) DO UPDATE
+	//  SET last_number = order_day_counters.last_number + 1
+	//  RETURNING day, last_number
+	NextOrderDayNumber(ctx context.Context, zone string) (OrderDayCounter, error)
 	//PhoneHeldByOtherActiveUser
 	//
 	//  SELECT EXISTS (
@@ -1234,6 +1292,7 @@ type Querier interface {
 	//    o.pickup_at,
 	//    o.created_at,
 	//    o.updated_at,
+	//    o.code,
 	//    u.email AS customer_email,
 	//    cp.display_name AS customer_display_name,
 	//    cp.phone AS customer_phone
@@ -1256,6 +1315,7 @@ type Querier interface {
 	//    o.pickup_at,
 	//    o.created_at,
 	//    o.updated_at,
+	//    o.code,
 	//    u.email AS customer_email,
 	//    cp.display_name AS customer_display_name
 	//  FROM orders o
@@ -1386,7 +1446,8 @@ type Querier interface {
 	//    discount_code_snapshot,
 	//    pickup_at,
 	//    created_at,
-	//    updated_at
+	//    updated_at,
+	//    code
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	//UpdateProduct
 	//

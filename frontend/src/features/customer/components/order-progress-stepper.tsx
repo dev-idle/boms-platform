@@ -1,26 +1,36 @@
 "use client";
 
+import type { OrderStatus, OrderTimelineEntry } from "@/lib/schemas/order";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/validation/datetime";
 
 import {
   activeOrderProgressIndex,
   isOrderCancelled,
   ORDER_PROGRESS_STEPS,
+  statusReachedAt,
 } from "../lib/order-progress";
-import type { OrderStatus } from "@/lib/schemas/order";
 
 type OrderProgressStepperProps = {
   status: OrderStatus;
+  timeline: ReadonlyArray<OrderTimelineEntry>;
 };
 
-export function OrderProgressStepper({ status }: OrderProgressStepperProps) {
+export function OrderProgressStepper({ status, timeline }: OrderProgressStepperProps) {
   const activeIndex = activeOrderProgressIndex(status);
-  const cancelled = isOrderCancelled(status);
 
-  if (cancelled) {
+  if (isOrderCancelled(status)) {
+    const cancelledAt = statusReachedAt(timeline, "cancelled");
     return (
       <p className="storefront-order-progress storefront-order-progress--cancelled text-caption">
-        This order was cancelled.
+        This order was cancelled
+        {cancelledAt ? (
+          <>
+            {" on "}
+            <time dateTime={cancelledAt}>{formatDateTime(cancelledAt)}</time>
+          </>
+        ) : null}
+        .
       </p>
     );
   }
@@ -30,6 +40,7 @@ export function OrderProgressStepper({ status }: OrderProgressStepperProps) {
       {ORDER_PROGRESS_STEPS.map((step, index) => {
         const isComplete = index < activeIndex;
         const isCurrent = index === activeIndex;
+        const reachedAt = statusReachedAt(timeline, step.key);
         return (
           <li
             key={step.key}
@@ -41,6 +52,11 @@ export function OrderProgressStepper({ status }: OrderProgressStepperProps) {
           >
             <span aria-hidden="true" className="storefront-order-progress__marker" />
             <span className="storefront-order-progress__label">{step.label}</span>
+            {reachedAt ? (
+              <time className="storefront-order-progress__time" dateTime={reachedAt}>
+                {formatDateTime(reachedAt)}
+              </time>
+            ) : null}
           </li>
         );
       })}

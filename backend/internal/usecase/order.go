@@ -6,6 +6,7 @@ import (
 	"time"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -66,8 +67,14 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 			discountSnapshot = &snapshot
 		}
 
+		// Taken last before the insert: the day's number stays locked until commit.
+		day, number, err := u.orders.NextDayNumber(txCtx)
+		if err != nil {
+			return err
+		}
 		order, err := u.orders.Create(txCtx, port.CreateOrderParams{
 			UserID:               userID,
+			Code:                 domainorder.Code(day, number),
 			Status:               domainorder.StatusPending,
 			SubtotalCents:        totals.SubtotalCents,
 			DiscountCents:        totals.DiscountCents,
@@ -99,6 +106,14 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 		if err := u.orders.CreateItems(txCtx, orderItems); err != nil {
 			return err
 		}
+		if err := u.orders.AddStatusEvent(txCtx, port.AddOrderStatusEventParams{
+			OrderID:   order.ID,
+			To:        order.Status,
+			ActorID:   userID,
+			ActorRole: domainuser.RoleCustomer,
+		}); err != nil {
+			return err
+		}
 		if discountCode != nil {
 			if _, err := u.discount.IncrementUsedCount(txCtx, discountCode.ID); err != nil {
 				return err
@@ -122,22 +137,29 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 	return u.orderResponse(ctx, userID, created.ID)
 }
 
+// List returns a page of the customer's orders, newest first, narrowed by query.
 func (u *OrderUsecase) List(
 	ctx context.Context,
 	userID uuid.UUID,
 	page, pageSize int32,
+	query dto.OrderHistoryQuery,
 ) ([]dto.OrderSummaryResponse, int64, int32, int32, error) {
 	page, pageSize = normalizeOrderListPage(page, pageSize)
+	filter, err := orderHistoryFilter(query)
+	if err != nil {
+		return nil, 0, page, pageSize, err
+	}
 	orders, total, err := listWithTotal(ctx,
 		func(ctx context.Context) ([]domainorder.Order, error) {
 			return u.orders.ListByUser(ctx, port.ListOrdersParams{
 				UserID: userID,
+				Filter: filter,
 				Limit:  pageSize,
 				Offset: utils.PageOffset(page, pageSize),
 			})
 		},
 		func(ctx context.Context) (int64, error) {
-			return u.orders.ListCountByUser(ctx, userID)
+			return u.orders.ListCountByUser(ctx, userID, filter)
 		},
 	)
 	if err != nil {
@@ -155,6 +177,7 @@ func (u *OrderUsecase) List(
 	for _, order := range orders {
 		out = append(out, dto.OrderSummaryResponse{
 			ID:         order.ID.String(),
+			Code:       order.Code,
 			Status:     string(order.Status),
 			TotalCents: order.TotalCents,
 			ItemCount:  itemCounts[order.ID],
@@ -177,12 +200,13 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		}
 		return nil, err
 	}
-	items, err := u.orders.ListItemsByOrderID(ctx, order.ID)
+	items, timeline, err := orderLinesAndTimeline(ctx, u.orders, order.ID)
 	if err != nil {
 		return nil, err
 	}
 	resp := &dto.OrderResponse{
 		ID:                   order.ID.String(),
+		Code:                 order.Code,
 		Status:               string(order.Status),
 		SubtotalCents:        order.SubtotalCents,
 		DiscountCents:        order.DiscountCents,
@@ -190,6 +214,7 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		DiscountCodeSnapshot: order.DiscountCodeSnapshot,
 		PickupAt:             order.PickupAt,
 		Items:                mapOrderItemsToDTO(items),
+		Timeline:             mapOrderTimelineToDTO(timeline),
 		CreatedAt:            order.CreatedAt,
 		UpdatedAt:            order.UpdatedAt,
 	}

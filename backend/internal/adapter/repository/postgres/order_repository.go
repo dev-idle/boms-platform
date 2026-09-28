@@ -10,6 +10,7 @@ import (
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/utils"
@@ -37,6 +38,7 @@ func (r *OrderRepository) Create(ctx context.Context, params port.CreateOrderPar
 	}
 	row, err := r.q(ctx).CreateOrder(ctx, sqlcgen.CreateOrderParams{
 		UserID:               params.UserID,
+		Code:                 params.Code,
 		Status:               status,
 		SubtotalCents:        params.SubtotalCents,
 		DiscountCents:        params.DiscountCents,
@@ -63,10 +65,17 @@ func (r *OrderRepository) GetByIDForUser(ctx context.Context, userID, orderID uu
 }
 
 func (r *OrderRepository) ListByUser(ctx context.Context, params port.ListOrdersParams) ([]domainorder.Order, error) {
+	status, err := optionalOrderStatus(params.Filter.Status)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := r.q(ctx).ListOrdersByUser(ctx, sqlcgen.ListOrdersByUserParams{
-		UserID: params.UserID,
-		Limit:  params.Limit,
-		Offset: params.Offset,
+		UserID:       params.UserID,
+		Status:       status,
+		PlacedFrom:   params.Filter.PlacedFrom,
+		PlacedBefore: params.Filter.PlacedBefore,
+		Limit:        params.Limit,
+		Offset:       params.Offset,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "list orders")
@@ -78,8 +87,21 @@ func (r *OrderRepository) ListByUser(ctx context.Context, params port.ListOrders
 	return out, nil
 }
 
-func (r *OrderRepository) ListCountByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
-	count, err := r.q(ctx).ListOrdersByUserCount(ctx, userID)
+func (r *OrderRepository) ListCountByUser(
+	ctx context.Context,
+	userID uuid.UUID,
+	filter port.OrderHistoryFilter,
+) (int64, error) {
+	status, err := optionalOrderStatus(filter.Status)
+	if err != nil {
+		return 0, err
+	}
+	count, err := r.q(ctx).ListOrdersByUserCount(ctx, sqlcgen.ListOrdersByUserCountParams{
+		UserID:       userID,
+		Status:       status,
+		PlacedFrom:   filter.PlacedFrom,
+		PlacedBefore: filter.PlacedBefore,
+	})
 	if err != nil {
 		return 0, mapRepoError(err, "list orders count")
 	}
@@ -274,9 +296,67 @@ func (r *OrderRepository) ListItemsByOrderID(ctx context.Context, orderID uuid.U
 	return out, nil
 }
 
+func (r *OrderRepository) NextDayNumber(ctx context.Context) (time.Time, int, error) {
+	if txFromContext(ctx) == nil {
+		return time.Time{}, 0, apperrors.Errorf("next order day number: requires a transaction")
+	}
+	row, err := r.q(ctx).NextOrderDayNumber(ctx, domainstore.Location.String())
+	if err != nil {
+		return time.Time{}, 0, mapRepoError(err, "next order day number")
+	}
+	return row.Day, int(row.LastNumber), nil
+}
+
+func (r *OrderRepository) AddStatusEvent(ctx context.Context, params port.AddOrderStatusEventParams) error {
+	var from *sqlcgen.OrderStatus
+	if params.From != nil {
+		mapped, err := mapOrderStatusToSQL(*params.From)
+		if err != nil {
+			return err
+		}
+		from = &mapped
+	}
+	to, err := mapOrderStatusToSQL(params.To)
+	if err != nil {
+		return err
+	}
+	role, err := toSQLRole(params.ActorRole)
+	if err != nil {
+		return err
+	}
+	err = r.q(ctx).CreateOrderStatusEvent(ctx, sqlcgen.CreateOrderStatusEventParams{
+		OrderID:    params.OrderID,
+		FromStatus: from,
+		ToStatus:   to,
+		ActorID:    params.ActorID,
+		ActorRole:  role,
+	})
+	if err != nil {
+		return mapRepoError(err, "create order status event")
+	}
+	return nil
+}
+
+func (r *OrderRepository) ListStatusEvents(ctx context.Context, orderID uuid.UUID) ([]domainorder.StatusEvent, error) {
+	rows, err := r.q(ctx).ListOrderStatusEvents(ctx, orderID)
+	if err != nil {
+		return nil, mapRepoError(err, "list order status events")
+	}
+	out := make([]domainorder.StatusEvent, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domainorder.StatusEvent{
+			To:        mapOrderStatusFromSQL(row.ToStatus),
+			ActorRole: fromSQLRole(row.ActorRole),
+			At:        row.CreatedAt,
+		})
+	}
+	return out, nil
+}
+
 func mapOrder(row sqlcgen.Order) *domainorder.Order {
 	return &domainorder.Order{
 		ID:                   row.ID,
+		Code:                 row.Code,
 		UserID:               row.UserID,
 		Status:               mapOrderStatusFromSQL(row.Status),
 		SubtotalCents:        row.SubtotalCents,
@@ -343,6 +423,7 @@ func mapStaffListOrdersRow(row sqlcgen.StaffListOrdersRow) *port.StaffOrderListR
 		row.PickupAt,
 		row.CreatedAt,
 		row.UpdatedAt,
+		row.Code,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
 		// The list never carries phones: staff open an order to call its customer.
@@ -363,6 +444,7 @@ func mapStaffGetOrderByIDRow(row sqlcgen.StaffGetOrderByIDRow) *port.StaffOrderL
 		row.PickupAt,
 		row.CreatedAt,
 		row.UpdatedAt,
+		row.Code,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
 		row.CustomerPhone,
@@ -382,6 +464,7 @@ func mapBakerListProductionOrdersRow(row sqlcgen.BakerListProductionOrdersRow) *
 		row.PickupAt,
 		row.CreatedAt,
 		row.UpdatedAt,
+		row.Code,
 		row.CustomerEmail,
 		row.CustomerDisplayName,
 		nil,
@@ -396,6 +479,7 @@ func mapStaffOrderJoined(
 	discountCodeSnapshot *string,
 	pickupAt *time.Time,
 	createdAt, updatedAt time.Time,
+	code string,
 	customerEmail string,
 	customerDisplayName *string,
 	customerPhone *string,
@@ -413,6 +497,7 @@ func mapStaffOrderJoined(
 			PickupAt:             pickupAt,
 			CreatedAt:            createdAt,
 			UpdatedAt:            updatedAt,
+			Code:                 code,
 		},
 		CustomerEmail:       customerEmail,
 		CustomerDisplayName: customerDisplayName,

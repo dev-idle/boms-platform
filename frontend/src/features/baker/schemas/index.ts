@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
-import { orderStatusSchema } from "@/lib/schemas/order";
+import { orderCodeSchema, orderStatusSchema } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 /** The production queue only ever holds these states. */
@@ -30,6 +30,7 @@ const bakerOrderItemSchema = z.object({
 
 export const bakerOrderSummarySchema = z.object({
   id: z.uuid(),
+  code: orderCodeSchema,
   status: bakerOrderStatusSchema,
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
@@ -40,6 +41,7 @@ export const bakerOrderSummarySchema = z.object({
 
 export const bakerOrderSchema = z.object({
   id: z.uuid(),
+  code: orderCodeSchema,
   status: bakerOrderStatusSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),

@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
-import { orderStatusSchema } from "@/lib/schemas/order";
+import {
+  orderCodeSchema,
+  orderStatusSchema,
+  orderTimelineEntrySchema,
+} from "@/lib/schemas/order";
 import { clockTimeSchema } from "@/lib/validation/clock";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
@@ -73,6 +77,7 @@ const orderItemSchema = z.object({
 
 export const orderSchema = z.object({
   id: z.uuid(),
+  code: orderCodeSchema,
   status: orderStatusSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),
@@ -80,12 +85,14 @@ export const orderSchema = z.object({
   discount_code_snapshot: z.string().nullable().optional(),
   pickup_at: apiDateTimeSchema.nullable().optional(),
   items: z.array(orderItemSchema),
+  timeline: z.array(orderTimelineEntrySchema),
   created_at: apiDateTimeSchema,
   updated_at: apiDateTimeSchema,
 });
 
 export const orderSummarySchema = z.object({
   id: z.uuid(),
+  code: orderCodeSchema,
   status: orderStatusSchema,
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
@@ -107,10 +114,19 @@ export const pickupRulesSchema = z.object({
   ),
 });
 
-export const ordersListFilterSchema = z.object({
-  page: z.number().int().min(1).default(1),
-  page_size: z.number().int().min(1).max(100).default(20),
-});
+/** Order history: a page, narrowed by status and by the bakery days orders were placed on. */
+export const ordersListFilterSchema = z
+  .object({
+    page: z.number().int().min(1).default(1),
+    page_size: z.number().int().min(1).max(100).default(20),
+    status: orderStatusSchema.optional(),
+    from: z.iso.date().optional(),
+    to: z.iso.date().optional(),
+  })
+  .refine((filter) => !filter.from || !filter.to || filter.from <= filter.to, {
+    path: ["to"],
+    message: "The last day cannot be before the first",
+  });
 
 export type Cart = z.infer<typeof cartSchema>;
 export type CartItem = z.infer<typeof cartItemSchema>;

@@ -2004,6 +2004,33 @@
     gap: 1.5rem;
   }
 
+  /* Three filter fields: status spans the row on a phone, then all three share
+     one row. */
+  .storefront-orders__filters {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .storefront-orders__filter {
+    display: grid;
+    gap: 0.625rem;
+  }
+
+  .storefront-orders__filter--status {
+    grid-column: 1 / -1;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-orders__filters {
+      grid-template-columns: repeat(3, minmax(0, 12rem));
+    }
+
+    .storefront-orders__filter--status {
+      grid-column: auto;
+    }
+  }
+
   /* Order history reads as a list (the Cart row pattern): line-soft between rows,
      never a stack of bordered boxes. */
   .storefront-orders__list {
@@ -2152,6 +2179,7 @@
 
   .storefront-order-progress--cancelled {
     color: var(--color-danger-text);
+    display: block;
     margin-block: 0.5rem 0;
   }
 
@@ -2182,6 +2210,15 @@
     background-color: var(--color-matcha-500);
   }
 
+  .storefront-order-progress__time {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+
   .storefront-order-progress__label {
     font-size: var(--label-size-sm);
     font-weight: var(--label-weight);
@@ -2200,6 +2237,11 @@
       flex-direction: row;
       gap: 0.75rem;
       text-align: start;
+    }
+
+    .storefront-order-progress__time {
+      margin-inline-start: auto;
+      white-space: nowrap;
     }
   }
 

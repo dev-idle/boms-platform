@@ -48,6 +48,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
   return (
     <div className="storefront-order-detail">
       <div className="storefront-panel storefront-order-detail__card">
+        <p className="text-order-code">{order.code}</p>
         <div className="storefront-order-detail__meta">
           <p className="text-caption">
             Placed {formatDateTime(order.created_at)}
@@ -63,7 +64,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
           />
         </div>
 
-        <OrderProgressStepper status={order.status} />
+        <OrderProgressStepper status={order.status} timeline={order.timeline} />
 
         {order.discount_code_snapshot ? (
           <p className="text-caption">

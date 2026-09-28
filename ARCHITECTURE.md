@@ -386,7 +386,7 @@ BOMS is a **bakery pickup** flow, not delivery or shipping.
 | **Fulfillment** | Customer orders for **in-store / counter pickup** at the bakery. |
 | **No Address module** | No `addresses` table, no shipping/delivery address on profile or orders, no geocoding, no carrier integration. **Do not add** unless this document is updated first. |
 | **Customer profile** | `customer_profiles`: `display_name`, `phone` (+ account `email` on `users`). Phone is contact info for pickup coordination — **not** a delivery address. |
-| **Checkout / orders** | `orders`: pricing, discount snapshot, `status`, required `pickup_at` at checkout, held to the Admin pickup rules below, line items with `configuration` jsonb — **no** shipping/delivery address fields. |
+| **Checkout / orders** | `orders`: `code`, pricing, discount snapshot, `status`, required `pickup_at` at checkout, held to the Admin pickup rules below, line items with `configuration` jsonb — **no** shipping/delivery address fields. |
 | **Storefront `BRAND.addressLine`** | Static marketing copy for footer “Visit us” (`constants/brand.ts`) — the **bakery location**, not per-customer data. |
 | **Marketing copy** | UI may say “pickup” but must not imply saved delivery addresses or ship-to-door unless a feature is implemented. |
 
@@ -400,6 +400,8 @@ BOMS is a **bakery pickup** flow, not delivery or shipping.
 | **Baker** | `confirmed`→`in_production`; `in_production`→`ready` — `GET/PATCH /api/v1/baker/production/*` |
 
 **Staff workflow:** counter confirm/cancel and handoff when `ready`; kitchen progress is baker-owned.
+
+**Order code and history:** every order carries `CH-YYMMDD-NNN` — the bakery day it was placed and its number that day. Checkout takes the number from `order_day_counters` with an upsert inside its transaction, on the bakery day of the transaction clock (the instant `created_at` records); the counter row stays locked until commit, so numbers are unique and gap-free per day. `order_status_events` records each status an order enters, when, and who moved it (actor id and role), written in the transaction that makes the move — checkout writes the first entry, staff and baker transitions the rest. Order details return it as `timeline` (customers: status and time; staff: also the actor role); the kitchen gets the code only. Customers filter their history by `status` and by the bakery days orders were placed on (`from`, `to`, both inclusive).
 
 ---
 

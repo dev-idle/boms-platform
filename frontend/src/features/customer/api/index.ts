@@ -98,6 +98,15 @@ export async function listOrders(
   const params = new URLSearchParams();
   params.set("page", String(filter.page));
   params.set("page_size", String(filter.page_size));
+  if (filter.status) {
+    params.set("status", filter.status);
+  }
+  if (filter.from) {
+    params.set("from", filter.from);
+  }
+  if (filter.to) {
+    params.set("to", filter.to);
+  }
   const result = await browserRequestWithMeta<z.infer<typeof orderSummarySchema>[]>(
     `/api/v1/orders?${params.toString()}`,
     { method: "GET", schema: z.array(orderSummarySchema) },

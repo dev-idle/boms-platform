@@ -105,9 +105,7 @@ export function BakerProductionTable() {
                       <p className="baker-production-row__summary">
                         {bakerOrderItemSummary(order.item_count)}
                       </p>
-                      <p className="baker-production-row__code">
-                        {order.id.slice(0, 8)}
-                      </p>
+                      <p className="baker-production-row__code">{order.code}</p>
                     </div>
                     <span className="baker-production-row__total">
                       {formatPriceCents(order.total_cents)}

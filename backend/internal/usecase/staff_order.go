@@ -83,6 +83,7 @@ func (u *StaffOrderUsecase) List(
 	for _, row := range rows {
 		out = append(out, dto.StaffOrderSummaryResponse{
 			ID:         row.Order.ID.String(),
+			Code:       row.Order.Code,
 			Status:     string(row.Order.Status),
 			TotalCents: row.Order.TotalCents,
 			ItemCount:  itemCounts[row.Order.ID],
@@ -102,11 +103,11 @@ func (u *StaffOrderUsecase) Get(ctx context.Context, orderID uuid.UUID) (*dto.St
 		}
 		return nil, err
 	}
-	items, err := u.orders.ListItemsByOrderID(ctx, row.Order.ID)
+	items, timeline, err := orderLinesAndTimeline(ctx, u.orders, row.Order.ID)
 	if err != nil {
 		return nil, err
 	}
-	return toStaffOrderResponse(row, items), nil
+	return toStaffOrderResponse(row, items, timeline), nil
 }
 
 func (u *StaffOrderUsecase) PatchStatus(
@@ -131,7 +132,7 @@ func (u *StaffOrderUsecase) PatchStatus(
 		return nil, domainorder.ErrInvalidStatusTransition
 	}
 
-	updated, err := u.transitions.apply(ctx, port.UpdateOrderStatusParams{
+	updated, err := u.transitions.apply(ctx, actorID, actorRole, port.UpdateOrderStatusParams{
 		OrderID:    orderID,
 		FromStatus: beforeRow.Order.Status,
 		ToStatus:   targetStatus,
@@ -147,11 +148,11 @@ func (u *StaffOrderUsecase) PatchStatus(
 		map[string]string{"status": string(updated.Status)},
 	)
 
-	items, err := u.orders.ListItemsByOrderID(ctx, orderID)
+	items, timeline, err := orderLinesAndTimeline(ctx, u.orders, orderID)
 	if err != nil {
 		return nil, err
 	}
-	return toStaffOrderResponse(&afterRow, items), nil
+	return toStaffOrderResponse(&afterRow, items, timeline), nil
 }
 
 func toStaffOrderCustomer(row *port.StaffOrderListRow) dto.StaffOrderCustomerResponse {
@@ -163,9 +164,14 @@ func toStaffOrderCustomer(row *port.StaffOrderListRow) dto.StaffOrderCustomerRes
 	}
 }
 
-func toStaffOrderResponse(row *port.StaffOrderListRow, items []domainorder.Item) *dto.StaffOrderResponse {
+func toStaffOrderResponse(
+	row *port.StaffOrderListRow,
+	items []domainorder.Item,
+	timeline []domainorder.StatusEvent,
+) *dto.StaffOrderResponse {
 	resp := &dto.StaffOrderResponse{
 		ID:                   row.Order.ID.String(),
+		Code:                 row.Order.Code,
 		Status:               string(row.Order.Status),
 		SubtotalCents:        row.Order.SubtotalCents,
 		DiscountCents:        row.Order.DiscountCents,
@@ -173,6 +179,7 @@ func toStaffOrderResponse(row *port.StaffOrderListRow, items []domainorder.Item)
 		DiscountCodeSnapshot: row.Order.DiscountCodeSnapshot,
 		PickupAt:             row.Order.PickupAt,
 		Items:                mapOrderItemsToDTO(items),
+		Timeline:             mapStaffOrderTimelineToDTO(timeline),
 		Customer:             toStaffOrderCustomer(row),
 		CreatedAt:            row.Order.CreatedAt,
 		UpdatedAt:            row.Order.UpdatedAt,

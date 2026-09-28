@@ -13,6 +13,7 @@ type StaffOrderCustomerResponse struct {
 
 type StaffOrderSummaryResponse struct {
 	ID         string                     `json:"id"`
+	Code       string                     `json:"code"`
 	Status     string                     `json:"status"`
 	TotalCents int64                      `json:"total_cents"`
 	ItemCount  int32                      `json:"item_count"`
@@ -21,18 +22,28 @@ type StaffOrderSummaryResponse struct {
 	CreatedAt  time.Time                  `json:"created_at"`
 }
 
+// StaffOrderTimelineEntryResponse is a status the order entered, when, and the
+// role of whoever moved it there — enough to answer a customer at the counter.
+type StaffOrderTimelineEntryResponse struct {
+	Status    string    `json:"status"`
+	ActorRole string    `json:"actor_role"`
+	At        time.Time `json:"at"`
+}
+
 type StaffOrderResponse struct {
-	ID                   string                     `json:"id"`
-	Status               string                     `json:"status"`
-	SubtotalCents        int64                      `json:"subtotal_cents"`
-	DiscountCents        int64                      `json:"discount_cents"`
-	TotalCents           int64                      `json:"total_cents"`
-	DiscountCodeSnapshot *string                    `json:"discount_code_snapshot,omitempty"`
-	PickupAt             *time.Time                 `json:"pickup_at,omitempty"`
-	Items                []OrderItemResponse        `json:"items"`
-	Customer             StaffOrderCustomerResponse `json:"customer"`
-	CreatedAt            time.Time                  `json:"created_at"`
-	UpdatedAt            time.Time                  `json:"updated_at"`
+	ID                   string                            `json:"id"`
+	Code                 string                            `json:"code"`
+	Status               string                            `json:"status"`
+	SubtotalCents        int64                             `json:"subtotal_cents"`
+	DiscountCents        int64                             `json:"discount_cents"`
+	TotalCents           int64                             `json:"total_cents"`
+	DiscountCodeSnapshot *string                           `json:"discount_code_snapshot,omitempty"`
+	PickupAt             *time.Time                        `json:"pickup_at,omitempty"`
+	Items                []OrderItemResponse               `json:"items"`
+	Timeline             []StaffOrderTimelineEntryResponse `json:"timeline"`
+	Customer             StaffOrderCustomerResponse        `json:"customer"`
+	CreatedAt            time.Time                         `json:"created_at"`
+	UpdatedAt            time.Time                         `json:"updated_at"`
 }
 
 type PatchStaffOrderStatusRequest struct {

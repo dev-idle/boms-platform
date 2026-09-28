@@ -83,6 +83,7 @@ func (u *BakerOrderUsecase) List(
 	for _, row := range rows {
 		out = append(out, dto.BakerOrderSummaryResponse{
 			ID:         row.Order.ID.String(),
+			Code:       row.Order.Code,
 			Status:     string(row.Order.Status),
 			TotalCents: row.Order.TotalCents,
 			ItemCount:  itemCounts[row.Order.ID],
@@ -137,7 +138,7 @@ func (u *BakerOrderUsecase) PatchStatus(
 		return nil, domainorder.ErrInvalidStatusTransition
 	}
 
-	updated, err := u.transitions.apply(ctx, port.UpdateOrderStatusParams{
+	updated, err := u.transitions.apply(ctx, actorID, actorRole, port.UpdateOrderStatusParams{
 		OrderID:    orderID,
 		FromStatus: beforeRow.Order.Status,
 		ToStatus:   targetStatus,
@@ -167,6 +168,7 @@ func toBakerOrderCustomer(row *port.StaffOrderListRow) dto.BakerOrderCustomerRes
 func toBakerOrderResponse(row *port.StaffOrderListRow, items []domainorder.Item) *dto.BakerOrderResponse {
 	return &dto.BakerOrderResponse{
 		ID:                   row.Order.ID.String(),
+		Code:                 row.Order.Code,
 		Status:               string(row.Order.Status),
 		SubtotalCents:        row.Order.SubtotalCents,
 		DiscountCents:        row.Order.DiscountCents,

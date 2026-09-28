@@ -32,6 +32,7 @@ func (s Status) Valid() bool {
 // Order is a placed checkout snapshot with server-computed totals.
 type Order struct {
 	ID                   uuid.UUID
+	Code                 string
 	UserID               uuid.UUID
 	Status               Status
 	SubtotalCents        int64

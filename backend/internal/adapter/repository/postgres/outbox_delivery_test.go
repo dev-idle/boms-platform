@@ -75,7 +75,8 @@ func TestOutboxDelivery_RecoversAfterABusOutage_Integration(t *testing.T) {
 	assert.Empty(t, claim(t, pool, outbox, 0), "nothing is left pending once the sweep delivered")
 }
 
-// Checkout announces the new order in the transaction that creates it.
+// Checkout numbers the new order, starts its history and announces it, all in
+// the transaction that creates it.
 func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	t.Parallel()
 
@@ -119,6 +120,11 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 		}
 	}
 	assert.Equal(t, []string{order.ID}, created)
+
+	placedOn := domainstore.DayOf(order.CreatedAt).Format("060102")
+	assert.Equal(t, "CH-"+placedOn+"-001", order.Code, "the first order of the bakery day it was placed on")
+	require.Len(t, order.Timeline, 1)
+	assert.Equal(t, string(domainorder.StatusPending), order.Timeline[0].Status, "placing the order starts its history")
 }
 
 // nextPickupSlot is tomorrow at 10:00 bakery time: inside the seeded opening

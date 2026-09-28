@@ -278,6 +278,12 @@ type Order struct {
 	PickupAt             *time.Time  `json:"pickupAt"`
 	CreatedAt            time.Time   `json:"createdAt"`
 	UpdatedAt            time.Time   `json:"updatedAt"`
+	Code                 string      `json:"code"`
+}
+
+type OrderDayCounter struct {
+	Day        time.Time `json:"day"`
+	LastNumber int32     `json:"lastNumber"`
 }
 
 type OrderItem struct {

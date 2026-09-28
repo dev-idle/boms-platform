@@ -7,9 +7,10 @@ INSERT INTO orders (
   total_cents,
   discount_code_id,
   discount_code_snapshot,
-  pickup_at
+  pickup_at,
+  code
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING
   id,
   user_id,
@@ -21,7 +22,8 @@ RETURNING
   discount_code_snapshot,
   pickup_at,
   created_at,
-  updated_at;
+  updated_at,
+  code;
 
 -- name: GetOrderByIDForUser :one
 SELECT
@@ -35,7 +37,8 @@ SELECT
   discount_code_snapshot,
   pickup_at,
   created_at,
-  updated_at
+  updated_at,
+  code
 FROM orders
 WHERE id = $1 AND user_id = $2;
 
@@ -51,16 +54,41 @@ SELECT
   discount_code_snapshot,
   pickup_at,
   created_at,
-  updated_at
+  updated_at,
+  code
 FROM orders
-WHERE user_id = $1
+WHERE user_id = sqlc.arg('user_id')
+  AND (
+    sqlc.narg('status')::order_status IS NULL
+    OR status = sqlc.narg('status')::order_status
+  )
+  AND (
+    sqlc.narg('placed_from')::timestamptz IS NULL
+    OR created_at >= sqlc.narg('placed_from')::timestamptz
+  )
+  AND (
+    sqlc.narg('placed_before')::timestamptz IS NULL
+    OR created_at < sqlc.narg('placed_before')::timestamptz
+  )
 ORDER BY created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: ListOrdersByUserCount :one
 SELECT COUNT(*)::bigint AS count
 FROM orders
-WHERE user_id = $1;
+WHERE user_id = sqlc.arg('user_id')
+  AND (
+    sqlc.narg('status')::order_status IS NULL
+    OR status = sqlc.narg('status')::order_status
+  )
+  AND (
+    sqlc.narg('placed_from')::timestamptz IS NULL
+    OR created_at >= sqlc.narg('placed_from')::timestamptz
+  )
+  AND (
+    sqlc.narg('placed_before')::timestamptz IS NULL
+    OR created_at < sqlc.narg('placed_before')::timestamptz
+  );
 
 -- name: CreateOrderItems :execrows
 -- One round trip for every checkout line: the items arrive as a JSON array and
@@ -138,6 +166,7 @@ SELECT
   o.pickup_at,
   o.created_at,
   o.updated_at,
+  o.code,
   u.email AS customer_email,
   cp.display_name AS customer_display_name
 FROM orders o
@@ -172,6 +201,7 @@ SELECT
   o.pickup_at,
   o.created_at,
   o.updated_at,
+  o.code,
   u.email AS customer_email,
   cp.display_name AS customer_display_name,
   cp.phone AS customer_phone
@@ -197,7 +227,8 @@ RETURNING
   discount_code_snapshot,
   pickup_at,
   created_at,
-  updated_at;
+  updated_at,
+  code;
 
 -- name: BakerListProductionOrders :many
 SELECT
@@ -212,6 +243,7 @@ SELECT
   o.pickup_at,
   o.created_at,
   o.updated_at,
+  o.code,
   u.email AS customer_email,
   cp.display_name AS customer_display_name
 FROM orders o
@@ -242,3 +274,30 @@ WHERE o.status IN (
     sqlc.narg('status')::order_status IS NULL
     OR o.status = sqlc.narg('status')::order_status
   );
+
+-- name: NextOrderDayNumber :one
+-- The day is read from the transaction's clock, the instant orders.created_at
+-- takes, so a code and its created_at always name the same bakery day. The row
+-- lock taken by the upsert holds every other checkout on that day until this
+-- transaction ends, so numbers are unique and follow each other.
+INSERT INTO order_day_counters (day, last_number)
+VALUES ((now() AT TIME ZONE sqlc.arg('zone')::text)::date, 1)
+ON CONFLICT (day) DO UPDATE
+SET last_number = order_day_counters.last_number + 1
+RETURNING day, last_number;
+
+-- name: CreateOrderStatusEvent :exec
+INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role)
+VALUES (
+  sqlc.arg('order_id'),
+  sqlc.narg('from_status')::order_status,
+  sqlc.arg('to_status')::order_status,
+  sqlc.arg('actor_id'),
+  sqlc.arg('actor_role')::user_role
+);
+
+-- name: ListOrderStatusEvents :many
+SELECT to_status, actor_role, created_at
+FROM order_status_events
+WHERE order_id = $1
+ORDER BY created_at ASC, id ASC;

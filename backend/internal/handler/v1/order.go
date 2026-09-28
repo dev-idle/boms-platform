@@ -51,7 +51,11 @@ func (h *OrderHandler) List(c fiber.Ctx) error {
 		c.Query("page_size", usecase.OrderListDefaultPageSizeQuery),
 		usecase.OrderListDefaultPageSize,
 	)
-	items, total, page, pageSize, err := h.usecase.List(c.Context(), userID, page, pageSize)
+	items, total, page, pageSize, err := h.usecase.List(c.Context(), userID, page, pageSize, dto.OrderHistoryQuery{
+		Status: c.Query("status"),
+		From:   c.Query("from"),
+		To:     c.Query("to"),
+	})
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

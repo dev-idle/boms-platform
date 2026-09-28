@@ -237,14 +237,17 @@ CREATE TABLE "orders" (
   "pickup_at" timestamptz NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "code" text NOT NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "orders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "orders_discount_code_id_fkey" FOREIGN KEY ("discount_code_id") REFERENCES "discount_codes" ("id") ON DELETE SET NULL,
   CONSTRAINT "orders_subtotal_cents_check" CHECK (subtotal_cents >= 0),
   CONSTRAINT "orders_discount_cents_check" CHECK (discount_cents >= 0),
   CONSTRAINT "orders_total_cents_check" CHECK (total_cents >= 0),
-  CONSTRAINT "orders_total_balance_check" CHECK (total_cents = subtotal_cents - discount_cents)
+  CONSTRAINT "orders_total_balance_check" CHECK (total_cents = subtotal_cents - discount_cents),
+  CONSTRAINT "orders_code_check" CHECK (code ~ '^CH-[0-9]{6}-[0-9]{3,}$'::text)
 );
+CREATE UNIQUE INDEX "orders_code_idx" ON "orders" ("code");
 CREATE INDEX "orders_user_id_created_at_idx" ON "orders" ("user_id", "created_at" DESC);
 CREATE INDEX "orders_production_pickup_idx" ON "orders" ("status", "pickup_at") WHERE (
   status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
@@ -274,6 +277,28 @@ CREATE TABLE "order_items" (
   )
 );
 CREATE INDEX "order_items_order_id_idx" ON "order_items" ("order_id");
+
+CREATE TABLE "order_day_counters" (
+  "day" date NOT NULL,
+  "last_number" integer NOT NULL,
+  PRIMARY KEY ("day"),
+  CONSTRAINT "order_day_counters_last_number_check" CHECK (last_number > 0)
+);
+
+CREATE TABLE "order_status_events" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "order_id" uuid NOT NULL,
+  "from_status" "order_status" NULL,
+  "to_status" "order_status" NOT NULL,
+  "actor_id" uuid NOT NULL,
+  "actor_role" "user_role" NOT NULL,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("id"),
+  CONSTRAINT "order_status_events_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
+  CONSTRAINT "order_status_events_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE CASCADE,
+  CONSTRAINT "order_status_events_move_check" CHECK (from_status IS DISTINCT FROM to_status)
+);
+CREATE INDEX "order_status_events_order_created_idx" ON "order_status_events" ("order_id", "created_at");
 
 -- Create "outbox_events" table
 CREATE TABLE "outbox_events" (

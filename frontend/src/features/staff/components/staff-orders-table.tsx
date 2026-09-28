@@ -69,6 +69,14 @@ export function StaffOrdersTable() {
 
       <DashboardTableWrap refetching={refetching}>
         <table className="db-table db-table--staff-orders db-table--comfortable">
+          <colgroup>
+            <col className="db-table-col-code" />
+            <col />
+            <col />
+            <col />
+            <col />
+            <col />
+          </colgroup>
           <thead>
             <tr>
               <th>Order</th>
@@ -92,8 +100,8 @@ export function StaffOrdersTable() {
             {!initialLoading && !ordersQuery.isError && orders.length > 0
               ? orders.map((order) => (
                   <tr key={order.id}>
-                    <td>
-                      <span className="text-order-code">{order.id.slice(0, 8)}</span>
+                    <td className="whitespace-nowrap">
+                      <span className="text-order-code">{order.code}</span>
                     </td>
                     <td>
                       <div className="db-table-stacked-cell min-w-0">

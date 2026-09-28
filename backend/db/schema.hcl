@@ -846,6 +846,11 @@ table "orders" {
     null    = false
     default = sql("now()")
   }
+  // CH-YYMMDD-NNN: the bakery day the order was placed and its number that day.
+  column "code" {
+    type = text
+    null = false
+  }
   primary_key {
     columns = [column.id]
   }
@@ -871,6 +876,13 @@ table "orders" {
   index "orders_production_pickup_idx" {
     columns = [column.status, column.pickup_at]
     where   = "status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)"
+  }
+  index "orders_code_idx" {
+    unique  = true
+    columns = [column.code]
+  }
+  check "orders_code_check" {
+    expr = "code ~ '^CH-[0-9]{6}-[0-9]{3,}$'"
   }
   check "orders_subtotal_cents_check" {
     expr = "subtotal_cents >= 0"
@@ -961,6 +973,81 @@ table "order_items" {
   }
   check "order_items_line_target_check" {
     expr = "(line_type = 'product' AND product_id IS NOT NULL AND combo_id IS NULL) OR (line_type = 'combo' AND combo_id IS NOT NULL AND product_id IS NULL)"
+  }
+}
+
+// The last order number handed out on each bakery day; checkout takes the next
+// one under this row's lock, so numbers are unique and gap-free per day.
+table "order_day_counters" {
+  schema = schema.public
+  column "day" {
+    type = date
+    null = false
+  }
+  column "last_number" {
+    type = integer
+    null = false
+  }
+  primary_key {
+    columns = [column.day]
+  }
+  check "order_day_counters_last_number_check" {
+    expr = "last_number > 0"
+  }
+}
+
+// Every status an order has entered, when, and who moved it there. from_status
+// is null for the row written when the order was placed.
+table "order_status_events" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "order_id" {
+    type = uuid
+    null = false
+  }
+  column "from_status" {
+    type = enum.order_status
+    null = true
+  }
+  column "to_status" {
+    type = enum.order_status
+    null = false
+  }
+  column "actor_id" {
+    type = uuid
+    null = false
+  }
+  column "actor_role" {
+    type = enum.user_role
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "order_status_events_order_id_fkey" {
+    columns     = [column.order_id]
+    ref_columns = [table.orders.column.id]
+    on_delete   = CASCADE
+  }
+  foreign_key "order_status_events_actor_id_fkey" {
+    columns     = [column.actor_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  index "order_status_events_order_created_idx" {
+    columns = [column.order_id, column.created_at]
+  }
+  check "order_status_events_move_check" {
+    expr = "from_status IS DISTINCT FROM to_status"
   }
 }
 

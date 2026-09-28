@@ -1727,6 +1727,11 @@
     width: var(--db-table-col-datetime);
   }
 
+  /* An order code on one line: "CH-260928-001" in mono plus the cell padding. */
+  .db-table col.db-table-col-code {
+    width: var(--db-table-col-code);
+  }
+
   .db-table--catalog col.db-table-col-thumb {
     width: var(--db-table-col-lead);
   }
@@ -2360,7 +2365,10 @@
     letter-spacing: 0.04em;
     line-height: 1.4;
     margin: 0.375rem 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     text-transform: uppercase;
+    white-space: nowrap;
   }
 
   .baker-production-row__total {
