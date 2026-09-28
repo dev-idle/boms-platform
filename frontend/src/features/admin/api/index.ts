@@ -16,6 +16,14 @@ import {
   nextEmployeeCodeSchema,
   updateRoleSchema,
   adminUserActivityLogSchema,
+  closedDateFormSchema,
+  closedDateSchema,
+  storeSettingsPatchSchema,
+  storeSettingsSchema,
+  type ClosedDate,
+  type ClosedDateFormInput,
+  type StoreSettings,
+  type StoreSettingsPatch,
   type AdminUser,
   type AdminUserActivityLog,
   type CreateOperationalInput,
@@ -161,4 +169,42 @@ export async function listUserActivity(
     pagination: parsed.pagination,
     request_id: parsed.request_id,
   };
+}
+
+export async function getStoreSettings(): Promise<StoreSettings> {
+  return browserRequest<StoreSettings>("/api/v1/admin/settings", {
+    method: "GET",
+    schema: storeSettingsSchema,
+  });
+}
+
+export async function patchStoreSettings(
+  changes: StoreSettingsPatch,
+): Promise<StoreSettings> {
+  return browserRequest<StoreSettings>("/api/v1/admin/settings", {
+    method: "PATCH",
+    json: storeSettingsPatchSchema.parse(changes),
+    schema: storeSettingsSchema,
+  });
+}
+
+export async function listClosedDates(): Promise<ClosedDate[]> {
+  return browserRequest<ClosedDate[]>("/api/v1/admin/closed-dates", {
+    method: "GET",
+    schema: z.array(closedDateSchema),
+  });
+}
+
+export async function createClosedDate(input: ClosedDateFormInput): Promise<ClosedDate> {
+  return browserRequest<ClosedDate>("/api/v1/admin/closed-dates", {
+    method: "POST",
+    json: closedDateFormSchema.parse(input),
+    schema: closedDateSchema,
+  });
+}
+
+export async function deleteClosedDate(id: string): Promise<void> {
+  await browserRequestVoid(`/api/v1/admin/closed-dates/${z.uuid().parse(id)}`, {
+    method: "DELETE",
+  });
 }

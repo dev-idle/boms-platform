@@ -9,7 +9,7 @@ import {
 import { z } from "zod";
 import { toast } from "sonner";
 
-import { isApiError } from "@/lib/errors";
+import { ApiErrorCode, isApiError } from "@/lib/errors";
 
 import {
   addCartItem,
@@ -17,6 +17,7 @@ import {
   checkoutCart,
   getCart,
   getOrder,
+  getPickupRules,
   listOrders,
   removeCartDiscount,
   removeCartItem,
@@ -122,6 +123,13 @@ export function useRemoveCartDiscount() {
   });
 }
 
+const PICKUP_REFUSALS: ReadonlySet<string> = new Set([
+  ApiErrorCode.PickupTooSoon,
+  ApiErrorCode.PickupTooFar,
+  ApiErrorCode.PickupClosedDay,
+  ApiErrorCode.PickupOutsideHours,
+]);
+
 export function useCheckoutCart() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -132,6 +140,10 @@ export function useCheckoutCart() {
       toast.success("Order placed");
     },
     onError: (error) => {
+      // The pickup rules on screen may be older than the ones checkout used.
+      if (isApiError(error) && PICKUP_REFUSALS.has(error.code)) {
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.pickupRules });
+      }
       toast.error(cartMutationErrorMessage(error, "Checkout failed"));
     },
   });
@@ -158,5 +170,13 @@ export function useOrder(id: string) {
     queryFn: () => getOrder(id),
     enabled: isValidId,
     retry: false,
+  });
+}
+
+/** The pickup window checkout enforces; refreshed live when an admin edits it. */
+export function usePickupRules() {
+  return useQuery({
+    queryKey: customerQueryKeys.pickupRules,
+    queryFn: getPickupRules,
   });
 }

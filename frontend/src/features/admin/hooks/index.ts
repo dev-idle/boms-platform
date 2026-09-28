@@ -10,13 +10,18 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import {
+  createClosedDate,
   createOperational,
+  deleteClosedDate,
   disableUser,
   enableUser,
   getNextEmployeeCode,
+  getStoreSettings,
   getUserById,
+  listClosedDates,
   listUsers,
   listUserActivity,
+  patchStoreSettings,
   resetUserPassword,
   revokeUserSessions,
   updateRole,
@@ -26,9 +31,11 @@ import {
   userActivityFilterSchema,
   type AdminUser,
   type AdminResetPasswordResponse,
+  type ClosedDateFormInput,
   type CreateOperationalInput,
   type CreateOperationalResponse,
   type ListFilterInput,
+  type StoreSettingsPatch,
   type UpdateRoleInput,
   type UserActivityFilterInput,
 } from "../schemas";
@@ -199,5 +206,52 @@ export function useUserActivity(userId: string, input: UserActivityFilterInput) 
     queryFn: () => listUserActivity(userId, filter),
     enabled: Boolean(userId),
     placeholderData: keepPreviousData,
+  });
+}
+
+export function useStoreSettings() {
+  return useQuery({
+    queryKey: adminQueryKeys.storeSettings,
+    queryFn: getStoreSettings,
+  });
+}
+
+export function usePatchStoreSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (changes: StoreSettingsPatch) => patchStoreSettings(changes),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(adminQueryKeys.storeSettings, settings);
+      toast.success("Pickup rules saved");
+    },
+  });
+}
+
+export function useClosedDates() {
+  return useQuery({
+    queryKey: adminQueryKeys.closedDates,
+    queryFn: listClosedDates,
+  });
+}
+
+export function useCreateClosedDate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ClosedDateFormInput) => createClosedDate(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.closedDates });
+      toast.success("Closed day added");
+    },
+  });
+}
+
+export function useDeleteClosedDate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteClosedDate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.closedDates });
+      toast.success("The bakery is open that day again");
+    },
   });
 }

@@ -1,6 +1,7 @@
 // Package eventbus carries committed events over Redis Pub/Sub to every API
-// process, one channel per user and per role. The channel names and the message
-// shape here are the contract the realtime subscribers read.
+// process: one channel per user, one per role, and one for public notices. The
+// channel names and the message shape here are the contract the realtime
+// subscribers read.
 package eventbus
 
 import (
@@ -28,6 +29,9 @@ func UserChannel(id uuid.UUID) string {
 func RoleChannel(role domainuser.Role) string {
 	return channelPrefix + "role:" + string(role)
 }
+
+// PublicChannel carries notices with nothing private in them, for every page.
+const PublicChannel = channelPrefix + "public"
 
 // message is what a subscriber receives: which change happened and where to
 // look again. It never carries the changed record.
@@ -69,6 +73,9 @@ func (p *RedisPublisher) Publish(ctx context.Context, events []domainevent.Event
 		}
 		for _, role := range e.Audience.Roles {
 			pipe.Publish(ctx, RoleChannel(role), payload)
+		}
+		if e.Audience.Public {
+			pipe.Publish(ctx, PublicChannel, payload)
 		}
 	}
 	if _, err := pipe.Exec(ctx); err != nil {

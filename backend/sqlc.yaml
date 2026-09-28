@@ -35,6 +35,9 @@ sql:
             go_type:
               type: "time.Time"
               pointer: true
+          # A calendar day with no zone; the domain reads it at midnight UTC.
+          - db_type: "date"
+            go_type: "time.Time"
           - db_type: "jsonb"
             go_type: "encoding/json.RawMessage"
           - db_type: "citext"

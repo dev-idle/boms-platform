@@ -1,0 +1,37 @@
+{
+  "$comment": "One set of cases for both implementations of the pickup rules: backend/internal/domain/store/clock.go + backend/internal/domain/order/pickup.go (PickupPolicy.Validate), and frontend/src/lib/validation/clock.ts + frontend/src/lib/validation/pickup.ts (pickupProblem). Both test suites read this file. Times are bakery wall-clock (Asia/Ho_Chi_Minh, YYYY-MM-DDTHH:MM); a problem is the backend error code without its pickup_ prefix, or null when checkout accepts the time. Add cases here, not in either test.",
+  "clock": {
+    "valid": [
+      { "text": "00:00", "minutes": 0 },
+      { "text": "08:30", "minutes": 510 },
+      { "text": "18:00", "minutes": 1080 },
+      { "text": "23:59", "minutes": 1439 }
+    ],
+    "invalid": ["", "8:30", "08:3", "08-30", "0830", "08:30:00", " 8:30", "24:00", "25:00", "08:60", "ab:cd", "-1:00"]
+  },
+  "policy": {
+    "rules": {
+      "opens_at": "08:00",
+      "closes_at": "18:00",
+      "preorder_min_lead_minutes": 120,
+      "max_advance_days": 14,
+      "closed_dates": ["2026-07-13"]
+    },
+    "now": "2026-07-10T10:00",
+    "cases": [
+      { "at": "", "problem": "missing" },
+      { "at": "2026-07-10T11:59", "problem": "too_soon" },
+      { "at": "2026-07-10T12:00", "problem": null },
+      { "at": "2026-07-10T14:00", "problem": null },
+      { "at": "2026-07-10T17:59", "problem": null },
+      { "at": "2026-07-10T18:00", "problem": "outside_hours" },
+      { "at": "2026-07-11T07:59", "problem": "outside_hours" },
+      { "at": "2026-07-11T08:00", "problem": null },
+      { "at": "2026-07-13T12:00", "problem": "closed_day" },
+      { "at": "2026-07-13T03:00", "problem": "closed_day" },
+      { "at": "2026-07-14T12:00", "problem": null },
+      { "at": "2026-07-24T10:00", "problem": null },
+      { "at": "2026-07-24T10:01", "problem": "too_far" }
+    ]
+  }
+}

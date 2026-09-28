@@ -2135,6 +2135,11 @@
     margin-block-start: 0.5rem;
   }
 
+  /* Kept mounted as a live region; it takes no room while it has nothing to say. */
+  .storefront-cart-summary__pickup-error:empty {
+    margin-block-start: 0;
+  }
+
   /* Status = 6px dot + micro-label, never a filled pill. */
   .storefront-order-progress {
     display: grid;

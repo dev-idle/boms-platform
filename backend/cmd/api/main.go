@@ -105,10 +105,13 @@ func main() {
 	cartRepo := postgresrepo.NewCartRepository(pgPool)
 	orderRepo := postgresrepo.NewOrderRepository(pgPool)
 	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo)
+	storeSettingsRepo := postgresrepo.NewStoreSettingsRepository(pgPool)
 	outboxRepo := postgresrepo.NewOutboxRepository(pgPool)
 	eventDispatcher := eventdispatch.New(outboxRepo, eventbus.NewRedisPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
 	pgPool.OnCommit(eventDispatcher.AfterCommit)
-	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo)
+	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo)
+	storeUC := usecase.NewStoreUsecase(storeSettingsRepo)
+	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerOrderUC := usecase.NewBakerOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -132,6 +135,8 @@ func main() {
 	staffOrderHandler := v1.NewStaffOrderHandler(staffOrderUC)
 	bakerOrderHandler := v1.NewBakerOrderHandler(bakerOrderUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
+	storeHandler := v1.NewStoreHandler(storeUC)
+	adminStoreSettingsHandler := v1.NewAdminStoreSettingsHandler(adminStoreSettingsUC)
 
 	var asynqClose func() error
 	if cfg.Asynq.Enabled {
@@ -216,6 +221,25 @@ func main() {
 	adminWrite.Post("/:id/reset-password", adminUserHandler.PostResetPassword)
 	adminWrite.Post("/:id/revoke-sessions", adminUserHandler.RevokeSessions)
 
+	adminSettings := apiV1.Group(
+		"/admin/settings",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleAdmin),
+		passwordChanged,
+	)
+	adminSettings.Get("", adminStoreSettingsHandler.Get)
+	adminSettings.Patch("", middleware.AdminWriteRateLimit(rdb, cfg.RateRedis), adminStoreSettingsHandler.Patch)
+
+	adminClosedDates := apiV1.Group(
+		"/admin/closed-dates",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleAdmin),
+		passwordChanged,
+	)
+	adminClosedDates.Get("", adminStoreSettingsHandler.ListClosedDates)
+	adminClosedDates.Post("", middleware.AdminWriteRateLimit(rdb, cfg.RateRedis), adminStoreSettingsHandler.CreateClosedDate)
+	adminClosedDates.Delete("/:id", middleware.AdminWriteRateLimit(rdb, cfg.RateRedis), adminStoreSettingsHandler.DeleteClosedDate)
+
 	// Public storefront read — proxy secret only; no JWT (guest browse).
 	catalogRead := apiV1.Group("/catalog")
 	catalogRead.Get("/categories", catalogHandler.ListCategories)
@@ -223,6 +247,9 @@ func main() {
 	catalogRead.Get("/products/:id", catalogHandler.GetProduct)
 	catalogRead.Get("/combos", catalogHandler.ListCombos)
 	catalogRead.Get("/combos/:id", catalogHandler.GetCombo)
+
+	// Public: the checkout picker needs the pickup rules before anyone signs in.
+	apiV1.Get("/store/pickup-rules", storeHandler.PickupRules)
 
 	customerCart := customerSessionGroup(apiV1, "/cart", tokenSigner, sessionStore, passwordChanged)
 	customerCart.Get("", cartHandler.Get)

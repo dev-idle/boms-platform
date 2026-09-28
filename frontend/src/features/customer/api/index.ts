@@ -14,6 +14,7 @@ import {
   orderSchema,
   orderSummarySchema,
   ordersListFilterSchema,
+  pickupRulesSchema,
   updateCartItemInputSchema,
   type AddCartItemInput,
   type ApplyCartDiscountInput,
@@ -22,6 +23,7 @@ import {
   type Order,
   type OrdersListFilterInput,
   type OrdersListResult,
+  type PickupRules,
   type UpdateCartItemInput,
 } from "../schemas";
 
@@ -116,5 +118,13 @@ export async function getOrder(id: string): Promise<Order> {
   return browserRequest<Order>(`/api/v1/orders/${parsedId}`, {
     method: "GET",
     schema: orderSchema,
+  });
+}
+
+/** The pickup window checkout enforces; public, like the catalog. */
+export async function getPickupRules(): Promise<PickupRules> {
+  return browserRequest<PickupRules>("/api/v1/store/pickup-rules", {
+    method: "GET",
+    schema: pickupRulesSchema,
   });
 }

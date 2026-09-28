@@ -16,10 +16,12 @@ import (
 // Topic names what changed. Values are part of the wire contract with clients.
 type Topic string
 
-// Audience lists who is told about an event: individual users and whole roles.
+// Audience lists who is told about an event: individual users, whole roles,
+// or — for a notice that carries nothing private — everyone with a page open.
 type Audience struct {
 	UserIDs []uuid.UUID
 	Roles   []domainuser.Role
+	Public  bool
 }
 
 // Event is one change notice. Data carries identifiers and labels only.

@@ -25,6 +25,14 @@ describe("customerQueryKeysForEvent", () => {
   });
 
   it("ignores events it does not know", () => {
-    expect(customerQueryKeysForEvent({ type: "settings.updated", data: {} })).toEqual([]);
+    expect(customerQueryKeysForEvent({ type: "catalog.updated", data: {} })).toEqual([]);
+  });
+});
+
+describe("customerQueryKeysForEvent for settings", () => {
+  it("refreshes the pickup window when an admin changes it", () => {
+    expect(customerQueryKeysForEvent({ type: "settings.updated", data: {} })).toEqual([
+      customerQueryKeys.pickupRules,
+    ]);
   });
 });

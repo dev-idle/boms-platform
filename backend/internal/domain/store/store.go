@@ -1,0 +1,115 @@
+// Package store holds the bakery's operating settings: when it hands out
+// pickups and which days it is closed. Admins edit them; checkout enforces them.
+package store
+
+import (
+	"strings"
+	"time"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/google/uuid"
+)
+
+// Location is the bakery's time zone. It is fixed rather than a setting: the
+// bakery does not move, and every stored hour is read in this zone.
+// Asia/Ho_Chi_Minh keeps one offset all year.
+var Location = time.FixedZone("Asia/Ho_Chi_Minh", 7*60*60)
+
+// DayLayout is how a calendar day is written in the API.
+const DayLayout = "2006-01-02"
+
+// MaxAdvanceDaysLimit is the longest booking window an admin may set, so the
+// closed days a checkout can meet are known before the settings are read.
+const MaxAdvanceDaysLimit = 90
+
+// MaxPreorderMinLead is the longest pre-order notice an admin may require.
+const MaxPreorderMinLead = 7 * 24 * time.Hour
+
+const (
+	minAdvanceDays = 1
+	// maxClosedDateAhead bounds how far ahead a closure may be planned, which
+	// also bounds any list of closed dates.
+	maxClosedDateAhead = 365
+	maxReasonLength    = 200
+)
+
+// Settings are the pickup rules in force. Hours are offsets from local
+// midnight within one day: a pickup is allowed from OpensAt up to, not
+// including, ClosesAt.
+type Settings struct {
+	OpensAt         time.Duration
+	ClosesAt        time.Duration
+	PreorderMinLead time.Duration
+	MaxAdvanceDays  int
+	UpdatedAt       time.Time
+}
+
+// Validate reports the first rule the settings break.
+func (s Settings) Validate() error {
+	if !wholeMinutes(s.OpensAt) || !wholeMinutes(s.ClosesAt) ||
+		s.OpensAt < 0 || s.ClosesAt >= 24*time.Hour || s.OpensAt >= s.ClosesAt {
+		return ErrInvalidHours
+	}
+	if s.MaxAdvanceDays < minAdvanceDays || s.MaxAdvanceDays > MaxAdvanceDaysLimit {
+		return ErrInvalidAdvanceDays
+	}
+	// A lead time as long as the booking window would leave no pickup time.
+	if !wholeMinutes(s.PreorderMinLead) || s.PreorderMinLead < 0 ||
+		s.PreorderMinLead > MaxPreorderMinLead ||
+		s.PreorderMinLead >= time.Duration(s.MaxAdvanceDays)*24*time.Hour {
+		return ErrInvalidLeadTime
+	}
+	return nil
+}
+
+func wholeMinutes(d time.Duration) bool {
+	return d%time.Minute == 0
+}
+
+// DayOf is the bakery-local calendar day of t, held at midnight UTC so it
+// compares and stores as the plain date it is.
+func DayOf(t time.Time) time.Time {
+	y, m, d := t.In(Location).Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+// ClosedDate is a day the bakery takes no pickups, with the reason customers see.
+type ClosedDate struct {
+	ID        uuid.UUID
+	Day       time.Time
+	Reason    string
+	CreatedAt time.Time
+}
+
+// ClosedDateWindow is the span of days a closure may be planned for, counted
+// from the bakery-local day of now: today through a year ahead.
+func ClosedDateWindow(now time.Time) (from, to time.Time) {
+	from = DayOf(now)
+	return from, from.AddDate(0, 0, maxClosedDateAhead)
+}
+
+// NewClosedDate checks a closure an admin is adding and returns its trimmed reason.
+func NewClosedDate(day time.Time, reason string, now time.Time) (string, error) {
+	from, to := ClosedDateWindow(now)
+	if day.Before(from) || day.After(to) {
+		return "", ErrClosedDateOutOfRange
+	}
+	reason = strings.TrimSpace(reason)
+	if reason == "" || utf8.RuneCountInString(reason) > maxReasonLength || !plainText(reason) {
+		return "", ErrInvalidClosedDateReason
+	}
+	return reason, nil
+}
+
+// plainText rejects control and invisible formatting characters: every visitor
+// reads the reason, and a direction override or a zero-width character would
+// make it read differently from what was saved.
+func plainText(s string) bool {
+	for _, r := range s {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
+			return false
+		}
+	}
+	return true
+}

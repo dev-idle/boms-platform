@@ -16,6 +16,7 @@ import (
 	"github.com/boms/backend/internal/adapter/eventbus"
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
@@ -88,9 +89,10 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	orders := postgresadapter.NewOrderRepository(pool)
 	discounts := postgresadapter.NewDiscountCodeRepository(pool)
 	outbox := postgresadapter.NewOutboxRepository(pool)
+	store := postgresadapter.NewStoreSettingsRepository(pool)
 
 	cartUC := usecase.NewCartUsecase(carts, products, combos, discounts)
-	orderUC := usecase.NewOrderUsecase(orders, carts, discounts, cartUC, pool, outbox)
+	orderUC := usecase.NewOrderUsecase(orders, carts, discounts, cartUC, pool, outbox, store)
 
 	customer, err := users.Create(ctx, port.CreateUserParams{
 		Email: "outbox-checkout@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,
@@ -119,10 +121,9 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	assert.Equal(t, []string{order.ID}, created)
 }
 
-// nextPickupSlot is tomorrow at 10:00 bakery time: inside opening hours, past
-// the minimum lead time and within the booking window.
+// nextPickupSlot is tomorrow at 10:00 bakery time: inside the seeded opening
+// hours, past the seeded lead time and within the seeded booking window.
 func nextPickupSlot(now time.Time) time.Time {
-	bakery := time.FixedZone("Asia/Ho_Chi_Minh", 7*60*60)
-	local := now.In(bakery).AddDate(0, 0, 1)
-	return time.Date(local.Year(), local.Month(), local.Day(), 10, 0, 0, 0, bakery)
+	local := now.In(domainstore.Location).AddDate(0, 0, 1)
+	return time.Date(local.Year(), local.Month(), local.Day(), 10, 0, 0, 0, domainstore.Location)
 }

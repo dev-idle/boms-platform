@@ -355,6 +355,20 @@ func TestServerDelivery(t *testing.T) {
 		assert.Equal(t, "mine", payload)
 	})
 
+	t.Run("every_socket_hears_public_notices", func(t *testing.T) {
+		t.Parallel()
+		h := newHarness(t, nil)
+		for _, role := range []domainuser.Role{domainuser.RoleCustomer, domainuser.RoleStaff} {
+			token, _ := h.ticket(t, role)
+			conn, _ := h.dial(t, token, testOrigin)
+			h.hub.Deliver(eventbus.PublicChannel, []byte("settings"))
+
+			payload, err := read(t, conn)
+			require.NoError(t, err)
+			assert.Equal(t, "settings", payload, string(role))
+		}
+	})
+
 	t.Run("staff_hears_its_role_channel", func(t *testing.T) {
 		t.Parallel()
 		h := newHarness(t, nil)

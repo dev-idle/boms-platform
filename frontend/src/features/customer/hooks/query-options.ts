@@ -6,6 +6,7 @@ import type { OrdersListFilterInput } from "../schemas";
 
 export const customerQueryKeys = {
   cart: ["customer", "cart"] as const,
+  pickupRules: ["customer", "pickup-rules"] as const,
   ordersRoot: ["customer", "orders"] as const,
   orders: (filter: OrdersListFilterInput) =>
     [...customerQueryKeys.ordersRoot, filter] as const,
@@ -16,13 +17,15 @@ export const customerQueryKeys = {
 /** Everything pushed events can change in a customer tab, refetched after a gap. */
 export const customerLiveQueryKeys: readonly QueryKey[] = [
   customerQueryKeys.cart,
+  customerQueryKeys.pickupRules,
   customerQueryKeys.ordersRoot,
   customerQueryKeys.orderRoot,
 ];
 
 /**
- * Queries an order event makes stale in a customer tab. Checkout empties the
- * cart, so a new order placed in another tab refreshes the cart here too.
+ * Queries a pushed event makes stale in a customer tab. Checkout empties the
+ * cart, so a new order placed in another tab refreshes the cart here too; a
+ * settings change refreshes the pickup window the cart offers.
  */
 export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -35,6 +38,8 @@ export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
         orderId ? customerQueryKeys.order(orderId) : customerQueryKeys.orderRoot,
       ];
     }
+    case REALTIME_EVENT_TYPE.settingsUpdated:
+      return [customerQueryKeys.pickupRules];
     default:
       return [];
   }

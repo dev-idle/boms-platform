@@ -97,6 +97,11 @@ var (
 	ErrProductUnavailable           = New(http.StatusUnprocessableEntity, "product_unavailable", "Product is not available")
 	ErrComboUnavailable             = New(http.StatusUnprocessableEntity, "combo_unavailable", "Combo is not available")
 	ErrInvalidOrderStatusTransition = New(http.StatusUnprocessableEntity, "invalid_order_status_transition", "Invalid order status transition")
+	ErrPickupTooSoon                = New(http.StatusUnprocessableEntity, "pickup_too_soon", "Pickup time is sooner than the bakery can prepare the order")
+	ErrPickupTooFar                 = New(http.StatusUnprocessableEntity, "pickup_too_far", "Pickup time is further ahead than the bakery takes orders")
+	ErrPickupClosedDay              = New(http.StatusUnprocessableEntity, "pickup_closed_day", "The bakery is closed on that day")
+	ErrPickupOutsideHours           = New(http.StatusUnprocessableEntity, "pickup_outside_hours", "Pickup time is outside opening hours")
+	ErrClosedDateExists             = New(http.StatusConflict, "closed_date_exists", "That day is already closed")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

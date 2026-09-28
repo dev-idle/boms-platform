@@ -8,7 +8,7 @@
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/account/*
- *   - Admin:    /admin, /admin/users, /admin/account/*
+ *   - Admin:    /admin, /admin/users, /admin/settings, /admin/account/*
  */
 export const ROUTE = {
   home: "/",
@@ -70,6 +70,7 @@ export const ROUTE = {
     users: "/admin/users",
     usersNew: "/admin/users/new",
     userDetail: (id: string) => `/admin/users/${id}`,
+    settings: "/admin/settings",
     account: {
       root: "/admin/account",
       profile: "/admin/account/profile",

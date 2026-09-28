@@ -1,9 +1,5 @@
-/** Bakery pickup window — keep aligned with backend domain/order/pickup.go */
-export const PICKUP_RULES = {
-  minLeadHours: 2,
-  maxAdvanceDays: 14,
-  openHour: 8,
-  closeHour: 18,
+/** The bakery's time zone — fixed, as in backend `domain/store.Location`. */
+export const PICKUP_ZONE = {
   timeZone: "Asia/Ho_Chi_Minh",
   /** Fixed offset for Asia/Ho_Chi_Minh (no DST); single source for serialization math. */
   utcOffsetMinutes: 7 * 60,
@@ -11,8 +7,8 @@ export const PICKUP_RULES = {
 
 export const PICKUP_COPY = {
   label: "Pickup time",
-  hint: "Select when you will collect your order at the bakery (8:00 AM–6:00 PM, at least 2 hours from now, up to 14 days ahead).",
   required: "Choose a pickup time to continue checkout.",
-  outsideWindow:
-    "Pickup must be 8:00 AM–6:00 PM bakery time, at least 2 hours from now and within 14 days.",
+  loading: "Loading pickup times…",
+  unavailable: "Pickup times could not be loaded. Try again in a moment.",
+  noOpenTime: "The bakery has no open pickup time in its booking window.",
 } as const;

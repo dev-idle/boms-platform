@@ -524,6 +524,12 @@ type Querier interface {
 	//  VALUES ($1, $2, $3, $4)
 	//  RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 	CreateStaffProfile(ctx context.Context, arg CreateStaffProfileParams) (StaffProfile, error)
+	//CreateStoreClosedDate
+	//
+	//  INSERT INTO store_closed_dates (closed_on, reason)
+	//  VALUES ($1, $2)
+	//  RETURNING id, closed_on, reason, created_at
+	CreateStoreClosedDate(ctx context.Context, arg CreateStoreClosedDateParams) (CreateStoreClosedDateRow, error)
 	//CreateUser
 	//
 	//  INSERT INTO users (email, password_hash, role, must_change_password)
@@ -699,6 +705,19 @@ type Querier interface {
 	//  FROM staff_profiles
 	//  WHERE user_id = $1
 	GetStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (StaffProfile, error)
+	//GetStoreSettings
+	//
+	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+	//  FROM store_settings
+	//  WHERE id = 1
+	GetStoreSettings(ctx context.Context) (GetStoreSettingsRow, error)
+	// Locks the row so two admins editing at once cannot undo each other.
+	//
+	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+	//  FROM store_settings
+	//  WHERE id = 1
+	//  FOR UPDATE
+	GetStoreSettingsForUpdate(ctx context.Context) (GetStoreSettingsForUpdateRow, error)
 	//GetUserByEmail
 	//
 	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
@@ -886,6 +905,16 @@ type Querier interface {
 	//  WHERE product_id = $1
 	//  ORDER BY sort_order ASC
 	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]ListProductImagesByProductIDRow, error)
+	// Days in [from_day, to_day]; the caller bounds the window, and one row per
+	// day keeps the result bounded by it.
+	//
+	//  SELECT id, closed_on, reason, created_at
+	//  FROM store_closed_dates
+	//  WHERE deleted_at IS NULL
+	//    AND closed_on BETWEEN $1::date AND $2::date
+	//  ORDER BY closed_on
+	//  LIMIT $3::int
+	ListStoreClosedDates(ctx context.Context, arg ListStoreClosedDatesParams) ([]ListStoreClosedDatesRow, error)
 	// Phones live in three profile tables, so no single unique index can guard them.
 	// This lock (namespace 8734212, keyed by the number) serializes writers of one
 	// number until the transaction ends.
@@ -1184,6 +1213,13 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	SoftDeleteProduct(ctx context.Context, id uuid.UUID) (int64, error)
+	//SoftDeleteStoreClosedDate
+	//
+	//  UPDATE store_closed_dates
+	//  SET deleted_at = now(), updated_at = now()
+	//  WHERE id = $1 AND deleted_at IS NULL
+	//  RETURNING id, closed_on, reason, created_at
+	SoftDeleteStoreClosedDate(ctx context.Context, id uuid.UUID) (SoftDeleteStoreClosedDateRow, error)
 	//StaffGetOrderByID
 	//
 	//  SELECT
@@ -1384,6 +1420,17 @@ type Querier interface {
 	//  WHERE user_id = $1
 	//  RETURNING user_id, full_name, phone, employee_code, created_at, updated_at
 	UpdateStaffProfileByUserID(ctx context.Context, arg UpdateStaffProfileByUserIDParams) (StaffProfile, error)
+	//UpdateStoreSettings
+	//
+	//  UPDATE store_settings
+	//  SET opens_at_minute = $1,
+	//      closes_at_minute = $2,
+	//      preorder_min_lead_minutes = $3,
+	//      max_advance_days = $4,
+	//      updated_at = now()
+	//  WHERE id = 1
+	//  RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, updated_at
+	UpdateStoreSettings(ctx context.Context, arg UpdateStoreSettingsParams) (UpdateStoreSettingsRow, error)
 	//UpdateUserPassword
 	//
 	//  UPDATE users

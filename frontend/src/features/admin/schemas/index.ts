@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { USER_ROLE } from "@/constants/roles";
+import { clockTimeSchema, clockToMinutes } from "@/lib/validation/clock";
+import { apiDateTimeSchema } from "@/lib/validation/datetime";
 import { vietnamPhoneZodString } from "@/lib/validation/phone";
 import type { PaginatedListResult } from "@/lib/pagination/parse-paginated-list";
 
@@ -149,3 +151,76 @@ export type UserActivityListResult = {
   pagination: PaginatedListResult<AdminUserActivityLog>["pagination"];
   request_id?: string;
 };
+
+/** GET/PATCH /api/v1/admin/settings — the pickup rules an admin edits. */
+export const storeSettingsSchema = z.object({
+  opens_at: clockTimeSchema,
+  closes_at: clockTimeSchema,
+  preorder_min_lead_minutes: z.number().int().min(0),
+  max_advance_days: z.number().int().min(1),
+  updated_at: apiDateTimeSchema,
+});
+
+/** Bounds of backend `store.Settings`: at most seven days' notice, 1 to 90 days ahead. */
+export const MAX_PREORDER_LEAD_MINUTES = 7 * 24 * 60;
+export const MIN_ADVANCE_DAYS = 1;
+export const MAX_ADVANCE_DAYS = 90;
+
+const storeSettingsFieldsSchema = z.object({
+  opens_at: clockTimeSchema,
+  closes_at: clockTimeSchema,
+  preorder_min_lead_minutes: z
+    .number({ error: "Enter the notice in minutes" })
+    .int()
+    .min(0)
+    .max(MAX_PREORDER_LEAD_MINUTES, `At most ${MAX_PREORDER_LEAD_MINUTES} minutes (7 days)`),
+  max_advance_days: z
+    .number({ error: "Enter the number of days" })
+    .int()
+    .min(MIN_ADVANCE_DAYS, `At least ${MIN_ADVANCE_DAYS} day`)
+    .max(MAX_ADVANCE_DAYS, `At most ${MAX_ADVANCE_DAYS} days`),
+});
+
+/**
+ * PATCH /api/v1/admin/settings — only the fields the admin changed, so an edit
+ * never overwrites a setting someone else saved meanwhile. The server checks
+ * the merged result.
+ */
+export const storeSettingsPatchSchema = storeSettingsFieldsSchema.partial();
+
+/** The settings form; mirrors backend `store.Settings.Validate`. */
+export const storeSettingsFormSchema = storeSettingsFieldsSchema
+  .refine((v) => clockToMinutes(v.opens_at) < clockToMinutes(v.closes_at), {
+    path: ["closes_at"],
+    message: "Closing time must be after opening time",
+  })
+  .refine((v) => v.preorder_min_lead_minutes < v.max_advance_days * 24 * 60, {
+    path: ["preorder_min_lead_minutes"],
+    message: "Notice must be shorter than the booking window",
+  });
+
+/** GET /api/v1/admin/closed-dates — a day the bakery takes no pickups. */
+export const closedDateSchema = z.object({
+  id: z.uuid(),
+  date: z.iso.date(),
+  reason: z.string().min(1),
+  created_at: apiDateTimeSchema,
+});
+
+export const closedDateFormSchema = z.object({
+  date: z.iso.date("Choose a day"),
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Tell customers why the bakery is closed")
+    .max(200, "At most 200 characters")
+    // Mirrors the backend: every visitor reads it, so no control or invisible
+    // formatting characters that would make it read differently.
+    .refine((value) => !/[\p{Cc}\p{Cf}]/u.test(value), "Use plain text only"),
+});
+
+export type StoreSettings = z.infer<typeof storeSettingsSchema>;
+export type StoreSettingsFormInput = z.infer<typeof storeSettingsFormSchema>;
+export type StoreSettingsPatch = z.infer<typeof storeSettingsPatchSchema>;
+export type ClosedDate = z.infer<typeof closedDateSchema>;
+export type ClosedDateFormInput = z.infer<typeof closedDateFormSchema>;

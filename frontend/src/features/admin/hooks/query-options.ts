@@ -9,4 +9,6 @@ export const adminQueryKeys = {
   userActivity: (id: string, filter: UserActivityFilterInput) =>
     ["admin", "user", id, "activity", filter.page, filter.page_size] as const,
   userActivityRoot: (id: string) => ["admin", "user", id, "activity"] as const,
+  storeSettings: ["admin", "store-settings"] as const,
+  closedDates: ["admin", "closed-dates"] as const,
 };

@@ -12,6 +12,7 @@ import (
 
 	domainevent "github.com/boms/backend/internal/domain/event"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 )
 
 // The browser acts on two things this package and the domain define: the event
@@ -29,6 +30,7 @@ var (
 var publishedTopics = []domainevent.Topic{
 	domainorder.TopicOrderCreated,
 	domainorder.TopicOrderStatusChanged,
+	domainstore.TopicSettingsUpdated,
 }
 
 func TestRealtimeContractMatchesTheFrontend(t *testing.T) {

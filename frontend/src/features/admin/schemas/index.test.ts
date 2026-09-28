@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { USER_ROLE } from "@/constants/roles";
 
-import { createOperationalSchema, updateRoleSchema } from "./index";
+import {
+  closedDateFormSchema,
+  createOperationalSchema,
+  storeSettingsFormSchema,
+  updateRoleSchema,
+} from "./index";
 
 /**
  * An operational full name is the identity shown in the sidebar and in the
@@ -55,5 +60,42 @@ describe("operational full name", () => {
       phone: "",
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("store settings form", () => {
+  const valid = {
+    opens_at: "08:00",
+    closes_at: "18:00",
+    preorder_min_lead_minutes: 120,
+    max_advance_days: 14,
+  };
+
+  it("accepts the seeded rules", () => {
+    expect(storeSettingsFormSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("names the field an impossible rule breaks", () => {
+    const paths = (input: object) => {
+      const result = storeSettingsFormSchema.safeParse({ ...valid, ...input });
+      return result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
+    };
+    expect(paths({ closes_at: "07:00" })).toEqual(["closes_at"]);
+    expect(paths({ max_advance_days: 1, preorder_min_lead_minutes: 1440 })).toEqual([
+      "preorder_min_lead_minutes",
+    ]);
+    expect(paths({ max_advance_days: 91 })).toEqual(["max_advance_days"]);
+  });
+});
+
+describe("closed day form", () => {
+  it("accepts a day with a plain reason", () => {
+    expect(closedDateFormSchema.safeParse({ date: "2026-10-20", reason: "Staff training" }).success).toBe(true);
+  });
+
+  it("refuses control and invisible formatting characters", () => {
+    for (const reason of ["Closed\nearly", "Tet \u202eyadiloh", "Zero\u200bwidth"]) {
+      expect(closedDateFormSchema.safeParse({ date: "2026-10-20", reason }).success).toBe(false);
+    }
   });
 });

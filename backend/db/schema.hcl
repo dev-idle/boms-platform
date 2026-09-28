@@ -1018,3 +1018,93 @@ table "outbox_events" {
     where   = "(published_at IS NOT NULL)"
   }
 }
+
+// The bakery's pickup settings, edited by admins. Exactly one row (id = 1),
+// seeded with the rules that were constants before.
+table "store_settings" {
+  schema = schema.public
+  column "id" {
+    type    = smallint
+    null    = false
+    default = 1
+  }
+  column "opens_at_minute" {
+    type = smallint
+    null = false
+  }
+  column "closes_at_minute" {
+    type = smallint
+    null = false
+  }
+  column "preorder_min_lead_minutes" {
+    type = int
+    null = false
+  }
+  column "max_advance_days" {
+    type = smallint
+    null = false
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  check "store_settings_singleton_check" {
+    expr = "id = 1"
+  }
+  check "store_settings_hours_check" {
+    expr = "opens_at_minute >= 0 AND closes_at_minute < 1440 AND opens_at_minute < closes_at_minute"
+  }
+  check "store_settings_lead_check" {
+    expr = "preorder_min_lead_minutes >= 0 AND preorder_min_lead_minutes <= 10080"
+  }
+  check "store_settings_advance_check" {
+    expr = "max_advance_days >= 1 AND max_advance_days <= 90"
+  }
+}
+
+// Days the bakery takes no pickups, with the reason customers are shown.
+table "store_closed_dates" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "closed_on" {
+    type = date
+    null = false
+  }
+  column "reason" {
+    type = text
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "deleted_at" {
+    type = timestamptz
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "store_closed_dates_day_idx" {
+    unique  = true
+    columns = [column.closed_on]
+    where   = "(deleted_at IS NULL)"
+  }
+  check "store_closed_dates_reason_check" {
+    expr = "char_length(reason) >= 1 AND char_length(reason) <= 200"
+  }
+}

@@ -14,6 +14,7 @@ import (
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/middleware"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -55,6 +56,18 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "cart_empty", err: domaincart.ErrEmpty, wantStatus: 422, wantCode: "cart_empty"},
 		{name: "product_unavailable", err: domaincart.ErrProductUnavailable, wantStatus: 422, wantCode: "product_unavailable"},
 		{name: "invalid_order_status_transition", err: domainorder.ErrInvalidStatusTransition, wantStatus: 422, wantCode: "invalid_order_status_transition"},
+		{name: "invalid_pickup_at", err: domainorder.ErrInvalidPickupAt, wantStatus: 400, wantCode: "validation_error"},
+		{name: "pickup_too_soon", err: domainorder.ErrPickupTooSoon, wantStatus: 422, wantCode: "pickup_too_soon"},
+		{name: "pickup_too_far", err: domainorder.ErrPickupTooFar, wantStatus: 422, wantCode: "pickup_too_far"},
+		{name: "pickup_closed_day", err: domainorder.ErrPickupClosedDay, wantStatus: 422, wantCode: "pickup_closed_day"},
+		{name: "pickup_outside_hours", err: domainorder.ErrPickupOutsideHours, wantStatus: 422, wantCode: "pickup_outside_hours"},
+		{name: "store_invalid_hours", err: domainstore.ErrInvalidHours, wantStatus: 400, wantCode: "validation_error"},
+		{name: "store_invalid_lead_time", err: domainstore.ErrInvalidLeadTime, wantStatus: 400, wantCode: "validation_error"},
+		{name: "store_invalid_advance_days", err: domainstore.ErrInvalidAdvanceDays, wantStatus: 400, wantCode: "validation_error"},
+		{name: "closed_date_out_of_range", err: domainstore.ErrClosedDateOutOfRange, wantStatus: 400, wantCode: "validation_error"},
+		{name: "closed_date_reason", err: domainstore.ErrInvalidClosedDateReason, wantStatus: 400, wantCode: "validation_error"},
+		{name: "closed_date_exists", err: domainstore.ErrClosedDateExists, wantStatus: 409, wantCode: "closed_date_exists"},
+		{name: "closed_date_not_found", err: domainstore.ErrClosedDateNotFound, wantStatus: 404, wantCode: "not_found"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

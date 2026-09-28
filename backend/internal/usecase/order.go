@@ -26,6 +26,7 @@ type OrderUsecase struct {
 	cartUC   *CartUsecase
 	tx       port.TxManager
 	events   port.EventOutbox
+	store    port.StoreSettingsRepository
 }
 
 func NewOrderUsecase(
@@ -35,17 +36,23 @@ func NewOrderUsecase(
 	cartUC *CartUsecase,
 	tx port.TxManager,
 	events port.EventOutbox,
+	store port.StoreSettingsRepository,
 ) *OrderUsecase {
-	return &OrderUsecase{orders: orders, carts: carts, discount: discount, cartUC: cartUC, tx: tx, events: events}
+	return &OrderUsecase{orders: orders, carts: carts, discount: discount, cartUC: cartUC, tx: tx, events: events, store: store}
 }
 
 func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt time.Time) (*dto.OrderResponse, error) {
-	if err := domainorder.ValidatePickupAt(pickupAt, time.Now()); err != nil {
+	now := time.Now()
+	settings, closed, err := readPickupRules(ctx, u.store, now)
+	if err != nil {
+		return nil, err
+	}
+	if err := pickupPolicy(settings, closed).Validate(pickupAt, now); err != nil {
 		return nil, err
 	}
 
 	var created *domainorder.Order
-	err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+	err = u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		cart, lines, discountCode, totals, err := u.cartUC.pricedCartForCheckout(txCtx, userID)
 		if err != nil {
 			return err

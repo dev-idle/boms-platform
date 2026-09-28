@@ -14,6 +14,7 @@ import (
 
 	domainevent "github.com/boms/backend/internal/domain/event"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 )
 
@@ -73,4 +74,24 @@ func TestRedisPublisher_ReportsAnUnreachableBus(t *testing.T) {
 	order := domainorder.Order{ID: uuid.New(), UserID: uuid.New(), Status: domainorder.StatusPending}
 	err := NewRedisPublisher(rdb).Publish(context.Background(), []domainevent.Event{domainorder.CreatedEvent(order)})
 	assert.Error(t, err)
+}
+
+// A public notice goes to the one channel every socket hears, and nowhere else.
+func TestRedisPublisher_PublishesPublicNotices(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	rdb := goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	sub := rdb.PSubscribe(ctx, channelPrefix+"*")
+	t.Cleanup(func() { _ = sub.Close() })
+	_, err := sub.Receive(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, NewRedisPublisher(rdb).Publish(ctx, []domainevent.Event{domainstore.SettingsUpdatedEvent()}))
+
+	msg, err := sub.ReceiveMessage(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, PublicChannel, msg.Channel)
+	assert.Contains(t, msg.Payload, `"type":"settings.updated"`)
 }

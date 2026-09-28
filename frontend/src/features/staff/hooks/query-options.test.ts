@@ -15,6 +15,6 @@ describe("staffQueryKeysForEvent", () => {
   });
 
   it("ignores events it does not know", () => {
-    expect(staffQueryKeysForEvent({ type: "settings.updated", data: {} })).toEqual([]);
+    expect(staffQueryKeysForEvent({ type: "catalog.updated", data: {} })).toEqual([]);
   });
 });

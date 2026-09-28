@@ -180,11 +180,11 @@ func (s *Server) redeem(ctx context.Context, token string) (domainrealtime.Ticke
 	return ticket, nil
 }
 
-// channelsFor picks what a ticket may hear: its own user channel always, and
-// the role channel of the roles that share a work queue. A customer never
-// shares a channel with anyone.
+// channelsFor picks what a ticket may hear: its own user channel and the public
+// channel always, and the role channel of the roles that share a work queue.
+// Nothing private travels on a channel a customer shares with anyone.
 func channelsFor(t domainrealtime.Ticket) []string {
-	channels := []string{eventbus.UserChannel(t.UserID)}
+	channels := []string{eventbus.UserChannel(t.UserID), eventbus.PublicChannel}
 	switch t.Role {
 	case domainuser.RoleStaff, domainuser.RoleBaker:
 		channels = append(channels, eventbus.RoleChannel(t.Role))

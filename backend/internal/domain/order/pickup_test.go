@@ -1,72 +1,140 @@
 package order
 
 import (
+	"encoding/json"
+	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	domainstore "github.com/boms/backend/internal/domain/store"
 )
 
-func TestValidatePickupAt(t *testing.T) {
-	now := time.Date(2026, 7, 10, 10, 0, 0, 0, bakeryLocation)
+// pickupCases is contracts/pickup-rules-cases.json, which the frontend's
+// pickupProblem reads too.
+type pickupCases struct {
+	Policy struct {
+		Rules struct {
+			OpensAt         string   `json:"opens_at"`
+			ClosesAt        string   `json:"closes_at"`
+			PreorderMinLead int      `json:"preorder_min_lead_minutes"`
+			MaxAdvanceDays  int      `json:"max_advance_days"`
+			ClosedDates     []string `json:"closed_dates"`
+		} `json:"rules"`
+		Now   string `json:"now"`
+		Cases []struct {
+			At      string  `json:"at"`
+			Problem *string `json:"problem"`
+		} `json:"cases"`
+	} `json:"policy"`
+}
 
-	t.Run("rejects zero time", func(t *testing.T) {
-		assert.ErrorIs(t, ValidatePickupAt(time.Time{}, now), ErrInvalidPickupAt)
-	})
+const wallClockLayout = "2006-01-02T15:04"
 
-	t.Run("rejects before min lead time", func(t *testing.T) {
-		at := now.Add(30 * time.Minute)
-		assert.ErrorIs(t, ValidatePickupAt(at, now), ErrInvalidPickupAt)
-	})
+func loadPickupCases(t *testing.T) pickupCases {
+	t.Helper()
+	// A rooted file system: the read cannot leave contracts/.
+	raw, err := fs.ReadFile(os.DirFS(filepath.Join("..", "..", "..", "..", "contracts")), "pickup-rules-cases.json")
+	require.NoError(t, err)
+	var cases pickupCases
+	require.NoError(t, json.Unmarshal(raw, &cases))
+	require.NotEmpty(t, cases.Policy.Cases)
+	return cases
+}
 
-	t.Run("rejects outside bakery hours", func(t *testing.T) {
-		at := time.Date(2026, 7, 10, 19, 0, 0, 0, bakeryLocation)
-		assert.ErrorIs(t, ValidatePickupAt(at, now), ErrInvalidPickupAt)
-	})
+func wallClock(t *testing.T, s string) time.Time {
+	t.Helper()
+	if s == "" {
+		return time.Time{}
+	}
+	at, err := time.ParseInLocation(wallClockLayout, s, domainstore.Location)
+	require.NoError(t, err)
+	return at
+}
 
-	t.Run("rejects beyond max advance", func(t *testing.T) {
-		at := now.Add(pickupMaxAdvance + time.Minute)
-		assert.ErrorIs(t, ValidatePickupAt(at, now), ErrInvalidPickupAt)
-	})
+// problemCode names a pickup error the way the contract fixture does.
+func problemCode(err error) *string {
+	codes := map[error]string{
+		ErrInvalidPickupAt:    "missing",
+		ErrPickupTooSoon:      "too_soon",
+		ErrPickupTooFar:       "too_far",
+		ErrPickupClosedDay:    "closed_day",
+		ErrPickupOutsideHours: "outside_hours",
+	}
+	for sentinel, code := range codes {
+		if errors.Is(err, sentinel) {
+			return &code
+		}
+	}
+	return nil
+}
 
-	t.Run("accepts exactly at max advance", func(t *testing.T) {
-		at := now.Add(pickupMaxAdvance)
-		require.NoError(t, ValidatePickupAt(at, now))
-	})
+func policyFromRules(t *testing.T, cases pickupCases) PickupPolicy {
+	t.Helper()
+	rules := cases.Policy.Rules
+	opens, err := domainstore.ParseClock(rules.OpensAt)
+	require.NoError(t, err)
+	closes, err := domainstore.ParseClock(rules.ClosesAt)
+	require.NoError(t, err)
+	closed := make([]time.Time, 0, len(rules.ClosedDates))
+	for _, day := range rules.ClosedDates {
+		parsed, err := time.Parse(domainstore.DayLayout, day)
+		require.NoError(t, err)
+		closed = append(closed, parsed)
+	}
+	return PickupPolicy{
+		Settings: domainstore.Settings{
+			OpensAt:         opens,
+			ClosesAt:        closes,
+			PreorderMinLead: time.Duration(rules.PreorderMinLead) * time.Minute,
+			MaxAdvanceDays:  rules.MaxAdvanceDays,
+		},
+		ClosedDays: closed,
+	}
+}
 
-	t.Run("rejects one minute before opening", func(t *testing.T) {
-		at := time.Date(2026, 7, 11, 7, 59, 0, 0, bakeryLocation)
-		assert.ErrorIs(t, ValidatePickupAt(at, now), ErrInvalidPickupAt)
-	})
+func TestPickupPolicy_Contract(t *testing.T) {
+	t.Parallel()
+	cases := loadPickupCases(t)
+	policy := policyFromRules(t, cases)
+	now := wallClock(t, cases.Policy.Now)
 
-	t.Run("accepts at opening hour", func(t *testing.T) {
-		at := time.Date(2026, 7, 11, 8, 0, 0, 0, bakeryLocation)
-		require.NoError(t, ValidatePickupAt(at, now))
-	})
+	for _, tc := range cases.Policy.Cases {
+		err := policy.Validate(wallClock(t, tc.At), now)
+		got := problemCode(err)
+		if tc.Problem == nil {
+			assert.NoError(t, err, "at %q", tc.At)
+			continue
+		}
+		require.NotNil(t, got, "at %q: want %s, got %v", tc.At, *tc.Problem, err)
+		assert.Equal(t, *tc.Problem, *got, "at %q", tc.At)
+	}
+}
 
-	t.Run("accepts one minute before closing", func(t *testing.T) {
-		at := time.Date(2026, 7, 10, 17, 59, 0, 0, bakeryLocation)
-		require.NoError(t, ValidatePickupAt(at, now))
-	})
+func TestPickupPolicy_ReadsTimesInBakeryTime(t *testing.T) {
+	t.Parallel()
+	cases := loadPickupCases(t)
+	policy := policyFromRules(t, cases)
+	now := wallClock(t, cases.Policy.Now)
 
-	t.Run("rejects at closing hour", func(t *testing.T) {
-		at := time.Date(2026, 7, 10, 18, 0, 0, 0, bakeryLocation)
-		assert.ErrorIs(t, ValidatePickupAt(at, now), ErrInvalidPickupAt)
-	})
+	// 07:00 UTC is 14:00 at the bakery; 20:00 UTC on the 12th is 03:00 on the closed 13th.
+	require.NoError(t, policy.Validate(time.Date(2026, 7, 10, 7, 0, 0, 0, time.UTC), now))
+	assert.ErrorIs(t, policy.Validate(time.Date(2026, 7, 12, 20, 0, 0, 0, time.UTC), now), ErrPickupClosedDay)
+}
 
-	t.Run("evaluates hours in bakery timezone for UTC input", func(t *testing.T) {
-		// 07:00 UTC = 14:00 in Asia/Ho_Chi_Minh — inside business hours.
-		at := time.Date(2026, 7, 10, 7, 0, 0, 0, time.UTC)
-		require.NoError(t, ValidatePickupAt(at, now))
+func TestPickupPolicy_HonoursEditedHours(t *testing.T) {
+	t.Parallel()
+	cases := loadPickupCases(t)
+	policy := policyFromRules(t, cases)
+	now := wallClock(t, cases.Policy.Now)
+	policy.Settings.OpensAt = 9*time.Hour + 30*time.Minute
+	policy.Settings.ClosesAt = 22 * time.Hour
 
-		// 12:00 UTC = 19:00 local — after closing even though 12:00 looks valid.
-		late := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
-		assert.ErrorIs(t, ValidatePickupAt(late, now), ErrInvalidPickupAt)
-	})
-
-	t.Run("accepts valid slot", func(t *testing.T) {
-		at := time.Date(2026, 7, 10, 14, 0, 0, 0, bakeryLocation)
-		require.NoError(t, ValidatePickupAt(at, now))
-	})
+	assert.ErrorIs(t, policy.Validate(wallClock(t, "2026-07-11T09:29"), now), ErrPickupOutsideHours)
+	require.NoError(t, policy.Validate(wallClock(t, "2026-07-11T21:59"), now))
 }

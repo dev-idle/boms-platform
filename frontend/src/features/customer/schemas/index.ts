@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
 import { orderStatusSchema } from "@/lib/schemas/order";
+import { clockTimeSchema } from "@/lib/validation/clock";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 const cartItemSchema = z.object({
@@ -92,6 +93,20 @@ export const orderSummarySchema = z.object({
   created_at: apiDateTimeSchema,
 });
 
+/** GET /api/v1/store/pickup-rules — the window checkout holds a pickup to. */
+export const pickupRulesSchema = z.object({
+  opens_at: clockTimeSchema,
+  closes_at: clockTimeSchema,
+  preorder_min_lead_minutes: z.number().int().min(0),
+  max_advance_days: z.number().int().min(1),
+  closed_dates: z.array(
+    z.object({
+      date: z.iso.date(),
+      reason: z.string().min(1),
+    }),
+  ),
+});
+
 export const ordersListFilterSchema = z.object({
   page: z.number().int().min(1).default(1),
   page_size: z.number().int().min(1).max(100).default(20),
@@ -106,6 +121,7 @@ export type CheckoutInput = z.infer<typeof checkoutInputSchema>;
 export type Order = z.infer<typeof orderSchema>;
 type OrderSummary = z.infer<typeof orderSummarySchema>;
 export type OrdersListFilterInput = z.infer<typeof ordersListFilterSchema>;
+export type PickupRules = z.infer<typeof pickupRulesSchema>;
 
 export type OrdersListResult = {
   orders: OrderSummary[];

@@ -102,6 +102,18 @@ function ProfileIcon({ className }: IconProps) {
   );
 }
 
+/** Sliders — adjustable settings. */
+function SettingsIcon({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h8M16 18h4" />
+      <circle cx="16" cy="6" r="2" />
+      <circle cx="10" cy="12" r="2" />
+      <circle cx="14" cy="18" r="2" />
+    </IconBase>
+  );
+}
+
 function PasswordIcon({ className }: IconProps) {
   return (
     <IconBase className={className}>
@@ -129,6 +141,7 @@ const DASHBOARD_NAV_ICONS = {
   password: PasswordIcon,
   products: ProductsIcon,
   profile: ProfileIcon,
+  settings: SettingsIcon,
   users: UsersIcon,
 } as const;
 

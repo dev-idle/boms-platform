@@ -1,9 +1,10 @@
 import { z } from "zod";
 
-/** Event types the API pushes — mirrors backend `domain/order/event.go`. */
+/** Event types the API pushes — mirrors the topics in the backend domain `event.go` files. */
 export const REALTIME_EVENT_TYPE = {
   orderCreated: "order.created",
   orderStatusChanged: "order.status_changed",
+  settingsUpdated: "settings.updated",
 } as const;
 
 /**

@@ -1,6 +1,6 @@
 /** Dashboard home page lead copy — role landing placeholders (SSOT). */
 export const DASHBOARD_HOME_LEAD = {
-  admin: "Use the sidebar to manage users, or update your profile.",
+  admin: "Use the sidebar to manage users and store settings, or update your profile.",
   manager:
     "Use the sidebar to manage catalog, combos, and discount codes, or update your profile.",
 } as const;
@@ -12,5 +12,6 @@ export const DASHBOARD_PAGE_EYEBROW = {
   promotions: "Promotions",
   operations: "Operations",
   accountsAccess: "Accounts & access",
+  store: "Store",
   account: "Account",
 } as const;

@@ -38,6 +38,7 @@ func (r *OutboxRepository) q(ctx context.Context) *sqlcgen.Queries {
 type audienceRecord struct {
 	UserIDs []uuid.UUID `json:"user_ids,omitempty"`
 	Roles   []string    `json:"roles,omitempty"`
+	Public  bool        `json:"public,omitempty"`
 }
 
 // Add records e in the caller's transaction, stamped with the database clock,
@@ -52,7 +53,7 @@ func (r *OutboxRepository) Add(ctx context.Context, e domainevent.Event) error {
 	for _, role := range e.Audience.Roles {
 		roles = append(roles, string(role))
 	}
-	audience, err := json.Marshal(audienceRecord{UserIDs: e.Audience.UserIDs, Roles: roles})
+	audience, err := json.Marshal(audienceRecord{UserIDs: e.Audience.UserIDs, Roles: roles, Public: e.Audience.Public})
 	if err != nil {
 		return apperrors.Errorf("encode outbox audience: %w", err)
 	}
@@ -147,7 +148,7 @@ func mapOutboxEvent(row sqlcgen.ClaimUnpublishedOutboxEventsRow) (domainevent.Ev
 	return domainevent.Event{
 		ID:         row.ID,
 		Topic:      domainevent.Topic(row.Topic),
-		Audience:   domainevent.Audience{UserIDs: audience.UserIDs, Roles: roles},
+		Audience:   domainevent.Audience{UserIDs: audience.UserIDs, Roles: roles, Public: audience.Public},
 		Data:       data,
 		OccurredAt: row.CreatedAt,
 	}, nil

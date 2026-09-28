@@ -14,6 +14,7 @@ import (
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
 	domainevent "github.com/boms/backend/internal/domain/event"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 )
 
@@ -108,6 +109,21 @@ func TestOutboxRepository_Integration(t *testing.T) {
 				assert.True(t, handed.OccurredAt.Equal(got.OccurredAt), "hook and store agree on when it happened")
 			}
 		}
+	})
+
+	t.Run("keeps_a_public_audience", func(t *testing.T) {
+		e := domainstore.SettingsUpdatedEvent()
+		record(t, pool, outbox, e)
+		t.Cleanup(func() { _ = outbox.MarkPublished(ctx, []uuid.UUID{e.ID}) })
+
+		for _, got := range claim(t, pool, outbox, 0) {
+			if got.ID == e.ID {
+				assert.True(t, got.Audience.Public)
+				assert.Empty(t, got.Audience.UserIDs)
+				return
+			}
+		}
+		t.Fatal("the public event was not stored")
 	})
 
 	t.Run("announces_nothing_for_a_change_that_rolled_back", func(t *testing.T) {

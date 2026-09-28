@@ -7,6 +7,8 @@ type DashboardFormPageProps = {
   breadcrumbItems?: readonly DashboardBreadcrumbItem[];
   children: ReactNode;
   description?: string;
+  /** For a page reached from the sidebar, which has no breadcrumb. */
+  eyebrow?: string;
   title: string;
 };
 
@@ -15,6 +17,7 @@ export function DashboardFormPage({
   breadcrumbItems,
   children,
   description,
+  eyebrow,
   title,
 }: DashboardFormPageProps) {
   return (
@@ -22,6 +25,7 @@ export function DashboardFormPage({
       <DashboardPageHeader
         breadcrumbItems={breadcrumbItems}
         description={description}
+        eyebrow={eyebrow}
         title={title}
       />
       <div className="dashboard-profile-column">{children}</div>

@@ -661,6 +661,13 @@
     width: 100%;
   }
 
+  /* A section body holding more than one block, e.g. a form above its list. */
+  .dashboard-profile-section-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+
   .dashboard-activity-feed-panel {
     background-color: var(--color-surface);
     border: 1px solid var(--color-db-border);
@@ -1789,6 +1796,11 @@
 
   .db-table--categories col.db-table-col-actions {
     width: var(--db-table-col-actions-pair);
+  }
+
+  /* Closed days: the day and one action are fixed; the reason takes the rest. */
+  .db-table--closed-days col.db-table-col-actions {
+    width: var(--db-table-col-number);
   }
 
   /* Two border weights, no more: line-strong seats the header, line-soft divides

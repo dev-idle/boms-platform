@@ -1,15 +1,18 @@
 type DashboardProfileFormSkeletonProps = {
   fields?: number;
+  /** What assistive tech hears while the fields load. */
+  label?: string;
 };
 
 /** Placeholder while profile fields load inside a dashboard profile section. */
 export function DashboardProfileFormSkeleton({
   fields = 2,
+  label = "Loading profile",
 }: DashboardProfileFormSkeletonProps) {
   return (
     <div
       aria-busy="true"
-      aria-label="Loading profile"
+      aria-label={label}
       className="dashboard-profile-form-skeleton"
       role="status"
     >

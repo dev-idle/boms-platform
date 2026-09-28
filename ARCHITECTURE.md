@@ -40,10 +40,12 @@ backend/
 │   │   ├── category/            # category entity
 │   │   ├── product/             # product entity
 │   │   ├── profile/             # customer, staff, admin
-│   │   └── session/
+│   │   ├── session/
+│   │   └── store/               # pickup settings, closed days, fixed bakery time zone
 │   ├── port/                    # Interfaces (driven + driving)
 │   │   ├── user.go, *_profile.go, audit_log.go
 │   │   ├── outbox.go            # EventOutbox + EventPublisher
+│   │   ├── store.go             # StoreSettingsRepository
 │   │   ├── session.go, token.go, password.go, tx.go, health.go
 │   ├── usecase/                 # Application services (orchestration)
 │   │   ├── auth.go, me.go, admin_user.go, manager_category.go, manager_product.go, catalog.go, readiness.go
@@ -138,7 +140,7 @@ frontend/src/
 │   ├── (staff)/                 # /staff/orders, /staff/account/*
 │   ├── (baker)/                 # /baker/account/*
 │   ├── (manager)/               # /manager, /manager/categories, /manager/products, /combos, /discount-codes, /account/*
-│   └── (admin)/admin/           # /admin, /admin/users, /admin/account/*
+│   └── (admin)/admin/           # /admin, /admin/users, /admin/settings, /admin/account/*
 ├── features/                    # Feature slices (auth | user | admin | manager | staff | baker | customer | catalog)
 │   ├── auth/                    # api/, schemas/, hooks/, components/, lib/, provider/
 │   ├── user/                    # api/, schemas/, types/, hooks/, components/
@@ -213,7 +215,7 @@ features/<slice>/
 | Staff | `/staff/orders`, `/staff/orders/{id}`, `/staff/account/{profile,password}` |
 | Baker | `/baker/production`, `/baker/production/:id`, `/baker/account/{profile,password}` |
 | Manager | `/manager`, `/manager/categories`, `/manager/products`, `/manager/account/{profile,password}` |
-| Admin | `/admin`, `/admin/users`, `/admin/users/{new,[id]}`, `/admin/account/profile` (profile + password) |
+| Admin | `/admin`, `/admin/users`, `/admin/users/{new,[id]}`, `/admin/settings`, `/admin/account/profile` (profile + password) |
 
 **Rule:** one role = one namespace. Each role may only access its own URL prefix (enforced by FE `RoleGate` + post-login redirect). Only `admin` is seeded in development (`bootstrap.EnsureDevAdmin`). No mixing of `/dashboard/*` with `/admin/*`.
 
@@ -316,6 +318,7 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Session identity (`/me`) | `features/user` (FE) + `usecase/me` (BE) |
 | Auth (login/register/logout) | `features/auth` (FE) + `usecase/auth` (BE) |
 | Admin user CRUD | `features/admin` (FE) + `usecase/admin_user` (BE) |
+| Store settings (pickup rules) | `features/admin` settings + `features/customer` checkout panel (FE) + `domain/store` + `usecase/admin_store_settings` + `usecase/store` (BE) — `/admin/settings`, `/admin/closed-dates/*`, public `/store/pickup-rules` |
 | Manager catalog CRUD | `features/manager` (FE) + `usecase/manager_category` + `usecase/manager_product` + `manager_combo` + `manager_discount_code` (BE) |
 | Product images (Cloudinary) | `lib/cloudinary/*` + `components/ui/catalog-image-list-field` (FE) + `usecase/manager_media` + `service/cloudinary` (BE) |
 | Storefront catalog browse | `features/catalog` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
@@ -342,14 +345,15 @@ A change other people must see writes an `outbox_events` row **in the same trans
 | Retain | published rows are deleted after `OUTBOX_RETENTION` — delivery records, not business data, so no soft delete |
 | Clock | `created_at` defaults to `clock_timestamp()` and every age (sweep grace, retention) is measured in SQL, so the API and the worker never compare two hosts' clocks |
 
-Delivery is **at least once** and **unordered across transactions** (each commit is delivered on its own): an event may arrive twice or after a later one, and subscribers use it only as a hint to refetch through the API. The bus is Redis Pub/Sub (`adapter/eventbus`): channel `boms:events:user:{id}` per user and `boms:events:role:{role}` per role, message `{id, type, at, data}` — identifiers and labels, never the changed record.
+Delivery is **at least once** and **unordered across transactions** (each commit is delivered on its own): an event may arrive twice or after a later one, and subscribers use it only as a hint to refetch through the API. The bus is Redis Pub/Sub (`adapter/eventbus`): channel `boms:events:user:{id}` per user, `boms:events:role:{role}` per role and `boms:events:public` for notices with nothing private in them, message `{id, type, at, data}` — identifiers and labels, never the changed record.
 
 | Topic | Written by | Audience | Data |
 |-------|------------|----------|------|
 | `order.created` | checkout | the customer · staff | `order_id`, `status` |
 | `order.status_changed` | staff and baker status moves | the customer · staff · baker only when the order enters, leaves or moves within the statuses bakers see (`Status.VisibleToBaker`) | `order_id`, `status` |
+| `settings.updated` | admin settings and closed-day changes | everyone with a page open (public channel) | none |
 
-Topics and their audiences live with the aggregate that raises them (`domain/order/event.go`), as audit actions do.
+Topics and their audiences live with the aggregate that raises them (`domain/order/event.go`, `domain/store/event.go`), as audit actions do.
 
 The API process delivers after commit; run `cmd/worker` beside it (`make run-worker`) to recover what that delivery missed.
 
@@ -366,7 +370,7 @@ socket message ──▶ TanStack Query invalidation ──▶ refetch through t
 
 | Concern | Rule |
 |---------|------|
-| Channels | every ticket hears its own `boms:events:user:{id}`; staff and baker also hear their role channel. A customer never shares a channel |
+| Channels | every ticket hears its own `boms:events:user:{id}` and `boms:events:public`; staff and baker also hear their role channel. Nothing private travels on a channel a customer shares |
 | Lifetime | the socket re-checks its session every `REALTIME_SESSION_CHECK_INTERVAL` and closes with `4001` once it is gone (logout, revocation, token refresh — every refresh rotates the session) or after `REALTIME_MAX_LIFETIME`; `4001` tells the tab to fetch a new ticket at once. A Redis error is tolerated for two checks in a row; the third closes the socket (`1013`) |
 | Liveness | ping every `REALTIME_PING_INTERVAL`; each socket has `REALTIME_SEND_BUFFER` queued events and is closed (`1013`) when it falls behind, instead of slowing the hub |
 | Browser | one socket per tab, opened by the first `<Slice>LiveUpdates` and closed a second after the last unmounts; reconnect waits grow to 30 s with jitter and are skipped when the tab returns or the network comes back; every (re)connect refetches what the page shows, since events sent meanwhile are gone |
@@ -382,9 +386,11 @@ BOMS is a **bakery pickup** flow, not delivery or shipping.
 | **Fulfillment** | Customer orders for **in-store / counter pickup** at the bakery. |
 | **No Address module** | No `addresses` table, no shipping/delivery address on profile or orders, no geocoding, no carrier integration. **Do not add** unless this document is updated first. |
 | **Customer profile** | `customer_profiles`: `display_name`, `phone` (+ account `email` on `users`). Phone is contact info for pickup coordination — **not** a delivery address. |
-| **Checkout / orders** | `orders`: pricing, discount snapshot, `status`, required `pickup_at` at checkout (8:00–18:00 bakery local, 2h lead, 14d max), line items with `configuration` jsonb — **no** shipping/delivery address fields. |
+| **Checkout / orders** | `orders`: pricing, discount snapshot, `status`, required `pickup_at` at checkout, held to the Admin pickup rules below, line items with `configuration` jsonb — **no** shipping/delivery address fields. |
 | **Storefront `BRAND.addressLine`** | Static marketing copy for footer “Visit us” (`constants/brand.ts`) — the **bakery location**, not per-customer data. |
 | **Marketing copy** | UI may say “pickup” but must not imply saved delivery addresses or ship-to-door unless a feature is implemented. |
+
+**Pickup rules (Admin settings, `store_settings` + `store_closed_dates`):** opening hours, pre-order notice and booking window live in one settings row (migration defaults: 08:00–18:00, 2 h, 14 days), plus closed days with a reason customers see. Checkout reads them per request — one primary-key row and the closed days inside the window, fetched together — so an edit applies to the next checkout at once; open carts refresh through `settings.updated`. Refusals are specific: `pickup_too_soon`, `pickup_too_far`, `pickup_closed_day`, `pickup_outside_hours`. The time zone is fixed (Asia/Ho_Chi_Minh, no DST): the bakery does not move, and every stored hour is read in it.
 
 **Order status (schema v2):** `pending` → `confirmed` → `in_production` → `ready` → `fulfilled` | `cancelled`.
 

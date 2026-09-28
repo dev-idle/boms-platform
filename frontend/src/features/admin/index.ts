@@ -1,9 +1,10 @@
 /**
- * Admin feature — operational user management (admin-only).
+ * Admin feature — operational user management and store settings (admin-only).
  *
- * Internal: api/, components/, hooks/, schemas/
+ * Internal: api/, components/, hooks/, lib/, schemas/
  */
 export {
+  AdminStoreSettings,
   AdminUserDetail,
   AdminUsersTable,
   CreateOperationalUserForm,

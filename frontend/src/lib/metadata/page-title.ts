@@ -18,6 +18,7 @@ export const PAGE_TITLES = {
   deleteAccount: "Delete Account",
   dashboard: "Dashboard",
   users: "User Management",
+  settings: "Store Settings",
   newUser: "New User",
   userDetail: "User Detail",
   products: "Products",

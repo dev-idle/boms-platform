@@ -9,6 +9,7 @@ import (
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/usecase"
@@ -105,7 +106,29 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 	case errors.Is(err, domainorder.ErrInvalidStatusTransition):
 		return writeAppError(c, apperrors.ErrInvalidOrderStatusTransition)
 	case errors.Is(err, domainorder.ErrInvalidPickupAt):
-		return writeAppError(c, apperrors.ErrValidation.WithDetail("pickup_at", "pickup time is outside the allowed window"))
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("pickup_at", "pickup time is required"))
+	case errors.Is(err, domainorder.ErrPickupTooSoon):
+		return writeAppError(c, apperrors.ErrPickupTooSoon)
+	case errors.Is(err, domainorder.ErrPickupTooFar):
+		return writeAppError(c, apperrors.ErrPickupTooFar)
+	case errors.Is(err, domainorder.ErrPickupClosedDay):
+		return writeAppError(c, apperrors.ErrPickupClosedDay)
+	case errors.Is(err, domainorder.ErrPickupOutsideHours):
+		return writeAppError(c, apperrors.ErrPickupOutsideHours)
+	case errors.Is(err, domainstore.ErrInvalidHours):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("closes_at", "must be after the opening time, within the day"))
+	case errors.Is(err, domainstore.ErrInvalidLeadTime):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("preorder_min_lead_minutes", "must be 0 to 10080 minutes and shorter than the booking window"))
+	case errors.Is(err, domainstore.ErrInvalidAdvanceDays):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("max_advance_days", "must be between 1 and 90"))
+	case errors.Is(err, domainstore.ErrClosedDateOutOfRange):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("date", "must be between today and a year ahead"))
+	case errors.Is(err, domainstore.ErrInvalidClosedDateReason):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 characters"))
+	case errors.Is(err, domainstore.ErrClosedDateExists):
+		return writeAppError(c, apperrors.ErrClosedDateExists)
+	case errors.Is(err, domainstore.ErrClosedDateNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
 	}
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {
