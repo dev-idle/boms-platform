@@ -29,6 +29,7 @@ type OrderUsecase struct {
 	tx       port.TxManager
 	events   port.EventOutbox
 	store    port.StoreSettingsRepository
+	tickets  port.TicketRepository
 }
 
 func NewOrderUsecase(
@@ -39,8 +40,12 @@ func NewOrderUsecase(
 	tx port.TxManager,
 	events port.EventOutbox,
 	store port.StoreSettingsRepository,
+	tickets port.TicketRepository,
 ) *OrderUsecase {
-	return &OrderUsecase{orders: orders, carts: carts, discount: discount, cartUC: cartUC, tx: tx, events: events, store: store}
+	return &OrderUsecase{
+		orders: orders, carts: carts, discount: discount, cartUC: cartUC,
+		tx: tx, events: events, store: store, tickets: tickets,
+	}
 }
 
 func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt time.Time) (*dto.OrderResponse, error) {
@@ -110,6 +115,9 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 		if err := u.orders.CreateItems(txCtx, orderItems); err != nil {
 			return err
 		}
+		if err := u.createTickets(txCtx, order.ID); err != nil {
+			return err
+		}
 		if err := u.orders.AddStatusEvent(txCtx, port.AddOrderStatusEventParams{
 			OrderID:   order.ID,
 			To:        order.Status,
@@ -144,6 +152,17 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 		return nil, err
 	}
 	return u.orderResponse(ctx, userID, created.ID)
+}
+
+// createTickets splits a new order into one ticket per station, combos by the
+// products they hold.
+func (u *OrderUsecase) createTickets(txCtx context.Context, orderID uuid.UUID) error {
+	lines, err := u.tickets.ListLines(txCtx, orderID)
+	if err != nil {
+		return err
+	}
+	_, err = u.tickets.CreateForOrder(txCtx, orderID, domainorder.Decompose(lines))
+	return err
 }
 
 // pickupBooking is what booking a pickup decided: the order's type, and
@@ -255,7 +274,7 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		}
 		return nil, err
 	}
-	items, timeline, err := orderLinesAndTimeline(ctx, u.orders, order.ID)
+	parts, err := readOrderDetail(ctx, u.orders, u.tickets, order.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -269,8 +288,9 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		TotalCents:           order.TotalCents,
 		DiscountCodeSnapshot: order.DiscountCodeSnapshot,
 		PickupAt:             order.PickupAt,
-		Items:                mapOrderItemsToDTO(items),
-		Timeline:             mapOrderTimelineToDTO(timeline),
+		Items:                mapOrderItemsToDTO(parts.items),
+		Timeline:             mapOrderTimelineToDTO(parts.timeline),
+		Tickets:              mapTicketSummariesToDTO(parts.tickets),
 		CreatedAt:            order.CreatedAt,
 		UpdatedAt:            order.UpdatedAt,
 	}

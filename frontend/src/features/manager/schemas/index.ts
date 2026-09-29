@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { stationSchema } from "@/lib/schemas/ticket";
 import { CATALOG_INTEGER_MAX, catalogSlugSchema } from "@/lib/validation/catalog";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 import {
@@ -38,15 +39,6 @@ const priceAmount = requiredAmount(
   0,
   "Price must be zero or greater",
 );
-
-/** Where a category's products are made — backend `category.Station`. */
-export const stationSchema = z.enum(["kitchen", "counter"]);
-
-/** How each station reads in the manager's forms and tables. */
-export const STATION_LABEL: Record<z.infer<typeof stationSchema>, string> = {
-  kitchen: "Kitchen",
-  counter: "Counter",
-};
 
 /** A product's notice is bounded like backend `product.MaxLeadTime`: a week. */
 export const MAX_PRODUCT_LEAD_MINUTES = 7 * 24 * 60;

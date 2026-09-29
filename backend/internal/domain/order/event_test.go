@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainuser "github.com/boms/backend/internal/domain/user"
 )
 
@@ -79,4 +80,23 @@ func TestSlotsChangedEvent(t *testing.T) {
 	assert.Empty(t, e.Audience.UserIDs)
 	assert.Empty(t, e.Audience.Roles)
 	assert.Equal(t, map[string]string{"date": "2026-07-10"}, e.Data, "the day only: no order, no customer")
+}
+
+func TestTicketChangedEvent(t *testing.T) {
+	t.Parallel()
+	customer := uuid.New()
+	ticket := Ticket{ID: uuid.New(), OrderID: uuid.New(), Station: domaincategory.StationCounter, Status: TicketReady}
+
+	counter := TicketChangedEvent(customer, StatusInProduction, ticket)
+	assert.Equal(t, TopicTicketChanged, counter.Topic)
+	assert.Equal(t, []uuid.UUID{customer}, counter.Audience.UserIDs)
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleBaker}, counter.Audience.Roles,
+		"the kitchen sees where the counter's part of an order it works on stands")
+	assert.Equal(t, map[string]string{
+		"ticket_id": ticket.ID.String(), "order_id": ticket.OrderID.String(), "station": "counter", "status": "ready",
+	}, counter.Data)
+
+	unseen := TicketChangedEvent(customer, StatusPending, Ticket{Station: domaincategory.StationKitchen})
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff}, unseen.Audience.Roles,
+		"the kitchen hears nothing of an order it may not see yet")
 }

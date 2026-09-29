@@ -32,6 +32,7 @@ type OrderResponse struct {
 	PickupAt             *time.Time                   `json:"pickup_at,omitempty"`
 	Items                []OrderItemResponse          `json:"items"`
 	Timeline             []OrderTimelineEntryResponse `json:"timeline"`
+	Tickets              []TicketSummaryResponse      `json:"tickets"`
 	CreatedAt            time.Time                    `json:"created_at"`
 	UpdatedAt            time.Time                    `json:"updated_at"`
 }

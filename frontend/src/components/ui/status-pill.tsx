@@ -1,4 +1,5 @@
 import type { OrderStatus } from "@/lib/schemas/order";
+import type { TicketStatus } from "@/lib/schemas/ticket";
 import { cn } from "@/lib/utils";
 
 export type StatusPillVariant =
@@ -41,6 +42,20 @@ export function orderStatusToPillVariant(status: OrderStatus): StatusPillVariant
       return "ready";
     case "fulfilled":
       return "completed";
+    case "cancelled":
+      return "cancelled";
+  }
+}
+
+/** Map ticket statuses onto the same pills: a queued ticket waits like a pending order. */
+export function ticketStatusToPillVariant(status: TicketStatus): StatusPillVariant {
+  switch (status) {
+    case "queued":
+      return "pending";
+    case "in_progress":
+      return "in_progress";
+    case "ready":
+      return "ready";
     case "cancelled":
       return "cancelled";
   }

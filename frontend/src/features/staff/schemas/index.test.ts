@@ -11,6 +11,7 @@ const order = {
   discount_cents: 0,
   total_cents: 4500,
   items: [],
+  tickets: [],
   customer: { user_id: "00000000-0000-4000-8000-000000000002", email: "mai@example.com" },
   created_at: "2026-09-28T09:00:00+07:00",
   updated_at: "2026-09-28T09:05:00+07:00",
@@ -40,5 +41,28 @@ describe("staff order timeline", () => {
     });
     expect(withoutRole.success).toBe(false);
     expect(unknownRole.success).toBe(false);
+  });
+});
+
+// The counter sees what each station makes, to move a ticket nobody started.
+describe("staff order tickets", () => {
+  it("reads each station's ticket with its products", () => {
+    const result = staffOrderSchema.parse({
+      ...order,
+      timeline: [],
+      tickets: [
+        {
+          id: "00000000-0000-4000-8000-000000000003",
+          station: "counter",
+          status: "queued",
+          items: [{ name: "Croissant", quantity: 2 }],
+        },
+      ],
+    });
+    expect(result.tickets[0]?.items).toEqual([{ name: "Croissant", quantity: 2 }]);
+  });
+
+  it("rejects an order without its tickets", () => {
+    expect(staffOrderSchema.safeParse({ ...order, tickets: undefined, timeline: [] }).success).toBe(false);
   });
 });

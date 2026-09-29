@@ -24,6 +24,15 @@ describe("customerQueryKeysForEvent", () => {
     ).toEqual([customerQueryKeys.ordersRoot, customerQueryKeys.orderRoot]);
   });
 
+  it("refreshes only the order whose ticket moved", () => {
+    expect(
+      customerQueryKeysForEvent({ type: "ticket.changed", data: { order_id: "o-1", ticket_id: "t-1" } }),
+    ).toEqual([customerQueryKeys.order("o-1")]);
+    expect(customerQueryKeysForEvent({ type: "ticket.changed", data: {} })).toEqual([
+      customerQueryKeys.orderRoot,
+    ]);
+  });
+
   it("ignores events it does not know", () => {
     expect(customerQueryKeysForEvent({ type: "catalog.updated", data: {} })).toEqual([]);
   });

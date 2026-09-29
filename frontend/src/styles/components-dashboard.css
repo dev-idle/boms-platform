@@ -1415,6 +1415,23 @@
     justify-content: space-between;
   }
 
+  /* A ticket line: what the station makes, then its state and one action. The
+     state drops under the items when the row cannot hold both. */
+  .dashboard-order-ticket {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-order-ticket__items {
+    flex: 1 1 16rem;
+    min-width: 0;
+  }
+
+  .dashboard-order-ticket__state {
+    align-items: center;
+    display: flex;
+    gap: var(--db-space-4);
+  }
+
   .dashboard-order-totals {
     border-top: 1px solid var(--color-border);
     display: flex;
@@ -1810,6 +1827,30 @@
 
   .db-table--categories col.db-table-col-actions {
     width: var(--db-table-col-actions-pair);
+  }
+
+  /* Prep queue: the order (code over name) and its items split what pickup,
+     status and two actions leave; below the minimum the wrapper scrolls, so
+     the order never gets narrower than a code. */
+  .db-table--prep-queue {
+    --db-table-prep-fixed-cols: calc(
+      var(--db-table-col-datetime) + var(--db-table-col-status-pill) +
+        var(--db-table-col-actions-group)
+    );
+
+    min-width: calc(var(--db-table-prep-fixed-cols) + 24rem);
+  }
+
+  .db-table--prep-queue col.db-table-col-status {
+    width: var(--db-table-col-status-pill);
+  }
+
+  .db-table--prep-queue col.db-table-col-actions {
+    width: var(--db-table-col-actions-group);
+  }
+
+  .db-table--prep-queue .db-table-row-actions {
+    flex-wrap: nowrap;
   }
 
   /* Closed days: the day and one action are fixed; the reason takes the rest. */
@@ -2294,7 +2335,7 @@
     text-transform: uppercase;
   }
 
-  .baker-production-labels__total {
+  .baker-production-labels__count {
     text-align: right;
   }
 
@@ -2323,7 +2364,10 @@
       padding: 1.25rem;
     }
 
-    .baker-production-row__total,
+    .baker-production-row__count {
+      display: none;
+    }
+
     .baker-production-row__open {
       justify-self: start;
     }
@@ -2381,11 +2425,12 @@
     white-space: nowrap;
   }
 
-  .baker-production-row__total {
+  .baker-production-row__count {
     color: var(--color-ink);
     font-family: var(--font-mono);
     font-size: 0.8125rem;
     font-variant-numeric: tabular-nums;
+    font-weight: 500;
     justify-self: end;
     text-align: right;
   }

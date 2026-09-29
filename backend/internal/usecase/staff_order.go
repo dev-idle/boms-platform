@@ -18,6 +18,7 @@ import (
 
 type StaffOrderUsecase struct {
 	orders      port.OrderRepository
+	tickets     port.TicketRepository
 	transitions orderTransitions
 	audit       *auditlogger.Service
 	log         *zap.Logger
@@ -25,6 +26,7 @@ type StaffOrderUsecase struct {
 
 func NewStaffOrderUsecase(
 	orders port.OrderRepository,
+	tickets port.TicketRepository,
 	tx port.TxManager,
 	events port.EventOutbox,
 	audit *auditlogger.Service,
@@ -32,7 +34,8 @@ func NewStaffOrderUsecase(
 ) *StaffOrderUsecase {
 	return &StaffOrderUsecase{
 		orders:      orders,
-		transitions: orderTransitions{tx: tx, orders: orders, events: events},
+		tickets:     tickets,
+		transitions: orderTransitions{tx: tx, orders: orders, tickets: tickets, events: events},
 		audit:       audit,
 		log:         log,
 	}
@@ -103,11 +106,11 @@ func (u *StaffOrderUsecase) Get(ctx context.Context, orderID uuid.UUID) (*dto.St
 		}
 		return nil, err
 	}
-	items, timeline, err := orderLinesAndTimeline(ctx, u.orders, row.Order.ID)
+	parts, err := readOrderDetail(ctx, u.orders, u.tickets, row.Order.ID)
 	if err != nil {
 		return nil, err
 	}
-	return toStaffOrderResponse(row, items, timeline), nil
+	return toStaffOrderResponse(row, parts), nil
 }
 
 func (u *StaffOrderUsecase) PatchStatus(
@@ -148,11 +151,11 @@ func (u *StaffOrderUsecase) PatchStatus(
 		map[string]string{"status": string(updated.Status)},
 	)
 
-	items, timeline, err := orderLinesAndTimeline(ctx, u.orders, orderID)
+	parts, err := readOrderDetail(ctx, u.orders, u.tickets, orderID)
 	if err != nil {
 		return nil, err
 	}
-	return toStaffOrderResponse(&afterRow, items, timeline), nil
+	return toStaffOrderResponse(&afterRow, parts), nil
 }
 
 func toStaffOrderCustomer(row *port.StaffOrderListRow) dto.StaffOrderCustomerResponse {
@@ -164,11 +167,7 @@ func toStaffOrderCustomer(row *port.StaffOrderListRow) dto.StaffOrderCustomerRes
 	}
 }
 
-func toStaffOrderResponse(
-	row *port.StaffOrderListRow,
-	items []domainorder.Item,
-	timeline []domainorder.StatusEvent,
-) *dto.StaffOrderResponse {
+func toStaffOrderResponse(row *port.StaffOrderListRow, parts orderDetailParts) *dto.StaffOrderResponse {
 	resp := &dto.StaffOrderResponse{
 		ID:                   row.Order.ID.String(),
 		Code:                 row.Order.Code,
@@ -179,8 +178,9 @@ func toStaffOrderResponse(
 		TotalCents:           row.Order.TotalCents,
 		DiscountCodeSnapshot: row.Order.DiscountCodeSnapshot,
 		PickupAt:             row.Order.PickupAt,
-		Items:                mapOrderItemsToDTO(items),
-		Timeline:             mapStaffOrderTimelineToDTO(timeline),
+		Items:                mapOrderItemsToDTO(parts.items),
+		Timeline:             mapStaffOrderTimelineToDTO(parts.timeline),
+		Tickets:              mapOrderTicketsToDTO(parts.tickets),
 		Customer:             toStaffOrderCustomer(row),
 		CreatedAt:            row.Order.CreatedAt,
 		UpdatedAt:            row.Order.UpdatedAt,

@@ -137,8 +137,8 @@ frontend/src/
 ├── app/                         # Route layer ONLY (thin pages)
 │   ├── (public)/                # /, /login, /register (+ PublicSessionGate layout)
 │   ├── (customer)/              # /products, /cart, /orders, /customer/account/*
-│   ├── (staff)/                 # /staff/orders, /staff/account/*
-│   ├── (baker)/                 # /baker/account/*
+│   ├── (staff)/                 # /staff/orders, /staff/prep, /staff/account/*
+│   ├── (baker)/                 # /baker/production, /baker/account/*
 │   ├── (manager)/               # /manager, /manager/categories, /manager/products, /combos, /discount-codes, /account/*
 │   └── (admin)/admin/           # /admin, /admin/users, /admin/settings, /admin/account/*
 ├── features/                    # Feature slices (auth | user | admin | manager | staff | baker | customer | catalog)
@@ -146,8 +146,8 @@ frontend/src/
 │   ├── user/                    # api/, schemas/, types/, hooks/, components/
 │   ├── admin/                   # api/, schemas/, types/, hooks/, components/
 │   ├── manager/                 # catalog CRUD → /api/v1/manager/*
-│   ├── staff/                   # order queue → /api/v1/staff/orders/*
-│   ├── baker/                   # production queue → /api/v1/baker/production/*
+│   ├── staff/                   # order and prep queues → /api/v1/staff/orders/*, /staff/tickets/*
+│   ├── baker/                   # kitchen queue → /api/v1/baker/tickets/*
 │   ├── customer/                # cart, checkout, orders → /api/v1/cart/*, /orders/*
 │   └── catalog/                 # storefront browse → /api/v1/catalog/*
 ├── components/
@@ -212,8 +212,8 @@ features/<slice>/
 |----------|------|
 | Public | `/`, `/login`, `/register` |
 | Customer | `/products`, `/cart`, `/orders`, `/customer/account/{profile,password,delete}` |
-| Staff | `/staff/orders`, `/staff/orders/{id}`, `/staff/account/{profile,password}` |
-| Baker | `/baker/production`, `/baker/production/:id`, `/baker/account/{profile,password}` |
+| Staff | `/staff/orders`, `/staff/orders/{id}`, `/staff/prep`, `/staff/account/{profile,password}` |
+| Baker | `/baker/production`, `/baker/production/:id` (a kitchen ticket), `/baker/account/{profile,password}` |
 | Manager | `/manager`, `/manager/categories`, `/manager/products`, `/manager/account/{profile,password}` |
 | Admin | `/admin`, `/admin/users`, `/admin/users/{new,[id]}`, `/admin/settings`, `/admin/account/profile` (profile + password) |
 
@@ -253,7 +253,7 @@ features/<slice>/
 | Password attack | Argon2id (params from config); timing-safe dummy hash on login |
 | Replay | request-id propagation; refresh rotation |
 | CSRF | SameSite=Lax cookie, internal proxy secret on inbound headers, sanitize `X-User-Role`, `X-Request-ID`, `X-Auth-Hint` |
-| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout + staff/baker status (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + self-service account writes — `PATCH /me`, `PATCH /me/password`, `DELETE /me` (10/min, `RATE_LIMIT_REDIS_SELF_WRITE_*`) + discount code attempts per customer — `PUT /cart/discount` (10/15 min, `RATE_LIMIT_REDIS_DISCOUNT_ATTEMPT_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) + realtime tickets per user (60/min, `RATE_LIMIT_REDIS_REALTIME_TICKET_*`) |
+| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout, staff order status, ticket status and ticket moves (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + self-service account writes — `PATCH /me`, `PATCH /me/password`, `DELETE /me` (10/min, `RATE_LIMIT_REDIS_SELF_WRITE_*`) + discount code attempts per customer — `PUT /cart/discount` (10/15 min, `RATE_LIMIT_REDIS_DISCOUNT_ATTEMPT_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) + realtime tickets per user (60/min, `RATE_LIMIT_REDIS_REALTIME_TICKET_*`) |
 | RBAC | `RequireRole(Admin)` on `/admin/*`; admin can't modify self; staff self-update only fills `full_name`, `phone` |
 | Forced password change | `must_change_password` flag → `RequirePasswordChanged` middleware blocks all routes except `/me` GET and `/me/password` PATCH |
 | Audit | All admin mutations write to `audit_logs` with actor/target/before/after |
@@ -263,7 +263,7 @@ features/<slice>/
 | Inbound | Strip `x-internal-secret`, `x-user-role`, `x-auth-hint` and the forwarding headers (`x-forwarded-for`, `x-real-ip`, `forwarded`, `x-client-ip`) from client requests in proxy |
 | Landing flash | The access token is memory-only, so a returning visitor is anonymous until the session is restored. Fiber issues a role cookie beside the session cookie (`COOKIE_ROLE_NAME`) and `proxy.ts` lands them at the edge (`lib/routing/signed-in-landing.ts`). A **navigation hint only** — never authorization: every byte of data stays behind the API session check, and a forged or stale role reaches a page whose gate sends it back. **Document navigations only** (`Sec-Fetch-Dest: document`, never `/api/*`): on a client navigation the hint would fight the gate that knows the real session, and the two would bounce a visitor between them — including away from the sign-in page, exactly when the session cannot be restored. The redirect carries `Cache-Control: no-store, private` and `Vary: Cookie`, because a cookie decided it |
 | Visitor identity | The API only ever sees the BFF. `proxy.ts` resolves the visitor from what the hosting edge reported (`resolveClientIp`) before it drops the forwarding headers, stamps the checked address as `X-Client-IP`, and the BFF forwards that stamp (`stampedClientIp`, `lib/server/client-ip.ts`); `middleware.ClientIP` reads it, falling back to the socket address when it is absent or malformed. Rate-limit buckets and `audit_logs.ip` would otherwise all be the BFF |
-| Customer data by role | Each role gets only the customer data its work needs, decided in the usecase DTO mappers: staff get name and email on the order list and the phone as well on one order (`StaffOrderCustomerResponse`) to coordinate its pickup — a list page never hands out every customer's number; bakers get the display name only (`BakerOrderCustomerResponse`) — the kitchen never contacts a customer |
+| Customer data by role | Each role gets only the customer data its work needs, decided in the usecase DTO mappers: staff get name and email on the order list and the phone as well on one order (`StaffOrderCustomerResponse`) to coordinate its pickup — a list page never hands out every customer's number; the kitchen and the prep queue get the display name only (`TicketCustomerResponse`) — a station never contacts a customer |
 | Abandoned request | `HTTP_REQUEST_TIMEOUT` deadlines the handler context (below `HTTP_WRITE_TIMEOUT`), `POSTGRES_STATEMENT_TIMEOUT` caps one statement — a caller that walks away cannot hold database connections |
 
 ### Product images (Cloudinary)
@@ -324,7 +324,8 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Storefront catalog browse | `features/catalog` (FE) + `usecase/catalog` (BE) — API path `/catalog/*` |
 | Customer cart & checkout | `features/customer` (FE) + `usecase/cart` + `usecase/order` (BE) — `/cart/*`, `/orders/*` (session + server pricing; **pickup-only**, see below) |
 | Staff order queue | `features/staff` (FE) + `usecase/staff_order` (BE) — `/staff/orders/*` (list, detail, status transitions) |
-| Baker production queue | `features/baker` (FE) + `usecase/baker_order` (BE) — `/baker/production/*` (list, detail, kitchen transitions) |
+| Staff prep queue | `features/staff` (FE) + `usecase/staff_ticket` (BE) — `/staff/tickets/*` (counter tickets, ticket status, move a ticket to the other station) |
+| Baker kitchen queue | `features/baker` (FE) + `usecase/baker_ticket` (BE) — `/baker/tickets/*` (kitchen tickets, ticket detail, ticket status) |
 | Audit logs | `service/auditlogger` (BE only) |
 | Event delivery | `domain/event` + `port/outbox.go` + `adapter/repository/postgres/outbox_repository.go` + `adapter/eventbus` + `service/eventdispatch` + `cmd/worker` (BE only) |
 | Realtime push | `lib/realtime` + slice live updates (FE) + `usecase/realtime` + `adapter/realtime` + `adapter/eventbus` subscriber (BE) |
@@ -350,7 +351,8 @@ Delivery is **at least once** and **unordered across transactions** (each commit
 | Topic | Written by | Audience | Data |
 |-------|------------|----------|------|
 | `order.created` | checkout | the customer · staff | `order_id`, `status` |
-| `order.status_changed` | staff and baker status moves | the customer · staff · baker only when the order enters, leaves or moves within the statuses bakers see (`Status.VisibleToBaker`) | `order_id`, `status` |
+| `order.status_changed` | staff status moves, and the status a ticket move derives | the customer · staff · baker only when the order enters, leaves or moves within the statuses bakers see (`Status.VisibleToBaker`) | `order_id`, `status` |
+| `ticket.changed` | a station starting or finishing a ticket, a staff move, and cancelling its order | the customer · staff · baker only when bakers see the order (`Status.VisibleToBaker`; for a cancellation, the status it left) — a kitchen ticket shows where the order's other tickets stand | `ticket_id`, `order_id`, `station`, `status` |
 | `settings.updated` | admin settings and closed-day changes | everyone with a page open (public channel) | none |
 | `slots.changed` | a checkout that takes a slot's last place, and any cancellation | everyone with a page open (public channel) | `date` (the bakery day of the slot) |
 
@@ -400,11 +402,13 @@ BOMS is a **bakery pickup** flow, not delivery or shipping.
 | Role | Allowed transitions |
 |------|---------------------|
 | **Staff** | `pending`→`confirmed`\|`cancelled`; `confirmed`\|`in_production`→`cancelled`; `ready`→`fulfilled`\|`cancelled` |
-| **Baker** | `confirmed`→`in_production`; `in_production`→`ready` — `GET/PATCH /api/v1/baker/production/*` |
+| **Tickets** (derived) | `confirmed`→`in_production` when the first ticket starts; `in_production`→`ready` when every ticket is ready |
 
-**Staff workflow:** counter confirm/cancel and handoff when `ready`; kitchen progress is baker-owned.
+**Staff workflow:** counter confirm/cancel, its own prep queue, and handoff when `ready`; the kitchen works its own tickets.
 
-**Order code and history:** every order carries `CH-YYMMDD-NNN` — the bakery day it was placed and its number that day. Checkout takes the number from `order_day_counters` with an upsert inside its transaction, on the bakery day of the transaction clock (the instant `created_at` records); the counter row stays locked until commit, so numbers are unique and gap-free per day. `order_status_events` records each status an order enters, when, and who moved it (actor id and role), written in the transaction that makes the move — checkout writes the first entry, staff and baker transitions the rest. Order details return it as `timeline` (customers: status and time; staff: also the actor role); the kitchen gets the code only. Customers filter their history by `status` and by the bakery days orders were placed on (`from`, `to`, both inclusive).
+**Tickets:** production works on `order_tickets`, not on the priced receipt lines. Checkout splits an order into one ticket per station (`order_ticket_items`; a combo arrives as its products, each at its category's station). A ticket goes `queued` → `in_progress` → `ready`, or `cancelled` with its order; the kitchen moves kitchen tickets (`/baker/tickets/*`), the counter its own (`/staff/tickets/*`), and only once the order is accepted (`confirmed` or `in_production`). Every ticket move locks the order row first (`OrderRepository.LockForUpdate`) and derives the order status in the same transaction (`order.DeriveStatus`): the first ticket started puts the order `in_production`, the last one ready makes it `ready`, recorded in `order_status_events` as moved by whoever moved the ticket. With the lock taken first, two stations finishing at once make the order ready once. Staff may move a ticket nobody started to the other station — one ticket per station per order, audited. Cancelling an order cancels its tickets in the same transaction. Order details carry the tickets: customers and the kitchen see where each station stands, staff also see what each makes.
+
+**Order code and history:** every order carries `CH-YYMMDD-NNN` — the bakery day it was placed and its number that day. Checkout takes the number from `order_day_counters` with an upsert inside its transaction, on the bakery day of the transaction clock (the instant `created_at` records); the counter row stays locked until commit, so numbers are unique and gap-free per day. `order_status_events` records each status an order enters, when, and who moved it (actor id and role), written in the transaction that makes the move — checkout writes the first entry, staff transitions and ticket moves the rest. Order details return it as `timeline` (customers: status and time; staff: also the actor role); the kitchen gets the code only. Customers filter their history by `status` and by the bakery days orders were placed on (`from`, `to`, both inclusive).
 
 ---
 

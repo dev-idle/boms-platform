@@ -98,54 +98,15 @@ type Querier interface {
 	//      updated_at = now()
 	//  WHERE id = $1
 	AdminUpdateUserPassword(ctx context.Context, arg AdminUpdateUserPasswordParams) (int64, error)
-	//BakerListProductionOrders
+	//CancelOrderTickets
 	//
-	//  SELECT
-	//    o.id,
-	//    o.user_id,
-	//    o.status,
-	//    o.subtotal_cents,
-	//    o.discount_cents,
-	//    o.total_cents,
-	//    o.discount_code_id,
-	//    o.discount_code_snapshot,
-	//    o.pickup_at,
-	//    o.created_at,
-	//    o.updated_at,
-	//    o.code,
-	//    o.order_type,
-	//    u.email AS customer_email,
-	//    cp.display_name AS customer_display_name
-	//  FROM orders o
-	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-	//  WHERE o.status IN (
-	//      'confirmed'::order_status,
-	//      'in_production'::order_status,
-	//      'ready'::order_status
-	//    )
-	//    AND (
-	//      $1::order_status IS NULL
-	//      OR o.status = $1::order_status
-	//    )
-	//  ORDER BY o.pickup_at ASC NULLS LAST, o.created_at ASC
-	//  LIMIT $3 OFFSET $2
-	BakerListProductionOrders(ctx context.Context, arg BakerListProductionOrdersParams) ([]BakerListProductionOrdersRow, error)
-	//BakerListProductionOrdersCount
-	//
-	//  SELECT COUNT(*)::bigint AS count
-	//  FROM orders o
-	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//  WHERE o.status IN (
-	//      'confirmed'::order_status,
-	//      'in_production'::order_status,
-	//      'ready'::order_status
-	//    )
-	//    AND (
-	//      $1::order_status IS NULL
-	//      OR o.status = $1::order_status
-	//    )
-	BakerListProductionOrdersCount(ctx context.Context, status *OrderStatus) (int64, error)
+	//  UPDATE order_tickets
+	//  SET status = 'cancelled'::ticket_status,
+	//      updated_at = now()
+	//  WHERE order_id = $1
+	//    AND status <> 'cancelled'::ticket_status
+	//  RETURNING id, order_id, station, status, created_at, updated_at
+	CancelOrderTickets(ctx context.Context, orderID uuid.UUID) ([]OrderTicket, error)
 	//CatalogGetComboByID
 	//
 	//  SELECT id, name, slug, price_cents, image_url, starts_at, ends_at
@@ -395,6 +356,20 @@ type Querier interface {
 	//    AND pickup_at < $2::timestamptz
 	//    AND status <> 'cancelled'::order_status
 	CountOrdersInSlot(ctx context.Context, arg CountOrdersInSlotParams) (int64, error)
+	//CountStationTickets
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM order_tickets t
+	//  INNER JOIN orders o ON o.id = t.order_id
+	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  WHERE t.station = $1::station
+	//    AND t.status <> 'cancelled'::ticket_status
+	//    AND o.status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
+	//    AND (
+	//      $2::ticket_status IS NULL
+	//      OR t.status = $2::ticket_status
+	//    )
+	CountStationTickets(ctx context.Context, arg CountStationTicketsParams) (int64, error)
 	//CreateAdminProfile
 	//
 	//  INSERT INTO admin_profiles (user_id, full_name, phone)
@@ -556,6 +531,25 @@ type Querier interface {
 	//    $5::user_role
 	//  )
 	CreateOrderStatusEvent(ctx context.Context, arg CreateOrderStatusEventParams) error
+	//CreateOrderTicketItems
+	//
+	//  INSERT INTO order_ticket_items (ticket_id, order_item_id, product_id, name, quantity)
+	//  SELECT item.ticket_id, item.order_item_id, item.product_id, item.name, item.quantity
+	//  FROM jsonb_to_recordset($1::jsonb) AS item (
+	//    ticket_id uuid,
+	//    order_item_id uuid,
+	//    product_id uuid,
+	//    name text,
+	//    quantity integer
+	//  )
+	CreateOrderTicketItems(ctx context.Context, items json.RawMessage) (int64, error)
+	// One statement for every station of an order, like CreateOrderItems.
+	//
+	//  INSERT INTO order_tickets (order_id, station)
+	//  SELECT $1, ticket.station
+	//  FROM jsonb_to_recordset($2::jsonb) AS ticket (station station)
+	//  RETURNING id, order_id, station, status, created_at, updated_at
+	CreateOrderTickets(ctx context.Context, arg CreateOrderTicketsParams) ([]OrderTicket, error)
 	//CreateProduct
 	//
 	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes)
@@ -755,6 +749,12 @@ type Querier interface {
 	//  FROM orders
 	//  WHERE id = $1 AND user_id = $2
 	GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error)
+	//GetOrderTicket
+	//
+	//  SELECT id, order_id, station, status, created_at, updated_at
+	//  FROM order_tickets
+	//  WHERE id = $1
+	GetOrderTicket(ctx context.Context, id uuid.UUID) (OrderTicket, error)
 	//GetProductByID
 	//
 	//  SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
@@ -943,6 +943,50 @@ type Querier interface {
 	//  WHERE order_id = $1
 	//  ORDER BY created_at ASC, id ASC
 	ListOrderStatusEvents(ctx context.Context, orderID uuid.UUID) ([]ListOrderStatusEventsRow, error)
+	// The items of every ticket of an order.
+	//
+	//  SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity
+	//  FROM order_ticket_items i
+	//  INNER JOIN order_tickets t ON t.id = i.ticket_id
+	//  WHERE t.order_id = $1
+	//  ORDER BY i.created_at, i.name
+	ListOrderTicketItems(ctx context.Context, orderID uuid.UUID) ([]ListOrderTicketItemsRow, error)
+	// What an order's lines ask each station to make: a product line itself, by
+	// the name on the receipt, and every product a combo line holds, times the
+	// line's quantity.
+	//
+	//  SELECT
+	//    oi.id AS order_item_id,
+	//    p.id AS product_id,
+	//    oi.name,
+	//    c.station,
+	//    oi.quantity::int AS quantity
+	//  FROM order_items oi
+	//  INNER JOIN products p ON p.id = oi.product_id
+	//  INNER JOIN categories c ON c.id = p.category_id
+	//  WHERE oi.order_id = $1
+	//    AND oi.line_type = 'product'
+	//  UNION ALL
+	//  SELECT
+	//    oi.id AS order_item_id,
+	//    p.id AS product_id,
+	//    p.name,
+	//    c.station,
+	//    (oi.quantity * ci.quantity)::int AS quantity
+	//  FROM order_items oi
+	//  INNER JOIN combo_items ci ON ci.combo_id = oi.combo_id
+	//  INNER JOIN products p ON p.id = ci.product_id
+	//  INNER JOIN categories c ON c.id = p.category_id
+	//  WHERE oi.order_id = $1
+	//    AND oi.line_type = 'combo'
+	ListOrderTicketLines(ctx context.Context, orderID uuid.UUID) ([]ListOrderTicketLinesRow, error)
+	//ListOrderTickets
+	//
+	//  SELECT id, order_id, station, status, created_at, updated_at
+	//  FROM order_tickets
+	//  WHERE order_id = $1
+	//  ORDER BY station
+	ListOrderTickets(ctx context.Context, orderID uuid.UUID) ([]OrderTicket, error)
 	//ListOrdersByUser
 	//
 	//  SELECT
@@ -1001,6 +1045,55 @@ type Querier interface {
 	//  WHERE product_id = $1
 	//  ORDER BY sort_order ASC
 	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]ListProductImagesByProductIDRow, error)
+	// A station's queue: its tickets of orders accepted and not yet collected,
+	// soonest pickup first, each with what it makes. The page is cut first and
+	// the items gathered after, as in CatalogListProducts.
+	//
+	//  SELECT
+	//    page.id,
+	//    page.order_id,
+	//    page.station,
+	//    page.status,
+	//    page.created_at,
+	//    page.updated_at,
+	//    page.order_code,
+	//    page.order_status,
+	//    page.pickup_at,
+	//    page.customer_display_name,
+	//    COALESCE(items.list, '[]'::json)::json AS items
+	//  FROM (
+	//    SELECT
+	//      t.id,
+	//      t.order_id,
+	//      t.station,
+	//      t.status,
+	//      t.created_at,
+	//      t.updated_at,
+	//      o.code AS order_code,
+	//      o.status AS order_status,
+	//      o.pickup_at,
+	//      cp.display_name AS customer_display_name
+	//    FROM order_tickets t
+	//    INNER JOIN orders o ON o.id = t.order_id
+	//    INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//    LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+	//    WHERE t.station = $1::station
+	//      AND t.status <> 'cancelled'::ticket_status
+	//      AND o.status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
+	//      AND (
+	//        $2::ticket_status IS NULL
+	//        OR t.status = $2::ticket_status
+	//      )
+	//    ORDER BY o.pickup_at ASC NULLS LAST, t.created_at ASC, t.id ASC
+	//    LIMIT $4 OFFSET $3
+	//  ) page
+	//  LEFT JOIN LATERAL (
+	//    SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name) AS list
+	//    FROM order_ticket_items i
+	//    WHERE i.ticket_id = page.id
+	//  ) items ON true
+	//  ORDER BY page.pickup_at ASC NULLS LAST, page.created_at ASC, page.id ASC
+	ListStationTickets(ctx context.Context, arg ListStationTicketsParams) ([]ListStationTicketsRow, error)
 	// Days in [from_day, to_day]; the caller bounds the window, and one row per
 	// day keeps the result bounded by it.
 	//
@@ -1011,6 +1104,28 @@ type Querier interface {
 	//  ORDER BY closed_on
 	//  LIMIT $3::int
 	ListStoreClosedDates(ctx context.Context, arg ListStoreClosedDatesParams) ([]ListStoreClosedDatesRow, error)
+	// Holds the order row until the transaction ends: every ticket move takes it
+	// first, and the order's own status moves take the same row lock through their
+	// guarded UPDATE, so its status is derived from tickets no one else is moving.
+	//
+	//  SELECT
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    pickup_at,
+	//    created_at,
+	//    updated_at,
+	//    code,
+	//    order_type
+	//  FROM orders
+	//  WHERE id = $1
+	//  FOR UPDATE
+	LockOrder(ctx context.Context, id uuid.UUID) (Order, error)
 	// Phones live in three profile tables, so no single unique index can guard them.
 	// This lock (namespace 8734212, keyed by the number) serializes writers of one
 	// number until the transaction ends.
@@ -1204,6 +1319,17 @@ type Querier interface {
 	//  WHERE id = ANY($1::uuid[])
 	//    AND published_at IS NULL
 	MarkOutboxEventsPublished(ctx context.Context, ids []uuid.UUID) error
+	// Only a ticket nobody has started moves; the order's unique ticket per
+	// station refuses a station that already has one.
+	//
+	//  UPDATE order_tickets
+	//  SET station = $1::station,
+	//      updated_at = now()
+	//  WHERE id = $2
+	//    AND station = $3::station
+	//    AND status = 'queued'::ticket_status
+	//  RETURNING id, order_id, station, status, created_at, updated_at
+	MoveOrderTicket(ctx context.Context, arg MoveOrderTicketParams) (OrderTicket, error)
 	//NextEmployeeCode
 	//
 	//  SELECT
@@ -1514,6 +1640,17 @@ type Querier interface {
 	//    code,
 	//    order_type
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
+	// A move made at the ticket's own station; a ticket that already moved on, or
+	// sits at another station, is left alone.
+	//
+	//  UPDATE order_tickets
+	//  SET status = $1::ticket_status,
+	//      updated_at = now()
+	//  WHERE id = $2
+	//    AND station = $3::station
+	//    AND status = $4::ticket_status
+	//  RETURNING id, order_id, station, status, created_at, updated_at
+	UpdateOrderTicketStatus(ctx context.Context, arg UpdateOrderTicketStatusParams) (OrderTicket, error)
 	//UpdateProduct
 	//
 	//  UPDATE products

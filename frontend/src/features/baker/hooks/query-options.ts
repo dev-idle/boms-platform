@@ -1,28 +1,29 @@
 import type { QueryKey } from "@tanstack/react-query";
 
 import { REALTIME_EVENT_TYPE, type RealtimeEvent } from "@/lib/realtime/events";
-
-import type { BakerOrdersListFilterInput } from "../schemas";
+import type { StationTicketsListFilterInput } from "@/lib/schemas/ticket";
 
 export const bakerQueryKeys = {
-  productionRoot: ["baker", "production"] as const,
-  production: (filter: BakerOrdersListFilterInput) =>
-    [...bakerQueryKeys.productionRoot, filter] as const,
-  productionOrder: (id: string) => ["baker", "production", id] as const,
+  ticketsRoot: ["baker", "tickets"] as const,
+  tickets: (filter: StationTicketsListFilterInput) =>
+    [...bakerQueryKeys.ticketsRoot, filter] as const,
+  ticket: (id: string) => [...bakerQueryKeys.ticketsRoot, id] as const,
 };
 
 /** Everything pushed events can change in a baker tab, refetched after a gap. */
-export const bakerLiveQueryKeys: readonly QueryKey[] = [bakerQueryKeys.productionRoot];
+export const bakerLiveQueryKeys: readonly QueryKey[] = [bakerQueryKeys.ticketsRoot];
 
 /**
- * Queries an order event makes stale in a baker tab: the production board and
- * the order's detail, both under the production root. The API only tells the
- * kitchen about orders entering, leaving or moving within its statuses.
+ * Queries an event makes stale in a baker tab: the kitchen queue and its
+ * tickets, all under the tickets root. A ticket moves when a station works on
+ * it; the queue also changes when the counter accepts, hands over or cancels an
+ * order, which reaches the kitchen as the order's status change.
  */
 export function bakerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
     case REALTIME_EVENT_TYPE.orderStatusChanged:
-      return [bakerQueryKeys.productionRoot];
+    case REALTIME_EVENT_TYPE.ticketChanged:
+      return [bakerQueryKeys.ticketsRoot];
     default:
       return [];
   }

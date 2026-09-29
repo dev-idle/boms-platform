@@ -7,6 +7,7 @@ import {
   orderTimelineEntrySchema,
   orderTypeSchema,
 } from "@/lib/schemas/order";
+import { ticketSummarySchema } from "@/lib/schemas/ticket";
 import { clockTimeSchema } from "@/lib/validation/clock";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
@@ -93,6 +94,7 @@ export const orderSchema = z.object({
   pickup_at: apiDateTimeSchema.nullable().optional(),
   items: z.array(orderItemSchema),
   timeline: z.array(orderTimelineEntrySchema),
+  tickets: z.array(ticketSummarySchema),
   created_at: apiDateTimeSchema,
   updated_at: apiDateTimeSchema,
 });

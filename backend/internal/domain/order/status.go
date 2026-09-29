@@ -30,21 +30,3 @@ func CanStaffTransition(from, to Status) bool {
 		return false
 	}
 }
-
-// CanBakerTransition reports whether kitchen staff may advance production status.
-func CanBakerTransition(from, to Status) bool {
-	if from == to {
-		return false
-	}
-	if !from.Valid() || !to.Valid() {
-		return false
-	}
-	switch from {
-	case StatusConfirmed:
-		return to == StatusInProduction
-	case StatusInProduction:
-		return to == StatusReady
-	default:
-		return false
-	}
-}

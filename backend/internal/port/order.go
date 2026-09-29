@@ -65,12 +65,6 @@ type StaffOrderListRow struct {
 	CustomerPhone       *string
 }
 
-type BakerListOrdersParams struct {
-	Status *domainorder.Status
-	Limit  int32
-	Offset int32
-}
-
 // PickupCount is how many orders not cancelled are due at one pickup time.
 type PickupCount struct {
 	At     time.Time
@@ -96,13 +90,15 @@ type UpdateOrderStatusParams struct {
 type OrderRepository interface {
 	Create(ctx context.Context, params CreateOrderParams) (*domainorder.Order, error)
 	GetByIDForUser(ctx context.Context, userID, orderID uuid.UUID) (*domainorder.Order, error)
+	// LockForUpdate row-locks the order until the transaction ends; call it only
+	// inside one. Every ticket move takes it first; the order's own status moves
+	// take the same row lock through their guarded UPDATE.
+	LockForUpdate(ctx context.Context, orderID uuid.UUID) (*domainorder.Order, error)
 	StaffGetByID(ctx context.Context, orderID uuid.UUID) (*StaffOrderListRow, error)
 	ListByUser(ctx context.Context, params ListOrdersParams) ([]domainorder.Order, error)
 	ListCountByUser(ctx context.Context, userID uuid.UUID, filter OrderHistoryFilter) (int64, error)
 	StaffList(ctx context.Context, params StaffListOrdersParams) ([]StaffOrderListRow, error)
 	StaffListCount(ctx context.Context, status *domainorder.Status) (int64, error)
-	BakerListProduction(ctx context.Context, params BakerListOrdersParams) ([]StaffOrderListRow, error)
-	BakerListProductionCount(ctx context.Context, status *domainorder.Status) (int64, error)
 	UpdateStatus(ctx context.Context, params UpdateOrderStatusParams) (*domainorder.Order, error)
 	CreateItems(ctx context.Context, items []CreateOrderItemParams) error
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domainorder.Item, error)

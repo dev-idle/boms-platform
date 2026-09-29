@@ -29,7 +29,8 @@ export const customerLiveQueryKeys: readonly QueryKey[] = [
  * Queries a pushed event makes stale in a customer tab. Checkout empties the
  * cart, so a new order placed in another tab refreshes the cart here too; a
  * settings change refreshes the pickup window the cart offers, and an order
- * taking or freeing a slot refreshes that day's slots.
+ * taking or freeing a slot refreshes that day's slots. A ticket moving changes
+ * only its order's detail, where the preparation shows.
  */
 export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -41,6 +42,10 @@ export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
         customerQueryKeys.ordersRoot,
         orderId ? customerQueryKeys.order(orderId) : customerQueryKeys.orderRoot,
       ];
+    }
+    case REALTIME_EVENT_TYPE.ticketChanged: {
+      const orderId = event.data.order_id;
+      return [orderId ? customerQueryKeys.order(orderId) : customerQueryKeys.orderRoot];
     }
     case REALTIME_EVENT_TYPE.settingsUpdated:
       return [customerQueryKeys.pickupRules, customerQueryKeys.pickupSlotsRoot];

@@ -13,167 +13,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const bakerListProductionOrders = `-- name: BakerListProductionOrders :many
-SELECT
-  o.id,
-  o.user_id,
-  o.status,
-  o.subtotal_cents,
-  o.discount_cents,
-  o.total_cents,
-  o.discount_code_id,
-  o.discount_code_snapshot,
-  o.pickup_at,
-  o.created_at,
-  o.updated_at,
-  o.code,
-  o.order_type,
-  u.email AS customer_email,
-  cp.display_name AS customer_display_name
-FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-WHERE o.status IN (
-    'confirmed'::order_status,
-    'in_production'::order_status,
-    'ready'::order_status
-  )
-  AND (
-    $1::order_status IS NULL
-    OR o.status = $1::order_status
-  )
-ORDER BY o.pickup_at ASC NULLS LAST, o.created_at ASC
-LIMIT $3 OFFSET $2
-`
-
-type BakerListProductionOrdersParams struct {
-	Status *OrderStatus `json:"status"`
-	Offset int32        `json:"offset"`
-	Limit  int32        `json:"limit"`
-}
-
-type BakerListProductionOrdersRow struct {
-	ID                   uuid.UUID   `json:"id"`
-	UserID               uuid.UUID   `json:"userId"`
-	Status               OrderStatus `json:"status"`
-	SubtotalCents        int64       `json:"subtotalCents"`
-	DiscountCents        int64       `json:"discountCents"`
-	TotalCents           int64       `json:"totalCents"`
-	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
-	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
-	PickupAt             *time.Time  `json:"pickupAt"`
-	CreatedAt            time.Time   `json:"createdAt"`
-	UpdatedAt            time.Time   `json:"updatedAt"`
-	Code                 string      `json:"code"`
-	OrderType            OrderType   `json:"orderType"`
-	CustomerEmail        string      `json:"customerEmail"`
-	CustomerDisplayName  *string     `json:"customerDisplayName"`
-}
-
-// BakerListProductionOrders
-//
-//	SELECT
-//	  o.id,
-//	  o.user_id,
-//	  o.status,
-//	  o.subtotal_cents,
-//	  o.discount_cents,
-//	  o.total_cents,
-//	  o.discount_code_id,
-//	  o.discount_code_snapshot,
-//	  o.pickup_at,
-//	  o.created_at,
-//	  o.updated_at,
-//	  o.code,
-//	  o.order_type,
-//	  u.email AS customer_email,
-//	  cp.display_name AS customer_display_name
-//	FROM orders o
-//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-//	WHERE o.status IN (
-//	    'confirmed'::order_status,
-//	    'in_production'::order_status,
-//	    'ready'::order_status
-//	  )
-//	  AND (
-//	    $1::order_status IS NULL
-//	    OR o.status = $1::order_status
-//	  )
-//	ORDER BY o.pickup_at ASC NULLS LAST, o.created_at ASC
-//	LIMIT $3 OFFSET $2
-func (q *Queries) BakerListProductionOrders(ctx context.Context, arg BakerListProductionOrdersParams) ([]BakerListProductionOrdersRow, error) {
-	rows, err := q.db.Query(ctx, bakerListProductionOrders, arg.Status, arg.Offset, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []BakerListProductionOrdersRow{}
-	for rows.Next() {
-		var i BakerListProductionOrdersRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Status,
-			&i.SubtotalCents,
-			&i.DiscountCents,
-			&i.TotalCents,
-			&i.DiscountCodeID,
-			&i.DiscountCodeSnapshot,
-			&i.PickupAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Code,
-			&i.OrderType,
-			&i.CustomerEmail,
-			&i.CustomerDisplayName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const bakerListProductionOrdersCount = `-- name: BakerListProductionOrdersCount :one
-SELECT COUNT(*)::bigint AS count
-FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-WHERE o.status IN (
-    'confirmed'::order_status,
-    'in_production'::order_status,
-    'ready'::order_status
-  )
-  AND (
-    $1::order_status IS NULL
-    OR o.status = $1::order_status
-  )
-`
-
-// BakerListProductionOrdersCount
-//
-//	SELECT COUNT(*)::bigint AS count
-//	FROM orders o
-//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	WHERE o.status IN (
-//	    'confirmed'::order_status,
-//	    'in_production'::order_status,
-//	    'ready'::order_status
-//	  )
-//	  AND (
-//	    $1::order_status IS NULL
-//	    OR o.status = $1::order_status
-//	  )
-func (q *Queries) BakerListProductionOrdersCount(ctx context.Context, status *OrderStatus) (int64, error) {
-	row := q.db.QueryRow(ctx, bakerListProductionOrdersCount, status)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const countCustomerOrdersBetween = `-- name: CountCustomerOrdersBetween :one
 SELECT count(*)::bigint AS count
 FROM orders
@@ -846,6 +685,68 @@ func (q *Queries) ListOrdersByUserCount(ctx context.Context, arg ListOrdersByUse
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const lockOrder = `-- name: LockOrder :one
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type
+FROM orders
+WHERE id = $1
+FOR UPDATE
+`
+
+// Holds the order row until the transaction ends: every ticket move takes it
+// first, and the order's own status moves take the same row lock through their
+// guarded UPDATE, so its status is derived from tickets no one else is moving.
+//
+//	SELECT
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  pickup_at,
+//	  created_at,
+//	  updated_at,
+//	  code,
+//	  order_type
+//	FROM orders
+//	WHERE id = $1
+//	FOR UPDATE
+func (q *Queries) LockOrder(ctx context.Context, id uuid.UUID) (Order, error) {
+	row := q.db.QueryRow(ctx, lockOrder, id)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.PickupAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.OrderType,
+	)
+	return i, err
 }
 
 const lockPickupSlot = `-- name: LockPickupSlot :exec

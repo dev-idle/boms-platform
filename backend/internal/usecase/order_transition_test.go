@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainevent "github.com/boms/backend/internal/domain/event"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -41,6 +42,18 @@ func (f *transitionOrders) AddStatusEvent(_ context.Context, params port.AddOrde
 	}
 	f.history = append(f.history, params)
 	return nil
+}
+
+// cancelledTickets cancels the tickets of an order; any other call panics.
+type cancelledTickets struct {
+	port.TicketRepository
+	cancelled []domainorder.Ticket
+	orderID   uuid.UUID
+}
+
+func (f *cancelledTickets) CancelForOrder(_ context.Context, orderID uuid.UUID) ([]domainorder.Ticket, error) {
+	f.orderID = orderID
+	return f.cancelled, nil
 }
 
 type recordingOutbox struct {
@@ -96,19 +109,26 @@ func TestOrderTransitions_Apply(t *testing.T) {
 		}, orders.history[0], "the history names the move and who made it")
 	})
 
-	t.Run("a_cancelled_order_frees_its_pickup_slot", func(t *testing.T) {
+	t.Run("a_cancelled_order_cancels_its_tickets_and_frees_its_slot", func(t *testing.T) {
 		t.Parallel()
+		orderID := uuid.New()
+		kitchenTicket := domainorder.Ticket{ID: uuid.New(), OrderID: orderID, Station: domaincategory.StationKitchen, Status: domainorder.TicketCancelled}
 		orders, outbox := &transitionOrders{}, &recordingOutbox{}
-		transitions := orderTransitions{tx: inlineTx{}, orders: orders, events: outbox}
+		tickets := &cancelledTickets{cancelled: []domainorder.Ticket{kitchenTicket}}
+		transitions := orderTransitions{tx: inlineTx{}, orders: orders, tickets: tickets, events: outbox}
 
 		_, err := transitions.apply(context.Background(), uuid.New(), domainuser.RoleStaff, port.UpdateOrderStatusParams{
-			OrderID: uuid.New(), FromStatus: domainorder.StatusConfirmed, ToStatus: domainorder.StatusCancelled,
+			OrderID: orderID, FromStatus: domainorder.StatusInProduction, ToStatus: domainorder.StatusCancelled,
 		})
 
 		require.NoError(t, err)
-		require.Len(t, outbox.added, 2)
-		assert.Equal(t, domainorder.TopicSlotsChanged, outbox.added[1].Topic)
-		assert.Equal(t, "2026-07-10", outbox.added[1].Data["date"], "the bakery day of the freed slot")
+		assert.Equal(t, orderID, tickets.orderID, "the tickets of the cancelled order")
+		require.Len(t, outbox.added, 3)
+		assert.Equal(t, domainorder.TopicOrderStatusChanged, outbox.added[0].Topic)
+		assert.Equal(t, domainorder.TopicTicketChanged, outbox.added[1].Topic)
+		assert.Contains(t, outbox.added[1].Audience.Roles, domainuser.RoleBaker, "the kitchen hears its ticket is off")
+		assert.Equal(t, domainorder.TopicSlotsChanged, outbox.added[2].Topic)
+		assert.Equal(t, "2026-07-10", outbox.added[2].Data["date"], "the bakery day of the freed slot")
 	})
 
 	t.Run("reports_a_move_someone_else_made_first_as_invalid", func(t *testing.T) {

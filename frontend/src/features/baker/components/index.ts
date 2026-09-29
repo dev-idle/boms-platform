@@ -1,3 +1,3 @@
 export { BakerLiveUpdates } from "./baker-live-updates";
-export { BakerProductionOrderDetail } from "./baker-production-order-detail";
 export { BakerProductionTable } from "./baker-production-table";
+export { BakerTicketDetail } from "./baker-ticket-detail";

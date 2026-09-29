@@ -698,6 +698,12 @@ enum "order_type" {
   values = ["instant", "pre_order"]
 }
 
+// Where one station's part of an order stands.
+enum "ticket_status" {
+  schema = schema.public
+  values = ["queued", "in_progress", "ready", "cancelled"]
+}
+
 table "carts" {
   schema = schema.public
   column "id" {
@@ -1010,6 +1016,112 @@ table "order_items" {
   }
   check "order_items_line_target_check" {
     expr = "(line_type = 'product' AND product_id IS NOT NULL AND combo_id IS NULL) OR (line_type = 'combo' AND combo_id IS NOT NULL AND product_id IS NULL)"
+  }
+}
+
+// The part of an order one station makes. An order has at most one ticket per
+// station; its status follows its tickets.
+table "order_tickets" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "order_id" {
+    type = uuid
+    null = false
+  }
+  column "station" {
+    type = enum.station
+    null = false
+  }
+  column "status" {
+    type    = enum.ticket_status
+    null    = false
+    default = sql("'queued'::ticket_status")
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "order_tickets_order_id_fkey" {
+    columns     = [column.order_id]
+    ref_columns = [table.orders.column.id]
+    on_delete   = CASCADE
+  }
+  index "order_tickets_order_station_idx" {
+    unique  = true
+    columns = [column.order_id, column.station]
+  }
+  // A station's queue: its tickets still to make or collect.
+  index "order_tickets_station_queue_idx" {
+    columns = [column.station, column.status]
+    where   = "status <> 'cancelled'::ticket_status"
+  }
+}
+
+// What a ticket makes: products, a combo line counted by the products it holds.
+// Names are kept as they were at checkout, like order_items.
+table "order_ticket_items" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "ticket_id" {
+    type = uuid
+    null = false
+  }
+  column "order_item_id" {
+    type = uuid
+    null = false
+  }
+  column "product_id" {
+    type = uuid
+    null = false
+  }
+  column "name" {
+    type = text
+    null = false
+  }
+  column "quantity" {
+    type = integer
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "order_ticket_items_ticket_id_fkey" {
+    columns     = [column.ticket_id]
+    ref_columns = [table.order_tickets.column.id]
+    on_delete   = CASCADE
+  }
+  foreign_key "order_ticket_items_order_item_id_fkey" {
+    columns     = [column.order_item_id]
+    ref_columns = [table.order_items.column.id]
+    on_delete   = CASCADE
+  }
+  index "order_ticket_items_ticket_id_idx" {
+    columns = [column.ticket_id]
+  }
+  check "order_ticket_items_quantity_check" {
+    expr = "quantity > 0"
   }
 }
 

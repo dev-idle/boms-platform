@@ -8,8 +8,8 @@ import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import {
   formatOrderStatusLabel,
-  orderStatusToPillVariant,
   StatusPill,
+  ticketStatusToPillVariant,
 } from "@/components/ui/status-pill";
 import {
   dashboardTableEmptyMessage,
@@ -18,44 +18,44 @@ import {
 } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
+import {
+  formatTicketItems,
+  ticketItemCount,
+  type ActiveTicketStatus,
+} from "@/lib/schemas/ticket";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { formatPickupWallTime } from "@/lib/validation/pickup";
-import { formatPriceCents } from "@/lib/validation/catalog";
 
-import { useBakerProductionOrders } from "../hooks";
-import type { BakerOrderStatus } from "../schemas";
+import { useKitchenTickets } from "../hooks";
 
 const PAGE_SIZE = DASHBOARD_STAFF_ORDERS_PAGE_SIZE;
 
-const STATUS_FILTERS: Array<{ value: BakerOrderStatus | undefined; label: string }> = [
+const STATUS_FILTERS: Array<{ value: ActiveTicketStatus | undefined; label: string }> = [
   { value: undefined, label: "All active" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "in_production", label: "In production" },
+  { value: "queued", label: "Queued" },
+  { value: "in_progress", label: "In progress" },
   { value: "ready", label: "Ready" },
 ];
 
-function bakerOrderItemSummary(itemCount: number): string {
-  return itemCount === 1 ? "1 item" : `${itemCount} items`;
-}
-
+/** The kitchen's queue: one row per kitchen ticket, led by its pickup time. */
 export function BakerProductionTable() {
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<BakerOrderStatus | undefined>(undefined);
+  const [status, setStatus] = useState<ActiveTicketStatus | undefined>(undefined);
   const filter = useMemo(
     () => ({ page, page_size: PAGE_SIZE, status }),
     [page, status],
   );
-  const ordersQuery = useBakerProductionOrders(filter);
-  const { initialLoading, refetching } = getQuerySurface(ordersQuery);
-  const orders = ordersQuery.data?.orders ?? [];
-  const pagination = ordersQuery.data?.pagination;
+  const ticketsQuery = useKitchenTickets(filter);
+  const { initialLoading, refetching } = getQuerySurface(ticketsQuery);
+  const tickets = ticketsQuery.data?.tickets ?? [];
+  const pagination = ticketsQuery.data?.pagination;
   const hasActiveFilter = status !== undefined;
 
   return (
     <div className="dashboard-page-body">
       <div className="db-table-filters db-table-filters--end">
         <DashboardFilterGroup
-          aria-label="Filter by production status"
+          aria-label="Filter by ticket status"
           onChange={(next) => {
             setStatus(next);
             setPage(1);
@@ -70,15 +70,15 @@ export function BakerProductionTable() {
           <div className="baker-production-empty" role="status">
             <BusyIndicator />
           </div>
-        ) : ordersQuery.isError ? (
+        ) : ticketsQuery.isError ? (
           <p className="baker-production-empty baker-production-empty--error">
-            {dashboardTableErrorMessage("production orders")}
+            {dashboardTableErrorMessage("kitchen tickets")}
           </p>
-        ) : orders.length === 0 ? (
+        ) : tickets.length === 0 ? (
           <p className="baker-production-empty">
             {hasActiveFilter
-              ? "No production orders match this filter."
-              : dashboardTableEmptyMessage("production orders")}
+              ? "No kitchen tickets match this filter."
+              : dashboardTableEmptyMessage("kitchen tickets")}
           </p>
         ) : (
           <>
@@ -86,57 +86,55 @@ export function BakerProductionTable() {
             <div aria-hidden className="baker-production-labels">
               <span>Pickup</span>
               <span>Order</span>
-              <span className="baker-production-labels__total">Total</span>
+              <span className="baker-production-labels__count">Items</span>
               <span>Status</span>
               <span />
             </div>
             <ul className="baker-production-list">
-              {orders.map((order) => {
-                const customerName = order.customer.display_name || "Customer";
-                return (
-                  <li key={order.id} className="baker-production-row">
-                    <p className="baker-production-row__time">
-                      {order.pickup_at
-                        ? formatPickupWallTime(order.pickup_at)
-                        : "—"}
+              {tickets.map((ticket) => (
+                <li key={ticket.id} className="baker-production-row">
+                  <p className="baker-production-row__time">
+                    {ticket.pickup_at ? formatPickupWallTime(ticket.pickup_at) : "—"}
+                  </p>
+                  <div className="baker-production-row__customer">
+                    <p className="baker-production-row__name">
+                      {ticket.customer.display_name || "Customer"}
                     </p>
-                    <div className="baker-production-row__customer">
-                      <p className="baker-production-row__name">{customerName}</p>
-                      <p className="baker-production-row__summary">
-                        {bakerOrderItemSummary(order.item_count)}
-                      </p>
-                      <p className="baker-production-row__code">{order.code}</p>
-                    </div>
-                    <span className="baker-production-row__total">
-                      {formatPriceCents(order.total_cents)}
-                    </span>
-                    <span className="baker-production-row__status">
-                      <StatusPill
-                        label={formatOrderStatusLabel(order.status)}
-                        variant={orderStatusToPillVariant(order.status)}
-                      />
-                    </span>
-                    <span className="baker-production-row__open">
-                      <DashboardTableActionLink
-                        href={ROUTE.baker.productionDetail(order.id)}
-                        label={`Open production order ${order.id}`}
-                        showArrow
-                        text="Open"
-                      />
-                    </span>
-                  </li>
-                );
-              })}
+                    <p className="baker-production-row__summary">
+                      {formatTicketItems(ticket.items)}
+                    </p>
+                    <p className="baker-production-row__code">{ticket.order_code}</p>
+                  </div>
+                  <span className="baker-production-row__count">
+                    {ticketItemCount(ticket.items)}
+                    <span className="sr-only"> items</span>
+                  </span>
+                  <span className="baker-production-row__status">
+                    <StatusPill
+                      label={formatOrderStatusLabel(ticket.status)}
+                      variant={ticketStatusToPillVariant(ticket.status)}
+                    />
+                  </span>
+                  <span className="baker-production-row__open">
+                    <DashboardTableActionLink
+                      href={ROUTE.baker.productionDetail(ticket.id)}
+                      label={`Open the kitchen ticket for order ${ticket.order_code}`}
+                      showArrow
+                      text="Open"
+                    />
+                  </span>
+                </li>
+              ))}
             </ul>
           </>
         )}
         <DashboardTablePagination
           disabled={refetching}
-          itemLabel="orders"
+          itemLabel="tickets"
           onPageChange={setPage}
           page={pagination?.page ?? page}
           pageSize={pagination?.page_size ?? PAGE_SIZE}
-          totalItems={pagination?.total ?? orders.length}
+          totalItems={pagination?.total ?? tickets.length}
           totalPages={pagination?.total_pages ?? 1}
         />
       </DashboardTableWrap>

@@ -69,6 +69,17 @@ func (r *OrderRepository) GetByIDForUser(ctx context.Context, userID, orderID uu
 	return mapOrder(row), nil
 }
 
+func (r *OrderRepository) LockForUpdate(ctx context.Context, orderID uuid.UUID) (*domainorder.Order, error) {
+	if txFromContext(ctx) == nil {
+		return nil, apperrors.Errorf("lock order: requires a transaction")
+	}
+	row, err := r.q(ctx).LockOrder(ctx, orderID)
+	if err != nil {
+		return nil, mapRepoError(err, "lock order")
+	}
+	return mapOrder(row), nil
+}
+
 func (r *OrderRepository) ListByUser(ctx context.Context, params port.ListOrdersParams) ([]domainorder.Order, error) {
 	status, err := optionalOrderStatus(params.Filter.Status)
 	if err != nil {
@@ -149,44 +160,6 @@ func (r *OrderRepository) StaffListCount(ctx context.Context, status *domainorde
 	count, err := r.q(ctx).StaffListOrdersCount(ctx, statusSQL)
 	if err != nil {
 		return 0, mapRepoError(err, "staff list orders count")
-	}
-	return count, nil
-}
-
-func (r *OrderRepository) BakerListProduction(
-	ctx context.Context,
-	params port.BakerListOrdersParams,
-) ([]port.StaffOrderListRow, error) {
-	status, err := optionalOrderStatus(params.Status)
-	if err != nil {
-		return nil, err
-	}
-	rows, err := r.q(ctx).BakerListProductionOrders(ctx, sqlcgen.BakerListProductionOrdersParams{
-		Status: status,
-		Limit:  params.Limit,
-		Offset: params.Offset,
-	})
-	if err != nil {
-		return nil, mapRepoError(err, "baker list production orders")
-	}
-	out := make([]port.StaffOrderListRow, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, *mapBakerListProductionOrdersRow(row))
-	}
-	return out, nil
-}
-
-func (r *OrderRepository) BakerListProductionCount(
-	ctx context.Context,
-	status *domainorder.Status,
-) (int64, error) {
-	statusSQL, err := optionalOrderStatus(status)
-	if err != nil {
-		return 0, err
-	}
-	count, err := r.q(ctx).BakerListProductionOrdersCount(ctx, statusSQL)
-	if err != nil {
-		return 0, mapRepoError(err, "baker list production orders count")
 	}
 	return count, nil
 }
@@ -514,27 +487,6 @@ func mapStaffGetOrderByIDRow(row sqlcgen.StaffGetOrderByIDRow) *port.StaffOrderL
 		row.CustomerEmail,
 		row.CustomerDisplayName,
 		row.CustomerPhone,
-	)
-}
-
-func mapBakerListProductionOrdersRow(row sqlcgen.BakerListProductionOrdersRow) *port.StaffOrderListRow {
-	return mapStaffOrderJoined(
-		row.ID,
-		row.UserID,
-		row.Status,
-		row.SubtotalCents,
-		row.DiscountCents,
-		row.TotalCents,
-		row.DiscountCodeID,
-		row.DiscountCodeSnapshot,
-		row.PickupAt,
-		row.CreatedAt,
-		row.UpdatedAt,
-		row.Code,
-		row.OrderType,
-		row.CustomerEmail,
-		row.CustomerDisplayName,
-		nil,
 	)
 }
 

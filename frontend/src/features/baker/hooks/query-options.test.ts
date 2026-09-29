@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import { bakerQueryKeys, bakerQueryKeysForEvent } from "./query-options";
 
 describe("bakerQueryKeysForEvent", () => {
-  it("refreshes the board and order details for a status change", () => {
-    expect(
-      bakerQueryKeysForEvent({ type: "order.status_changed", data: { order_id: "o-1" } }),
-    ).toEqual([bakerQueryKeys.productionRoot]);
-    expect(bakerQueryKeys.productionOrder("o-1").slice(0, 2)).toEqual([
-      ...bakerQueryKeys.productionRoot,
-    ]);
+  it("refreshes the queue and its tickets when a ticket or its order moves", () => {
+    for (const type of ["ticket.changed", "order.status_changed"]) {
+      expect(bakerQueryKeysForEvent({ type, data: { order_id: "o-1" } })).toEqual([
+        bakerQueryKeys.ticketsRoot,
+      ]);
+    }
+    expect(bakerQueryKeys.ticket("t-1").slice(0, 2)).toEqual([...bakerQueryKeys.ticketsRoot]);
   });
 
   it("ignores new orders, which are not production work yet", () => {

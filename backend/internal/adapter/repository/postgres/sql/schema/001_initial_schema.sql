@@ -16,6 +16,7 @@ CREATE TYPE "order_status" AS ENUM (
 );
 CREATE TYPE "station" AS ENUM ('kitchen', 'counter');
 CREATE TYPE "order_type" AS ENUM ('instant', 'pre_order');
+CREATE TYPE "ticket_status" AS ENUM ('queued', 'in_progress', 'ready', 'cancelled');
 
 CREATE TABLE "users" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -284,6 +285,34 @@ CREATE TABLE "order_items" (
   )
 );
 CREATE INDEX "order_items_order_id_idx" ON "order_items" ("order_id");
+
+CREATE TABLE "order_tickets" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "order_id" uuid NOT NULL,
+  "station" "station" NOT NULL,
+  "status" "ticket_status" NOT NULL DEFAULT 'queued',
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("id"),
+  CONSTRAINT "order_tickets_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX "order_tickets_order_station_idx" ON "order_tickets" ("order_id", "station");
+CREATE INDEX "order_tickets_station_queue_idx" ON "order_tickets" ("station", "status") WHERE (status <> 'cancelled'::ticket_status);
+
+CREATE TABLE "order_ticket_items" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "ticket_id" uuid NOT NULL,
+  "order_item_id" uuid NOT NULL,
+  "product_id" uuid NOT NULL,
+  "name" text NOT NULL,
+  "quantity" integer NOT NULL,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("id"),
+  CONSTRAINT "order_ticket_items_order_item_id_fkey" FOREIGN KEY ("order_item_id") REFERENCES "order_items" ("id") ON DELETE CASCADE,
+  CONSTRAINT "order_ticket_items_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "order_tickets" ("id") ON DELETE CASCADE,
+  CONSTRAINT "order_ticket_items_quantity_check" CHECK (quantity > 0)
+);
+CREATE INDEX "order_ticket_items_ticket_id_idx" ON "order_ticket_items" ("ticket_id");
 
 CREATE TABLE "order_day_counters" (
   "day" date NOT NULL,

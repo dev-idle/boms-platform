@@ -5,12 +5,25 @@ import {
   browserRequestWithMeta,
 } from "@/lib/browser-api-client";
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
+import {
+  patchTicketStatusInputSchema,
+  stationTicketSchema,
+  stationTicketsListFilterSchema,
+  ticketChangeSchema,
+  type PatchTicketStatusInput,
+  type StationTicket,
+  type StationTicketsListFilterInput,
+  type StationTicketsListResult,
+  type TicketChange,
+} from "@/lib/schemas/ticket";
 
 import {
+  moveTicketInputSchema,
   patchStaffOrderStatusInputSchema,
   staffOrderSchema,
   staffOrderSummarySchema,
   staffOrdersListFilterSchema,
+  type MoveTicketInput,
   type PatchStaffOrderStatusInput,
   type StaffOrder,
   type StaffOrdersListFilterInput,
@@ -59,6 +72,54 @@ export async function patchStaffOrderStatus(
   return browserRequest<StaffOrder>(`/api/v1/staff/orders/${parsedId}/status`, {
     method: "PATCH",
     schema: staffOrderSchema,
+    json: body,
+  });
+}
+
+export async function listCounterTickets(
+  input: StationTicketsListFilterInput,
+): Promise<StationTicketsListResult> {
+  const filter = stationTicketsListFilterSchema.parse(input);
+  const params = new URLSearchParams();
+  params.set("page", String(filter.page));
+  params.set("page_size", String(filter.page_size));
+  if (filter.status) {
+    params.set("status", filter.status);
+  }
+  const result = await browserRequestWithMeta<StationTicket[]>(
+    `/api/v1/staff/tickets?${params.toString()}`,
+    { method: "GET", schema: z.array(stationTicketSchema) },
+  );
+  const parsed = parsePaginatedList(result.data, result.meta, {
+    page: filter.page,
+    page_size: filter.page_size,
+  });
+  return {
+    tickets: parsed.items,
+    pagination: parsed.pagination,
+    request_id: parsed.request_id,
+  };
+}
+
+export async function patchCounterTicketStatus(
+  id: string,
+  input: PatchTicketStatusInput,
+): Promise<TicketChange> {
+  const parsedId = z.uuid().parse(id);
+  const body = patchTicketStatusInputSchema.parse(input);
+  return browserRequest<TicketChange>(`/api/v1/staff/tickets/${parsedId}/status`, {
+    method: "PATCH",
+    schema: ticketChangeSchema,
+    json: body,
+  });
+}
+
+export async function moveTicket(id: string, input: MoveTicketInput): Promise<TicketChange> {
+  const parsedId = z.uuid().parse(id);
+  const body = moveTicketInputSchema.parse(input);
+  return browserRequest<TicketChange>(`/api/v1/staff/tickets/${parsedId}/station`, {
+    method: "PATCH",
+    schema: ticketChangeSchema,
     json: body,
   });
 }

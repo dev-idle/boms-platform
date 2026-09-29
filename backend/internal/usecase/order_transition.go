@@ -15,16 +15,18 @@ import (
 
 // orderTransitions commits order status moves for the roles that make them.
 type orderTransitions struct {
-	tx     port.TxManager
-	orders port.OrderRepository
-	events port.EventOutbox
+	tx      port.TxManager
+	orders  port.OrderRepository
+	tickets port.TicketRepository
+	events  port.EventOutbox
 }
 
 // apply moves an order to params.ToStatus and records the move in the order's
 // history and the change notice in the same transaction, so both exist exactly
-// when the move committed. A cancelled order frees its pickup slot, which open
-// checkouts are told. A concurrent move that got there first leaves no row
-// in FromStatus and is reported as an invalid transition.
+// when the move committed. A cancelled order cancels its tickets and frees its
+// pickup slot; the stations and open checkouts are told. A concurrent move that
+// got there first leaves no row in FromStatus and is reported as an invalid
+// transition.
 func (t orderTransitions) apply(
 	ctx context.Context,
 	actorID uuid.UUID,
@@ -53,7 +55,13 @@ func (t orderTransitions) apply(
 		if err := t.events.Add(txCtx, domainorder.StatusChangedEvent(params.FromStatus, *order)); err != nil {
 			return err
 		}
-		if order.Status == domainorder.StatusCancelled && order.PickupAt != nil {
+		if order.Status != domainorder.StatusCancelled {
+			return nil
+		}
+		if err := t.cancelTickets(txCtx, *order, params.FromStatus); err != nil {
+			return err
+		}
+		if order.PickupAt != nil {
 			return t.events.Add(txCtx, domainorder.SlotsChangedEvent(domainstore.DayOf(*order.PickupAt)))
 		}
 		return nil
@@ -62,4 +70,19 @@ func (t orderTransitions) apply(
 		return nil, err
 	}
 	return updated, nil
+}
+
+// cancelTickets cancels a cancelled order's tickets inside the transaction that
+// cancels it, and tells each station that saw the order in its last status.
+func (t orderTransitions) cancelTickets(txCtx context.Context, order domainorder.Order, from domainorder.Status) error {
+	cancelled, err := t.tickets.CancelForOrder(txCtx, order.ID)
+	if err != nil {
+		return err
+	}
+	for _, ticket := range cancelled {
+		if err := t.events.Add(txCtx, domainorder.TicketChangedEvent(order.UserID, from, ticket)); err != nil {
+			return err
+		}
+	}
+	return nil
 }

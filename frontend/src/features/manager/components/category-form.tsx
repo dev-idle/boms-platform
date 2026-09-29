@@ -22,14 +22,13 @@ import {
   FORM_SWITCH_LABEL,
 } from "@/constants/dashboard-form-copy";
 import { isApiError } from "@/lib/errors";
+import { STATION_LABEL, stationSchema } from "@/lib/schemas/ticket";
 import { applyFormFieldErrors } from "@/lib/validation";
 import { CATALOG_INTEGER_MAX } from "@/lib/validation/catalog";
 
 import { useCreateCategory, useUpdateCategory } from "../hooks";
 import {
   categoryFormSchema,
-  STATION_LABEL,
-  stationSchema,
   type CategoryFormInput,
   type ManagerCategory,
 } from "../schemas";

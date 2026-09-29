@@ -31,7 +31,7 @@ func TestOrderUsecase_Checkout_StoreUnreachable(t *testing.T) {
 	t.Parallel()
 	store, tx := newMemoryStore(), &countingTxManager{}
 	store.err = errors.New("database unavailable")
-	uc := usecase.NewOrderUsecase(nil, nil, nil, nil, tx, &recordingOutbox{}, store)
+	uc := usecase.NewOrderUsecase(nil, nil, nil, nil, tx, &recordingOutbox{}, store, nil)
 
 	_, err := uc.Checkout(context.Background(), uuid.New(), time.Now().Add(24*time.Hour))
 

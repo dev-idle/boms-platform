@@ -227,6 +227,50 @@ func (ns NullStation) Value() (driver.Value, error) {
 	return string(ns.Station), nil
 }
 
+type TicketStatus string
+
+const (
+	TicketStatusQueued     TicketStatus = "queued"
+	TicketStatusInProgress TicketStatus = "in_progress"
+	TicketStatusReady      TicketStatus = "ready"
+	TicketStatusCancelled  TicketStatus = "cancelled"
+)
+
+func (e *TicketStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TicketStatus(s)
+	case string:
+		*e = TicketStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TicketStatus: %T", src)
+	}
+	return nil
+}
+
+type NullTicketStatus struct {
+	TicketStatus TicketStatus `json:"ticketStatus"`
+	Valid        bool         `json:"valid"` // Valid is true if TicketStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTicketStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.TicketStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TicketStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTicketStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TicketStatus), nil
+}
+
 type UserRole string
 
 const (
@@ -385,6 +429,15 @@ type OrderItem struct {
 	UnitPriceCents int64           `json:"unitPriceCents"`
 	LineTotalCents int64           `json:"lineTotalCents"`
 	CreatedAt      time.Time       `json:"createdAt"`
+}
+
+type OrderTicket struct {
+	ID        uuid.UUID    `json:"id"`
+	OrderID   uuid.UUID    `json:"orderId"`
+	Station   Station      `json:"station"`
+	Status    TicketStatus `json:"status"`
+	CreatedAt time.Time    `json:"createdAt"`
+	UpdatedAt time.Time    `json:"updatedAt"`
 }
 
 type Product struct {

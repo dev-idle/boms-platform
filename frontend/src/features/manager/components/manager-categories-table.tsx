@@ -26,10 +26,10 @@ import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search"
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
+import { STATION_LABEL } from "@/lib/schemas/ticket";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 
 import { useCategories, useDeleteCategory } from "../hooks";
-import { STATION_LABEL } from "../schemas";
 
 const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 

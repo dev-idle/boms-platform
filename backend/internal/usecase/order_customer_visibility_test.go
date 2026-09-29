@@ -44,9 +44,12 @@ func TestOrderCustomerVisibilityByRole(t *testing.T) {
 		assert.Equal(t, name, got["display_name"])
 	})
 
-	t.Run("bakers_see_a_name_and_no_contact_details", func(t *testing.T) {
+	t.Run("stations_see_a_name_and_no_contact_details", func(t *testing.T) {
 		t.Parallel()
-		got := customerJSON(t, toBakerOrderCustomer(row))
+		ticket := toStationTicketResponse(port.StationTicket{
+			OrderCode: "CH-260928-001", OrderStatus: domainorder.StatusConfirmed, CustomerDisplayName: row.CustomerDisplayName,
+		})
+		got := customerJSON(t, ticket.Customer)
 		assert.Equal(t, map[string]any{"display_name": name}, got)
 	})
 }

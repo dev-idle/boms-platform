@@ -33,30 +33,6 @@ func TestCanStaffTransition(t *testing.T) {
 	}
 }
 
-func TestCanBakerTransition(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		from Status
-		to   Status
-		want bool
-	}{
-		{StatusConfirmed, StatusInProduction, true},
-		{StatusConfirmed, StatusReady, false},
-		{StatusConfirmed, StatusCancelled, false},
-		{StatusInProduction, StatusReady, true},
-		{StatusInProduction, StatusFulfilled, false},
-		{StatusPending, StatusInProduction, false},
-		{StatusReady, StatusFulfilled, false},
-	}
-
-	for _, tc := range tests {
-		if got := CanBakerTransition(tc.from, tc.to); got != tc.want {
-			t.Errorf("CanBakerTransition(%q, %q) = %v, want %v", tc.from, tc.to, got, tc.want)
-		}
-	}
-}
-
 func TestStatusValid(t *testing.T) {
 	t.Parallel()
 

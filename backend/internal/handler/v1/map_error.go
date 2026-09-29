@@ -119,6 +119,16 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrPickupOffSlot)
 	case errors.Is(err, domainorder.ErrPickupSlotFull):
 		return writeAppError(c, apperrors.ErrPickupSlotFull)
+	case errors.Is(err, domainorder.ErrTicketNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domainorder.ErrInvalidTicketTransition):
+		return writeAppError(c, apperrors.ErrInvalidTicketTransition)
+	case errors.Is(err, domainorder.ErrTicketOrderNotActive):
+		return writeAppError(c, apperrors.ErrTicketOrderNotActive)
+	case errors.Is(err, domainorder.ErrTicketNotMovable):
+		return writeAppError(c, apperrors.ErrTicketNotMovable)
+	case errors.Is(err, domainorder.ErrTicketStationTaken):
+		return writeAppError(c, apperrors.ErrTicketStationTaken)
 	case errors.Is(err, domainorder.ErrPickupDayLimit):
 		return writeAppError(c, apperrors.ErrPickupDayLimit)
 	case errors.Is(err, domainstore.ErrInvalidHours):

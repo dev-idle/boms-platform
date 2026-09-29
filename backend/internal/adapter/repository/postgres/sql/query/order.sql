@@ -237,52 +237,6 @@ RETURNING
   code,
   order_type;
 
--- name: BakerListProductionOrders :many
-SELECT
-  o.id,
-  o.user_id,
-  o.status,
-  o.subtotal_cents,
-  o.discount_cents,
-  o.total_cents,
-  o.discount_code_id,
-  o.discount_code_snapshot,
-  o.pickup_at,
-  o.created_at,
-  o.updated_at,
-  o.code,
-  o.order_type,
-  u.email AS customer_email,
-  cp.display_name AS customer_display_name
-FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-WHERE o.status IN (
-    'confirmed'::order_status,
-    'in_production'::order_status,
-    'ready'::order_status
-  )
-  AND (
-    sqlc.narg('status')::order_status IS NULL
-    OR o.status = sqlc.narg('status')::order_status
-  )
-ORDER BY o.pickup_at ASC NULLS LAST, o.created_at ASC
-LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
-
--- name: BakerListProductionOrdersCount :one
-SELECT COUNT(*)::bigint AS count
-FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-WHERE o.status IN (
-    'confirmed'::order_status,
-    'in_production'::order_status,
-    'ready'::order_status
-  )
-  AND (
-    sqlc.narg('status')::order_status IS NULL
-    OR o.status = sqlc.narg('status')::order_status
-  );
-
 -- name: NextOrderDayNumber :one
 -- The day is read from the transaction's clock, the instant orders.created_at
 -- takes, so a code and its created_at always name the same bakery day. The row
@@ -344,3 +298,25 @@ WHERE pickup_at >= sqlc.arg('from_at')::timestamptz
   AND pickup_at < sqlc.arg('to_at')::timestamptz
   AND status <> 'cancelled'::order_status
 GROUP BY pickup_at;
+
+-- name: LockOrder :one
+-- Holds the order row until the transaction ends: every ticket move takes it
+-- first, and the order's own status moves take the same row lock through their
+-- guarded UPDATE, so its status is derived from tickets no one else is moving.
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type
+FROM orders
+WHERE id = $1
+FOR UPDATE;

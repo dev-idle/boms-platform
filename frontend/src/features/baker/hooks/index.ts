@@ -10,20 +10,21 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 import { isApiError } from "@/lib/errors";
+import {
+  stationTicketsListFilterSchema,
+  ticketChangeMessage,
+  type PatchTicketStatusInput,
+  type StationTicketsListFilterInput,
+} from "@/lib/schemas/ticket";
 
 import {
-  getBakerProductionOrder,
-  listBakerProductionOrders,
-  patchBakerOrderStatus,
+  getKitchenTicket,
+  listKitchenTickets,
+  patchKitchenTicketStatus,
 } from "../api";
-import {
-  bakerOrdersListFilterSchema,
-  type BakerOrdersListFilterInput,
-  type PatchBakerOrderStatusInput,
-} from "../schemas";
 import { bakerQueryKeys } from "./query-options";
 
-const defaultOrdersFilter: BakerOrdersListFilterInput = {
+const defaultTicketsFilter: StationTicketsListFilterInput = {
   page: 1,
   page_size: 20,
 };
@@ -35,41 +36,38 @@ function bakerMutationErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export function useBakerProductionOrders(
-  input: BakerOrdersListFilterInput = defaultOrdersFilter,
+export function useKitchenTickets(
+  input: StationTicketsListFilterInput = defaultTicketsFilter,
 ) {
-  const filter = bakerOrdersListFilterSchema.parse(input);
+  const filter = stationTicketsListFilterSchema.parse(input);
   return useQuery({
-    queryKey: bakerQueryKeys.production(filter),
-    queryFn: () => listBakerProductionOrders(filter),
+    queryKey: bakerQueryKeys.tickets(filter),
+    queryFn: () => listKitchenTickets(filter),
     placeholderData: keepPreviousData,
   });
 }
 
-export function useBakerProductionOrder(id: string) {
+export function useKitchenTicket(id: string) {
   const isValidId = z.uuid().safeParse(id).success;
   return useQuery({
-    queryKey: bakerQueryKeys.productionOrder(id),
-    queryFn: () => getBakerProductionOrder(id),
+    queryKey: bakerQueryKeys.ticket(id),
+    queryFn: () => getKitchenTicket(id),
     enabled: isValidId,
     retry: false,
   });
 }
 
-export function usePatchBakerOrderStatus(orderId: string) {
+export function usePatchKitchenTicketStatus(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: PatchBakerOrderStatusInput) =>
-      patchBakerOrderStatus(orderId, input),
-    onSuccess: (order) => {
-      queryClient.setQueryData(bakerQueryKeys.productionOrder(orderId), order);
-      queryClient.invalidateQueries({ queryKey: bakerQueryKeys.productionRoot });
-      toast.success("Production status updated");
+    mutationFn: (input: PatchTicketStatusInput) =>
+      patchKitchenTicketStatus(ticketId, input),
+    onSuccess: (change) => {
+      queryClient.invalidateQueries({ queryKey: bakerQueryKeys.ticketsRoot });
+      toast.success(ticketChangeMessage(change));
     },
     onError: (error) => {
-      toast.error(
-        bakerMutationErrorMessage(error, "Failed to update production status"),
-      );
+      toast.error(bakerMutationErrorMessage(error, "Failed to update the ticket"));
     },
   });
 }

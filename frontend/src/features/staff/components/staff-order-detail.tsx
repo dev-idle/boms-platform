@@ -21,6 +21,7 @@ import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-
 import { usePatchStaffOrderStatus, useStaffOrder } from "../hooks";
 import type { PatchStaffOrderStatusInput } from "../schemas";
 import { StaffOrderHistory } from "./staff-order-history";
+import { StaffOrderTickets } from "./staff-order-tickets";
 
 type StaffOrderDetailProps = {
   orderId: string;
@@ -177,6 +178,8 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
           ) : null}
         </div>
       </DashboardProfileSection>
+
+      <StaffOrderTickets orderId={order.id} orderStatus={order.status} tickets={order.tickets} />
 
       <StaffOrderHistory timeline={order.timeline} />
 

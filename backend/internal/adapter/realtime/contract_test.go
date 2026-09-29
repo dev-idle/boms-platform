@@ -31,6 +31,7 @@ var publishedTopics = []domainevent.Topic{
 	domainorder.TopicOrderCreated,
 	domainorder.TopicOrderStatusChanged,
 	domainorder.TopicSlotsChanged,
+	domainorder.TopicTicketChanged,
 	domainstore.TopicSettingsUpdated,
 }
 

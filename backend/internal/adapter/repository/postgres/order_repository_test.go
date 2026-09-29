@@ -143,7 +143,7 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 		}
 	})
 
-	t.Run("staff_and_baker_lists_filter_by_an_optional_status", func(t *testing.T) {
+	t.Run("the_staff_list_filters_by_an_optional_status", func(t *testing.T) {
 		confirmed, err := orders.Create(ctx, port.CreateOrderParams{
 			Code: "CH-260101-003", Type: domainorder.TypePreOrder, UserID: customer.ID, Status: domainorder.StatusConfirmed, SubtotalCents: 4500, TotalCents: 4500,
 		})
@@ -165,11 +165,6 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 		assert.Equal(t, int64(1), filteredCount)
 		assert.Equal(t, confirmed.ID, filtered[0].Order.ID)
 		assert.Equal(t, customer.Email, filtered[0].CustomerEmail)
-
-		production, err := orders.BakerListProduction(ctx, port.BakerListOrdersParams{Status: &status, Limit: 100})
-		require.NoError(t, err)
-		require.Len(t, production, 1)
-		assert.Equal(t, confirmed.ID, production[0].Order.ID)
 	})
 
 	t.Run("staff_see_the_phone_on_an_order_but_not_across_the_list", func(t *testing.T) {

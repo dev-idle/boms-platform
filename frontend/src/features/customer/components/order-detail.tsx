@@ -7,9 +7,11 @@ import {
   formatOrderStatusLabel,
   orderStatusToPillVariant,
   StatusPill,
+  ticketStatusToPillVariant,
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
 import { formatOrderTypeLabel } from "@/lib/schemas/order";
+import { STATION_LABEL } from "@/lib/schemas/ticket";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -69,6 +71,28 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
         </div>
 
         <OrderProgressStepper status={order.status} timeline={order.timeline} />
+
+        {order.status !== "cancelled" && order.tickets.length > 0 ? (
+          <section
+            aria-labelledby="order-preparation"
+            className="storefront-order-detail__preparation"
+          >
+            <h2 className="text-form-label" id="order-preparation">
+              Preparation
+            </h2>
+            <ul className="storefront-order-detail__stations">
+              {order.tickets.map((ticket) => (
+                <li key={ticket.station} className="storefront-order-detail__station">
+                  <span className="text-caption">{STATION_LABEL[ticket.station]}</span>
+                  <StatusPill
+                    label={formatOrderStatusLabel(ticket.status)}
+                    variant={ticketStatusToPillVariant(ticket.status)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         {order.discount_code_snapshot ? (
           <p className="text-caption">

@@ -5,60 +5,62 @@ import {
   browserRequestWithMeta,
 } from "@/lib/browser-api-client";
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
-
 import {
-  bakerOrderSchema,
-  bakerOrderSummarySchema,
-  bakerOrdersListFilterSchema,
-  patchBakerOrderStatusInputSchema,
-  type BakerOrder,
-  type BakerOrdersListFilterInput,
-  type BakerOrdersListResult,
-  type PatchBakerOrderStatusInput,
-} from "../schemas";
+  patchTicketStatusInputSchema,
+  stationTicketSchema,
+  stationTicketsListFilterSchema,
+  ticketChangeSchema,
+  type PatchTicketStatusInput,
+  type StationTicket,
+  type StationTicketsListFilterInput,
+  type StationTicketsListResult,
+  type TicketChange,
+} from "@/lib/schemas/ticket";
 
-export async function listBakerProductionOrders(
-  input: BakerOrdersListFilterInput,
-): Promise<BakerOrdersListResult> {
-  const filter = bakerOrdersListFilterSchema.parse(input);
+import { kitchenTicketSchema, type KitchenTicket } from "../schemas";
+
+export async function listKitchenTickets(
+  input: StationTicketsListFilterInput,
+): Promise<StationTicketsListResult> {
+  const filter = stationTicketsListFilterSchema.parse(input);
   const params = new URLSearchParams();
   params.set("page", String(filter.page));
   params.set("page_size", String(filter.page_size));
   if (filter.status) {
     params.set("status", filter.status);
   }
-  const result = await browserRequestWithMeta<z.infer<typeof bakerOrderSummarySchema>[]>(
-    `/api/v1/baker/production?${params.toString()}`,
-    { method: "GET", schema: z.array(bakerOrderSummarySchema) },
+  const result = await browserRequestWithMeta<StationTicket[]>(
+    `/api/v1/baker/tickets?${params.toString()}`,
+    { method: "GET", schema: z.array(stationTicketSchema) },
   );
   const parsed = parsePaginatedList(result.data, result.meta, {
     page: filter.page,
     page_size: filter.page_size,
   });
   return {
-    orders: parsed.items,
+    tickets: parsed.items,
     pagination: parsed.pagination,
     request_id: parsed.request_id,
   };
 }
 
-export async function getBakerProductionOrder(id: string): Promise<BakerOrder> {
+export async function getKitchenTicket(id: string): Promise<KitchenTicket> {
   const parsedId = z.uuid().parse(id);
-  return browserRequest<BakerOrder>(`/api/v1/baker/production/${parsedId}`, {
+  return browserRequest<KitchenTicket>(`/api/v1/baker/tickets/${parsedId}`, {
     method: "GET",
-    schema: bakerOrderSchema,
+    schema: kitchenTicketSchema,
   });
 }
 
-export async function patchBakerOrderStatus(
+export async function patchKitchenTicketStatus(
   id: string,
-  input: PatchBakerOrderStatusInput,
-): Promise<BakerOrder> {
+  input: PatchTicketStatusInput,
+): Promise<TicketChange> {
   const parsedId = z.uuid().parse(id);
-  const body = patchBakerOrderStatusInputSchema.parse(input);
-  return browserRequest<BakerOrder>(`/api/v1/baker/production/${parsedId}/status`, {
+  const body = patchTicketStatusInputSchema.parse(input);
+  return browserRequest<TicketChange>(`/api/v1/baker/tickets/${parsedId}/status`, {
     method: "PATCH",
-    schema: bakerOrderSchema,
+    schema: ticketChangeSchema,
     json: body,
   });
 }

@@ -55,7 +55,7 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	combos := postgresadapter.NewComboRepository(pool)
 	discounts := postgresadapter.NewDiscountCodeRepository(pool)
 	f.cartUC = usecase.NewCartUsecase(f.carts, products, combos, discounts)
-	f.orderUC = usecase.NewOrderUsecase(f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store)
+	f.orderUC = usecase.NewOrderUsecase(f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, postgresadapter.NewTicketRepository(pool))
 
 	kitchen, err := categories.Create(ctx, port.CreateCategoryParams{Name: "Cakes", Slug: "cakes", IsActive: true, Station: domaincategory.StationKitchen})
 	require.NoError(t, err)

@@ -2141,6 +2141,27 @@
     justify-content: space-between;
   }
 
+  /* Where each station stands on the order: its name opposite its state. */
+  .storefront-order-detail__preparation {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .storefront-order-detail__stations {
+    display: grid;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .storefront-order-detail__station {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+  }
+
   .storefront-order-detail__totals {
     border-block-start: 1px solid var(--color-border);
     padding-block-start: 1rem;

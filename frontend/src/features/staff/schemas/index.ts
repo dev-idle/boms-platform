@@ -8,6 +8,11 @@ import {
   orderTimelineEntrySchema,
   orderTypeSchema,
 } from "@/lib/schemas/order";
+import {
+  stationSchema,
+  ticketItemSchema,
+  ticketStatusSchema,
+} from "@/lib/schemas/ticket";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 const staffOrderCustomerSchema = z.object({
@@ -34,6 +39,14 @@ const staffOrderTimelineEntrySchema = orderTimelineEntrySchema.extend({
   actor_role: z.enum(USER_ROLE),
 });
 
+/** What each station makes for the order, so the counter can move a ticket nobody started. */
+const staffOrderTicketSchema = z.object({
+  id: z.uuid(),
+  station: stationSchema,
+  status: ticketStatusSchema,
+  items: z.array(ticketItemSchema),
+});
+
 export const staffOrderSummarySchema = z.object({
   id: z.uuid(),
   code: orderCodeSchema,
@@ -57,6 +70,7 @@ export const staffOrderSchema = z.object({
   pickup_at: apiDateTimeSchema.nullable().optional(),
   items: z.array(staffOrderItemSchema),
   timeline: z.array(staffOrderTimelineEntrySchema),
+  tickets: z.array(staffOrderTicketSchema),
   customer: staffOrderCustomerSchema,
   created_at: apiDateTimeSchema,
   updated_at: apiDateTimeSchema,
@@ -72,10 +86,17 @@ export const patchStaffOrderStatusInputSchema = z.object({
   status: z.enum(["confirmed", "fulfilled", "cancelled"]),
 });
 
+/** Hand a ticket nobody started to the other station. */
+export const moveTicketInputSchema = z.object({
+  station: stationSchema,
+});
+
 type StaffOrderSummary = z.infer<typeof staffOrderSummarySchema>;
 export type StaffOrder = z.infer<typeof staffOrderSchema>;
 export type StaffOrdersListFilterInput = z.infer<typeof staffOrdersListFilterSchema>;
 export type PatchStaffOrderStatusInput = z.infer<typeof patchStaffOrderStatusInputSchema>;
+export type StaffOrderTicket = z.infer<typeof staffOrderTicketSchema>;
+export type MoveTicketInput = z.infer<typeof moveTicketInputSchema>;
 
 export type StaffOrdersListResult = {
   orders: StaffOrderSummary[];

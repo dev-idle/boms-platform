@@ -42,6 +42,7 @@ type StaffOrderResponse struct {
 	PickupAt             *time.Time                        `json:"pickup_at,omitempty"`
 	Items                []OrderItemResponse               `json:"items"`
 	Timeline             []StaffOrderTimelineEntryResponse `json:"timeline"`
+	Tickets              []OrderTicketResponse             `json:"tickets"`
 	Customer             StaffOrderCustomerResponse        `json:"customer"`
 	CreatedAt            time.Time                         `json:"created_at"`
 	UpdatedAt            time.Time                         `json:"updated_at"`

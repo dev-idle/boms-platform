@@ -12,34 +12,45 @@ import (
 	apperrors "github.com/boms/backend/internal/shared/errors"
 )
 
-// orderLinesAndTimeline reads an order's lines and its status history at once,
-// so a detail page pays one round trip for both. Like listWithTotal it refuses
-// to run inside a transaction, whose single connection cannot serve two reads.
-func orderLinesAndTimeline(
+// orderDetailParts is what an order's detail shows besides the order itself.
+type orderDetailParts struct {
+	items    []domainorder.Item
+	timeline []domainorder.StatusEvent
+	tickets  []domainorder.Ticket
+}
+
+// readOrderDetail reads an order's lines, its status history and its tickets
+// at once, so a detail page pays one round trip for all three. Like
+// listWithTotal it refuses to run inside a transaction, whose single
+// connection cannot serve concurrent reads.
+func readOrderDetail(
 	ctx context.Context,
 	orders port.OrderRepository,
+	tickets port.TicketRepository,
 	orderID uuid.UUID,
-) ([]domainorder.Item, []domainorder.StatusEvent, error) {
+) (orderDetailParts, error) {
 	if ctxmeta.InTransaction(ctx) {
-		return nil, nil, apperrors.Errorf("read order detail: cannot run inside a transaction")
+		return orderDetailParts{}, apperrors.Errorf("read order detail: cannot run inside a transaction")
 	}
-	var (
-		items    []domainorder.Item
-		timeline []domainorder.StatusEvent
-	)
+	var parts orderDetailParts
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
 		found, err := orders.ListItemsByOrderID(groupCtx, orderID)
-		items = found
+		parts.items = found
 		return err
 	})
 	group.Go(func() error {
 		found, err := orders.ListStatusEvents(groupCtx, orderID)
-		timeline = found
+		parts.timeline = found
+		return err
+	})
+	group.Go(func() error {
+		found, err := tickets.ListByOrder(groupCtx, orderID)
+		parts.tickets = found
 		return err
 	})
 	if err := group.Wait(); err != nil {
-		return nil, nil, err
+		return orderDetailParts{}, err
 	}
-	return items, timeline, nil
+	return parts, nil
 }

@@ -109,11 +109,13 @@ func main() {
 	outboxRepo := postgresrepo.NewOutboxRepository(pgPool)
 	eventDispatcher := eventdispatch.New(outboxRepo, eventbus.NewRedisPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
 	pgPool.OnCommit(eventDispatcher.AfterCommit)
-	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo)
+	ticketRepo := postgresrepo.NewTicketRepository(pgPool)
+	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
-	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
-	bakerOrderUC := usecase.NewBakerOrderUsecase(orderRepo, pgPool, outboxRepo, auditLogger, zlog)
+	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
+	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
+	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
 	realtimeUC := usecase.NewRealtimeUsecase(realtimeTickets, cfg.Realtime.PublicURL, cfg.Realtime.TicketTTL)
 
@@ -133,7 +135,8 @@ func main() {
 	cartHandler := v1.NewCartHandler(cartUC)
 	orderHandler := v1.NewOrderHandler(orderUC)
 	staffOrderHandler := v1.NewStaffOrderHandler(staffOrderUC)
-	bakerOrderHandler := v1.NewBakerOrderHandler(bakerOrderUC)
+	staffTicketHandler := v1.NewStaffTicketHandler(staffTicketUC)
+	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
 	storeHandler := v1.NewStoreHandler(storeUC)
 	adminStoreSettingsHandler := v1.NewAdminStoreSettingsHandler(adminStoreSettingsUC)
@@ -314,16 +317,19 @@ func main() {
 	staffOrders.Get("/orders", staffOrderHandler.List)
 	staffOrders.Get("/orders/:id", staffOrderHandler.Get)
 	staffOrders.Patch("/orders/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.PatchStatus)
+	staffOrders.Get("/tickets", staffTicketHandler.List)
+	staffOrders.Patch("/tickets/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.PatchStatus)
+	staffOrders.Patch("/tickets/:id/station", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.Move)
 
-	bakerOrders := apiV1.Group(
+	bakerTickets := apiV1.Group(
 		"/baker",
 		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
 		middleware.RequireRole(domainuser.RoleBaker),
 		passwordChanged,
 	)
-	bakerOrders.Get("/production", bakerOrderHandler.List)
-	bakerOrders.Get("/production/:id", bakerOrderHandler.Get)
-	bakerOrders.Patch("/production/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), bakerOrderHandler.PatchStatus)
+	bakerTickets.Get("/tickets", bakerTicketHandler.List)
+	bakerTickets.Get("/tickets/:id", bakerTicketHandler.Get)
+	bakerTickets.Patch("/tickets/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), bakerTicketHandler.PatchStatus)
 
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 	listenCfg := fiber.ListenConfig{
