@@ -22,7 +22,11 @@ type FieldControlProps = {
   variant?: "default" | "switch";
 };
 
-/** Label + control group — must be used inside `FormField` + `FormItem`. */
+/**
+ * Label + control group — must be used inside `FormField` + `FormItem`. In the
+ * error state the underline and the message carry the error (02-COMPONENTS
+ * "Field"); the label keeps its style.
+ */
 export function FieldControl({
   children,
   className,
@@ -33,7 +37,7 @@ export function FieldControl({
   optional = false,
   variant = "default",
 }: FieldControlProps) {
-  const { error, formItemId } = useFormField();
+  const { formItemId } = useFormField();
   const generatedHintId = useId();
   const resolvedHintId = hintId ?? generatedHintId;
   const describedBy = hint ? resolvedHintId : undefined;
@@ -45,10 +49,7 @@ export function FieldControl({
           className={cn("form-toggle-row", hint && "form-toggle-row--with-hint")}
         >
           <div className="form-toggle-row-copy">
-            <Label
-              className={cn("form-toggle-row-label", error && "text-error")}
-              htmlFor={formItemId}
-            >
+            <Label className="form-toggle-row-label" htmlFor={formItemId}>
               {label}
               {optional ? (
                 <span className="field-label-optional">(optional)</span>
@@ -63,7 +64,7 @@ export function FieldControl({
   }
 
   const fieldLabel = (
-    <Label className={cn(error && "text-error")} htmlFor={formItemId}>
+    <Label htmlFor={formItemId}>
       {label}
       {optional ? <span className="field-label-optional">(optional)</span> : null}
     </Label>

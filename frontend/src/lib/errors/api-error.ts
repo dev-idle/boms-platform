@@ -59,6 +59,18 @@ export const ApiErrorCode = {
   Unknown: "unknown_error",
 } as const;
 
+/**
+ * The 401 codes the auth middleware answers when it turns the access token away
+ * (`backend/internal/middleware/auth.go`): missing or invalid, expired, or its
+ * session rotated or ended. A refresh can cure these; no other 401 is about the
+ * token — `invalid_credentials` is a wrong password, and the answer itself.
+ */
+const ACCESS_TOKEN_REJECTION_CODES = new Set<string>([
+  ApiErrorCode.Unauthorized,
+  ApiErrorCode.TokenExpired,
+  ApiErrorCode.SessionRevoked,
+]);
+
 const SESSION_ERROR_CODES = new Set<string>([
   ApiErrorCode.InvalidRefreshToken,
   ApiErrorCode.SessionRevoked,
@@ -81,6 +93,11 @@ export class ApiError extends Error {
   /** True for any 401 response or a refresh-token-related code. */
   isAuthError(): boolean {
     return this.status === 401 || SESSION_ERROR_CODES.has(this.code);
+  }
+
+  /** True when the API turned the access token away, so a refresh may cure it. */
+  isAccessTokenRejected(): boolean {
+    return this.status === 401 && ACCESS_TOKEN_REJECTION_CODES.has(this.code);
   }
 
   /** True only when the failure means "access token expired" (FE should refresh). */
@@ -173,15 +190,12 @@ export function throwApiErrorFromEnvelope(
 }
 
 /** Maps an unvalidated JSON payload to ApiError (browser fetch path). */
-export function throwApiErrorFromPayload(
-  status: number,
-  payload: unknown,
-): never {
+export function apiErrorFromPayload(status: number, payload: unknown): ApiError {
   const envelope = parseApiEnvelope(payload);
   if (envelope.success && envelope.data.error) {
-    throw new ApiError(status, envelope.data.error);
+    return new ApiError(status, envelope.data.error);
   }
-  throw new ApiError(status, {
+  return new ApiError(status, {
     code: ApiErrorCode.Unknown,
     message: `Request failed with HTTP ${status}`,
   });

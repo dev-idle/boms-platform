@@ -63,10 +63,10 @@ export function useChangePassword() {
 
   return useMutation({
     mutationFn: (input: ChangePasswordInput) => changePassword(input),
-    onMutate: () => {
-      beginLogout();
-    },
+    // Signing out starts only once the password changed: a refused change (a
+    // wrong current password) leaves the form on the page to say why.
     onSuccess: () => {
+      beginLogout();
       endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });
       router.push(`${ROUTE.login}?changed=1`);

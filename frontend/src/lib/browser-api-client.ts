@@ -2,11 +2,7 @@
 
 import type { ZodType } from "zod";
 
-import {
-  ApiError,
-  ApiErrorCode,
-  throwApiErrorFromPayload,
-} from "@/lib/errors";
+import { ApiError, ApiErrorCode, apiErrorFromPayload } from "@/lib/errors";
 import { parseApiEnvelope, parseResponseBody } from "@/lib/api-envelope";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -88,13 +84,17 @@ async function executeRequest<T>(
   }
 
   if (response.status === 401 && !skipRefreshRetry && !isAuthLoopPath(path)) {
-    if (!isRetry) {
+    const error = apiErrorFromPayload(response.status, await parseResponseBody(response));
+    // Only a rejected access token is worth a refresh. Any other 401 is the
+    // answer itself: retrying a wrong current password would send it twice and
+    // rotate the refresh token for nothing.
+    if (!isRetry && error.isAccessTokenRejected()) {
       const { refreshNow } = await import("@/lib/auth");
       // Refresh only if no other tab has replaced the token this request carried.
       await refreshNow({ redirectOnFailure: false, staleToken: sentToken });
       return executeRequest<T>(path, init, true);
     }
-    throwApiErrorFromPayload(response.status, await parseResponseBody(response));
+    throw error;
   }
 
   if (response.status === 204) {
@@ -104,7 +104,7 @@ async function executeRequest<T>(
   const payload = await parseResponseBody(response);
 
   if (!response.ok) {
-    throwApiErrorFromPayload(response.status, payload);
+    throw apiErrorFromPayload(response.status, payload);
   }
 
   const envelope = parseApiEnvelope(payload);

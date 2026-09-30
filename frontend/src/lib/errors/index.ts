@@ -2,9 +2,9 @@
 export {
   ApiError,
   ApiErrorCode,
+  apiErrorFromPayload,
   isApiError,
   throwApiErrorFromEnvelope,
-  throwApiErrorFromPayload,
 } from "./api-error";
 
 /** Server-side DAL errors (RSC / Fiber api-client). */
