@@ -28,9 +28,9 @@ const (
 	// all along.
 	orderEmailMaxRetry = 8
 	// A send takes up to twice the mail send timeout, which config caps at 10 s,
-	// plus a database read: the task's deadline must outlast that, or Asynq
-	// would retry a send still under way and mail the customer twice.
-	orderEmailTimeout = time.Minute
+	// plus a few database reads: the task's deadline must outlast that, or
+	// Asynq would retry a send still under way and mail the customer twice.
+	emailTaskTimeout = time.Minute
 	// A sent task is kept this long, so an event delivered again in that time —
 	// the outbox resends one whose delivery it could not record — finds it and
 	// mails nobody twice. Redelivery happens within minutes.
@@ -43,20 +43,49 @@ type orderEmailPayload struct {
 	Notice  string `json:"notice"`
 }
 
-// OrderEmailQueue queues order emails, one task per event.
-type OrderEmailQueue struct {
+// EmailQueue queues the emails events ask for, one task per event.
+type EmailQueue struct {
 	client *asynq.Client
 }
 
-// NewOrderEmailQueue returns a queue on rdb. The caller keeps rdb and closes it.
-func NewOrderEmailQueue(rdb redis.UniversalClient) *OrderEmailQueue {
-	return &OrderEmailQueue{client: asynq.NewClientFromRedisClient(rdb)}
+// NewEmailQueue returns a queue on rdb. The caller keeps rdb and closes it.
+func NewEmailQueue(rdb redis.UniversalClient) *EmailQueue {
+	return &EmailQueue{client: asynq.NewClientFromRedisClient(rdb)}
 }
 
-// EnqueueOrderEmail implements port.OrderEmailQueue. The task id is the event
-// id, so a second task for the same event is refused while the first is queued
-// or kept after sending, and that refusal is the success the port promises.
-func (q *OrderEmailQueue) EnqueueOrderEmail(ctx context.Context, task port.OrderEmailTask) error {
+// enqueue adds task under id. A second task with the same id is refused while
+// the first is queued or kept after sending, and that refusal is the success
+// the email ports promise: the event it came from was delivered again.
+func (q *EmailQueue) enqueue(ctx context.Context, task *asynq.Task, id string, maxRetry int, retention time.Duration) error {
+	_, err := q.client.EnqueueContext(ctx, task,
+		asynq.TaskID(id),
+		asynq.Queue(QueueEmail),
+		asynq.MaxRetry(maxRetry),
+		asynq.Timeout(emailTaskTimeout),
+		asynq.Retention(retention),
+	)
+	if err != nil && !errors.Is(err, asynq.ErrTaskIDConflict) {
+		return fmt.Errorf("enqueue %s: %w", task.Type(), err)
+	}
+	return nil
+}
+
+// runEmail turns a send's outcome into the task's: an email no retry can send
+// is not retried, and Asynq archives it for someone to look at.
+func runEmail(err error, subject string) error {
+	if err == nil {
+		return nil
+	}
+	// Ids only: the error is logged and kept on the task.
+	err = fmt.Errorf("%s email: %w", subject, err)
+	if errors.Is(err, port.ErrEmailUndeliverable) {
+		return fmt.Errorf("%w: %w", err, asynq.SkipRetry)
+	}
+	return err
+}
+
+// EnqueueOrderEmail implements port.OrderEmailQueue; the task id is the event id.
+func (q *EmailQueue) EnqueueOrderEmail(ctx context.Context, task port.OrderEmailTask) error {
 	payload, err := json.Marshal(orderEmailPayload{
 		EventID: task.EventID.String(),
 		OrderID: task.OrderID.String(),
@@ -65,17 +94,7 @@ func (q *OrderEmailQueue) EnqueueOrderEmail(ctx context.Context, task port.Order
 	if err != nil {
 		return fmt.Errorf("encode order email task: %w", err)
 	}
-	_, err = q.client.EnqueueContext(ctx, asynq.NewTask(TypeOrderEmail, payload),
-		asynq.TaskID(task.EventID.String()),
-		asynq.Queue(QueueEmail),
-		asynq.MaxRetry(orderEmailMaxRetry),
-		asynq.Timeout(orderEmailTimeout),
-		asynq.Retention(orderEmailRetention),
-	)
-	if err != nil && !errors.Is(err, asynq.ErrTaskIDConflict) {
-		return fmt.Errorf("enqueue order email: %w", err)
-	}
-	return nil
+	return q.enqueue(ctx, asynq.NewTask(TypeOrderEmail, payload), task.EventID.String(), orderEmailMaxRetry, orderEmailRetention)
 }
 
 // orderEmailSender is the worker side of an order email.
@@ -91,15 +110,7 @@ func OrderEmailHandler(sender orderEmailSender) asynq.HandlerFunc {
 		if err != nil {
 			return fmt.Errorf("%w: %w", err, asynq.SkipRetry)
 		}
-		if err := sender.Send(ctx, task); err != nil {
-			// Ids only: the error is logged and kept on the task.
-			err = fmt.Errorf("order %s %s email: %w", task.OrderID, task.Notice, err)
-			if errors.Is(err, port.ErrEmailUndeliverable) {
-				return fmt.Errorf("%w: %w", err, asynq.SkipRetry)
-			}
-			return err
-		}
-		return nil
+		return runEmail(sender.Send(ctx, task), fmt.Sprintf("order %s %s", task.OrderID, task.Notice))
 	}
 }
 
@@ -123,4 +134,4 @@ func decodeOrderEmail(t *asynq.Task) (port.OrderEmailTask, error) {
 	return port.OrderEmailTask{EventID: eventID, OrderID: orderID, Notice: notice}, nil
 }
 
-var _ port.OrderEmailQueue = (*OrderEmailQueue)(nil)
+var _ port.OrderEmailQueue = (*EmailQueue)(nil)

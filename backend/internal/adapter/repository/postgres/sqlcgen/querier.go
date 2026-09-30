@@ -13,10 +13,11 @@ import (
 )
 
 type Querier interface {
-	//AdminCreate
+	// An administrator vouches for the address of an account they create: it
+	// counts as confirmed.
 	//
-	//  INSERT INTO users (email, password_hash, role, must_change_password)
-	//  VALUES ($1, $2, $3, $4)
+	//  INSERT INTO users (email, password_hash, role, must_change_password, email_verified_at)
+	//  VALUES ($1, $2, $3, $4, now())
 	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
 	AdminCreate(ctx context.Context, arg AdminCreateParams) (AdminCreateRow, error)
 	//AdminGetByID
@@ -642,6 +643,11 @@ type Querier interface {
 	//  DELETE FROM staff_profiles
 	//  WHERE user_id = $1
 	DeleteStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	//DeleteUserTokens
+	//
+	//  DELETE FROM user_tokens
+	//  WHERE user_id = $1
+	DeleteUserTokens(ctx context.Context, userID uuid.UUID) error
 	// Clears what a customer told us about themselves; the row stays, empty.
 	//
 	//  UPDATE customer_profiles
@@ -1474,6 +1480,14 @@ type Querier interface {
 	//      OR p.slug ILIKE '%' || $2::text || '%'
 	//    )
 	ManagerListProductsCount(ctx context.Context, arg ManagerListProductsCountParams) (int64, error)
+	//MarkEmailVerified
+	//
+	//  UPDATE users
+	//  SET email_verified_at = COALESCE(email_verified_at, now()),
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	MarkEmailVerified(ctx context.Context, id uuid.UUID) (int64, error)
 	//MarkOutboxEventsPublished
 	//
 	//  UPDATE outbox_events
@@ -1550,6 +1564,19 @@ type Querier interface {
 	//  WHERE id = ANY($2::uuid[])
 	//    AND published_at IS NULL
 	RecordOutboxPublishFailure(ctx context.Context, arg RecordOutboxPublishFailureParams) error
+	// Single use: the token goes as it is redeemed, in one statement, so two
+	// requests with the same link cannot both succeed. An expired token, or one
+	// of a closed account, opens nothing.
+	//
+	//  DELETE FROM user_tokens t
+	//  USING users u
+	//  WHERE t.token_hash = $1
+	//    AND t.purpose = $2
+	//    AND t.expires_at > now()
+	//    AND u.id = t.user_id
+	//    AND u.deleted_at IS NULL
+	//  RETURNING t.user_id
+	RedeemUserToken(ctx context.Context, arg RedeemUserTokenParams) (uuid.UUID, error)
 	// Clears the phone on whichever profile the user has. Used when a returning
 	// account finds its number taken by an active one: the active holder keeps it.
 	//
@@ -1560,6 +1587,32 @@ type Querier interface {
 	//  )
 	//  UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
 	ReleasePhone(ctx context.Context, userID uuid.UUID) error
+	// Issuing a token replaces the user's last one of that purpose, so only the
+	// newest link works. Expiry is set on the database clock, which redemption
+	// checks against.
+	//
+	//  INSERT INTO user_tokens (user_id, purpose, token_hash, expires_at)
+	//  VALUES (
+	//    $1,
+	//    $2,
+	//    $3,
+	//    now() + make_interval(secs => $4::double precision)
+	//  )
+	//  ON CONFLICT (user_id, purpose) DO UPDATE
+	//  SET token_hash = EXCLUDED.token_hash,
+	//      expires_at = EXCLUDED.expires_at,
+	//      created_at = now()
+	ReplaceUserToken(ctx context.Context, arg ReplaceUserTokenParams) error
+	// A reset link reached the account's inbox, so it confirms the address too.
+	//
+	//  UPDATE users
+	//  SET password_hash = $2,
+	//      must_change_password = false,
+	//      email_verified_at = COALESCE(email_verified_at, now()),
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	ResetUserPassword(ctx context.Context, arg ResetUserPasswordParams) (int64, error)
 	// Removes an erased account's personal data from the audit trail and keeps
 	// the trail: changes to the account and its profile lose their before and
 	// after values (a profile change holds a name or phone number), and the
@@ -1664,6 +1717,7 @@ type Querier interface {
 	//    o.code,
 	//    o.order_type,
 	//    u.email AS customer_email,
+	//    (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
 	//    cp.display_name AS customer_display_name,
 	//    cp.phone AS customer_phone
 	//  FROM orders o
@@ -1688,6 +1742,7 @@ type Querier interface {
 	//    o.code,
 	//    o.order_type,
 	//    u.email AS customer_email,
+	//    (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
 	//    cp.display_name AS customer_display_name
 	//  FROM orders o
 	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL

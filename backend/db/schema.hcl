@@ -1397,3 +1397,61 @@ table "store_closed_dates" {
     expr = "char_length(reason) >= 1 AND char_length(reason) <= 200"
   }
 }
+
+enum "user_token_purpose" {
+  schema = schema.public
+  values = ["verify_email", "reset_password"]
+}
+
+// Single-use links emailed to a user: confirming their address, choosing a new
+// password. Only a SHA-256 of the token is kept, so the table alone opens
+// nothing. A user holds at most one token per purpose — issuing a new one
+// replaces the last — and redeeming deletes it.
+table "user_tokens" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "user_id" {
+    type = uuid
+    null = false
+  }
+  column "purpose" {
+    type = enum.user_token_purpose
+    null = false
+  }
+  column "token_hash" {
+    type = bytea
+    null = false
+  }
+  column "expires_at" {
+    type = timestamptz
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "user_tokens_user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = CASCADE
+  }
+  index "user_tokens_token_hash_idx" {
+    unique  = true
+    columns = [column.token_hash]
+  }
+  index "user_tokens_user_purpose_idx" {
+    unique  = true
+    columns = [column.user_id, column.purpose]
+  }
+  check "user_tokens_token_hash_check" {
+    expr = "octet_length(token_hash) = 32"
+  }
+}

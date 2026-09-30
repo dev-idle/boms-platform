@@ -11,6 +11,8 @@ export const PAGE_TITLES = {
   signIn: "Sign in",
   createAccount: "Create account",
   forgotPassword: "Forgot password",
+  resetPassword: "Choose a new password",
+  verifyEmail: "Confirm your email",
   cart: "Cart",
   orders: "Orders",
   production: "Production",

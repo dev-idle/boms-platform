@@ -24,7 +24,7 @@ import { useLogin } from "../hooks";
 import { loginSchema, type LoginInput } from "../schemas";
 import { AuthFormShell } from "./auth-form-shell";
 
-/** Reads `next`, `registered` and `changed` from the URL — render it inside <Suspense>. */
+/** Reads `next`, `registered`, `changed` and `reset` from the URL — render it inside <Suspense>. */
 export function LoginForm() {
   const login = useLogin();
   const router = useRouter();
@@ -32,6 +32,7 @@ export function LoginForm() {
   const next = validateNext(searchParams.get("next")) ?? undefined;
   const registered = searchParams.get("registered") === "1";
   const changed = searchParams.get("changed") === "1";
+  const reset = searchParams.get("reset") === "1";
   // UI-only until the refresh-cookie lifetime becomes a login option on the API;
   // the value is deliberately not sent with the credentials.
   const [keepSignedIn, setKeepSignedIn] = useState(true);
@@ -45,11 +46,13 @@ export function LoginForm() {
   });
 
   useEffect(() => {
-    if (!registered && !changed) {
+    if (!registered && !changed && !reset) {
       return;
     }
 
-    if (changed) {
+    if (reset) {
+      showLoginFlashToast("passwordReset");
+    } else if (changed) {
       showLoginFlashToast("passwordChanged");
     } else if (registered) {
       showLoginFlashToast("accountRegistered");
@@ -58,9 +61,10 @@ export function LoginForm() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("changed");
     params.delete("registered");
+    params.delete("reset");
     const query = params.toString();
     router.replace(query ? `${ROUTE.login}?${query}` : ROUTE.login);
-  }, [changed, registered, router, searchParams]);
+  }, [changed, registered, reset, router, searchParams]);
 
   function onSubmit(values: LoginInput) {
     login.mutate(

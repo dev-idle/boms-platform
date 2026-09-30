@@ -254,6 +254,7 @@ SELECT
   o.code,
   o.order_type,
   u.email AS customer_email,
+  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
   cp.display_name AS customer_display_name
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
@@ -290,6 +291,7 @@ SELECT
   o.code,
   o.order_type,
   u.email AS customer_email,
+  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
   cp.display_name AS customer_display_name,
   cp.phone AS customer_phone
 FROM orders o

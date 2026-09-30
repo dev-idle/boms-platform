@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/boms/backend/internal/config"
+	"github.com/boms/backend/internal/infrastructure/ratelimit"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
 	"github.com/gofiber/fiber/v3"
@@ -17,29 +18,9 @@ import (
 // rateLimitFailOpenCounter is incremented on fail-open paths (per-process).
 var rateLimitFailOpenCounter atomic.Uint64
 
-// slidingWindowScript implements a Redis sorted-set sliding window rate limiter.
-var slidingWindowScript = goredis.NewScript(`
-local key = KEYS[1]
-local limit = tonumber(ARGV[1])
-local window_ms = tonumber(ARGV[2])
-local now = tonumber(ARGV[3])
-local member = ARGV[4]
-redis.call('ZREMRANGEBYSCORE', key, 0, now - window_ms)
-if redis.call('ZCARD', key) >= limit then
-  return 0
-end
-redis.call('ZADD', key, now, member)
-redis.call('PEXPIRE', key, window_ms)
-return 1
-`)
-
 // RedisRateLimit returns middleware that rate-limits using a Redis sliding window.
 // When failOpen is false, Redis errors return 503 (used for auth brute-force paths).
 func RedisRateLimit(rdb *goredis.Client, keyFn func(fiber.Ctx) string, max int, window time.Duration, failOpen bool) fiber.Handler {
-	windowMs := window.Milliseconds()
-	if windowMs < 1 {
-		windowMs = 1000
-	}
 	return func(c fiber.Ctx) error {
 		if rdb == nil {
 			return c.Next()
@@ -52,11 +33,8 @@ func RedisRateLimit(rdb *goredis.Client, keyFn func(fiber.Ctx) string, max int, 
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		now := time.Now()
-		member := fmt.Sprintf("%d:%s", now.UnixNano(), c.Get(fiber.HeaderXRequestID))
-		ok, err := slidingWindowScript.Run(ctx, rdb, []string{key},
-			max, windowMs, now.UnixMilli(), member,
-		).Int()
+		member := fmt.Sprintf("%d:%s", time.Now().UnixNano(), c.Get(fiber.HeaderXRequestID))
+		ok, err := ratelimit.Allow(ctx, rdb, key, max, window, member)
 		if err != nil {
 			if !failOpen {
 				return response.Error(c, fiber.StatusServiceUnavailable, &response.ErrorBody{
@@ -68,7 +46,7 @@ func RedisRateLimit(rdb *goredis.Client, keyFn func(fiber.Ctx) string, max int, 
 			c.Set("X-RateLimit-FailOpen", "1")
 			return c.Next()
 		}
-		if ok == 1 {
+		if ok {
 			return c.Next()
 		}
 		sec := int(window.Round(time.Second).Seconds())
@@ -88,6 +66,23 @@ func AuthAttemptRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) 
 	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
 		return "rl:ip:" + ClientIP(c) + ":auth_attempt"
 	}, cfg.AuthAttemptMax, cfg.AuthAttemptWindow, false)
+}
+
+// AuthLinkRateLimit limits following emailed links — confirming an address,
+// setting a new password — per IP. It fails closed: a link token is too long
+// to guess, and the cap keeps anyone from trying hard while Redis is away.
+func AuthLinkRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		return "rl:ip:" + ClientIP(c) + ":auth_link"
+	}, cfg.AuthLinkMax, cfg.AuthLinkWindow, false)
+}
+
+// PasswordResetRateLimit limits asking for password reset links per IP. It
+// fails closed: each request may send an email to someone.
+func PasswordResetRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		return "rl:ip:" + ClientIP(c) + ":password_reset"
+	}, cfg.PasswordResetMax, cfg.PasswordResetWindow, false)
 }
 
 // AuthRefreshRateLimit limits refresh calls per IP.
@@ -179,6 +174,17 @@ func DataExportRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) f
 		}
 		return "rl:ip:" + ClientIP(c) + ":data_export"
 	}, cfg.DataExportMax, cfg.DataExportWindow, true)
+}
+
+// VerificationResendRateLimit limits how often one user asks for a new
+// confirmation email.
+func VerificationResendRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":verification_resend"
+		}
+		return "rl:ip:" + ClientIP(c) + ":verification_resend"
+	}, cfg.VerificationResendMax, cfg.VerificationResendWindow, true)
 }
 
 // OrderWriteRateLimit limits order mutations (checkout, status transitions) per user.

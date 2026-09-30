@@ -88,7 +88,8 @@ func acceptingTerms(pickupAt time.Time) dto.CheckoutRequest {
 	return dto.CheckoutRequest{PickupAt: pickupAt, TermsVersion: domainpolicy.TermsVersion}
 }
 
-// newCustomer signs up a customer whose cart holds one of each line given.
+// newCustomer signs up a customer who confirmed their address, as checkout
+// needs, and whose cart holds one of each line given.
 func (f *checkoutFixture) newCustomer(t *testing.T, products []uuid.UUID, combos []uuid.UUID) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
@@ -99,6 +100,7 @@ func (f *checkoutFixture) newCustomer(t *testing.T, products []uuid.UUID, combos
 		Role:         domainuser.RoleCustomer,
 	})
 	require.NoError(t, err)
+	require.NoError(t, f.users.MarkEmailVerified(ctx, customer.ID))
 	require.NoError(t, f.fillCart(customer.ID, products, combos))
 	return customer.ID
 }

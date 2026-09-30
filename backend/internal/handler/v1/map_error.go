@@ -3,6 +3,7 @@ package v1
 import (
 	"errors"
 
+	domainaccount "github.com/boms/backend/internal/domain/account"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
@@ -52,6 +53,12 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrAccountHasOpenOrders)
 	case errors.Is(err, domainuser.ErrAccountErased):
 		return writeAppError(c, apperrors.ErrAccountErased)
+	case errors.Is(err, domainuser.ErrEmailNotVerified):
+		return writeAppError(c, apperrors.ErrEmailNotVerified)
+	case errors.Is(err, domainuser.ErrEmailAlreadyVerified):
+		return writeAppError(c, apperrors.ErrEmailAlreadyVerified)
+	case errors.Is(err, domainaccount.ErrLinkInvalid):
+		return writeAppError(c, apperrors.ErrInvalidLink)
 	case errors.Is(err, domainuser.ErrProfileNotFound):
 		return writeAppError(c, apperrors.ErrProfileNotFound)
 	case errors.Is(err, domainuser.ErrEmployeeCodeExists):

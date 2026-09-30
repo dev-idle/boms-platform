@@ -9,8 +9,10 @@ export { primeMeQueryCache } from "./lib/prime-me-cache";
 export {
   AdminAccountProfileView,
   CustomerAccountView,
+  EmailVerificationNotice,
   OperationalAccountProfileView,
 } from "./components";
 export {
+  meQueryOptions,
   userQueryKeys,
 } from "./hooks";

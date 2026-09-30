@@ -26,7 +26,6 @@ import (
 	"github.com/boms/backend/internal/bootstrap"
 	"github.com/boms/backend/internal/config"
 	"github.com/boms/backend/internal/infrastructure/logger"
-	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/service/eventdispatch"
 	"github.com/boms/backend/internal/usecase"
 )
@@ -69,7 +68,7 @@ func main() {
 		cfg.Outbox.DispatchTimeout,
 	)
 
-	stopEmails, err := startEmails(cfg.Mail, redisClient.RDB(), postgresrepo.NewOrderRepository(pgPool), zlog)
+	stopEmails, err := startEmails(cfg.Mail, redisClient.RDB(), pgPool, zlog)
 	if err != nil {
 		zlog.Fatal("email_init", zap.Error(err))
 	}
@@ -87,12 +86,19 @@ func main() {
 
 // startEmails sends queued emails through the configured SMTP server, a few at
 // a time, until the returned stop is called.
-func startEmails(cfg config.MailConfig, rdb *redis.Client, orders port.OrderRepository, log *zap.Logger) (func(), error) {
-	composer, err := email.NewOrderComposer(cfg.SiteURL)
+func startEmails(cfg config.MailConfig, rdb *redis.Client, pool *postgresrepo.Pool, log *zap.Logger) (func(), error) {
+	orderComposer, err := email.NewOrderComposer(cfg.SiteURL)
 	if err != nil {
 		return nil, err
 	}
-	sender := usecase.NewOrderEmailUsecase(orders, composer, email.NewSMTPMailer(cfg), log)
+	accountComposer, err := email.NewAccountComposer(cfg.SiteURL)
+	if err != nil {
+		return nil, err
+	}
+	mailer := email.NewSMTPMailer(cfg)
+	users := postgresrepo.NewUserRepository(pool)
+	orderEmails := usecase.NewOrderEmailUsecase(postgresrepo.NewOrderRepository(pool), orderComposer, mailer, log)
+	accountEmails := usecase.NewAccountEmailUsecase(users, postgresrepo.NewUserTokenRepository(pool), accountComposer, mailer, log)
 	server := asynq.NewServerFromRedisClient(rdb, asynq.Config{
 		Concurrency: cfg.Concurrency,
 		Queues:      map[string]int{queue.QueueEmail: 1},
@@ -120,7 +126,8 @@ func startEmails(cfg config.MailConfig, rdb *redis.Client, orders port.OrderRepo
 		ShutdownTimeout: 2*cfg.SendTimeout + 5*time.Second,
 	})
 	mux := asynq.NewServeMux()
-	mux.Handle(queue.TypeOrderEmail, queue.OrderEmailHandler(sender))
+	mux.Handle(queue.TypeOrderEmail, queue.OrderEmailHandler(orderEmails))
+	mux.Handle(queue.TypeAccountEmail, queue.AccountEmailHandler(accountEmails))
 	if err := server.Start(mux); err != nil {
 		return nil, fmt.Errorf("start email queue: %w", err)
 	}

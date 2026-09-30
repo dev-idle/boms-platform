@@ -84,13 +84,17 @@ func main() {
 	auditLogRepo := postgresrepo.NewAuditLogRepository(pgPool)
 	sessionStore := redisrepo.NewSessionStore(redisClient, cfg.Session.TTL)
 	auditLogger := auditlogger.NewService(auditLogRepo)
+	outboxRepo := postgresrepo.NewOutboxRepository(pgPool)
+	userTokenRepo := postgresrepo.NewUserTokenRepository(pgPool)
 
-	authUC, err := usecase.NewAuthUsecase(userRepo, customerProfileRepo, pgPool, sessionStore, hasher, tokenSigner, zlog)
+	authUC, err := usecase.NewAuthUsecase(userRepo, customerProfileRepo, pgPool, outboxRepo, sessionStore, hasher, tokenSigner, zlog)
 	if err != nil {
 		zlog.Fatal("auth_usecase", zap.Error(err))
 	}
-	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger, zlog)
-	adminUserUC := usecase.NewAdminUserUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, sessionStore, pgPool, hasher, auditLogger, auditLogRepo, zlog)
+	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, userTokenRepo, sessionStore, pgPool, hasher, auditLogger, zlog)
+	adminUserUC := usecase.NewAdminUserUsecase(
+		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, userTokenRepo, sessionStore, pgPool, hasher, auditLogger, auditLogRepo, zlog,
+	)
 	categoryRepo := postgresrepo.NewCategoryRepository(pgPool)
 	productRepo := postgresrepo.NewProductRepository(pgPool)
 	comboRepo := postgresrepo.NewComboRepository(pgPool)
@@ -105,14 +109,19 @@ func main() {
 	orderRepo := postgresrepo.NewOrderRepository(pgPool)
 	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo)
 	storeSettingsRepo := postgresrepo.NewStoreSettingsRepository(pgPool)
-	outboxRepo := postgresrepo.NewOutboxRepository(pgPool)
 	eventDispatcher := eventdispatch.New(outboxRepo, bootstrap.EventPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
 	pgPool.OnCommit(eventDispatcher.AfterCommit)
 	ticketRepo := postgresrepo.NewTicketRepository(pgPool)
 	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	accountErasureUC := usecase.NewAccountErasureUsecase(
-		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, auditLogRepo, sessionStore, auditLogger, hasher,
+		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
+	)
+	emailVerificationUC := usecase.NewEmailVerificationUsecase(pgPool, userRepo, userTokenRepo, outboxRepo, auditLogger)
+	passwordResetUC := usecase.NewPasswordResetUsecase(
+		pgPool, userRepo, userTokenRepo, outboxRepo, sessionStore, hasher, redisrepo.NewQuota(redisClient),
+		port.QuotaLimit{Max: cfg.RateRedis.PasswordResetAccountMax, Window: cfg.RateRedis.PasswordResetAccountWindow},
+		auditLogger, zlog,
 	)
 	dataExportUC := usecase.NewDataExportUsecase(
 		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, cartRepo, sessionStore, auditLogRepo,
@@ -132,6 +141,8 @@ func main() {
 	meHandler := v1.NewMeHandler(meUC)
 	dataExportHandler := v1.NewDataExportHandler(dataExportUC)
 	accountErasureHandler := v1.NewAccountErasureHandler(accountErasureUC)
+	emailVerificationHandler := v1.NewEmailVerificationHandler(emailVerificationUC)
+	passwordResetHandler := v1.NewPasswordResetHandler(passwordResetUC)
 	adminUserHandler := v1.NewAdminUserHandler(adminUserUC)
 	managerCategoryHandler := v1.NewManagerCategoryHandler(managerCategoryUC)
 	managerProductHandler := v1.NewManagerProductHandler(managerProductUC)
@@ -170,6 +181,10 @@ func main() {
 	authGroup.Post("/login", middleware.AuthAttemptRateLimit(rdb, cfg.RateRedis), authHandler.Login)
 	authGroup.Post("/refresh", middleware.AuthRefreshRateLimit(rdb, cfg.RateRedis), authHandler.Refresh)
 	authGroup.Post("/logout", middleware.AuthLogoutRateLimit(rdb, cfg.RateRedis), middleware.OptionalAuth(tokenSigner), authHandler.Logout)
+	// Emailed links work without a session: they are often opened on another device.
+	authGroup.Post("/verify-email", middleware.AuthLinkRateLimit(rdb, cfg.RateRedis), emailVerificationHandler.Verify)
+	authGroup.Post("/password-reset/request", middleware.PasswordResetRateLimit(rdb, cfg.RateRedis), passwordResetHandler.Request)
+	authGroup.Post("/password-reset/confirm", middleware.AuthLinkRateLimit(rdb, cfg.RateRedis), passwordResetHandler.Confirm)
 
 	passwordChanged := middleware.RequirePasswordChanged(sessionStore)
 	selfWrite := middleware.SelfWriteRateLimit(rdb, cfg.RateRedis)
@@ -178,6 +193,13 @@ func main() {
 	apiV1.Patch("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, selfWrite, meHandler.Patch)
 	apiV1.Patch("/me/password", middleware.RequireAuthWithSession(tokenSigner, sessionStore), selfWrite, meHandler.PatchPassword)
 	apiV1.Delete("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, selfWrite, accountErasureHandler.Erase)
+	apiV1.Post(
+		"/me/email-verification",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		passwordChanged,
+		middleware.VerificationResendRateLimit(rdb, cfg.RateRedis),
+		emailVerificationHandler.Resend,
+	)
 	apiV1.Get(
 		"/me/export",
 		middleware.RequireAuthWithSession(tokenSigner, sessionStore),

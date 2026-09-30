@@ -21,7 +21,7 @@ import (
 func TestAdminUserUsecase_Enable_RefusesAnErasedAccount(t *testing.T) {
 	t.Parallel()
 	users := new(mockUserRepo)
-	uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+	uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 	targetID := uuid.New()
 	erasedAt := time.Now()
 	users.On("AdminGetByID", mock.Anything, targetID).Return(&domainuser.User{
@@ -43,7 +43,7 @@ func TestAdminUserUsecase_RefusesAdminTargets(t *testing.T) {
 		admin := &domainuser.User{ID: targetID, Role: domainuser.RoleAdmin}
 		users.On("AdminGetByID", mock.Anything, targetID).Return(admin, nil).Maybe()
 		users.On("AdminGetByIDForUpdate", mock.Anything, targetID).Return(admin, nil).Maybe()
-		return usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil), users, targetID
+		return usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil), users, targetID
 	}
 
 	t.Run("profile_update", func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestAdminUserUsecase_UpdateRole(t *testing.T) {
 		users.On("AdminGetByID", mock.Anything, targetID).Return(target, nil).Maybe()
 		staff.On("GetByUserID", mock.Anything, targetID).Return(current, nil).Maybe()
 		return fixture{
-			uc:       usecase.NewAdminUserUsecase(users, nil, staff, nil, sessions, passthroughTxManager{}, nil, nil, nil, nil),
+			uc:       usecase.NewAdminUserUsecase(users, nil, staff, nil, nil, sessions, passthroughTxManager{}, nil, nil, nil, nil),
 			users:    users,
 			staff:    staff,
 			sessions: sessions,
@@ -192,7 +192,7 @@ func TestAdminUserUsecase_UpdateRole(t *testing.T) {
 		targetID := uuid.New()
 		disabledAt := time.Now()
 		users.On("AdminGetByIDForUpdate", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff, DeletedAt: &disabledAt}, nil).Once()
-		uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+		uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 
 		_, err := uc.UpdateRole(context.Background(), uuid.New(), domainuser.RoleAdmin, targetID, dto.UpdateUserRoleRequest{Role: string(domainuser.RoleBaker)})
 
@@ -208,7 +208,7 @@ func TestAdminUserUsecase_UpdateRole(t *testing.T) {
 		targetID := uuid.New()
 		users.On("AdminGetByIDForUpdate", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff}, nil).Once()
 		staff.On("GetByUserID", mock.Anything, targetID).Return(nil, apperrors.ErrNotFound).Once()
-		uc := usecase.NewAdminUserUsecase(users, nil, staff, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+		uc := usecase.NewAdminUserUsecase(users, nil, staff, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 
 		_, err := uc.UpdateRole(context.Background(), uuid.New(), domainuser.RoleAdmin, targetID, dto.UpdateUserRoleRequest{Role: string(domainuser.RoleBaker)})
 
@@ -219,7 +219,7 @@ func TestAdminUserUsecase_UpdateRole(t *testing.T) {
 func TestAdminUserUsecase_UpdateOperationalProfile_RejectsBlankName(t *testing.T) {
 	t.Parallel()
 	users := new(mockUserRepo)
-	uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+	uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 
 	_, err := uc.UpdateOperationalProfile(context.Background(), uuid.New(), domainuser.RoleAdmin, uuid.New(), dto.UpdateOperationalProfileRequest{FullName: "   "})
 
@@ -227,4 +227,61 @@ func TestAdminUserUsecase_UpdateOperationalProfile_RejectsBlankName(t *testing.T
 	require.True(t, errors.As(err, &appErr), "got %v", err)
 	assert.Equal(t, "required", appErr.Details["full_name"])
 	users.AssertNotCalled(t, "AdminGetByIDForUpdate", mock.Anything, mock.Anything)
+}
+
+func TestAdminUserUsecase_VoidsEmailedLinks(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	newFixture := func() (*usecase.AdminUserUsecase, *mockUserRepo, *fakeTokens, *mockSessionStore, uuid.UUID) {
+		users := new(mockUserRepo)
+		staff := new(mockStaffProfileRepo)
+		sessions := new(mockSessionStore)
+		hasher := new(mockHasher)
+		tokens := &fakeTokens{}
+		targetID := uuid.New()
+		users.On("AdminGetByID", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff}, nil)
+		staff.On("GetByUserID", mock.Anything, targetID).Return(&domainprofile.Staff{UserID: targetID, FullName: "Linh Tran"}, nil)
+		hasher.On("Hash", mock.Anything).Return("temp-hash", nil)
+		sessions.On("DeleteAllForUser", mock.Anything, targetID.String()).Return(nil)
+		uc := usecase.NewAdminUserUsecase(users, nil, staff, nil, tokens, sessions, passthroughTxManager{}, hasher, nil, nil, nil)
+		return uc, users, tokens, sessions, targetID
+	}
+
+	t.Run("a_password_reset", func(t *testing.T) {
+		t.Parallel()
+		uc, users, tokens, sessions, targetID := newFixture()
+		users.On("AdminUpdatePassword", mock.Anything, targetID, "temp-hash").Return(nil)
+
+		_, err := uc.ResetPassword(ctx, uuid.New(), domainuser.RoleAdmin, targetID)
+
+		require.NoError(t, err)
+		assert.Equal(t, []uuid.UUID{targetID}, tokens.deleted, "a reset link cannot skip the required change")
+		sessions.AssertExpectations(t)
+	})
+
+	t.Run("disabling", func(t *testing.T) {
+		t.Parallel()
+		uc, users, tokens, sessions, targetID := newFixture()
+		users.On("SoftDelete", mock.Anything, targetID).Return(nil)
+
+		require.NoError(t, uc.Disable(ctx, uuid.New(), domainuser.RoleAdmin, targetID))
+
+		assert.Equal(t, []uuid.UUID{targetID}, tokens.deleted, "the links stay dead if the account is enabled again")
+		sessions.AssertExpectations(t)
+	})
+
+	t.Run("links_that_cannot_be_voided_stop_both", func(t *testing.T) {
+		t.Parallel()
+		uc, users, tokens, sessions, targetID := newFixture()
+		tokens.deleteErr = apperrors.ErrInternal
+
+		_, err := uc.ResetPassword(ctx, uuid.New(), domainuser.RoleAdmin, targetID)
+		require.ErrorIs(t, err, apperrors.ErrInternal)
+		require.ErrorIs(t, uc.Disable(ctx, uuid.New(), domainuser.RoleAdmin, targetID), apperrors.ErrInternal)
+
+		users.AssertNotCalled(t, "AdminUpdatePassword", mock.Anything, mock.Anything, mock.Anything)
+		users.AssertNotCalled(t, "SoftDelete", mock.Anything, mock.Anything)
+		sessions.AssertNotCalled(t, "DeleteAllForUser", mock.Anything, mock.Anything)
+	})
 }

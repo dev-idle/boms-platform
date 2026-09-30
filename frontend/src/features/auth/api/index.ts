@@ -5,11 +5,16 @@ import {
 } from "@/lib/browser-api-client";
 
 import {
+  forgotPasswordSchema,
   loginSchema,
+  passwordResetConfirmSchema,
   registerSchema,
   tokenResponseSchema,
   userSchema,
+  verifyEmailSchema,
+  type ForgotPasswordInput,
   type LoginInput,
+  type PasswordResetConfirmInput,
   type RegisterInput,
   type TokenResponse,
   type User,
@@ -41,6 +46,38 @@ export async function login(body: LoginInput): Promise<TokenResponse> {
 export async function logout(): Promise<void> {
   await browserRequestVoid("/api/v1/auth/logout", {
     method: "POST",
+    skipRefreshRetry: true,
+  });
+}
+
+/** Answers 202 whether or not the address has an account. */
+export async function requestPasswordReset(body: ForgotPasswordInput): Promise<void> {
+  const parsed = forgotPasswordSchema.parse(body);
+  await browserRequestVoid("/api/v1/auth/password-reset/request", {
+    method: "POST",
+    json: parsed,
+    skipAuth: true,
+    skipRefreshRetry: true,
+  });
+}
+
+export async function confirmPasswordReset(body: PasswordResetConfirmInput): Promise<void> {
+  const parsed = passwordResetConfirmSchema.parse(body);
+  await browserRequestVoid("/api/v1/auth/password-reset/confirm", {
+    method: "POST",
+    json: parsed,
+    skipAuth: true,
+    skipRefreshRetry: true,
+  });
+}
+
+/** Works without a session: the link is often opened on another device. */
+export async function verifyEmail(token: string): Promise<void> {
+  const parsed = verifyEmailSchema.parse({ token });
+  await browserRequestVoid("/api/v1/auth/verify-email", {
+    method: "POST",
+    json: parsed,
+    skipAuth: true,
     skipRefreshRetry: true,
   });
 }

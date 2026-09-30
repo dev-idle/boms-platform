@@ -62,10 +62,11 @@ type StaffListOrdersParams struct {
 }
 
 type StaffOrderListRow struct {
-	Order               domainorder.Order
-	CustomerEmail       string
-	CustomerDisplayName *string
-	CustomerPhone       *string
+	Order                 domainorder.Order
+	CustomerEmail         string
+	CustomerEmailVerified bool
+	CustomerDisplayName   *string
+	CustomerPhone         *string
 }
 
 // PickupCount is how many orders not cancelled are due at one pickup time.

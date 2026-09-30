@@ -8,6 +8,7 @@ import { CustomerAccountSignedInAs } from "./customer-account-signed-in-as";
 import { CustomerAccountProfileForm } from "./customer-account-profile-form";
 import { DeleteAccountCard } from "./delete-account-card";
 import { DownloadMyDataCard } from "./download-my-data-card";
+import { EmailVerificationNotice } from "./email-verification-notice";
 
 /** Customer self-service — profile, password, your data, and delete on one page. */
 export function CustomerAccountView() {
@@ -20,6 +21,8 @@ export function CustomerAccountView() {
       />
 
       <CustomerAccountSignedInAs />
+
+      <EmailVerificationNotice reason="Confirm your address to place orders and get updates about them." />
 
       <div>
         <StorefrontAccountSection

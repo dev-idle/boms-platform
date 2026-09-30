@@ -70,9 +70,10 @@ func newEmailFixture(notice domainorder.Notice, status domainorder.Status) *emai
 	return &emailFixture{
 		orders: &emailOrders{
 			row: &port.StaffOrderListRow{
-				Order:               domainorder.Order{ID: orderID, Code: "CH-260930-007", Status: status},
-				CustomerEmail:       "mai@example.com",
-				CustomerDisplayName: &name,
+				Order:                 domainorder.Order{ID: orderID, Code: "CH-260930-007", Status: status},
+				CustomerEmail:         "mai@example.com",
+				CustomerEmailVerified: true,
+				CustomerDisplayName:   &name,
 			},
 			items: []domainorder.Item{{Name: "Almond Croissant", Quantity: 2, LineTotalCents: 900}},
 		},
@@ -125,6 +126,16 @@ func TestOrderEmailUsecase_Send(t *testing.T) {
 		require.NoError(t, f.send())
 
 		assert.Empty(t, f.mailer.sent, "the order was already collected")
+	})
+
+	t.Run("skips_an_address_nobody_confirmed", func(t *testing.T) {
+		t.Parallel()
+		f := newEmailFixture(domainorder.NoticePlaced, domainorder.StatusPending)
+		f.orders.row.CustomerEmailVerified = false
+
+		require.NoError(t, f.send())
+
+		assert.Empty(t, f.mailer.sent, "an order from before confirmation was required mails nobody")
 	})
 
 	t.Run("skips_a_customer_who_closed_their_account", func(t *testing.T) {

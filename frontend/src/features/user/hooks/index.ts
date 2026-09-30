@@ -8,11 +8,18 @@ import { toast } from "sonner";
 import { ROUTE } from "@/constants/routes";
 import { endLocalSession } from "@/lib/auth";
 import { saveJsonFile } from "@/lib/dom/save-json-file";
-import { isApiError } from "@/lib/errors";
+import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
 
-import { changePassword, deleteAccount, exportMyData, updateProfile } from "../api";
+import {
+  changePassword,
+  deleteAccount,
+  exportMyData,
+  resendVerificationEmail,
+  updateProfile,
+} from "../api";
 import { dataExportFileName } from "../lib/data-export-file-name";
+import { primeMeQueryCache } from "../lib/prime-me-cache";
 import {
   type ChangePasswordInput,
   type EraseMyAccountInput,
@@ -20,9 +27,18 @@ import {
 } from "../schemas/index";
 import { meQueryOptions, userQueryKeys } from "./query-options";
 
-export { userQueryKeys } from "./query-options";
+export { meQueryOptions, userQueryKeys } from "./query-options";
 
-export function useMe() {
+type UseMeOptions = {
+  /**
+   * Read /me again on mount and whenever the window regains focus, for what
+   * changes elsewhere — an address confirmed from the email, often on another
+   * device.
+   */
+  keepFresh?: boolean;
+};
+
+export function useMe({ keepFresh = false }: UseMeOptions = {}) {
   const status = useAuthStore((state) => state.status);
   const updateUser = useAuthStore((state) => state.updateUser);
 
@@ -30,7 +46,8 @@ export function useMe() {
     ...meQueryOptions(),
     enabled: status === "authenticated",
     // Bootstrap/login already fetch /me into the auth store; skip a redundant mount fetch.
-    refetchOnMount: () => useAuthStore.getState().user === null,
+    refetchOnMount: keepFresh ? "always" : () => useAuthStore.getState().user === null,
+    refetchOnWindowFocus: keepFresh ? "always" : false,
   });
 
   useEffect(() => {
@@ -106,6 +123,34 @@ export function useDownloadMyData() {
         isApiError(error) && error.isRateLimited()
           ? "You have downloaded your data several times recently. Please try again later."
           : "We could not prepare your data. Please try again.",
+      );
+    },
+  });
+}
+
+/** Sends a new confirmation link to the signed-in user's address. */
+export function useResendVerificationEmail() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => resendVerificationEmail(),
+    onSuccess: () => {
+      toast.success("We sent you a new link.");
+    },
+    onError: (error) => {
+      const user = useAuthStore.getState().user;
+      if (isApiError(error) && error.code === ApiErrorCode.EmailAlreadyVerified && user) {
+        // Confirmed meanwhile, often on another device.
+        const confirmed = { ...user, email_verified: true };
+        useAuthStore.getState().updateUser(confirmed);
+        primeMeQueryCache(queryClient, confirmed);
+        toast.success("Your email is already confirmed.");
+        return;
+      }
+      toast.error(
+        isApiError(error) && error.isRateLimited()
+          ? "You asked for several links already. Please try again later."
+          : "We could not send the link. Please try again.",
       );
     },
   });

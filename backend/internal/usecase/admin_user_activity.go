@@ -97,6 +97,10 @@ func formatUserAuditSummary(
 		return "Account deleted by user"
 	case domainuser.AuditActionMeErasedAccount:
 		return "Account erased at the user's request"
+	case domainuser.AuditActionMeVerifiedEmail:
+		return "Email address confirmed by user"
+	case domainuser.AuditActionMeResetPassword:
+		return "Password reset by user from an emailed link"
 	default:
 		return string(action)
 	}

@@ -74,6 +74,12 @@ type UserRepository interface {
 	// Erase clears the account's personal details and closes it for good; the
 	// row stays for the orders it placed. It refuses an account already closed.
 	Erase(ctx context.Context, id uuid.UUID) error
+	// MarkEmailVerified records the account's address as confirmed; confirming
+	// it again keeps the first time.
+	MarkEmailVerified(ctx context.Context, id uuid.UUID) error
+	// ResetPassword sets a new password from an emailed reset link: it lifts a
+	// required change and, as the link reached the inbox, confirms the address.
+	ResetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	// TermsAcceptance is the policy version the user accepted at sign-up, or nil.
 	TermsAcceptance(ctx context.Context, userID uuid.UUID) (*domainpolicy.Acceptance, error)
 }

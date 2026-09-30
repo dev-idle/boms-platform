@@ -112,6 +112,9 @@ var (
 	ErrTermsNotAccepted             = New(http.StatusUnprocessableEntity, "terms_not_accepted", "Please accept the current terms, privacy policy and refund policy")
 	ErrAccountHasOpenOrders         = New(http.StatusUnprocessableEntity, "account_has_open_orders", "You have an order that is not collected or cancelled yet")
 	ErrAccountErased                = New(http.StatusUnprocessableEntity, "account_erased", "This account was erased at its owner's request and cannot be restored")
+	ErrEmailNotVerified             = New(http.StatusUnprocessableEntity, "email_not_verified", "Confirm your email address before placing an order")
+	ErrEmailAlreadyVerified         = New(http.StatusConflict, "email_already_verified", "Your email address is already confirmed")
+	ErrInvalidLink                  = New(http.StatusUnprocessableEntity, "invalid_link", "This link has expired or has already been used")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

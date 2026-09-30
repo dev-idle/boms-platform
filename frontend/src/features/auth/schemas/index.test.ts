@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { loginSchema, registerSchema } from "./index";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  passwordResetConfirmSchema,
+  registerSchema,
+  resetPasswordFormSchema,
+  verifyEmailSchema,
+} from "./index";
 
 const PASSWORD = "Choux-pastry-2026";
 
@@ -58,5 +65,31 @@ describe("registration email length", () => {
     expect(result.success ? undefined : result.error.issues[0]?.message).toBe(
       "Email must be at most 255 characters",
     );
+  });
+});
+
+describe("password reset", () => {
+  const TOKEN = "Abc_def-1234567890XYZabcdefghijklmnopqrstuv";
+
+  it("asks for the new password twice", () => {
+    expect(resetPasswordFormSchema.safeParse({ new_password: PASSWORD, confirm_password: PASSWORD }).success).toBe(true);
+    const mismatch = resetPasswordFormSchema.safeParse({ new_password: PASSWORD, confirm_password: `${PASSWORD}x` });
+    expect(mismatch.success ? undefined : mismatch.error.issues[0]?.path).toEqual(["confirm_password"]);
+  });
+
+  it("holds a new password to the sign-up rules", () => {
+    expect(passwordResetConfirmSchema.safeParse({ token: TOKEN, new_password: "short" }).success).toBe(false);
+    expect(passwordResetConfirmSchema.safeParse({ token: TOKEN, new_password: PASSWORD }).success).toBe(true);
+  });
+
+  it("sends only a well-formed link token", () => {
+    expect(verifyEmailSchema.safeParse({ token: TOKEN }).success).toBe(true);
+    expect(verifyEmailSchema.safeParse({ token: "../../etc" }).success).toBe(false);
+    expect(passwordResetConfirmSchema.safeParse({ token: "", new_password: PASSWORD }).success).toBe(false);
+  });
+
+  it("asks for a reset with a real address", () => {
+    expect(forgotPasswordSchema.safeParse({ email: " mai@example.com " }).success).toBe(true);
+    expect(forgotPasswordSchema.safeParse({ email: "mai" }).success).toBe(false);
   });
 });

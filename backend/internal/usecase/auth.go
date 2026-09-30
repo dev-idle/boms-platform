@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	domainaccount "github.com/boms/backend/internal/domain/account"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainsession "github.com/boms/backend/internal/domain/session"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -34,6 +35,7 @@ type AuthUsecase struct {
 	userRepo            port.UserRepository
 	customerProfileRepo port.CustomerProfileRepository
 	txManager           port.TxManager
+	outbox              port.EventOutbox
 	sessionStore        port.SessionStore
 	hasher              port.PasswordHasher
 	signer              port.TokenSigner
@@ -47,6 +49,7 @@ func NewAuthUsecase(
 	userRepo port.UserRepository,
 	customerProfileRepo port.CustomerProfileRepository,
 	txManager port.TxManager,
+	outbox port.EventOutbox,
 	sessionStore port.SessionStore,
 	hasher port.PasswordHasher,
 	signer port.TokenSigner,
@@ -60,6 +63,7 @@ func NewAuthUsecase(
 		userRepo:            userRepo,
 		customerProfileRepo: customerProfileRepo,
 		txManager:           txManager,
+		outbox:              outbox,
 		sessionStore:        sessionStore,
 		hasher:              hasher,
 		signer:              signer,
@@ -69,7 +73,8 @@ func NewAuthUsecase(
 }
 
 // Register hashes the password and creates a customer account, recording the
-// policies the customer accepted.
+// policies the customer accepted. The account starts unconfirmed: the same
+// transaction asks for an email with a link that confirms the address.
 func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*domainuser.User, error) {
 	if err := domainpolicy.RequireAccepted(req.TermsVersion); err != nil {
 		return nil, err
@@ -98,13 +103,12 @@ func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		_, createErr = a.customerProfileRepo.Create(txCtx, port.UpsertCustomerProfileParams{
 			UserID: user.ID,
 		})
-		return createErr
+		if createErr != nil {
+			return createErr
+		}
+		return a.outbox.Add(txCtx, domainaccount.VerificationRequestedEvent(user.ID))
 	}
-	if a.txManager != nil {
-		err = a.txManager.WithTx(ctx, runWithTx)
-	} else {
-		err = runWithTx(ctx)
-	}
+	err = a.txManager.WithTx(ctx, runWithTx)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
 			return nil, ErrEmailExists

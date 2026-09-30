@@ -25,6 +25,7 @@ type MeUsecase struct {
 	customers port.CustomerProfileRepository
 	staff     port.StaffProfileRepository
 	admins    port.AdminProfileRepository
+	tokens    port.UserTokenRepository
 	sessions  port.SessionStore
 	tx        port.TxManager
 	hasher    port.PasswordHasher
@@ -38,6 +39,7 @@ func NewMeUsecase(
 	customers port.CustomerProfileRepository,
 	staff port.StaffProfileRepository,
 	admins port.AdminProfileRepository,
+	tokens port.UserTokenRepository,
 	sessions port.SessionStore,
 	tx port.TxManager,
 	hasher port.PasswordHasher,
@@ -49,6 +51,7 @@ func NewMeUsecase(
 		customers: customers,
 		staff:     staff,
 		admins:    admins,
+		tokens:    tokens,
 		sessions:  sessions,
 		tx:        tx,
 		hasher:    hasher,
@@ -170,10 +173,21 @@ func (u *MeUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldPwd
 	if err != nil {
 		return apperrors.Errorf("hash password: %w", err)
 	}
-	if err := u.users.UpdatePassword(ctx, userID, hash); err != nil {
-		return err
-	}
-	if err := u.users.ClearMustChangePassword(ctx, userID); err != nil && !errors.Is(err, apperrors.ErrNotFound) {
+	// A reset link sent before the change would undo it, so the new password
+	// voids every link the account was emailed, in the same commit. Links go
+	// before the account, the order redeeming one takes them.
+	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := u.tokens.DeleteForUser(txCtx, userID); err != nil {
+			return err
+		}
+		if err := u.users.UpdatePassword(txCtx, userID, hash); err != nil {
+			return err
+		}
+		if err := u.users.ClearMustChangePassword(txCtx, userID); err != nil && !errors.Is(err, apperrors.ErrNotFound) {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
 	if err := u.sessions.DeleteAllForUser(ctx, userID.String()); err != nil {

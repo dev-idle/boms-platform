@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	domainaccount "github.com/boms/backend/internal/domain/account"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
@@ -73,6 +74,9 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "terms_not_accepted", err: domainpolicy.ErrTermsNotAccepted, wantStatus: 422, wantCode: "terms_not_accepted"},
 		{name: "account_has_open_orders", err: domainuser.ErrAccountHasOpenOrders, wantStatus: 422, wantCode: "account_has_open_orders"},
 		{name: "account_erased", err: domainuser.ErrAccountErased, wantStatus: 422, wantCode: "account_erased"},
+		{name: "email_not_verified", err: domainuser.ErrEmailNotVerified, wantStatus: 422, wantCode: "email_not_verified"},
+		{name: "email_already_verified", err: domainuser.ErrEmailAlreadyVerified, wantStatus: 409, wantCode: "email_already_verified"},
+		{name: "invalid_link", err: domainaccount.ErrLinkInvalid, wantStatus: 422, wantCode: "invalid_link"},
 		{name: "store_invalid_hours", err: domainstore.ErrInvalidHours, wantStatus: 400, wantCode: "validation_error"},
 		{name: "store_invalid_lead_time", err: domainstore.ErrInvalidLeadTime, wantStatus: 400, wantCode: "validation_error"},
 		{name: "store_invalid_advance_days", err: domainstore.ErrInvalidAdvanceDays, wantStatus: 400, wantCode: "validation_error"},

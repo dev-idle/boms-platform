@@ -56,6 +56,7 @@ type erasureFixture struct {
 	carts     *erasureCarts
 	orders    *erasureOrders
 	audit     *recordingAuditLogs
+	tokens    *fakeTokens
 	sessions  *mockSessionStore
 	hasher    *mockHasher
 }
@@ -71,6 +72,7 @@ func newErasureFixture() *erasureFixture {
 		carts:     &erasureCarts{cart: &domaincart.Cart{ID: uuid.New(), UserID: customer.ID}},
 		orders:    &erasureOrders{},
 		audit:     &recordingAuditLogs{},
+		tokens:    &fakeTokens{},
 		sessions:  new(mockSessionStore),
 		hasher:    new(mockHasher),
 	}
@@ -83,7 +85,7 @@ func newErasureFixture() *erasureFixture {
 
 func (f *erasureFixture) usecase() *usecase.AccountErasureUsecase {
 	return usecase.NewAccountErasureUsecase(
-		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.audit, f.sessions,
+		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.audit, f.tokens, f.sessions,
 		auditlogger.NewService(f.audit), f.hasher,
 	)
 }
@@ -93,7 +95,9 @@ func (f *erasureFixture) expectErased() {
 	f.users.On("Erase", mock.Anything, f.customer.ID).Return(nil)
 }
 
-// nothingErased checks a refusal left the account as it was.
+// nothingErased checks a refusal left the account as it was. Its links are
+// deleted before the checks and come back with the rollback, which only the
+// integration test can show.
 func (f *erasureFixture) nothingErased(t *testing.T) {
 	t.Helper()
 	assert.False(t, f.carts.emptied, "the cart is kept")
@@ -115,6 +119,7 @@ func TestAccountErasureUsecase_Erase(t *testing.T) {
 		require.NoError(t, f.usecase().Erase(ctx, f.customer.ID, erasurePassword))
 
 		assert.True(t, f.carts.emptied, "the cart is emptied")
+		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.tokens.deleted, "no emailed link outlives the account")
 		assert.Equal(t, []domainuser.AuditAction{domainuser.AuditActionMeErasedAccount}, f.audit.actions)
 		assert.True(t, f.audit.scrubbed, "the audit trail loses the personal data")
 		f.users.AssertCalled(t, "GetByIDForUpdate", mock.Anything, f.customer.ID)

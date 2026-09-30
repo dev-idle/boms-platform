@@ -22,7 +22,7 @@ func TestAdminUserUsecase_CreateOperationalUser(t *testing.T) {
 		t.Parallel()
 		users := new(mockUserRepo)
 		hasher := new(mockHasher)
-		uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, passthroughTxManager{}, hasher, nil, nil, nil)
+		uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, hasher, nil, nil, nil)
 
 		hasher.On("Hash", mock.Anything).Return("temp-hash", nil).Once()
 		users.On("AdminCreate", mock.Anything, mock.Anything).Return(nil, apperrors.ErrConflict).Once()

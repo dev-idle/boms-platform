@@ -2,8 +2,8 @@
  * Canonical paths — single source for `src/proxy.ts`, layouts, and links.
  *
  * URL conventions (one role = one namespace):
- *   - Public:   /, /login, /register, /forgot-password, /products, /products/:id,
- *               /terms, /privacy, /refund-policy
+ *   - Public:   /, /login, /register, /forgot-password, /reset-password, /verify-email,
+ *               /products, /products/:id, /terms, /privacy, /refund-policy
  *   - Customer: /cart, /orders, /customer/account/*
  *   - Staff:    /staff/orders, /staff/orders/:id, /staff/prep, /staff/account/*
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
@@ -16,6 +16,9 @@ export const ROUTE = {
   login: "/login",
   register: "/register",
   forgotPassword: "/forgot-password",
+  /** Emailed links land here; the token rides in the URL fragment. */
+  resetPassword: "/reset-password",
+  verifyEmail: "/verify-email",
   products: "/products",
   productDetail: (id: string) => `/products/${id}`,
   terms: "/terms",

@@ -403,6 +403,30 @@ func (r *UserRepository) TermsAcceptance(ctx context.Context, userID uuid.UUID) 
 	return mapTermsAcceptance(row.TermsVersion, row.TermsAcceptedAt), nil
 }
 
+// MarkEmailVerified implements port.UserRepository.
+func (r *UserRepository) MarkEmailVerified(ctx context.Context, id uuid.UUID) error {
+	rows, err := r.q(ctx).MarkEmailVerified(ctx, id)
+	if err != nil {
+		return mapRepoError(err, "mark email verified")
+	}
+	if rows == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
+// ResetPassword implements port.UserRepository.
+func (r *UserRepository) ResetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	rows, err := r.q(ctx).ResetUserPassword(ctx, sqlcgen.ResetUserPasswordParams{ID: id, PasswordHash: passwordHash})
+	if err != nil {
+		return mapRepoError(err, "reset user password")
+	}
+	if rows == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
 // Erase implements port.UserRepository.
 func (r *UserRepository) Erase(ctx context.Context, id uuid.UUID) error {
 	rows, err := r.q(ctx).EraseUser(ctx, id)

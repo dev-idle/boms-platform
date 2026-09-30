@@ -64,6 +64,12 @@ func Created(c fiber.Ctx, data any) error {
 	return JSON(c, fiber.StatusCreated, true, data, nil, MetaFromCtx(c, nil))
 }
 
+// Accepted sends 202 with an empty envelope: the request was taken and its
+// work — an email, say — happens later.
+func Accepted(c fiber.Ctx) error {
+	return JSON(c, fiber.StatusAccepted, true, nil, nil, MetaFromCtx(c, nil))
+}
+
 // NoContent sends 204 without a body.
 func NoContent(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)

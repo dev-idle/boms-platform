@@ -13,8 +13,8 @@ import (
 )
 
 const adminCreate = `-- name: AdminCreate :one
-INSERT INTO users (email, password_hash, role, must_change_password)
-VALUES ($1, $2, $3, $4)
+INSERT INTO users (email, password_hash, role, must_change_password, email_verified_at)
+VALUES ($1, $2, $3, $4, now())
 RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
 `
 
@@ -38,10 +38,11 @@ type AdminCreateRow struct {
 	ErasedAt           *time.Time `json:"erasedAt"`
 }
 
-// AdminCreate
+// An administrator vouches for the address of an account they create: it
+// counts as confirmed.
 //
-//	INSERT INTO users (email, password_hash, role, must_change_password)
-//	VALUES ($1, $2, $3, $4)
+//	INSERT INTO users (email, password_hash, role, must_change_password, email_verified_at)
+//	VALUES ($1, $2, $3, $4, now())
 //	RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
 func (q *Queries) AdminCreate(ctx context.Context, arg AdminCreateParams) (AdminCreateRow, error) {
 	row := q.db.QueryRow(ctx, adminCreate,
@@ -725,6 +726,29 @@ func (q *Queries) LockPhone(ctx context.Context, phone string) error {
 	return err
 }
 
+const markEmailVerified = `-- name: MarkEmailVerified :execrows
+UPDATE users
+SET email_verified_at = COALESCE(email_verified_at, now()),
+    updated_at = now()
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+// MarkEmailVerified
+//
+//	UPDATE users
+//	SET email_verified_at = COALESCE(email_verified_at, now()),
+//	    updated_at = now()
+//	WHERE id = $1
+//	  AND deleted_at IS NULL
+func (q *Queries) MarkEmailVerified(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markEmailVerified, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const phoneHeldByOtherActiveUser = `-- name: PhoneHeldByOtherActiveUser :one
 SELECT EXISTS (
   SELECT 1
@@ -789,6 +813,38 @@ UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::u
 func (q *Queries) ReleasePhone(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, releasePhone, userID)
 	return err
+}
+
+const resetUserPassword = `-- name: ResetUserPassword :execrows
+UPDATE users
+SET password_hash = $2,
+    must_change_password = false,
+    email_verified_at = COALESCE(email_verified_at, now()),
+    updated_at = now()
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+type ResetUserPasswordParams struct {
+	ID           uuid.UUID `json:"id"`
+	PasswordHash string    `json:"passwordHash"`
+}
+
+// A reset link reached the account's inbox, so it confirms the address too.
+//
+//	UPDATE users
+//	SET password_hash = $2,
+//	    must_change_password = false,
+//	    email_verified_at = COALESCE(email_verified_at, now()),
+//	    updated_at = now()
+//	WHERE id = $1
+//	  AND deleted_at IS NULL
+func (q *Queries) ResetUserPassword(ctx context.Context, arg ResetUserPasswordParams) (int64, error) {
+	result, err := q.db.Exec(ctx, resetUserPassword, arg.ID, arg.PasswordHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setMustChangePassword = `-- name: SetMustChangePassword :execrows

@@ -84,10 +84,14 @@ func (m *memoryStore) RemoveClosedDate(_ context.Context, id uuid.UUID) (domains
 }
 
 type recordingOutbox struct {
+	err    error
 	events []domainevent.Event
 }
 
 func (r *recordingOutbox) Add(_ context.Context, e domainevent.Event) error {
+	if r.err != nil {
+		return r.err
+	}
 	r.events = append(r.events, e)
 	return nil
 }

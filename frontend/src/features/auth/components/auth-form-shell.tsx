@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import Link from "next/link";
 
 import { StorefrontBrowseLink } from "@/components/layouts/storefront-browse-link";
@@ -19,6 +19,8 @@ type AuthFormShellProps = {
   /** Quiet line under the footer rule (e.g. the guest path). */
   footerNote?: ReactNode;
   title: string;
+  /** Set on a view that replaces a form, to move focus to its heading. */
+  titleRef?: Ref<HTMLHeadingElement>;
 };
 
 export function AuthFormShell({
@@ -28,6 +30,7 @@ export function AuthFormShell({
   footer,
   footerNote,
   title,
+  titleRef,
 }: AuthFormShellProps) {
   return (
     <div className="auth-page-form-stack">
@@ -35,7 +38,9 @@ export function AuthFormShell({
 
       <header>
         <p className="auth-page-form-eyebrow">{eyebrow}</p>
-        <h1 className="auth-page-form-title">{title}</h1>
+        <h1 className="auth-page-form-title" ref={titleRef} tabIndex={titleRef ? -1 : undefined}>
+          {title}
+        </h1>
         <p className="auth-page-form-lead">{description}</p>
       </header>
 

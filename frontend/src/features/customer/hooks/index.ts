@@ -154,7 +154,9 @@ export function useCheckoutCart() {
       toast.error(
         isApiError(error) && error.code === ApiErrorCode.TermsNotAccepted
           ? "Our policies were just updated. Reload the page, then read and accept the current version."
-          : cartMutationErrorMessage(error, "Checkout failed"),
+          : isApiError(error) && error.code === ApiErrorCode.EmailNotVerified
+            ? "Confirm your email address before placing an order. We sent you a link."
+            : cartMutationErrorMessage(error, "Checkout failed"),
       );
     },
   });

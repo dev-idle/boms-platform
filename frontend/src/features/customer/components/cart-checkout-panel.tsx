@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { PICKUP_COPY } from "@/constants/pickup";
 import { ROUTE } from "@/constants/routes";
 import { PolicyConsent } from "@/features/legal";
+import { EmailVerificationNotice } from "@/features/user";
 import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { useNow } from "@/lib/hooks/use-now";
 import { clockToMinutes, formatClockMinutes } from "@/lib/validation/clock";
+import { useAuthStore } from "@/stores/auth-store";
 import {
   bakeryDayOf,
   bakeryPickupISOFromLocalInput,
@@ -144,8 +146,11 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
   const slotMessage = slotProblem();
   const message = dayMessage ?? slotMessage;
   const type = pickupWindow && slot !== "" && message === null ? pickupOrderType(slot, now, items) : null;
+  // Order updates go to the account's address, so it must be confirmed first.
+  const unconfirmed = useAuthStore((state) => state.user?.email_verified === false);
   const canCheckout =
     checkoutReady &&
+    !unconfirmed &&
     accepted &&
     pickupWindow !== null &&
     slot !== "" &&
@@ -199,6 +204,7 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
       />
 
       <div className="storefront-cart-summary__checkout">
+        <EmailVerificationNotice reason="Confirm your address to place this order." />
         <PolicyConsent
           checked={accepted}
           describedBy={accepted ? undefined : CONSENT_HINT_ID}
@@ -214,7 +220,13 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
         <Button
           className="storefront-cart-summary__checkout-btn"
           disabled={!canCheckout}
-          title={accepted ? undefined : "Accept the terms and the refund policy to check out"}
+          title={
+            unconfirmed
+              ? "Confirm your email to place an order"
+              : accepted
+                ? undefined
+                : "Accept the terms and the refund policy to check out"
+          }
           type="button"
           onClick={placeOrder}
         >

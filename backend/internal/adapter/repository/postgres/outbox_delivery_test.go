@@ -100,6 +100,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 		Email: "outbox-checkout@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,
 	})
 	require.NoError(t, err)
+	require.NoError(t, users.MarkEmailVerified(ctx, customer.ID))
 	category, err := categories.Create(ctx, port.CreateCategoryParams{Name: "Cakes", Slug: "cakes", IsActive: true, Station: domaincategory.StationKitchen})
 	require.NoError(t, err)
 	cake, err := products.Create(ctx, port.CreateProductParams{

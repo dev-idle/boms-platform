@@ -11,11 +11,14 @@ export {
   AuthLayoutFrame,
   BakerGate,
   CustomerGate,
+  ForgotPasswordForm,
   LoginForm,
   ManagerGate,
   PublicSessionGate,
   RegisterForm,
+  ResetPasswordForm,
   StaffGate,
+  VerifyEmailView,
 } from "./components";
 export { useLogout } from "./hooks";
 export { AUTH_FORM_COPY } from "./lib/auth-form-copy";

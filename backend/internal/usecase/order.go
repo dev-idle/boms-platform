@@ -73,11 +73,16 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, req dto.C
 		// or a disable waits for this order. The other way round, an erasure
 		// holds the cart and this checkout finds it emptied; a cart filled after
 		// the erasure, or a disable, leaves the account closed here.
-		if _, err := u.users.GetByIDForShare(txCtx, userID); err != nil {
-			if errors.Is(err, apperrors.ErrNotFound) {
-				return ErrMeNotFound
-			}
+		customer, err := u.users.GetByIDForShare(txCtx, userID)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return ErrMeNotFound
+		}
+		if err != nil {
 			return err
+		}
+		// Every update about the order goes to this address.
+		if !customer.EmailVerified {
+			return domainuser.ErrEmailNotVerified
 		}
 		booking, err := u.bookPickup(txCtx, userID, lines, pickupAt, now, policy)
 		if err != nil {

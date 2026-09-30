@@ -40,8 +40,10 @@ VALUES (
 RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at;
 
 -- name: AdminCreate :one
-INSERT INTO users (email, password_hash, role, must_change_password)
-VALUES ($1, $2, $3, $4)
+-- An administrator vouches for the address of an account they create: it
+-- counts as confirmed.
+INSERT INTO users (email, password_hash, role, must_change_password, email_verified_at)
+VALUES ($1, $2, $3, $4, now())
 RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at;
 
 -- name: UpdateUserPassword :execrows
@@ -204,6 +206,23 @@ SET email = 'erased-' || id::text || '@erased.invalid',
     must_change_password = false,
     deleted_at = now(),
     erased_at = now(),
+    updated_at = now()
+WHERE id = $1
+  AND deleted_at IS NULL;
+
+-- name: MarkEmailVerified :execrows
+UPDATE users
+SET email_verified_at = COALESCE(email_verified_at, now()),
+    updated_at = now()
+WHERE id = $1
+  AND deleted_at IS NULL;
+
+-- name: ResetUserPassword :execrows
+-- A reset link reached the account's inbox, so it confirms the address too.
+UPDATE users
+SET password_hash = $2,
+    must_change_password = false,
+    email_verified_at = COALESCE(email_verified_at, now()),
     updated_at = now()
 WHERE id = $1
   AND deleted_at IS NULL;

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	domainaccount "github.com/boms/backend/internal/domain/account"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
@@ -20,8 +21,13 @@ import (
 
 func newAuthUC(t *testing.T, users *mockUserRepo, customerProfiles *mockCustomerProfileRepo, sessions *mockSessionStore, hasher *mockHasher, signer *mockSigner) *usecase.AuthUsecase {
 	t.Helper()
+	return newAuthUCWith(t, &recordingOutbox{}, users, customerProfiles, sessions, hasher, signer)
+}
+
+func newAuthUCWith(t *testing.T, outbox *recordingOutbox, users *mockUserRepo, customerProfiles *mockCustomerProfileRepo, sessions *mockSessionStore, hasher *mockHasher, signer *mockSigner) *usecase.AuthUsecase {
+	t.Helper()
 	hasher.On("Hash", usecase.TimingSafeDummySeed).Return("dummy-hash", nil).Once()
-	uc, err := usecase.NewAuthUsecase(users, customerProfiles, passthroughTxManager{}, sessions, hasher, signer, nil)
+	uc, err := usecase.NewAuthUsecase(users, customerProfiles, passthroughTxManager{}, outbox, sessions, hasher, signer, nil)
 	require.NoError(t, err)
 	return uc
 }
@@ -50,7 +56,8 @@ func TestAuthUsecase_RegisterRecordsTheAcceptedTerms(t *testing.T) {
 	users := new(mockUserRepo)
 	customerProfiles := new(mockCustomerProfileRepo)
 	hasher := new(mockHasher)
-	uc := newAuthUC(t, users, customerProfiles, new(mockSessionStore), hasher, new(mockSigner))
+	outbox := &recordingOutbox{}
+	uc := newAuthUCWith(t, outbox, users, customerProfiles, new(mockSessionStore), hasher, new(mockSigner))
 	created := &domainuser.User{ID: uuid.New(), Email: "a@b.com", Role: domainuser.RoleCustomer}
 
 	hasher.On("Hash", "Password1").Return("hash", nil)
@@ -66,6 +73,30 @@ func TestAuthUsecase_RegisterRecordsTheAcceptedTerms(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, created, user)
 	users.AssertExpectations(t)
+	require.Len(t, outbox.events, 1, "the new account asks for its confirmation email")
+	userID, purpose, ok := domainaccount.EmailFor(outbox.events[0])
+	require.True(t, ok)
+	assert.Equal(t, created.ID, userID)
+	assert.Equal(t, domainaccount.PurposeVerifyEmail, purpose)
+}
+
+// The account and the request for its confirmation email commit together: a
+// registration that cannot ask for the email fails.
+func TestAuthUsecase_RegisterFailsWithoutItsConfirmationEmail(t *testing.T) {
+	t.Parallel()
+	users := new(mockUserRepo)
+	customerProfiles := new(mockCustomerProfileRepo)
+	hasher := new(mockHasher)
+	uc := newAuthUCWith(t, &recordingOutbox{err: apperrors.ErrInternal}, users, customerProfiles, new(mockSessionStore), hasher, new(mockSigner))
+	hasher.On("Hash", "Password1").Return("hash", nil)
+	users.On("Create", mock.Anything, mock.Anything).Return(&domainuser.User{ID: uuid.New(), Role: domainuser.RoleCustomer}, nil)
+	customerProfiles.On("Create", mock.Anything, mock.Anything).Return(nil, nil)
+
+	_, err := uc.Register(context.Background(), dto.RegisterRequest{
+		Email: "a@b.com", Password: "Password1", TermsVersion: domainpolicy.TermsVersion,
+	})
+
+	require.ErrorIs(t, err, apperrors.ErrInternal)
 }
 
 // Nobody gets an account without accepting the policies shown to them: an

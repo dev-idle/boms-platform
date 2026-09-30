@@ -1118,6 +1118,7 @@ SELECT
   o.code,
   o.order_type,
   u.email AS customer_email,
+  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
   cp.display_name AS customer_display_name,
   cp.phone AS customer_phone
 FROM orders o
@@ -1127,22 +1128,23 @@ WHERE o.id = $1
 `
 
 type StaffGetOrderByIDRow struct {
-	ID                   uuid.UUID   `json:"id"`
-	UserID               uuid.UUID   `json:"userId"`
-	Status               OrderStatus `json:"status"`
-	SubtotalCents        int64       `json:"subtotalCents"`
-	DiscountCents        int64       `json:"discountCents"`
-	TotalCents           int64       `json:"totalCents"`
-	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
-	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
-	PickupAt             *time.Time  `json:"pickupAt"`
-	CreatedAt            time.Time   `json:"createdAt"`
-	UpdatedAt            time.Time   `json:"updatedAt"`
-	Code                 string      `json:"code"`
-	OrderType            OrderType   `json:"orderType"`
-	CustomerEmail        string      `json:"customerEmail"`
-	CustomerDisplayName  *string     `json:"customerDisplayName"`
-	CustomerPhone        *string     `json:"customerPhone"`
+	ID                    uuid.UUID   `json:"id"`
+	UserID                uuid.UUID   `json:"userId"`
+	Status                OrderStatus `json:"status"`
+	SubtotalCents         int64       `json:"subtotalCents"`
+	DiscountCents         int64       `json:"discountCents"`
+	TotalCents            int64       `json:"totalCents"`
+	DiscountCodeID        *uuid.UUID  `json:"discountCodeId"`
+	DiscountCodeSnapshot  *string     `json:"discountCodeSnapshot"`
+	PickupAt              *time.Time  `json:"pickupAt"`
+	CreatedAt             time.Time   `json:"createdAt"`
+	UpdatedAt             time.Time   `json:"updatedAt"`
+	Code                  string      `json:"code"`
+	OrderType             OrderType   `json:"orderType"`
+	CustomerEmail         string      `json:"customerEmail"`
+	CustomerEmailVerified bool        `json:"customerEmailVerified"`
+	CustomerDisplayName   *string     `json:"customerDisplayName"`
+	CustomerPhone         *string     `json:"customerPhone"`
 }
 
 // StaffGetOrderByID
@@ -1162,6 +1164,7 @@ type StaffGetOrderByIDRow struct {
 //	  o.code,
 //	  o.order_type,
 //	  u.email AS customer_email,
+//	  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
 //	  cp.display_name AS customer_display_name,
 //	  cp.phone AS customer_phone
 //	FROM orders o
@@ -1186,6 +1189,7 @@ func (q *Queries) StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGet
 		&i.Code,
 		&i.OrderType,
 		&i.CustomerEmail,
+		&i.CustomerEmailVerified,
 		&i.CustomerDisplayName,
 		&i.CustomerPhone,
 	)
@@ -1208,6 +1212,7 @@ SELECT
   o.code,
   o.order_type,
   u.email AS customer_email,
+  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
   cp.display_name AS customer_display_name
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
@@ -1227,21 +1232,22 @@ type StaffListOrdersParams struct {
 }
 
 type StaffListOrdersRow struct {
-	ID                   uuid.UUID   `json:"id"`
-	UserID               uuid.UUID   `json:"userId"`
-	Status               OrderStatus `json:"status"`
-	SubtotalCents        int64       `json:"subtotalCents"`
-	DiscountCents        int64       `json:"discountCents"`
-	TotalCents           int64       `json:"totalCents"`
-	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
-	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
-	PickupAt             *time.Time  `json:"pickupAt"`
-	CreatedAt            time.Time   `json:"createdAt"`
-	UpdatedAt            time.Time   `json:"updatedAt"`
-	Code                 string      `json:"code"`
-	OrderType            OrderType   `json:"orderType"`
-	CustomerEmail        string      `json:"customerEmail"`
-	CustomerDisplayName  *string     `json:"customerDisplayName"`
+	ID                    uuid.UUID   `json:"id"`
+	UserID                uuid.UUID   `json:"userId"`
+	Status                OrderStatus `json:"status"`
+	SubtotalCents         int64       `json:"subtotalCents"`
+	DiscountCents         int64       `json:"discountCents"`
+	TotalCents            int64       `json:"totalCents"`
+	DiscountCodeID        *uuid.UUID  `json:"discountCodeId"`
+	DiscountCodeSnapshot  *string     `json:"discountCodeSnapshot"`
+	PickupAt              *time.Time  `json:"pickupAt"`
+	CreatedAt             time.Time   `json:"createdAt"`
+	UpdatedAt             time.Time   `json:"updatedAt"`
+	Code                  string      `json:"code"`
+	OrderType             OrderType   `json:"orderType"`
+	CustomerEmail         string      `json:"customerEmail"`
+	CustomerEmailVerified bool        `json:"customerEmailVerified"`
+	CustomerDisplayName   *string     `json:"customerDisplayName"`
 }
 
 // StaffListOrders
@@ -1261,6 +1267,7 @@ type StaffListOrdersRow struct {
 //	  o.code,
 //	  o.order_type,
 //	  u.email AS customer_email,
+//	  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
 //	  cp.display_name AS customer_display_name
 //	FROM orders o
 //	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
@@ -1295,6 +1302,7 @@ func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams
 			&i.Code,
 			&i.OrderType,
 			&i.CustomerEmail,
+			&i.CustomerEmailVerified,
 			&i.CustomerDisplayName,
 		); err != nil {
 			return nil, err

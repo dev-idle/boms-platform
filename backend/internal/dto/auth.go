@@ -42,3 +42,20 @@ type RefreshResponse struct {
 	ExpiresIn          int    `json:"expires_in"`
 	MustChangePassword *bool  `json:"must_change_password,omitempty"`
 }
+
+// VerifyEmailRequest is POST /auth/verify-email: the token from the link.
+type VerifyEmailRequest struct {
+	Token string `json:"token" validate:"required,max=128"`
+}
+
+// PasswordResetRequest is POST /auth/password-reset/request.
+type PasswordResetRequest struct {
+	Email string `json:"email" validate:"required,email,max=255"`
+}
+
+// PasswordResetConfirmRequest is POST /auth/password-reset/confirm: the token
+// from the link and the new password.
+type PasswordResetConfirmRequest struct {
+	Token       string `json:"token" validate:"required,max=128"`
+	NewPassword string `json:"new_password" validate:"required,min=8,max=128,password_complexity"`
+}

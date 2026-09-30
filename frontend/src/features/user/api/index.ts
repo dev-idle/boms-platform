@@ -45,6 +45,13 @@ export async function deleteAccount(body: EraseMyAccountInput): Promise<void> {
   });
 }
 
+/** Asks for a new link confirming the signed-in user's address; the last one stops working. */
+export async function resendVerificationEmail(): Promise<void> {
+  await browserRequestVoid("/api/v1/me/email-verification", {
+    method: "POST",
+  });
+}
+
 export async function exportMyData(): Promise<DataExport> {
   return browserRequest<DataExport>("/api/v1/me/export", {
     method: "GET",

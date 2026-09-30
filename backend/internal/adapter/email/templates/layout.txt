@@ -1,0 +1,11 @@
+{{.Heading}}
+
+{{.Greeting}}
+{{range .Lead}}
+{{.}}
+{{end}}{{block "details" .}}{{end}}
+{{.ActionLabel}}: {{.ActionURL}}
+{{block "after" .}}{{end}}
+--
+{{.Brand.Name}} · {{.Brand.AddressLine}} · {{.Brand.ContactPhone}} · {{.Brand.ContactEmail}}
+{{.FooterNote}}

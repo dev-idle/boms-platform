@@ -1,21 +1,14 @@
 package email
 
 import (
-	"bytes"
-	"embed"
 	"fmt"
-	htmltemplate "html/template"
 	"strconv"
 	"strings"
-	texttemplate "text/template"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	"github.com/boms/backend/internal/port"
 )
-
-//go:embed templates/order.html templates/order.txt
-var orderTemplates embed.FS
 
 // orderPath is where the storefront shows one of a customer's orders
 // (ROUTE.orderDetail in frontend/src/constants/routes.ts).
@@ -24,6 +17,8 @@ const orderPath = "/orders/"
 // pickupLayout reads as "Tuesday, September 30 at 11:00 AM", in the bakery's
 // own time zone whatever the reader's.
 const pickupLayout = "Monday, January 2 at 3:04 PM"
+
+var orderFooterNote = "You are receiving this email about an order you placed with " + choux.Name + " for pickup."
 
 // orderCopy is what one notice says.
 type orderCopy struct {
@@ -70,23 +65,18 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 // OrderComposer writes order notices in the bakery's style, as HTML with a
 // plain-text alternative.
 type OrderComposer struct {
-	siteURL string
-	html    *htmltemplate.Template
-	text    *texttemplate.Template
+	siteURL   string
+	templates emailTemplates
 }
 
 // NewOrderComposer parses the templates once; siteURL is the storefront origin
 // links point to.
 func NewOrderComposer(siteURL string) (*OrderComposer, error) {
-	html, err := htmltemplate.ParseFS(orderTemplates, "templates/order.html")
+	parsed, err := parseEmail("order")
 	if err != nil {
-		return nil, fmt.Errorf("parse order email html: %w", err)
+		return nil, err
 	}
-	text, err := texttemplate.ParseFS(orderTemplates, "templates/order.txt")
-	if err != nil {
-		return nil, fmt.Errorf("parse order email text: %w", err)
-	}
-	return &OrderComposer{siteURL: siteURL, html: html, text: text}, nil
+	return &OrderComposer{siteURL: siteURL, templates: parsed}, nil
 }
 
 type orderLine struct {
@@ -96,13 +86,7 @@ type orderLine struct {
 }
 
 type orderView struct {
-	Brand        brand
-	Subject      string
-	Preheader    string
-	Eyebrow      string
-	Heading      string
-	Greeting     string
-	Lead         []string
+	frame
 	Code         string
 	Pickup       string
 	Receipt      bool
@@ -111,7 +95,6 @@ type orderView struct {
 	Discount     string
 	DiscountCode string
 	Total        string
-	OrderURL     string
 }
 
 // ComposeOrderEmail implements port.OrderEmailComposer.
@@ -121,37 +104,28 @@ func (c *OrderComposer) ComposeOrderEmail(msg port.OrderEmail) (port.Email, erro
 		return port.Email{}, fmt.Errorf("no email for order notice %q", msg.Notice)
 	}
 	view := c.view(words, msg)
-	var html, text bytes.Buffer
-	if err := c.html.Execute(&html, view); err != nil {
-		return port.Email{}, fmt.Errorf("render order email html: %w", err)
-	}
-	if err := c.text.Execute(&text, view); err != nil {
-		return port.Email{}, fmt.Errorf("render order email text: %w", err)
-	}
-	return port.Email{
-		To:      msg.To,
-		ToName:  msg.CustomerName,
-		Subject: view.Subject,
-		Text:    text.String(),
-		HTML:    html.String(),
-	}, nil
+	return c.templates.render(view, msg.To, msg.CustomerName, view.Subject)
 }
 
 func (c *OrderComposer) view(words orderCopy, msg port.OrderEmail) orderView {
 	order := msg.Order
 	view := orderView{
-		Brand:     choux,
-		Subject:   fmt.Sprintf(words.subject, order.Code),
-		Preheader: words.preheader,
-		Eyebrow:   words.eyebrow,
-		Heading:   words.heading,
-		Greeting:  "Hello,",
-		Lead:      words.lead,
-		Code:      order.Code,
-		Receipt:   words.receipt,
-		Subtotal:  money(order.SubtotalCents),
-		Total:     money(order.TotalCents),
-		OrderURL:  c.siteURL + orderPath + order.ID.String(),
+		frame: frame{
+			Brand:       choux,
+			Subject:     fmt.Sprintf(words.subject, order.Code),
+			Preheader:   words.preheader,
+			Eyebrow:     words.eyebrow,
+			Heading:     words.heading,
+			Greeting:    "Hello,",
+			Lead:        words.lead,
+			ActionLabel: "View your order",
+			ActionURL:   c.siteURL + orderPath + order.ID.String(),
+			FooterNote:  orderFooterNote,
+		},
+		Code:     order.Code,
+		Receipt:  words.receipt,
+		Subtotal: money(order.SubtotalCents),
+		Total:    money(order.TotalCents),
 	}
 	if msg.CustomerName != "" {
 		view.Greeting = "Hi " + msg.CustomerName + ","

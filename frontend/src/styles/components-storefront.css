@@ -1584,6 +1584,43 @@
     font-weight: 400;
   }
 
+  /* An account whose address is not confirmed: one hairline block with the
+     reason and a way to get a new link, on the account page and at checkout. */
+  .email-verification-notice {
+    border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .email-verification-notice__label {
+    color: var(--color-brass);
+    font-size: var(--label-size-sm);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking-sm);
+    line-height: 1.4;
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .email-verification-notice__copy {
+    color: var(--color-ink-2);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .email-verification-notice__copy strong {
+    color: var(--color-ink);
+    font-weight: 500;
+  }
+
+  .email-verification-notice .btn-chrome {
+    align-self: flex-start;
+  }
+
   .storefront-account-section {
     display: flex;
     flex-direction: column;

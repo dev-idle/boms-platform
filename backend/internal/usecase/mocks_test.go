@@ -7,6 +7,7 @@ package usecase_test
 import (
 	"context"
 
+	domainaccount "github.com/boms/backend/internal/domain/account"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	domainsession "github.com/boms/backend/internal/domain/session"
@@ -111,6 +112,14 @@ func (m *mockUserRepo) Erase(ctx context.Context, id uuid.UUID) error {
 	return m.Called(ctx, id).Error(0)
 }
 
+func (m *mockUserRepo) MarkEmailVerified(ctx context.Context, id uuid.UUID) error {
+	return m.Called(ctx, id).Error(0)
+}
+
+func (m *mockUserRepo) ResetPassword(ctx context.Context, id uuid.UUID, hash string) error {
+	return m.Called(ctx, id, hash).Error(0)
+}
+
 func (m *mockUserRepo) TermsAcceptance(ctx context.Context, userID uuid.UUID) (*domainpolicy.Acceptance, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
@@ -193,6 +202,43 @@ func (a *recordingAuditLogs) Create(_ context.Context, params port.CreateAuditLo
 
 func (a *recordingAuditLogs) ScrubSubject(context.Context, uuid.UUID) error {
 	a.scrubbed = true
+	return nil
+}
+
+// fakeTokens stands in for the link token store: Issue hands out next,
+// Redeem answers owner (or redeemErr), and every call is recorded.
+type fakeTokens struct {
+	next      string
+	issueErr  error
+	issued    []domainaccount.Purpose
+	owner     uuid.UUID
+	redeemErr error
+	redeemed  []string
+	deleteErr error
+	deleted   []uuid.UUID
+}
+
+func (f *fakeTokens) Issue(_ context.Context, _ uuid.UUID, purpose domainaccount.Purpose) (string, error) {
+	if f.issueErr != nil {
+		return "", f.issueErr
+	}
+	f.issued = append(f.issued, purpose)
+	return f.next, nil
+}
+
+func (f *fakeTokens) Redeem(_ context.Context, token string, _ domainaccount.Purpose) (uuid.UUID, error) {
+	f.redeemed = append(f.redeemed, token)
+	if f.redeemErr != nil {
+		return uuid.Nil, f.redeemErr
+	}
+	return f.owner, nil
+}
+
+func (f *fakeTokens) DeleteForUser(_ context.Context, userID uuid.UUID) error {
+	if f.deleteErr != nil {
+		return f.deleteErr
+	}
+	f.deleted = append(f.deleted, userID)
 	return nil
 }
 

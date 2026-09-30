@@ -15,4 +15,10 @@ var (
 	ErrAccountHasOpenOrders = errors.New("account has open orders")
 	// ErrAccountErased refuses to restore an account erased at its owner's request.
 	ErrAccountErased = errors.New("account erased")
+	// ErrEmailNotVerified refuses an order from an account whose address is not
+	// confirmed: order updates go to that address, and it must be the customer's.
+	ErrEmailNotVerified = errors.New("email not verified")
+	// ErrEmailAlreadyVerified answers a request for a new confirmation link
+	// from an account whose address is confirmed, often from another device.
+	ErrEmailAlreadyVerified = errors.New("email already verified")
 )

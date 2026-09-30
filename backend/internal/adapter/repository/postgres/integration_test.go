@@ -28,6 +28,14 @@ const testPasswordHashFixture = "test-password-hash-fixture"
 // mode and when Docker is unavailable.
 func newIntegrationPool(t *testing.T, maxConns int32) *postgresadapter.Pool {
 	t.Helper()
+	pool, _ := newIntegrationDB(t, maxConns)
+	return pool
+}
+
+// newIntegrationDB is newIntegrationPool plus the connection string, for a
+// test that must set up a state no repository writes (an expired row, say).
+func newIntegrationDB(t *testing.T, maxConns int32) (*postgresadapter.Pool, string) {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -53,7 +61,7 @@ func newIntegrationPool(t *testing.T, maxConns int32) *postgresadapter.Pool {
 	})
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
-	return pool
+	return pool, connStr
 }
 
 func startPostgres(ctx context.Context, t *testing.T) (*tcpostgres.PostgresContainer, string, error) {

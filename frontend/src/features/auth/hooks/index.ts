@@ -10,16 +10,67 @@ import { loginHrefAfterRegister } from "@/lib/validate-next";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   getMe as getMeFromUserApi,
+  meQueryOptions,
   primeMeQueryCache,
   userQueryKeys,
 } from "@/features/user";
 import { resolvePostAuthDestination } from "@/lib/routing/post-auth-destination";
 
-import { login, logout, register } from "../api";
+import {
+  confirmPasswordReset,
+  login,
+  logout,
+  register,
+  requestPasswordReset,
+  verifyEmail,
+} from "../api";
 import { endLocalSession, scheduleRefresh } from "@/lib/auth";
-import type { LoginInput, RegisterInput } from "../schemas";
+import type { ForgotPasswordInput, LoginInput, PasswordResetConfirmInput, RegisterInput } from "../schemas";
 
 export { useAuthHydrated } from "./use-auth-hydrated";
+export { useLinkToken } from "./use-link-token";
+
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: (input: ForgotPasswordInput) => requestPasswordReset(input),
+  });
+}
+
+/**
+ * The reset ends every session of the account, this browser's too, so a
+ * signed-in holder is signed out here and sent to sign in with the new password.
+ */
+export function useConfirmPasswordReset() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: PasswordResetConfirmInput) => confirmPasswordReset(input),
+    onSuccess: () => {
+      endLocalSession();
+      queryClient.removeQueries({ queryKey: userQueryKeys.me });
+      router.replace(`${ROUTE.login}?reset=1`);
+    },
+  });
+}
+
+/**
+ * Confirms the address. The link may be another account's, so a signed-in
+ * holder's /me is read again in the background; the result does not wait for
+ * it, and the pages that depend on it read it again themselves.
+ */
+export function useVerifyEmail() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (token: string) => verifyEmail(token),
+    onSuccess: () => {
+      if (useAuthStore.getState().status === "authenticated") {
+        void queryClient.prefetchQuery({ ...meQueryOptions(), staleTime: 0 });
+      }
+    },
+  });
+}
 
 export type RegisterMutationVariables = {
   input: RegisterInput;

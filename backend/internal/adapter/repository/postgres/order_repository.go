@@ -538,6 +538,7 @@ func mapStaffListOrdersRow(row sqlcgen.StaffListOrdersRow) *port.StaffOrderListR
 		row.Code,
 		row.OrderType,
 		row.CustomerEmail,
+		row.CustomerEmailVerified,
 		row.CustomerDisplayName,
 		// The list never carries phones: staff open an order to call its customer.
 		nil,
@@ -560,6 +561,7 @@ func mapStaffGetOrderByIDRow(row sqlcgen.StaffGetOrderByIDRow) *port.StaffOrderL
 		row.Code,
 		row.OrderType,
 		row.CustomerEmail,
+		row.CustomerEmailVerified,
 		row.CustomerDisplayName,
 		row.CustomerPhone,
 	)
@@ -576,6 +578,7 @@ func mapStaffOrderJoined(
 	code string,
 	orderType sqlcgen.OrderType,
 	customerEmail string,
+	customerEmailVerified bool,
 	customerDisplayName *string,
 	customerPhone *string,
 ) *port.StaffOrderListRow {
@@ -595,9 +598,10 @@ func mapStaffOrderJoined(
 			Code:                 code,
 			Type:                 domainorder.Type(orderType),
 		},
-		CustomerEmail:       customerEmail,
-		CustomerDisplayName: customerDisplayName,
-		CustomerPhone:       customerPhone,
+		CustomerEmail:         customerEmail,
+		CustomerEmailVerified: customerEmailVerified,
+		CustomerDisplayName:   customerDisplayName,
+		CustomerPhone:         customerPhone,
 	}
 }
 

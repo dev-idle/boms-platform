@@ -31,7 +31,7 @@ func TestOrderEmailQueue(t *testing.T) {
 	t.Run("one_task_per_event", func(t *testing.T) {
 		t.Parallel()
 		rdb := newRedis(t)
-		queue := NewOrderEmailQueue(rdb)
+		queue := NewEmailQueue(rdb)
 		task := port.OrderEmailTask{EventID: uuid.New(), OrderID: uuid.New(), Notice: domainorder.NoticeReady}
 
 		require.NoError(t, queue.EnqueueOrderEmail(ctx, task))
@@ -44,7 +44,7 @@ func TestOrderEmailQueue(t *testing.T) {
 		assert.Equal(t, TypeOrderEmail, pending[0].Type)
 		assert.Equal(t, orderEmailMaxRetry, pending[0].MaxRetry)
 		assert.Equal(t, orderEmailRetention, pending[0].Retention, "the window a redelivered event is recognised in")
-		assert.Equal(t, orderEmailTimeout, pending[0].Timeout)
+		assert.Equal(t, emailTaskTimeout, pending[0].Timeout)
 
 		decoded, err := decodeOrderEmail(asynq.NewTask(pending[0].Type, pending[0].Payload))
 		require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestOrderEmailQueue(t *testing.T) {
 		t.Cleanup(func() { _ = rdb.Close() })
 		server.Close()
 
-		err := NewOrderEmailQueue(rdb).EnqueueOrderEmail(ctx, port.OrderEmailTask{
+		err := NewEmailQueue(rdb).EnqueueOrderEmail(ctx, port.OrderEmailTask{
 			EventID: uuid.New(), OrderID: uuid.New(), Notice: domainorder.NoticePlaced,
 		})
 

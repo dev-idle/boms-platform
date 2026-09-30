@@ -202,6 +202,24 @@ func TestUserRepository_Integration(t *testing.T) {
 		assert.Nil(t, profile.Phone)
 	})
 
+	t.Run("an account an administrator creates counts as confirmed", func(t *testing.T) {
+		staff, err := repo.AdminCreate(ctx, port.CreateUserParams{
+			Email: "vouched@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleStaff, MustChangePassword: true,
+		})
+		require.NoError(t, err)
+		assert.True(t, staff.EmailVerified)
+
+		customer, err := repo.Create(ctx, port.CreateUserParams{
+			Email: "signed-up@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,
+		})
+		require.NoError(t, err)
+		assert.False(t, customer.EmailVerified, "a customer who signs up confirms by email")
+		require.NoError(t, repo.MarkEmailVerified(ctx, customer.ID))
+		confirmed, err := repo.GetByID(ctx, customer.ID)
+		require.NoError(t, err)
+		assert.True(t, confirmed.EmailVerified)
+	})
+
 	t.Run("account locks see only open accounts and need a transaction", func(t *testing.T) {
 		user, err := repo.Create(ctx, port.CreateUserParams{
 			Email:        "account-lock@example.com",

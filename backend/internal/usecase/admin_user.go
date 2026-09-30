@@ -20,6 +20,7 @@ import (
 type AdminUserUsecase struct {
 	users     port.UserRepository
 	staff     port.StaffProfileRepository
+	tokens    port.UserTokenRepository
 	sessions  port.SessionStore
 	tx        port.TxManager
 	hasher    port.PasswordHasher
@@ -34,6 +35,7 @@ func NewAdminUserUsecase(
 	customers port.CustomerProfileRepository,
 	staff port.StaffProfileRepository,
 	admins port.AdminProfileRepository,
+	tokens port.UserTokenRepository,
 	sessions port.SessionStore,
 	tx port.TxManager,
 	hasher port.PasswordHasher,
@@ -44,6 +46,7 @@ func NewAdminUserUsecase(
 	return &AdminUserUsecase{
 		users:     users,
 		staff:     staff,
+		tokens:    tokens,
 		sessions:  sessions,
 		tx:        tx,
 		hasher:    hasher,
@@ -387,7 +390,15 @@ func (u *AdminUserUsecase) ResetPassword(
 	if err != nil {
 		return nil, apperrors.Errorf("hash temp password: %w", err)
 	}
-	if err := u.users.AdminUpdatePassword(ctx, targetID, hash); err != nil {
+	// A reset link the user was emailed would let whoever holds it skip the
+	// required change, so the new password voids every link, in the same
+	// commit. Links go before the account, the order redeeming one takes them.
+	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := u.tokens.DeleteForUser(txCtx, targetID); err != nil {
+			return err
+		}
+		return u.users.AdminUpdatePassword(txCtx, targetID, hash)
+	}); err != nil {
 		return nil, err
 	}
 	if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
@@ -412,7 +423,15 @@ func (u *AdminUserUsecase) Disable(ctx context.Context, actorID uuid.UUID, actor
 	if _, err := u.mutableTarget(ctx, targetID); err != nil {
 		return err
 	}
-	if err := u.users.SoftDelete(ctx, targetID); err != nil {
+	// A disabled account's links open nothing, but would again once it is
+	// enabled, so closing it voids them. Links go before the account, the
+	// order redeeming one takes them.
+	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := u.tokens.DeleteForUser(txCtx, targetID); err != nil {
+			return err
+		}
+		return u.users.SoftDelete(txCtx, targetID)
+	}); err != nil {
 		return err
 	}
 	if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {

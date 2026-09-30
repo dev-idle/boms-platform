@@ -1,9 +1,4 @@
-{{.Heading}}
-
-{{.Greeting}}
-{{range .Lead}}
-{{.}}
-{{end}}
+{{define "details"}}
 Order code: {{.Code}}
 {{- if .Pickup}}
 Pickup: {{.Pickup}}
@@ -16,9 +11,4 @@ Subtotal: {{.Subtotal}}
 Discount{{if .DiscountCode}} ({{.DiscountCode}}){{end}}: {{.Discount}}
 {{- end}}
 Total: {{.Total}}
-{{end}}
-View your order: {{.OrderURL}}
-
---
-{{.Brand.Name}} · {{.Brand.AddressLine}} · {{.Brand.ContactPhone}} · {{.Brand.ContactEmail}}
-You are receiving this email about an order you placed with {{.Brand.Name}} for pickup.
+{{end}}{{end}}

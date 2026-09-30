@@ -29,11 +29,13 @@ func TestPerUserRateLimits(t *testing.T) {
 		DiscountAttemptMax: 2, DiscountAttemptWindow: time.Minute,
 		RealtimeTicketMax: 2, RealtimeTicketWindow: time.Minute,
 		DataExportMax: 2, DataExportWindow: time.Minute,
+		VerificationResendMax: 2, VerificationResendWindow: time.Minute,
 	}
 	limiters := map[string]func(*goredis.Client, config.RateLimitRedisConfig) fiber.Handler{
-		"discount_attempts": DiscountAttemptRateLimit,
-		"realtime_tickets":  RealtimeTicketRateLimit,
-		"data_exports":      DataExportRateLimit,
+		"discount_attempts":    DiscountAttemptRateLimit,
+		"realtime_tickets":     RealtimeTicketRateLimit,
+		"data_exports":         DataExportRateLimit,
+		"verification_resends": VerificationResendRateLimit,
 	}
 	for name, limiter := range limiters {
 		t.Run(name, func(t *testing.T) {
@@ -105,4 +107,49 @@ func testPerUserRateLimit(t *testing.T, limiter func(*goredis.Client) fiber.Hand
 		assert.Equal(t, fiber.StatusOK, status)
 		assert.Equal(t, "1", header.Get("X-RateLimit-FailOpen"))
 	})
+}
+
+// Per-address limiters on the emailed-link endpoints fail closed: each call may
+// send an email or try a token.
+func TestEmailedLinkRateLimits(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.RateLimitRedisConfig{
+		AuthLinkMax: 2, AuthLinkWindow: time.Minute,
+		PasswordResetMax: 2, PasswordResetWindow: time.Minute,
+	}
+	limiters := map[string]func(*goredis.Client, config.RateLimitRedisConfig) fiber.Handler{
+		"auth_links":      AuthLinkRateLimit,
+		"password_resets": PasswordResetRateLimit,
+	}
+	for name, limiter := range limiters {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			newApp := func(rdb *goredis.Client) *fiber.App {
+				app := fiber.New()
+				app.Post("/limited", limiter(rdb, cfg), func(c fiber.Ctx) error {
+					return c.SendStatus(fiber.StatusAccepted)
+				})
+				return app
+			}
+			attempt := func(t *testing.T, app *fiber.App) int {
+				t.Helper()
+				req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/limited", nil)
+				resp, err := app.Test(req)
+				require.NoError(t, err)
+				defer func() { _ = resp.Body.Close() }()
+				return resp.StatusCode
+			}
+
+			app := newApp(goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()}))
+			assert.Equal(t, fiber.StatusAccepted, attempt(t, app))
+			assert.Equal(t, fiber.StatusAccepted, attempt(t, app))
+			assert.Equal(t, fiber.StatusTooManyRequests, attempt(t, app))
+
+			server := miniredis.RunT(t)
+			down := newApp(goredis.NewClient(&goredis.Options{Addr: server.Addr(), MaxRetries: -1}))
+			server.Close()
+			assert.Equal(t, fiber.StatusServiceUnavailable, attempt(t, down), "no Redis, no attempts")
+		})
+	}
 }

@@ -26,6 +26,7 @@ type AccountErasureUsecase struct {
 	carts     port.CartRepository
 	orders    port.OrderRepository
 	scrubber  port.AuditScrubber
+	tokens    port.UserTokenRepository
 	sessions  port.SessionStore
 	audit     *auditlogger.Service
 	hasher    port.PasswordHasher
@@ -38,6 +39,7 @@ func NewAccountErasureUsecase(
 	carts port.CartRepository,
 	orders port.OrderRepository,
 	scrubber port.AuditScrubber,
+	tokens port.UserTokenRepository,
 	sessions port.SessionStore,
 	audit *auditlogger.Service,
 	hasher port.PasswordHasher,
@@ -49,6 +51,7 @@ func NewAccountErasureUsecase(
 		carts:     carts,
 		orders:    orders,
 		scrubber:  scrubber,
+		tokens:    tokens,
 		sessions:  sessions,
 		audit:     audit,
 		hasher:    hasher,
@@ -104,9 +107,13 @@ func (u *AccountErasureUsecase) erase(txCtx context.Context, user *domainuser.Us
 	// the two never deadlock. A checkout or profile change already running holds
 	// the account, and the check below waits to see its order; one that starts
 	// now waits on the cart and finds it emptied, or on the account and finds it
-	// closed.
+	// closed. Emailed links go before the account, the order redeeming one
+	// takes them.
 	cart, err := u.carts.GetByUserIDForUpdate(txCtx, user.ID)
 	if err != nil && !errors.Is(err, apperrors.ErrNotFound) {
+		return err
+	}
+	if err := u.tokens.DeleteForUser(txCtx, user.ID); err != nil {
 		return err
 	}
 	if _, err := u.users.GetByIDForUpdate(txCtx, user.ID); err != nil {

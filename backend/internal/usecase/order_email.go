@@ -47,6 +47,12 @@ func (u *OrderEmailUsecase) Send(ctx context.Context, task port.OrderEmailTask) 
 		u.skip(task, "order_moved_on")
 		return nil
 	}
+	// Checkout needs a confirmed address; this keeps any order placed before
+	// that rule from mailing an address nobody confirmed.
+	if !order.CustomerEmailVerified {
+		u.skip(task, "email_not_verified")
+		return nil
+	}
 	items, err := u.orders.ListItemsByOrderID(ctx, task.OrderID)
 	if err != nil {
 		return err

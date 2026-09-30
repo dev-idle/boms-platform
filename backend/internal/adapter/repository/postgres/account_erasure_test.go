@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
+	domainaccount "github.com/boms/backend/internal/domain/account"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
@@ -55,8 +56,10 @@ func TestAccountErasure_Integration(t *testing.T) {
 	customerProfiles := postgresadapter.NewCustomerProfileRepository(f.pool)
 	audit := postgresadapter.NewAuditLogRepository(f.pool)
 	sessions := &endedSessions{}
+	tokens := postgresadapter.NewUserTokenRepository(f.pool)
 	erasure := usecase.NewAccountErasureUsecase(
-		f.pool, f.users, customerProfiles, f.carts, f.orders, audit, sessions, auditlogger.NewService(audit), fixtureHasher{},
+		f.pool, f.users, customerProfiles, f.carts, f.orders, audit, tokens, sessions,
+		auditlogger.NewService(audit), fixtureHasher{},
 	)
 
 	t.Run("erases_the_details_and_keeps_the_orders", func(t *testing.T) {
@@ -131,6 +134,8 @@ func TestAccountErasure_Integration(t *testing.T) {
 		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
 		_, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(12, 0)))
 		require.NoError(t, err)
+		link, err := tokens.Issue(ctx, customer, domainaccount.PurposeResetPassword)
+		require.NoError(t, err)
 
 		require.ErrorIs(t, erasure.Erase(ctx, customer, fixturePassword), domainuser.ErrAccountHasOpenOrders)
 
@@ -138,6 +143,9 @@ func TestAccountErasure_Integration(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, account.Disabled(), "nothing was erased")
 		assert.NotContains(t, sessions.ended, customer.String())
+		owner, err := tokens.Redeem(ctx, link, domainaccount.PurposeResetPassword)
+		require.NoError(t, err, "the account's links still work")
+		assert.Equal(t, customer, owner)
 	})
 
 	t.Run("asking_again_only_ends_the_sessions", func(t *testing.T) {
