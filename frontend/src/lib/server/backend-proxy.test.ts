@@ -69,4 +69,40 @@ describe("proxyRequestToBackend", () => {
     expect(headers.get("x-internal-secret")).toBe("test-internal-secret");
     expect(headers.get("x-request-id")).toBeTruthy();
   });
+
+  it.each(["cross-site", "same-site"])("refuses a write sent from a %s page", async (site) => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 200 }));
+
+    const response = await proxyRequestToBackend(
+      new Request("http://app.test/api/v1/auth/login", {
+        method: "POST",
+        headers: { "sec-fetch-site": site, "content-type": "application/x-www-form-urlencoded" },
+        body: "email=a@b.test&password=x",
+      }),
+      ["auth", "login"],
+    );
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.code).toBe("forbidden");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a write from the site itself", "POST", { "sec-fetch-site": "same-origin" }],
+    ["a write from a server", "POST", {}],
+    ["a read from another site", "GET", { "sec-fetch-site": "cross-site" }],
+  ])("passes %s", async (_, method, headers) => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await proxyRequestToBackend(
+      new Request("http://app.test/api/v1/cart", { method, headers }),
+      ["cart"],
+    );
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
 });

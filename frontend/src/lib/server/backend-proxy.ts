@@ -16,6 +16,7 @@ import { stampedClientIp } from "./client-ip";
 
 const INTERNAL_SECRET_HEADER = "X-Internal-Secret";
 const REQUEST_TIMEOUT_MS = 25_000;
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /** Client must never supply these; the BFF re-stamps trusted values. */
 const STRIP_REQUEST_HEADERS = new Set([
@@ -82,6 +83,22 @@ export async function proxyRequestToBackend(
   pathSegments: string[],
 ): Promise<Response> {
   await connection();
+  // A write must come from this site's own pages. The browser says where a
+  // request comes from, so a form another site posts here — a forged sign-in,
+  // or visitors' browsers borrowed to spend per-IP limits — is refused. Servers
+  // send no such header and are not browsers carrying a visitor's session.
+  const method = request.method.toUpperCase();
+  const site = request.headers.get("sec-fetch-site");
+  if (!SAFE_METHODS.has(method) && site !== null && site !== "same-origin") {
+    return Response.json(
+      {
+        success: false,
+        error: { code: "forbidden", message: "Requests from other sites are not accepted" },
+      },
+      { status: 403 },
+    );
+  }
+
   const env = getServerEnv();
   const incoming = new URL(request.url);
   const backendUrl = buildBackendUrl(pathSegments, incoming.search);
@@ -111,7 +128,6 @@ export async function proxyRequestToBackend(
     headers.set("Cookie", cookieHeader);
   }
 
-  const method = request.method.toUpperCase();
   const hasBody = method !== "GET" && method !== "HEAD";
 
   const init: RequestInit & { duplex?: "half" } = {
