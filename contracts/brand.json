@@ -1,0 +1,7 @@
+{
+  "$comment": "The bakery's name and contact details, as the storefront (frontend/src/constants/brand.ts) and customer emails (backend/internal/adapter/email) show them.",
+  "name": "Choux",
+  "address_line": "123 Greige Lane",
+  "contact_email": "hello@chouxbakery.example",
+  "contact_phone": "(555) 123-4567"
+}

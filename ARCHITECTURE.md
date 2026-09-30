@@ -15,7 +15,7 @@ Authoritative reference for backend (Go/Fiber, Hexagonal) and frontend (Next.js 
              │                                            │
        Proxy (Node runtime)                       Postgres (Atlas + sqlc)
        Cookie session check                       Redis (sessions, rate limit, event bus)
-       Cross-feature gates                        Asynq (foundation only)
+       Cross-feature gates                        Asynq (email queue) → SMTP
              │                                            │
        Browser ── ws(s)://…/ws?ticket= ──▶  Realtime listener (push-only, own port)
 ```
@@ -28,7 +28,7 @@ Authoritative reference for backend (Go/Fiber, Hexagonal) and frontend (Next.js 
 backend/
 ├── cmd/
 │   ├── api/main.go              # HTTP entrypoint + composition root
-│   ├── worker/main.go           # Event worker: sweeps undelivered outbox events, prunes old ones
+│   ├── worker/main.go           # Worker: sweeps undelivered outbox events, prunes old ones, sends queued email
 │   └── genkey/main.go           # Ed25519 key generator CLI
 ├── db/schema.hcl                # Atlas declarative schema (source of truth)
 ├── migrations/                  # Atlas versioned SQL (timestamp_*.sql)
@@ -52,7 +52,8 @@ backend/
 │   ├── service/                 # Domain/application services
 │   │   ├── profilesvc/          # Role → profile dispatcher
 │   │   ├── auditlogger/         # Audit log writer
-│   │   └── eventdispatch/       # Delivers outbox events after commit; sweep + prune for the worker
+│   │   ├── eventdispatch/       # Delivers outbox events after commit; sweep + prune for the worker; Fanout
+│   │   └── notification/        # Turns committed order events into queued emails
 │   ├── handler/v1/              # HTTP handlers (driving adapters)
 │   │   ├── auth.go, me.go, admin_user.go, manager_category.go, manager_product.go, catalog.go, health.go
 │   ├── adapter/
@@ -63,7 +64,8 @@ backend/
 │   │   │   └── redis/           # sessions, realtime tickets, client
 │   │   ├── eventbus/            # Redis Pub/Sub publisher + subscriber; channel names + message shape
 │   │   ├── realtime/            # Push-only WebSocket listener: ticket redemption, hub, sockets
-│   │   └── queue/               # Asynq client (foundation)
+│   │   ├── queue/               # Asynq: the email queue (enqueue, one task per event) and its worker handler
+│   │   └── email/               # Email templates (HTML + text) and the SMTP mailer
 │   ├── infrastructure/          # Pure tech: jwt (EdDSA), crypto (argon2id), logger (zap)
 │   ├── middleware/              # auth, ratelimit, cors, security_headers, request_meta
 │   ├── shared/                  # ctxmeta, errors, response, utils, validator
@@ -329,7 +331,8 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Staff prep queue | `features/staff` (FE) + `usecase/staff_ticket` (BE) — `/staff/tickets/*` (counter tickets, ticket status, move a ticket to the other station) |
 | Baker kitchen queue | `features/baker` (FE) + `usecase/baker_ticket` (BE) — `/baker/tickets/*` (kitchen tickets, ticket detail, ticket status) |
 | Audit logs | `service/auditlogger` (BE only) |
-| Event delivery | `domain/event` + `port/outbox.go` + `adapter/repository/postgres/outbox_repository.go` + `adapter/eventbus` + `service/eventdispatch` + `cmd/worker` (BE only) |
+| Event delivery | `domain/event` + `port/outbox.go` + `adapter/repository/postgres/outbox_repository.go` + `adapter/eventbus` + `service/eventdispatch` + `bootstrap.EventPublisher` + `cmd/worker` (BE only) |
+| Order emails | `domain/order/notice.go` + `service/notification` + `adapter/queue` + `usecase/order_email` + `adapter/email` + `cmd/worker` (BE only) |
 | Realtime push | `lib/realtime` + slice live updates (FE) + `usecase/realtime` + `adapter/realtime` + `adapter/eventbus` subscriber (BE) |
 | Profile entity dispatch | `service/profilesvc` (BE) |
 | Routes table | `constants/routes.ts` (FE) |
@@ -344,7 +347,7 @@ A change other people must see writes an `outbox_events` row **in the same trans
 |------|-------|
 | Record | usecase calls `EventOutbox.Add(txCtx, event)` inside `TxManager.WithTx`; outside a transaction it is refused |
 | Deliver | after the commit, `Pool.WithTx` hands the transaction's events to `eventdispatch.Dispatcher.AfterCommit`, which publishes them in the background (bounded by `OUTBOX_DISPATCH_TIMEOUT`) and then, on a fresh deadline of the same length, marks them published or records the failure on the row — a publish that timed out is still written down. A rollback publishes nothing. The API waits for these deliveries on shutdown |
-| Recover | `cmd/worker` sweeps rows still unpublished `OUTBOX_SWEEP_GRACE` (longer than twice the dispatch timeout) after they were written — at start and then every `OUTBOX_SWEEP_INTERVAL`, draining full batches at once. `FOR UPDATE SKIP LOCKED` means two workers never hold the same row at once; a sweep that published but could not mark rolls back and sends again. The worker validates only the database, Redis and outbox settings (`config.LoadWorker`) |
+| Recover | `cmd/worker` sweeps rows still unpublished `OUTBOX_SWEEP_GRACE` (longer than twice the dispatch timeout) after they were written — at start and then every `OUTBOX_SWEEP_INTERVAL`, draining full batches at once. `FOR UPDATE SKIP LOCKED` means two workers never hold the same row at once; a sweep that published but could not mark rolls back and sends again. The worker validates only the database, Redis, outbox and mail settings (`config.LoadWorker`) |
 | Retain | published rows are deleted after `OUTBOX_RETENTION` — delivery records, not business data, so no soft delete |
 | Clock | `created_at` defaults to `clock_timestamp()` and every age (sweep grace, retention) is measured in SQL, so the API and the worker never compare two hosts' clocks |
 
@@ -360,7 +363,25 @@ Delivery is **at least once** and **unordered across transactions** (each commit
 
 Topics and their audiences live with the aggregate that raises them (`domain/order/event.go`, `domain/store/event.go`), as audit actions do.
 
-The API process delivers after commit; run `cmd/worker` beside it (`make run-worker`) to recover what that delivery missed.
+The API process delivers after commit; run `cmd/worker` beside it (`make run-worker`) to recover what that delivery missed and to send email.
+
+Every delivery — the API's after commit and the worker's sweep — goes to the same destinations, `bootstrap.EventPublisher`: the realtime bus, then the email queue (`eventdispatch.Fanout`). A delivery that fails at either leaves the event pending and hands it to both again, so each takes an event twice.
+
+### Order emails
+
+A customer gets an email at the moments they act on: the order was received (`order.created`), it is ready to collect (`order.status_changed` to `ready`), or it was cancelled. Steps inside the bakery (confirmed, in production) show on the order page instead. `domain/order.NoticeFor` decides from the event.
+
+| Step | Where |
+|------|-------|
+| Queue | `service/notification.OrderEmails` is a publisher on the outbox delivery path: for each event that calls for a notice it enqueues an Asynq task (`adapter/queue`, queue `email`) whose **task id is the event id**. A second enqueue for the same event is refused by Asynq and counts as done; sent tasks are kept 24 h so a late redelivery still finds them. The row is marked published only once the task is in the queue, which Redis keeps across restarts (append-only file) |
+| Send | `cmd/worker` runs the Asynq server (`MAIL_CONCURRENCY` at once). `usecase/order_email` reads the order as it is now (`StaffGetByID`, which joins active accounts only) and skips the email when the customer closed their account or the order has moved past the notice (`Notice.StillApplies` — no "ready" for an order already collected). `adapter/email` writes it — HTML in the bakery's style with a plain-text part, pickup time in bakery time, a receipt on the "received" email, a link to the order — and sends it over SMTP (`MAIL_*`; STARTTLS or implicit TLS, credentials and an https site URL required in staging/production), from `MAIL_FROM_ADDRESS` with replies to `MAIL_REPLY_TO` |
+| Retry | a failed or dropped connection, a timeout or a "try again later" (4xx) is retried with Asynq's backoff, up to 8 times (about an hour and a half); only a 5xx refusal (unknown address) or an email that cannot be written is final — archived in Asynq for inspection and logged as an error. A message the server accepted is never sent again, even if hanging up fails |
+| Redis | the queue lives in Redis, so a deployed Redis must keep its data: append-only persistence on, and `maxmemory-policy noeviction` — an evicted task is an email lost. The dev compose file runs Redis with the append-only file |
+| Once | the queue keeps one task per event, and Asynq runs a task at least once: a worker stopped after the server accepted a message but before recording it sends that email again. That is the one rare duplicate; nothing else sends twice |
+| Privacy | the task holds the event id, order id and notice — never the address, which is read at send time. Send errors name the SMTP stage and reply code, not the recipient, because they are logged and kept on the task (`adapter/email/smtp.go`) |
+| Dev | Mailpit (`scripts/docker-compose.dev.yml`) catches every message at http://localhost:8025; the worker's defaults point at it |
+
+The bakery's name and contact details in the emails match the storefront's; both are tested against `contracts/brand.json`.
 
 ### Realtime push (WebSocket)
 
@@ -491,7 +512,6 @@ CI must run backend tests + frontend typecheck, lint, test, and build. Productio
 
 | Hook | Status | Next step |
 |------|--------|-----------|
-| Asynq queue | client only — `cmd/worker` runs the outbox sweeper, not Asynq tasks | add task handlers to the worker with the first background job |
 | Server actions | DAL ready | wire mutations from RSC pages |
 | Pickup time | `orders.pickup_at` (required at checkout) | still **no** delivery addresses |
 | Custom line config | `cart_items.configuration`, `order_items.configuration` jsonb | custom cake templates/inquiries later |

@@ -31,7 +31,7 @@ build: ## Build the API and worker binaries (fast — no tidy)
 run: ## Run API (requires .env)
 	go run $(MAIN_PKG)
 
-run-worker: ## Run the event worker beside the API (requires .env)
+run-worker: ## Run the worker beside the API: event recovery and email (requires .env)
 	go run $(WORKER_PKG)
 
 dev: ## Hot reload with Air
@@ -52,10 +52,10 @@ vet: ## go vet
 clean: ## Remove bin/ tmp/ coverage
 	rm -rf bin/ tmp/ coverage.out
 
-docker-up: ## Redis (Postgres = Neon in .env)
+docker-up: ## Redis + Mailpit (Postgres = Neon in .env)
 	docker compose -f scripts/docker-compose.dev.yml up -d
 
-docker-down: ## Stop Redis
+docker-down: ## Stop Redis + Mailpit
 	docker compose -f scripts/docker-compose.dev.yml down
 
 seed: ## Seed the development catalog (idempotent; requires .env)

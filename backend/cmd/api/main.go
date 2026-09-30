@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/boms/backend/internal/adapter/eventbus"
-	"github.com/boms/backend/internal/adapter/queue"
 	"github.com/boms/backend/internal/adapter/realtime"
 	postgresrepo "github.com/boms/backend/internal/adapter/repository/postgres"
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
@@ -107,7 +106,7 @@ func main() {
 	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo)
 	storeSettingsRepo := postgresrepo.NewStoreSettingsRepository(pgPool)
 	outboxRepo := postgresrepo.NewOutboxRepository(pgPool)
-	eventDispatcher := eventdispatch.New(outboxRepo, eventbus.NewRedisPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
+	eventDispatcher := eventdispatch.New(outboxRepo, bootstrap.EventPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
 	pgPool.OnCommit(eventDispatcher.AfterCommit)
 	ticketRepo := postgresrepo.NewTicketRepository(pgPool)
 	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo)
@@ -148,15 +147,6 @@ func main() {
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
 	storeHandler := v1.NewStoreHandler(storeUC)
 	adminStoreSettingsHandler := v1.NewAdminStoreSettingsHandler(adminStoreSettingsUC)
-
-	var asynqClose func() error
-	if cfg.Asynq.Enabled {
-		client, err := queue.NewAsynqClient(cfg.Redis)
-		if err != nil {
-			zlog.Fatal("asynq_init", zap.Error(err))
-		}
-		asynqClose = client.Close
-	}
 
 	resources := []port.HealthResource{pgPool, redisClient}
 	readinessTimeout := cfg.Postgres.HealthCheckTimeout
@@ -371,11 +361,6 @@ func main() {
 	stopRealtime(shutdownCtx)
 	// Deliveries started by requests that just finished still need the pool.
 	eventDispatcher.Wait(shutdownCtx)
-	if asynqClose != nil {
-		if err := asynqClose(); err != nil {
-			zlog.Error("asynq_close", zap.Error(err))
-		}
-	}
 	zlog.Info("shutdown_complete")
 }
 

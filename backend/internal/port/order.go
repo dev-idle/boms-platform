@@ -97,6 +97,9 @@ type OrderRepository interface {
 	// inside one. Every ticket move takes it first; the order's own status moves
 	// take the same row lock through their guarded UPDATE.
 	LockForUpdate(ctx context.Context, orderID uuid.UUID) (*domainorder.Order, error)
+	// StaffGetByID returns an order with its customer's contact details. An
+	// order whose customer's account is closed (disabled or erased) is not
+	// found: order emails rely on it never to write to a closed account.
 	StaffGetByID(ctx context.Context, orderID uuid.UUID) (*StaffOrderListRow, error)
 	ListByUser(ctx context.Context, params ListOrdersParams) ([]domainorder.Order, error)
 	// HasOpen reports whether the customer has an order not yet fulfilled or

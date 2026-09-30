@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{.Subject}}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#fbfaf8;color:#1b1714;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{.Preheader}}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fbfaf8;">
+<tr>
+<td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border:1px solid #e4e0da;">
+<tr>
+<td style="padding:24px 32px;border-bottom:1px solid #e4e0da;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:28px;font-weight:400;letter-spacing:0.12em;color:#1b1714;">{{.Brand.Name}}</td>
+</tr>
+<tr>
+<td style="padding:32px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#4a423b;">
+<p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:#7d6432;">{{.Eyebrow}}</p>
+<h1 style="margin:0 0 24px;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:32px;font-weight:400;line-height:1.2;color:#1b1714;">{{.Heading}}</h1>
+<p style="margin:0 0 16px;">{{.Greeting}}</p>
+{{range .Lead}}<p style="margin:0 0 16px;">{{.}}</p>
+{{end}}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;border-top:1px solid #e4e0da;border-bottom:1px solid #e4e0da;">
+<tr>
+<td style="padding:16px 0 4px;font-size:11px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:#6f675e;">Order code</td>
+</tr>
+<tr>
+<td style="padding:0 0 16px;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:20px;letter-spacing:0.04em;color:#7d6432;">{{.Code}}</td>
+</tr>
+{{if .Pickup}}<tr>
+<td style="padding:0 0 4px;font-size:11px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:#6f675e;">Pickup</td>
+</tr>
+<tr>
+<td style="padding:0 0 16px;color:#1b1714;">{{.Pickup}}</td>
+</tr>
+{{end}}</table>
+{{if .Receipt}}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
+{{range .Lines}}<tr>
+<td style="padding:8px 0;border-bottom:1px solid #ebe7e1;color:#1b1714;">{{.Quantity}} × {{.Name}}</td>
+<td align="right" style="padding:8px 0;border-bottom:1px solid #ebe7e1;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:14px;color:#1b1714;white-space:nowrap;">{{.Total}}</td>
+</tr>
+{{end}}<tr>
+<td style="padding:12px 0 4px;">Subtotal</td>
+<td align="right" style="padding:12px 0 4px;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:14px;white-space:nowrap;">{{.Subtotal}}</td>
+</tr>
+{{if .Discount}}<tr>
+<td style="padding:4px 0;">Discount{{if .DiscountCode}} ({{.DiscountCode}}){{end}}</td>
+<td align="right" style="padding:4px 0;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:14px;white-space:nowrap;">{{.Discount}}</td>
+</tr>
+{{end}}<tr>
+<td style="padding:4px 0;font-weight:600;color:#1b1714;">Total</td>
+<td align="right" style="padding:4px 0;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:14px;font-weight:600;color:#1b1714;white-space:nowrap;">{{.Total}}</td>
+</tr>
+</table>
+{{end}}<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="background-color:#23402f;">
+<a href="{{.OrderURL}}" style="display:inline-block;padding:14px 28px;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#ffffff;text-decoration:none;">View your order</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:24px 32px;border-top:1px solid #e4e0da;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#6f675e;">
+<p style="margin:0 0 4px;">{{.Brand.Name}} · {{.Brand.AddressLine}} · {{.Brand.ContactPhone}} · <a href="mailto:{{.Brand.ContactEmail}}" style="color:#6f675e;">{{.Brand.ContactEmail}}</a></p>
+<p style="margin:0;">You are receiving this email about an order you placed with {{.Brand.Name}} for pickup.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>

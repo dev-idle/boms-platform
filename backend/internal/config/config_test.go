@@ -32,6 +32,7 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		RateRedis: defaultRateRedis(),
 		Outbox:    defaultOutbox(),
+		Mail:      defaultMail(),
 		Realtime:  defaultRealtime(),
 		Postgres: config.PostgresConfig{
 			URL:                "postgres://host/db?sslmode=disable",
@@ -134,6 +135,14 @@ func defaultOutbox() config.OutboxConfig {
 	}
 }
 
+func defaultMail() config.MailConfig {
+	return config.MailConfig{
+		SMTPHost: "127.0.0.1", SMTPPort: 1025, SMTPTLS: config.SMTPTLSNone,
+		FromAddress: "orders@chouxbakery.example", FromName: "Choux", ReplyTo: "hello@chouxbakery.example",
+		SiteURL: "http://localhost:3000", SendTimeout: 10 * time.Second, Concurrency: 4,
+	}
+}
+
 func defaultRateRedis() config.RateLimitRedisConfig {
 	return config.RateLimitRedisConfig{
 		AuthAttemptMax: 5, AuthAttemptWindow: time.Minute,
@@ -164,6 +173,14 @@ func minimalProductionConfig() *config.Config {
 	cfg.JWT.Issuer = "boms-api"
 	cfg.JWT.Audience = "boms"
 	cfg.Postgres.URL = "postgres://host/db?sslmode=require"
+	cfg.Mail.SMTPHost = "smtp.example.com"
+	cfg.Mail.SMTPPort = 587
+	cfg.Mail.SMTPTLS = config.SMTPTLSStartTLS
+	cfg.Mail.SMTPUsername = "apikey"
+	cfg.Mail.SMTPPassword = "smtp-password-fixture"
+	cfg.Mail.SiteURL = "https://app.example.com"
+	cfg.Mail.FromAddress = "orders@choux.vn"
+	cfg.Mail.ReplyTo = "hello@choux.vn"
 	return cfg
 }
 
@@ -177,6 +194,7 @@ func minimalDevConfig() *config.Config {
 		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		RateRedis: defaultRateRedis(),
 		Outbox:    defaultOutbox(),
+		Mail:      defaultMail(),
 		Realtime:  defaultRealtime(),
 		Postgres: config.PostgresConfig{
 			URL:      "postgres://host/db?sslmode=require",
@@ -294,7 +312,7 @@ func TestValidate_OutboxBatchIsBounded(t *testing.T) {
 
 // The worker never holds the API's signing key, internal secret or Cloudinary
 // credentials, so its validation must not ask for them.
-func TestValidateWorker_NeedsOnlyTheStores(t *testing.T) {
+func TestValidateWorker_NeedsOnlyTheStoresAndMail(t *testing.T) {
 	t.Parallel()
 	cfg := minimalProductionConfig()
 	cfg.JWT.Ed25519PrivateKey = ""
@@ -308,6 +326,56 @@ func TestValidateWorker_NeedsOnlyTheStores(t *testing.T) {
 	if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), "redis.addr") {
 		t.Fatalf("expected redis error, got: %v", err)
 	}
+}
+
+func TestValidateWorker_Mail(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		production bool
+		change     func(*config.MailConfig)
+		want       string
+	}{
+		{"needs_a_host", false, func(m *config.MailConfig) { m.SMTPHost = "" }, "mail.smtp_host"},
+		{"needs_a_port", false, func(m *config.MailConfig) { m.SMTPPort = 0 }, "mail.smtp_port"},
+		{"names_a_known_security", false, func(m *config.MailConfig) { m.SMTPTLS = "ssl" }, "mail.smtp_tls"},
+		{"takes_both_credentials_or_neither", false, func(m *config.MailConfig) { m.SMTPUsername = "apikey" }, "set together"},
+		{"sends_from_a_plain_address", false, func(m *config.MailConfig) { m.FromAddress = "Choux <orders@chouxbakery.example>" }, "mail.from_address"},
+		{"replies_to_a_plain_address", false, func(m *config.MailConfig) { m.ReplyTo = "nobody" }, "mail.reply_to"},
+		{"links_to_an_origin", false, func(m *config.MailConfig) { m.SiteURL = "http://localhost:3000/shop" }, "mail.site_url"},
+		{"links_without_a_query", false, func(m *config.MailConfig) { m.SiteURL = "http://localhost:3000?x=" }, "mail.site_url"},
+		{"links_without_credentials", false, func(m *config.MailConfig) { m.SiteURL = "http://user@localhost:3000" }, "mail.site_url"},
+		{"names_the_sender_on_one_line", false, func(m *config.MailConfig) { m.FromName = "Choux\r\nBcc: x" }, "mail.from_name"},
+		{"sends_from_the_bakery_domain_when_deployed", true, func(m *config.MailConfig) { m.FromAddress = "orders@chouxbakery.example" }, "mail.from_address must be an address at the bakery"},
+		{"takes_replies_at_the_bakery_domain_when_deployed", true, func(m *config.MailConfig) { m.ReplyTo = "hello@shop.test" }, "mail.reply_to must be an address at the bakery"},
+		{"needs_a_send_timeout", false, func(m *config.MailConfig) { m.SendTimeout = 0 }, "mail.send_timeout"},
+		{"sends_within_the_task_deadline", false, func(m *config.MailConfig) { m.SendTimeout = 11 * time.Second }, "mail.send_timeout"},
+		{"bounds_concurrency", false, func(m *config.MailConfig) { m.Concurrency = 0 }, "mail.concurrency"},
+		{"encrypts_when_deployed", true, func(m *config.MailConfig) { m.SMTPTLS = config.SMTPTLSNone }, "must not be none"},
+		{"authenticates_when_deployed", true, func(m *config.MailConfig) { m.SMTPUsername, m.SMTPPassword = "", "" }, "required in staging/production"},
+		{"links_over_https_when_deployed", true, func(m *config.MailConfig) { m.SiteURL = "http://app.example.com" }, "https://"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := minimalDevConfig()
+			if tc.production {
+				cfg = minimalProductionConfig()
+			}
+			tc.change(&cfg.Mail)
+			if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %q, got: %v", tc.want, err)
+			}
+		})
+	}
+
+	t.Run("the_development_default_is_mailpit", func(t *testing.T) {
+		t.Parallel()
+		if err := minimalDevConfig().ValidateWorker(); err != nil {
+			t.Fatalf("expected the development mail settings to be valid, got: %v", err)
+		}
+	})
 }
 
 func TestValidate_Realtime(t *testing.T) {

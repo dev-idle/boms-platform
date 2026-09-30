@@ -25,8 +25,8 @@ type Config struct {
 	RateRedis  RateLimitRedisConfig
 	Postgres   PostgresConfig
 	Redis      RedisConfig
-	Asynq      AsynqConfig
 	Outbox     OutboxConfig
+	Mail       MailConfig
 	Realtime   RealtimeConfig
 	Log        LogConfig
 	JWT        JWTConfig
@@ -120,10 +120,6 @@ type RedisConfig struct {
 	ReadTimeout        time.Duration
 	WriteTimeout       time.Duration
 	HealthCheckTimeout time.Duration
-}
-
-type AsynqConfig struct {
-	Enabled bool
 }
 
 // RealtimeConfig tunes the push-only WebSocket listener. It runs on its own port
@@ -392,9 +388,6 @@ func load() (*Config, error) {
 			WriteTimeout:       v.GetDuration("redis.write_timeout"),
 			HealthCheckTimeout: v.GetDuration("redis.health_timeout"),
 		},
-		Asynq: AsynqConfig{
-			Enabled: v.GetBool("asynq.enabled"),
-		},
 		Outbox: OutboxConfig{
 			DispatchTimeout: v.GetDuration("outbox.dispatch_timeout"),
 			SweepInterval:   v.GetDuration("outbox.sweep_interval"),
@@ -402,6 +395,19 @@ func load() (*Config, error) {
 			SweepBatch:      sweepBatch,
 			Retention:       v.GetDuration("outbox.retention"),
 			PruneInterval:   v.GetDuration("outbox.prune_interval"),
+		},
+		Mail: MailConfig{
+			SMTPHost:     v.GetString("mail.smtp_host"),
+			SMTPPort:     v.GetInt("mail.smtp_port"),
+			SMTPUsername: v.GetString("mail.smtp_username"),
+			SMTPPassword: v.GetString("mail.smtp_password"),
+			SMTPTLS:      strings.ToLower(strings.TrimSpace(v.GetString("mail.smtp_tls"))),
+			FromAddress:  strings.TrimSpace(v.GetString("mail.from_address")),
+			FromName:     strings.TrimSpace(v.GetString("mail.from_name")),
+			ReplyTo:      strings.TrimSpace(v.GetString("mail.reply_to")),
+			SiteURL:      strings.TrimRight(strings.TrimSpace(v.GetString("mail.site_url")), "/"),
+			SendTimeout:  v.GetDuration("mail.send_timeout"),
+			Concurrency:  v.GetInt("mail.concurrency"),
 		},
 		Realtime: RealtimeConfig{
 			Addr:                    v.GetString("realtime.addr"),
@@ -532,7 +538,17 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("redis.write_timeout", 2*time.Second)
 	v.SetDefault("redis.health_timeout", 2*time.Second)
 
-	v.SetDefault("asynq.enabled", false)
+	// Development sends to Mailpit (scripts/docker-compose.dev.yml), which keeps
+	// every message and delivers none.
+	v.SetDefault("mail.smtp_host", "127.0.0.1")
+	v.SetDefault("mail.smtp_port", 1025)
+	v.SetDefault("mail.smtp_tls", SMTPTLSNone)
+	v.SetDefault("mail.from_address", "orders@chouxbakery.example")
+	v.SetDefault("mail.from_name", "Choux")
+	v.SetDefault("mail.reply_to", "hello@chouxbakery.example")
+	v.SetDefault("mail.site_url", "http://localhost:3000")
+	v.SetDefault("mail.send_timeout", 10*time.Second)
+	v.SetDefault("mail.concurrency", 4)
 
 	v.SetDefault("outbox.dispatch_timeout", 5*time.Second)
 	v.SetDefault("outbox.sweep_interval", 30*time.Second)
@@ -592,11 +608,14 @@ func setDefaults(v *viper.Viper) {
 }
 
 // Validate enforces production-safe constraints. Call after Load.
-// ValidateWorker checks only what cmd/worker uses — the database, Redis and the
-// outbox settings — so the worker never has to hold the API's signing key,
-// internal secret or Cloudinary credentials.
+// ValidateWorker checks only what cmd/worker uses — the database, Redis, the
+// outbox settings and the mail server — so the worker never has to hold the
+// API's signing key, internal secret or Cloudinary credentials.
 func (c *Config) ValidateWorker() error {
-	return c.validateStores()
+	if err := c.validateStores(); err != nil {
+		return err
+	}
+	return c.Mail.validate(c.App.Env)
 }
 
 // validateStores checks the settings every process that touches the database

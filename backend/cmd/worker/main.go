@@ -1,26 +1,34 @@
 // Command worker delivers the outbox events the API could not deliver right
-// after commit — a crashed process, a Redis outage — and deletes delivery
-// records past their retention. Run it beside the API; several copies can run
-// at once, since sweeps skip rows another copy holds.
+// after commit — a crashed process, a Redis outage — deletes delivery records
+// past their retention, and sends the emails events queue. Run it beside the
+// API; several copies can run at once, since sweeps skip rows another copy
+// holds and each queued email goes to one of them.
 package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"github.com/boms/backend/internal/adapter/eventbus"
+	"github.com/boms/backend/internal/adapter/email"
+	"github.com/boms/backend/internal/adapter/queue"
 	postgresrepo "github.com/boms/backend/internal/adapter/repository/postgres"
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
+	"github.com/boms/backend/internal/bootstrap"
 	"github.com/boms/backend/internal/config"
 	"github.com/boms/backend/internal/infrastructure/logger"
+	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/service/eventdispatch"
+	"github.com/boms/backend/internal/usecase"
 )
 
 func main() {
@@ -55,18 +63,68 @@ func main() {
 
 	dispatcher := eventdispatch.New(
 		postgresrepo.NewOutboxRepository(pgPool),
-		eventbus.NewRedisPublisher(redisClient.RDB()),
+		bootstrap.EventPublisher(redisClient.RDB()),
 		pgPool,
 		zlog,
 		cfg.Outbox.DispatchTimeout,
 	)
 
+	stopEmails, err := startEmails(cfg.Mail, redisClient.RDB(), postgresrepo.NewOrderRepository(pgPool), zlog)
+	if err != nil {
+		zlog.Fatal("email_init", zap.Error(err))
+	}
+
 	zlog.Info("worker_started",
 		zap.Duration("sweep_interval", cfg.Outbox.SweepInterval),
 		zap.Duration("prune_interval", cfg.Outbox.PruneInterval),
+		zap.Int("email_concurrency", cfg.Mail.Concurrency),
 	)
 	run(ctx, dispatcher, cfg.Outbox, zlog)
+	// Emails being sent finish, or go back to the queue for another worker.
+	stopEmails()
 	zlog.Info("worker_stopped")
+}
+
+// startEmails sends queued emails through the configured SMTP server, a few at
+// a time, until the returned stop is called.
+func startEmails(cfg config.MailConfig, rdb *redis.Client, orders port.OrderRepository, log *zap.Logger) (func(), error) {
+	composer, err := email.NewOrderComposer(cfg.SiteURL)
+	if err != nil {
+		return nil, err
+	}
+	sender := usecase.NewOrderEmailUsecase(orders, composer, email.NewSMTPMailer(cfg), log)
+	server := asynq.NewServerFromRedisClient(rdb, asynq.Config{
+		Concurrency: cfg.Concurrency,
+		Queues:      map[string]int{queue.QueueEmail: 1},
+		// zap's sugared logger has the methods Asynq logs through.
+		Logger: log.Sugar(),
+		ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
+			eventID, _ := asynq.GetTaskID(ctx)
+			retried, _ := asynq.GetRetryCount(ctx)
+			maxRetry, _ := asynq.GetMaxRetry(ctx)
+			fields := []zap.Field{
+				zap.String("type", task.Type()),
+				zap.String("event_id", eventID),
+				zap.Int("retried", retried),
+				zap.Int("max_retry", maxRetry),
+				zap.Error(err),
+			}
+			if errors.Is(err, asynq.SkipRetry) || retried >= maxRetry {
+				// Archived: nobody gets this email unless someone looks.
+				log.Error("email_task_given_up", fields...)
+				return
+			}
+			log.Warn("email_task_failed", fields...)
+		}),
+		// A send already under way takes up to twice the send timeout.
+		ShutdownTimeout: 2*cfg.SendTimeout + 5*time.Second,
+	})
+	mux := asynq.NewServeMux()
+	mux.Handle(queue.TypeOrderEmail, queue.OrderEmailHandler(sender))
+	if err := server.Start(mux); err != nil {
+		return nil, fmt.Errorf("start email queue: %w", err)
+	}
+	return server.Shutdown, nil
 }
 
 // outboxJobs is the work the worker schedules.
