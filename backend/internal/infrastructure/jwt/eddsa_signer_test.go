@@ -52,12 +52,29 @@ func TestEdDSASigner(t *testing.T) {
 	t.Run("refresh round trip without role", func(t *testing.T) {
 		t.Parallel()
 		raw, err := s.SignRefresh(port.RefreshTokenClaims{
-			Subject: "user-1", SessionID: "sid-1", JTI: "jti-r",
+			Subject: "user-1", SessionID: "sid-1", JTI: "jti-r", SessionVersion: 3,
 		})
 		require.NoError(t, err)
 		claims, err := s.ParseRefresh(raw)
 		require.NoError(t, err)
 		assert.Equal(t, "jti-r", claims.JTI)
+		assert.Equal(t, int32(3), claims.SessionVersion)
+	})
+
+	t.Run("refresh signed before the version claim is version 0", func(t *testing.T) {
+		t.Parallel()
+		seed, err := base64.StdEncoding.DecodeString(mustSeed())
+		require.NoError(t, err)
+		token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, jwt.MapClaims{
+			"iss": "boms-api", "aud": "boms", "sub": "u", "token_use": "refresh", "sid": "s", "jti": "j",
+			"exp": time.Now().Add(time.Hour).Unix(),
+		})
+		token.Header["kid"] = "v1"
+		raw, err := token.SignedString(ed25519.NewKeyFromSeed(seed))
+		require.NoError(t, err)
+		claims, err := s.ParseRefresh(raw)
+		require.NoError(t, err)
+		assert.Equal(t, int32(0), claims.SessionVersion)
 	})
 
 	t.Run("cross use reject", func(t *testing.T) {

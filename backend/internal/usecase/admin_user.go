@@ -448,6 +448,9 @@ func (u *AdminUserUsecase) RevokeSessions(ctx context.Context, actorID uuid.UUID
 	if _, err := u.mutableTarget(ctx, targetID); err != nil {
 		return err
 	}
+	if err := u.users.BumpSessionVersion(ctx, targetID); err != nil {
+		return err
+	}
 	if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
 		return err
 	}

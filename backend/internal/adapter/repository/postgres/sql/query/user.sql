@@ -1,11 +1,11 @@
 -- name: GetUserByEmail :one
-SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
 FROM users
 WHERE email = $1
   AND deleted_at IS NULL;
 
 -- name: GetUserByID :one
-SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
 FROM users
 WHERE id = $1
   AND deleted_at IS NULL;
@@ -47,9 +47,11 @@ VALUES ($1, $2, $3, $4, now())
 RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at;
 
 -- name: UpdateUserPassword :execrows
+-- A new password ends every session: refresh tokens of the old version are refused.
 UPDATE users
-SET password_hash = $2,
-    updated_at    = now()
+SET password_hash   = $2,
+    session_version = session_version + 1,
+    updated_at      = now()
 WHERE id = $1
   AND deleted_at IS NULL;
 
@@ -75,8 +77,10 @@ WHERE id = $1
   AND deleted_at IS NULL;
 
 -- name: SoftDelete :execrows
+-- Closing an account ends its sessions for good, even if it is enabled again.
 UPDATE users
 SET deleted_at = now(),
+    session_version = session_version + 1,
     updated_at = now()
 WHERE id = $1
   AND deleted_at IS NULL;
@@ -106,6 +110,7 @@ WHERE id = $1
 UPDATE users
 SET password_hash = $2,
     must_change_password = true,
+    session_version = session_version + 1,
     updated_at = now()
 WHERE id = $1;
 
@@ -223,6 +228,15 @@ UPDATE users
 SET password_hash = $2,
     must_change_password = false,
     email_verified_at = COALESCE(email_verified_at, now()),
+    session_version = session_version + 1,
     updated_at = now()
 WHERE id = $1
   AND deleted_at IS NULL;
+
+-- name: BumpSessionVersion :execrows
+-- Ends every session of the account: refresh tokens of the old version are
+-- refused. A disabled account counts too, as it may be enabled again.
+UPDATE users
+SET session_version = session_version + 1,
+    updated_at = now()
+WHERE id = $1;

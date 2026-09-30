@@ -78,9 +78,11 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domainu
 	if err != nil {
 		return nil, mapRepoError(err, "get user by email")
 	}
-	return mapUserFields(
+	user := mapUserFields(
 		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
-	), nil
+	)
+	user.SessionVersion = row.SessionVersion
+	return user, nil
 }
 
 // GetByID implements port.UserRepository.
@@ -89,9 +91,11 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainuser
 	if err != nil {
 		return nil, mapRepoError(err, "get user by id")
 	}
-	return mapUserFields(
+	user := mapUserFields(
 		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
-	), nil
+	)
+	user.SessionVersion = row.SessionVersion
+	return user, nil
 }
 
 // GetByIDForUpdate implements port.UserRepository.
@@ -420,6 +424,18 @@ func (r *UserRepository) ResetPassword(ctx context.Context, id uuid.UUID, passwo
 	rows, err := r.q(ctx).ResetUserPassword(ctx, sqlcgen.ResetUserPasswordParams{ID: id, PasswordHash: passwordHash})
 	if err != nil {
 		return mapRepoError(err, "reset user password")
+	}
+	if rows == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
+// BumpSessionVersion implements port.UserRepository.
+func (r *UserRepository) BumpSessionVersion(ctx context.Context, id uuid.UUID) error {
+	rows, err := r.q(ctx).BumpSessionVersion(ctx, id)
+	if err != nil {
+		return mapRepoError(err, "bump session version")
 	}
 	if rows == 0 {
 		return apperrors.ErrNotFound

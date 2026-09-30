@@ -356,6 +356,7 @@ const adminUpdateUserPassword = `-- name: AdminUpdateUserPassword :execrows
 UPDATE users
 SET password_hash = $2,
     must_change_password = true,
+    session_version = session_version + 1,
     updated_at = now()
 WHERE id = $1
 `
@@ -370,10 +371,33 @@ type AdminUpdateUserPasswordParams struct {
 //	UPDATE users
 //	SET password_hash = $2,
 //	    must_change_password = true,
+//	    session_version = session_version + 1,
 //	    updated_at = now()
 //	WHERE id = $1
 func (q *Queries) AdminUpdateUserPassword(ctx context.Context, arg AdminUpdateUserPasswordParams) (int64, error) {
 	result, err := q.db.Exec(ctx, adminUpdateUserPassword, arg.ID, arg.PasswordHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const bumpSessionVersion = `-- name: BumpSessionVersion :execrows
+UPDATE users
+SET session_version = session_version + 1,
+    updated_at = now()
+WHERE id = $1
+`
+
+// Ends every session of the account: refresh tokens of the old version are
+// refused. A disabled account counts too, as it may be enabled again.
+//
+//	UPDATE users
+//	SET session_version = session_version + 1,
+//	    updated_at = now()
+//	WHERE id = $1
+func (q *Queries) BumpSessionVersion(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, bumpSessionVersion, id)
 	if err != nil {
 		return 0, err
 	}
@@ -509,7 +533,7 @@ func (q *Queries) EraseUser(ctx context.Context, id uuid.UUID) (int64, error) {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
 FROM users
 WHERE email = $1
   AND deleted_at IS NULL
@@ -526,11 +550,12 @@ type GetUserByEmailRow struct {
 	UpdatedAt          time.Time  `json:"updatedAt"`
 	DeletedAt          *time.Time `json:"deletedAt"`
 	ErasedAt           *time.Time `json:"erasedAt"`
+	SessionVersion     int32      `json:"sessionVersion"`
 }
 
 // GetUserByEmail
 //
-//	SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+//	SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
 //	FROM users
 //	WHERE email = $1
 //	  AND deleted_at IS NULL
@@ -548,12 +573,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.ErasedAt,
+		&i.SessionVersion,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
 FROM users
 WHERE id = $1
   AND deleted_at IS NULL
@@ -570,11 +596,12 @@ type GetUserByIDRow struct {
 	UpdatedAt          time.Time  `json:"updatedAt"`
 	DeletedAt          *time.Time `json:"deletedAt"`
 	ErasedAt           *time.Time `json:"erasedAt"`
+	SessionVersion     int32      `json:"sessionVersion"`
 }
 
 // GetUserByID
 //
-//	SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+//	SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
 //	FROM users
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -592,6 +619,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.ErasedAt,
+		&i.SessionVersion,
 	)
 	return i, err
 }
@@ -820,6 +848,7 @@ UPDATE users
 SET password_hash = $2,
     must_change_password = false,
     email_verified_at = COALESCE(email_verified_at, now()),
+    session_version = session_version + 1,
     updated_at = now()
 WHERE id = $1
   AND deleted_at IS NULL
@@ -836,6 +865,7 @@ type ResetUserPasswordParams struct {
 //	SET password_hash = $2,
 //	    must_change_password = false,
 //	    email_verified_at = COALESCE(email_verified_at, now()),
+//	    session_version = session_version + 1,
 //	    updated_at = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -873,15 +903,17 @@ func (q *Queries) SetMustChangePassword(ctx context.Context, id uuid.UUID) (int6
 const softDelete = `-- name: SoftDelete :execrows
 UPDATE users
 SET deleted_at = now(),
+    session_version = session_version + 1,
     updated_at = now()
 WHERE id = $1
   AND deleted_at IS NULL
 `
 
-// SoftDelete
+// Closing an account ends its sessions for good, even if it is enabled again.
 //
 //	UPDATE users
 //	SET deleted_at = now(),
+//	    session_version = session_version + 1,
 //	    updated_at = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -923,8 +955,9 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (int64, 
 
 const updateUserPassword = `-- name: UpdateUserPassword :execrows
 UPDATE users
-SET password_hash = $2,
-    updated_at    = now()
+SET password_hash   = $2,
+    session_version = session_version + 1,
+    updated_at      = now()
 WHERE id = $1
   AND deleted_at IS NULL
 `
@@ -934,11 +967,12 @@ type UpdateUserPasswordParams struct {
 	PasswordHash string    `json:"passwordHash"`
 }
 
-// UpdateUserPassword
+// A new password ends every session: refresh tokens of the old version are refused.
 //
 //	UPDATE users
-//	SET password_hash = $2,
-//	    updated_at    = now()
+//	SET password_hash   = $2,
+//	    session_version = session_version + 1,
+//	    updated_at      = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
 func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (int64, error) {

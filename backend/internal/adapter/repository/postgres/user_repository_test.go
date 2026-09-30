@@ -220,6 +220,36 @@ func TestUserRepository_Integration(t *testing.T) {
 		assert.True(t, confirmed.EmailVerified)
 	})
 
+	t.Run("every password write, disabling and a revoke end the account's sessions", func(t *testing.T) {
+		user, err := repo.Create(ctx, port.CreateUserParams{
+			Email: "versions@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,
+		})
+		require.NoError(t, err)
+		writes := []func() error{
+			func() error { return repo.UpdatePassword(ctx, user.ID, testPasswordHashFixture) },
+			func() error { return repo.ResetPassword(ctx, user.ID, testPasswordHashFixture) },
+			func() error { return repo.AdminUpdatePassword(ctx, user.ID, testPasswordHashFixture) },
+			func() error { return repo.BumpSessionVersion(ctx, user.ID) },
+		}
+		var version int32
+		for _, write := range writes {
+			require.NoError(t, write())
+			version++
+			byEmail, err := repo.GetByEmail(ctx, "versions@example.com")
+			require.NoError(t, err)
+			assert.Equal(t, version, byEmail.SessionVersion)
+		}
+		// A disabled account's sessions end too, and stay ended when it is enabled again.
+		require.NoError(t, repo.SoftDelete(ctx, user.ID))
+		require.NoError(t, repo.BumpSessionVersion(ctx, user.ID), "a revoke works on a disabled account")
+		require.NoError(t, repo.Restore(ctx, user.ID))
+		byID, err := repo.GetByID(ctx, user.ID)
+		require.NoError(t, err)
+		assert.Equal(t, version+2, byID.SessionVersion)
+
+		require.ErrorIs(t, repo.BumpSessionVersion(ctx, uuid.New()), apperrors.ErrNotFound)
+	})
+
 	t.Run("account locks see only open accounts and need a transaction", func(t *testing.T) {
 		user, err := repo.Create(ctx, port.CreateUserParams{
 			Email:        "account-lock@example.com",

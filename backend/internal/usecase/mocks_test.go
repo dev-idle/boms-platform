@@ -119,6 +119,9 @@ func (m *mockUserRepo) MarkEmailVerified(ctx context.Context, id uuid.UUID) erro
 func (m *mockUserRepo) ResetPassword(ctx context.Context, id uuid.UUID, hash string) error {
 	return m.Called(ctx, id, hash).Error(0)
 }
+func (m *mockUserRepo) BumpSessionVersion(ctx context.Context, id uuid.UUID) error {
+	return m.Called(ctx, id).Error(0)
+}
 
 func (m *mockUserRepo) TermsAcceptance(ctx context.Context, userID uuid.UUID) (*domainpolicy.Acceptance, error) {
 	args := m.Called(ctx, userID)

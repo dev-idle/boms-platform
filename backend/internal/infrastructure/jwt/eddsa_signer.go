@@ -22,6 +22,7 @@ const (
 	claimSessionID  = "sid"
 	claimRole       = "role"
 	claimJTI        = "jti"
+	claimVersion    = "ver"
 	keyID           = "v1"
 	allowedAlg      = "EdDSA"
 )
@@ -86,6 +87,7 @@ func (s *EdDSASigner) SignRefresh(in port.RefreshTokenClaims) (string, error) {
 		"sub":          in.Subject,
 		claimSessionID: in.SessionID,
 		claimJTI:       in.JTI,
+		claimVersion:   in.SessionVersion,
 		claimTokenUse:  tokenUseRefresh,
 		"iat":          now.Unix(),
 		"exp":          now.Add(s.refreshTTL).Unix(),
@@ -134,10 +136,14 @@ func (s *EdDSASigner) ParseRefresh(token string) (port.RefreshTokenClaims, error
 	if sid == "" || jti == "" {
 		return port.RefreshTokenClaims{}, apperrors.ErrUnauthorized
 	}
+	// JSON numbers decode as float64. A token signed before the claim existed
+	// has none and is version 0, which every account started at.
+	version, _ := claims[claimVersion].(float64)
 	return port.RefreshTokenClaims{
-		Subject:   subject,
-		SessionID: sid,
-		JTI:       jti,
+		Subject:        subject,
+		SessionID:      sid,
+		JTI:            jti,
+		SessionVersion: int32(version),
 	}, nil
 }
 

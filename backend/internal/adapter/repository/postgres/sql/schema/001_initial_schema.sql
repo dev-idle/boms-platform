@@ -31,6 +31,7 @@ CREATE TABLE "users" (
   "terms_accepted_at" timestamptz NULL,
   "terms_version" text NULL,
   "erased_at" timestamptz NULL,
+  "session_version" integer NOT NULL DEFAULT 0,
   PRIMARY KEY ("id"),
   CONSTRAINT "users_erased_closed_check" CHECK ((erased_at IS NULL) OR (deleted_at IS NOT NULL)),
   CONSTRAINT "users_terms_pair_check" CHECK ((terms_accepted_at IS NULL) = (terms_version IS NULL))

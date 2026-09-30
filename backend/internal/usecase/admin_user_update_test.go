@@ -285,3 +285,37 @@ func TestAdminUserUsecase_VoidsEmailedLinks(t *testing.T) {
 		sessions.AssertNotCalled(t, "DeleteAllForUser", mock.Anything, mock.Anything)
 	})
 }
+
+func TestAdminUserUsecase_RevokeSessions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	newFixture := func() (*usecase.AdminUserUsecase, *mockUserRepo, *mockSessionStore, uuid.UUID) {
+		users := new(mockUserRepo)
+		sessions := new(mockSessionStore)
+		targetID := uuid.New()
+		users.On("AdminGetByID", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff}, nil)
+		return usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, sessions, passthroughTxManager{}, nil, nil, nil, nil), users, sessions, targetID
+	}
+
+	t.Run("ends_them_for_good", func(t *testing.T) {
+		t.Parallel()
+		uc, users, sessions, targetID := newFixture()
+		users.On("BumpSessionVersion", mock.Anything, targetID).Return(nil)
+		sessions.On("DeleteAllForUser", mock.Anything, targetID.String()).Return(nil)
+
+		require.NoError(t, uc.RevokeSessions(ctx, uuid.New(), domainuser.RoleAdmin, targetID))
+
+		users.AssertExpectations(t)
+		sessions.AssertExpectations(t)
+	})
+
+	t.Run("a_failed_bump_skips_the_sweep", func(t *testing.T) {
+		t.Parallel()
+		uc, users, sessions, targetID := newFixture()
+		users.On("BumpSessionVersion", mock.Anything, targetID).Return(apperrors.ErrInternal)
+
+		require.ErrorIs(t, uc.RevokeSessions(ctx, uuid.New(), domainuser.RoleAdmin, targetID), apperrors.ErrInternal)
+		sessions.AssertNotCalled(t, "DeleteAllForUser", mock.Anything, mock.Anything)
+	})
+}

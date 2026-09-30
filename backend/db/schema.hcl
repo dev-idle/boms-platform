@@ -71,6 +71,11 @@ table "users" {
     type = timestamptz
     null = true
   }
+  column "session_version" {
+    type    = integer
+    null    = false
+    default = 0
+  }
   primary_key {
     columns = [column.id]
   }

@@ -160,9 +160,10 @@ func (a *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest, userAgent
 		return "", "", nil, apperrors.Errorf("sign access: %w", err)
 	}
 	refreshToken, err = a.signer.SignRefresh(port.RefreshTokenClaims{
-		Subject:   user.ID.String(),
-		SessionID: sid,
-		JTI:       jti,
+		Subject:        user.ID.String(),
+		SessionID:      sid,
+		JTI:            jti,
+		SessionVersion: user.SessionVersion,
 	})
 	if err != nil {
 		return "", "", nil, apperrors.Errorf("sign refresh: %w", err)
@@ -204,6 +205,14 @@ func (a *AuthUsecase) Refresh(ctx context.Context, refreshToken, userAgent, ip s
 		}
 		return RefreshResult{}, apperrors.Errorf("get user: %w", err)
 	}
+	// The account's sessions were ended since this one began. A sweep of the
+	// session store can miss one that was being refreshed or created at that
+	// moment; the version cannot. Only this session goes: the others may have
+	// begun after the change.
+	if claims.SessionVersion != user.SessionVersion {
+		_ = a.sessionStore.Delete(ctx, claims.Subject, claims.SessionID)
+		return RefreshResult{}, apperrors.ErrSessionRevoked
+	}
 
 	newSid := uuid.NewString()
 	newJti := uuid.NewString()
@@ -233,9 +242,10 @@ func (a *AuthUsecase) Refresh(ctx context.Context, refreshToken, userAgent, ip s
 		return RefreshResult{}, apperrors.Errorf("sign access: %w", err)
 	}
 	newRefreshToken, err := a.signer.SignRefresh(port.RefreshTokenClaims{
-		Subject:   user.ID.String(),
-		SessionID: newSid,
-		JTI:       newJti,
+		Subject:        user.ID.String(),
+		SessionID:      newSid,
+		JTI:            newJti,
+		SessionVersion: user.SessionVersion,
 	})
 	if err != nil {
 		return RefreshResult{}, apperrors.Errorf("sign refresh: %w", err)

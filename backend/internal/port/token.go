@@ -13,6 +13,8 @@ type RefreshTokenClaims struct {
 	Subject   string
 	SessionID string
 	JTI       string
+	// SessionVersion is the account's session version when the session began.
+	SessionVersion int32
 }
 
 // TokenSigner issues and validates EdDSA JWTs (infrastructure/jwt).

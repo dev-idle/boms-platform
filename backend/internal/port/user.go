@@ -80,6 +80,9 @@ type UserRepository interface {
 	// ResetPassword sets a new password from an emailed reset link: it lifts a
 	// required change and, as the link reached the inbox, confirms the address.
 	ResetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
+	// BumpSessionVersion ends every session of the account for good: none can
+	// refresh again. Every password write and SoftDelete bump it too.
+	BumpSessionVersion(ctx context.Context, id uuid.UUID) error
 	// TermsAcceptance is the policy version the user accepted at sign-up, or nil.
 	TermsAcceptance(ctx context.Context, userID uuid.UUID) (*domainpolicy.Acceptance, error)
 }

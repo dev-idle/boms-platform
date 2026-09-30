@@ -98,9 +98,18 @@ type Querier interface {
 	//  UPDATE users
 	//  SET password_hash = $2,
 	//      must_change_password = true,
+	//      session_version = session_version + 1,
 	//      updated_at = now()
 	//  WHERE id = $1
 	AdminUpdateUserPassword(ctx context.Context, arg AdminUpdateUserPasswordParams) (int64, error)
+	// Ends every session of the account: refresh tokens of the old version are
+	// refused. A disabled account counts too, as it may be enabled again.
+	//
+	//  UPDATE users
+	//  SET session_version = session_version + 1,
+	//      updated_at = now()
+	//  WHERE id = $1
+	BumpSessionVersion(ctx context.Context, id uuid.UUID) (int64, error)
 	//CancelOrderTickets
 	//
 	//  UPDATE order_tickets
@@ -843,14 +852,14 @@ type Querier interface {
 	GetStoreSettingsForUpdate(ctx context.Context) (GetStoreSettingsForUpdateRow, error)
 	//GetUserByEmail
 	//
-	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
 	//  FROM users
 	//  WHERE email = $1
 	//    AND deleted_at IS NULL
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	//GetUserByID
 	//
-	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
 	//  FROM users
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -1609,6 +1618,7 @@ type Querier interface {
 	//  SET password_hash = $2,
 	//      must_change_password = false,
 	//      email_verified_at = COALESCE(email_verified_at, now()),
+	//      session_version = session_version + 1,
 	//      updated_at = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -1647,10 +1657,11 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	SetMustChangePassword(ctx context.Context, id uuid.UUID) (int64, error)
-	//SoftDelete
+	// Closing an account ends its sessions for good, even if it is enabled again.
 	//
 	//  UPDATE users
 	//  SET deleted_at = now(),
+	//      session_version = session_version + 1,
 	//      updated_at = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -1937,11 +1948,12 @@ type Querier interface {
 	//  WHERE id = 1
 	//  RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
 	UpdateStoreSettings(ctx context.Context, arg UpdateStoreSettingsParams) (UpdateStoreSettingsRow, error)
-	//UpdateUserPassword
+	// A new password ends every session: refresh tokens of the old version are refused.
 	//
 	//  UPDATE users
-	//  SET password_hash = $2,
-	//      updated_at    = now()
+	//  SET password_hash   = $2,
+	//      session_version = session_version + 1,
+	//      updated_at      = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (int64, error)

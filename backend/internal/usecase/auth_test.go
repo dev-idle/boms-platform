@@ -167,13 +167,13 @@ func TestAuthUsecase_RefreshHappyPath(t *testing.T) {
 	uid := uuid.New()
 	oldSid := uuid.NewString()
 	oldJti := uuid.NewString()
-	users.On("GetByID", mock.Anything, uid).Return(&domainuser.User{ID: uid, Role: domainuser.RoleCustomer}, nil)
+	users.On("GetByID", mock.Anything, uid).Return(&domainuser.User{ID: uid, Role: domainuser.RoleCustomer, SessionVersion: 3}, nil)
 	signer.On("ParseRefresh", "refresh-raw").Return(port.RefreshTokenClaims{
-		Subject: uid.String(), SessionID: oldSid, JTI: oldJti,
+		Subject: uid.String(), SessionID: oldSid, JTI: oldJti, SessionVersion: 3,
 	}, nil)
 	sessions.On("Rotate", mock.Anything, uid.String(), oldSid, mock.AnythingOfType("string"), oldJti, mock.Anything).Return(nil)
 	signer.On("SignAccess", mock.Anything).Return("access-new", nil)
-	signer.On("SignRefresh", mock.Anything).Return("refresh-new", nil)
+	signer.On("SignRefresh", mock.MatchedBy(func(c port.RefreshTokenClaims) bool { return c.SessionVersion == 3 })).Return("refresh-new", nil)
 
 	refreshed, err := uc.Refresh(context.Background(), "refresh-raw", "ua", "1.2.3.4")
 	require.NoError(t, err)
@@ -183,6 +183,29 @@ func TestAuthUsecase_RefreshHappyPath(t *testing.T) {
 	// The proxy routes a returning visitor on this, so a rotation must carry it.
 	assert.Equal(t, domainuser.RoleCustomer, refreshed.Role)
 	sessions.AssertCalled(t, "Rotate", mock.Anything, uid.String(), oldSid, mock.AnythingOfType("string"), oldJti, mock.Anything)
+}
+
+// A session that began before the account's sessions were ended cannot refresh,
+// even when the sweep of the session store missed it; the sessions begun
+// since stay.
+func TestAuthUsecase_RefreshAfterTheSessionsEnded(t *testing.T) {
+	t.Parallel()
+	users := new(mockUserRepo)
+	sessions := new(mockSessionStore)
+	signer := new(mockSigner)
+	uc := newAuthUC(t, users, new(mockCustomerProfileRepo), sessions, new(mockHasher), signer)
+
+	uid := uuid.New()
+	signer.On("ParseRefresh", "rt").Return(port.RefreshTokenClaims{Subject: uid.String(), SessionID: "s1", JTI: "j1", SessionVersion: 1}, nil)
+	users.On("GetByID", mock.Anything, uid).Return(&domainuser.User{ID: uid, Role: domainuser.RoleCustomer, SessionVersion: 2}, nil)
+	sessions.On("Delete", mock.Anything, uid.String(), "s1").Return(nil)
+
+	_, err := uc.Refresh(context.Background(), "rt", "ua", "ip")
+
+	require.ErrorIs(t, err, apperrors.ErrSessionRevoked)
+	sessions.AssertCalled(t, "Delete", mock.Anything, uid.String(), "s1")
+	sessions.AssertNotCalled(t, "DeleteAllForUser", mock.Anything, mock.Anything)
+	sessions.AssertNotCalled(t, "Rotate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestAuthUsecase_RefreshReuseJTImismatch(t *testing.T) {
@@ -261,12 +284,14 @@ func TestAuthUsecase_LoginSuccess(t *testing.T) {
 	sessions := new(mockSessionStore)
 	uc := newAuthUC(t, users, new(mockCustomerProfileRepo), sessions, hasher, signer)
 
-	user := &domainuser.User{ID: uuid.New(), Email: "a@b.com", PasswordHash: "hash", Role: domainuser.RoleCustomer, CreatedAt: time.Now()}
+	user := &domainuser.User{ID: uuid.New(), Email: "a@b.com", PasswordHash: "hash", Role: domainuser.RoleCustomer, CreatedAt: time.Now(), SessionVersion: 2}
 	users.On("GetByEmail", mock.Anything, "a@b.com").Return(user, nil)
 	hasher.On("Verify", "hash", "Password1").Return(nil)
 	sessions.On("Create", mock.Anything, user.ID.String(), mock.AnythingOfType("string"), mock.Anything).Return(nil)
 	signer.On("SignAccess", mock.Anything).Return("at", nil)
-	signer.On("SignRefresh", mock.Anything).Return("rt", nil)
+	// The version read with the password hash: a sign-in with a password that
+	// changed meanwhile cannot refresh.
+	signer.On("SignRefresh", mock.MatchedBy(func(c port.RefreshTokenClaims) bool { return c.SessionVersion == 2 })).Return("rt", nil)
 
 	at, rt, u, err := uc.Login(context.Background(), dto.LoginRequest{Email: "a@b.com", Password: "Password1"}, "ua", "ip")
 	require.NoError(t, err)
