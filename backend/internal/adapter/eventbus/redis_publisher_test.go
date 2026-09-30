@@ -54,7 +54,7 @@ func TestRedisPublisher_Publish(t *testing.T) {
 		ID:   event.ID.String(),
 		Type: "order.status_changed",
 		At:   event.OccurredAt,
-		Data: map[string]string{"order_id": order.ID.String(), "status": "ready"},
+		Data: map[string]string{"order_id": order.ID.String(), "from": "in_production", "status": "ready"},
 	}
 	assert.Equal(t, map[string]message{
 		UserChannel(order.UserID):         want,

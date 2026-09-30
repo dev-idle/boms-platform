@@ -14,6 +14,7 @@ import (
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainstore "github.com/boms/backend/internal/domain/store"
@@ -77,6 +78,10 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "email_not_verified", err: domainuser.ErrEmailNotVerified, wantStatus: 422, wantCode: "email_not_verified"},
 		{name: "email_already_verified", err: domainuser.ErrEmailAlreadyVerified, wantStatus: 409, wantCode: "email_already_verified"},
 		{name: "invalid_link", err: domainaccount.ErrLinkInvalid, wantStatus: 422, wantCode: "invalid_link"},
+		{name: "discount_used_up", err: domaindiscount.ErrUsedUpByCustomer, wantStatus: 422, wantCode: "discount_used_up"},
+		{name: "order_not_payable", err: domainpayment.ErrNotPayable, wantStatus: 422, wantCode: "order_not_payable"},
+		{name: "payment_not_completed", err: domainpayment.ErrNotCompleted, wantStatus: 422, wantCode: "payment_not_completed"},
+		{name: "webhook_invalid", err: domainpayment.ErrWebhookInvalid, wantStatus: 400, wantCode: "webhook_invalid"},
 		{name: "store_invalid_hours", err: domainstore.ErrInvalidHours, wantStatus: 400, wantCode: "validation_error"},
 		{name: "store_invalid_lead_time", err: domainstore.ErrInvalidLeadTime, wantStatus: 400, wantCode: "validation_error"},
 		{name: "store_invalid_advance_days", err: domainstore.ErrInvalidAdvanceDays, wantStatus: 400, wantCode: "validation_error"},

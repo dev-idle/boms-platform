@@ -12,7 +12,9 @@ CREATE TYPE "order_status" AS ENUM (
   'in_production',
   'ready',
   'fulfilled',
-  'cancelled'
+  'cancelled',
+  'awaiting_payment',
+  'expired'
 );
 CREATE TYPE "station" AS ENUM ('kitchen', 'counter');
 CREATE TYPE "order_type" AS ENUM ('instant', 'pre_order');
@@ -179,6 +181,7 @@ CREATE TABLE "discount_codes" (
   "value" bigint NOT NULL,
   "min_order_cents" bigint NULL,
   "max_uses" integer NULL,
+  "max_uses_per_customer" integer NULL,
   "max_discount_cents" bigint NULL,
   "used_count" integer NOT NULL DEFAULT 0,
   "starts_at" timestamptz NOT NULL,
@@ -192,6 +195,7 @@ CREATE TABLE "discount_codes" (
   CONSTRAINT "discount_codes_used_count_check" CHECK (used_count >= 0),
   CONSTRAINT "discount_codes_min_order_cents_check" CHECK (min_order_cents IS NULL OR min_order_cents >= 0),
   CONSTRAINT "discount_codes_max_uses_check" CHECK (max_uses IS NULL OR max_uses > 0),
+  CONSTRAINT "discount_codes_max_uses_per_customer_check" CHECK (max_uses_per_customer IS NULL OR max_uses_per_customer > 0),
   CONSTRAINT "discount_codes_value_percent_check" CHECK (discount_type <> 'percent' OR (value >= 1 AND value <= 100)),
   CONSTRAINT "discount_codes_value_fixed_cents_check" CHECK (discount_type <> 'fixed_cents' OR value >= 1),
   CONSTRAINT "discount_codes_used_within_max_check" CHECK (max_uses IS NULL OR used_count <= max_uses),
@@ -253,6 +257,8 @@ CREATE TABLE "orders" (
   "order_type" "order_type" NOT NULL,
   "terms_accepted_at" timestamptz NULL,
   "terms_version" text NULL,
+  "checkout_key" uuid NULL,
+  "payment_due_at" timestamptz NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "orders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "orders_discount_code_id_fkey" FOREIGN KEY ("discount_code_id") REFERENCES "discount_codes" ("id") ON DELETE SET NULL,
@@ -264,6 +270,8 @@ CREATE TABLE "orders" (
   CONSTRAINT "orders_terms_pair_check" CHECK ((terms_accepted_at IS NULL) = (terms_version IS NULL))
 );
 CREATE UNIQUE INDEX "orders_code_idx" ON "orders" ("code");
+CREATE UNIQUE INDEX "orders_checkout_key_idx" ON "orders" ("user_id", "checkout_key") WHERE (checkout_key IS NOT NULL);
+CREATE INDEX "orders_payment_due_idx" ON "orders" ("payment_due_at") WHERE (status = 'awaiting_payment'::order_status);
 CREATE INDEX "orders_pickup_slot_idx" ON "orders" ("pickup_at") WHERE (status <> 'cancelled'::order_status);
 CREATE INDEX "orders_user_id_created_at_idx" ON "orders" ("user_id", "created_at" DESC);
 CREATE INDEX "orders_production_pickup_idx" ON "orders" ("status", "pickup_at") WHERE (
@@ -335,13 +343,14 @@ CREATE TABLE "order_status_events" (
   "order_id" uuid NOT NULL,
   "from_status" "order_status" NULL,
   "to_status" "order_status" NOT NULL,
-  "actor_id" uuid NOT NULL,
-  "actor_role" "user_role" NOT NULL,
+  "actor_id" uuid NULL,
+  "actor_role" "user_role" NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY ("id"),
   CONSTRAINT "order_status_events_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "order_status_events_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE CASCADE,
-  CONSTRAINT "order_status_events_move_check" CHECK (from_status IS DISTINCT FROM to_status)
+  CONSTRAINT "order_status_events_move_check" CHECK (from_status IS DISTINCT FROM to_status),
+  CONSTRAINT "order_status_events_actor_check" CHECK ((actor_id IS NULL) = (actor_role IS NULL))
 );
 CREATE INDEX "order_status_events_order_created_idx" ON "order_status_events" ("order_id", "created_at");
 
@@ -385,10 +394,12 @@ CREATE TABLE "store_settings" (
   "slot_minutes" smallint NOT NULL DEFAULT 30,
   "slot_capacity" smallint NOT NULL DEFAULT 10,
   "instant_prep_minutes" smallint NOT NULL DEFAULT 20,
+  "payment_hold_minutes" smallint NOT NULL DEFAULT 15,
   PRIMARY KEY ("id"),
   CONSTRAINT "store_settings_advance_check" CHECK ((max_advance_days >= 1) AND (max_advance_days <= 90)),
   CONSTRAINT "store_settings_capacity_check" CHECK ((slot_capacity >= 1) AND (slot_capacity <= 200)),
   CONSTRAINT "store_settings_instant_prep_check" CHECK ((instant_prep_minutes >= 0) AND (instant_prep_minutes <= 240)),
+  CONSTRAINT "store_settings_payment_hold_check" CHECK ((payment_hold_minutes >= 5) AND (payment_hold_minutes <= 120)),
   CONSTRAINT "store_settings_slot_check" CHECK ((slot_minutes = ANY (ARRAY[10, 15, 20, 30, 60])) AND ((closes_at_minute - opens_at_minute) >= slot_minutes)),
   CONSTRAINT "store_settings_hours_check" CHECK ((opens_at_minute >= 0) AND (closes_at_minute < 1440) AND (opens_at_minute < closes_at_minute)),
   CONSTRAINT "store_settings_lead_check" CHECK ((preorder_min_lead_minutes >= 0) AND (preorder_min_lead_minutes <= 10080)),
@@ -410,3 +421,30 @@ CREATE TABLE "user_tokens" (
 );
 CREATE UNIQUE INDEX "user_tokens_token_hash_idx" ON "user_tokens" ("token_hash");
 CREATE UNIQUE INDEX "user_tokens_user_purpose_idx" ON "user_tokens" ("user_id", "purpose");
+
+CREATE TYPE "payment_provider" AS ENUM ('paypal');
+CREATE TYPE "payment_status" AS ENUM ('created', 'pending', 'captured', 'denied');
+
+CREATE TABLE "payments" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "order_id" uuid NOT NULL,
+  "provider" "payment_provider" NOT NULL,
+  "provider_order_id" text NOT NULL,
+  "approve_url" text NOT NULL,
+  "status" "payment_status" NOT NULL DEFAULT 'created',
+  "capture_id" text NULL,
+  "amount_cents" bigint NOT NULL,
+  "currency" text NOT NULL,
+  "captured_at" timestamptz NULL,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("id"),
+  CONSTRAINT "payments_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE RESTRICT,
+  CONSTRAINT "payments_amount_cents_check" CHECK (amount_cents > 0),
+  CONSTRAINT "payments_capture_check" CHECK ((status = 'created') = (capture_id IS NULL)),
+  CONSTRAINT "payments_captured_at_check" CHECK ((status = 'captured') = (captured_at IS NOT NULL)),
+  CONSTRAINT "payments_currency_check" CHECK (currency ~ '^[A-Z]{3}$')
+);
+CREATE UNIQUE INDEX "payments_capture_idx" ON "payments" ("provider", "capture_id") WHERE (capture_id IS NOT NULL);
+CREATE UNIQUE INDEX "payments_order_id_idx" ON "payments" ("order_id");
+CREATE UNIQUE INDEX "payments_provider_order_idx" ON "payments" ("provider", "provider_order_id");

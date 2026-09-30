@@ -4,6 +4,7 @@ import { catalogSlugSchema } from "@/lib/validation/catalog";
 import { USER_ROLE } from "@/constants/roles";
 import {
   orderCodeSchema,
+  orderPaymentSchema,
   orderStatusSchema,
   orderTimelineEntrySchema,
   orderTypeSchema,
@@ -34,9 +35,9 @@ const staffOrderItemSchema = z.object({
   line_total_cents: z.number().int().min(0),
 });
 
-/** The counter also sees which role made each move. */
+/** The counter also sees which role made each move; null when the system made it (an unpaid order expiring). */
 const staffOrderTimelineEntrySchema = orderTimelineEntrySchema.extend({
-  actor_role: z.enum(USER_ROLE),
+  actor_role: z.enum(USER_ROLE).nullable(),
 });
 
 /** What each station makes for the order, so the counter can move a ticket nobody started. */
@@ -72,6 +73,7 @@ export const staffOrderSchema = z.object({
   timeline: z.array(staffOrderTimelineEntrySchema),
   tickets: z.array(staffOrderTicketSchema),
   customer: staffOrderCustomerSchema,
+  payment: orderPaymentSchema.nullable(),
   created_at: apiDateTimeSchema,
   updated_at: apiDateTimeSchema,
 });

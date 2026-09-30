@@ -25,6 +25,10 @@ type CreateOrderParams struct {
 	// TermsVersion is the policy version the customer accepted; the order
 	// records it with the instant it was placed.
 	TermsVersion *string
+	// CheckoutKey is the Idempotency-Key of the checkout placing the order.
+	CheckoutKey *uuid.UUID
+	// PaymentHold is how long the order waits for payment before it expires.
+	PaymentHold time.Duration
 }
 
 type CreateOrderItemParams struct {
@@ -75,14 +79,20 @@ type PickupCount struct {
 	Orders int
 }
 
+// OrderActor is the signed-in user who moved an order, in the role they did it in.
+type OrderActor struct {
+	ID   uuid.UUID
+	Role domainuser.Role
+}
+
 // AddOrderStatusEventParams records an order entering To. From is nil when the
-// order is being placed.
+// order is being placed; Actor is nil when the system made the move, as when
+// an unpaid order expires.
 type AddOrderStatusEventParams struct {
-	OrderID   uuid.UUID
-	From      *domainorder.Status
-	To        domainorder.Status
-	ActorID   uuid.UUID
-	ActorRole domainuser.Role
+	OrderID uuid.UUID
+	From    *domainorder.Status
+	To      domainorder.Status
+	Actor   *OrderActor
 }
 
 type UpdateOrderStatusParams struct {
@@ -94,6 +104,18 @@ type UpdateOrderStatusParams struct {
 type OrderRepository interface {
 	Create(ctx context.Context, params CreateOrderParams) (*domainorder.Order, error)
 	GetByIDForUser(ctx context.Context, userID, orderID uuid.UUID) (*domainorder.Order, error)
+	// GetByCheckoutKey returns the customer's order placed by the checkout
+	// with that Idempotency-Key.
+	GetByCheckoutKey(ctx context.Context, userID, checkoutKey uuid.UUID) (*domainorder.Order, error)
+	// CountCustomerDiscountUses counts the customer's orders not cancelled or
+	// expired that use the discount code.
+	CountCustomerDiscountUses(ctx context.Context, userID, discountCodeID uuid.UUID) (int, error)
+	// ListDueUnpaid returns up to limit orders awaiting payment more than
+	// grace past their due time, the longest overdue first.
+	ListDueUnpaid(ctx context.Context, grace time.Duration, limit int32) ([]uuid.UUID, error)
+	// Expire expires an order still awaiting payment more than grace past its
+	// due time. Any other is apperrors.ErrNotFound: it was paid meanwhile.
+	Expire(ctx context.Context, orderID uuid.UUID, grace time.Duration) (*domainorder.Order, error)
 	// LockForUpdate row-locks the order until the transaction ends; call it only
 	// inside one. Every ticket move takes it first; the order's own status moves
 	// take the same row lock through their guarded UPDATE.

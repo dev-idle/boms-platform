@@ -9,6 +9,7 @@ import (
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainstore "github.com/boms/backend/internal/domain/store"
@@ -99,6 +100,14 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrDiscountExhausted)
 	case errors.Is(err, domaindiscount.ErrMinOrderNotMet):
 		return writeAppError(c, apperrors.ErrDiscountMinOrderNotMet)
+	case errors.Is(err, domaindiscount.ErrUsedUpByCustomer):
+		return writeAppError(c, apperrors.ErrDiscountUsedUp)
+	case errors.Is(err, domainpayment.ErrNotPayable):
+		return writeAppError(c, apperrors.ErrOrderNotPayable)
+	case errors.Is(err, domainpayment.ErrNotCompleted):
+		return writeAppError(c, apperrors.ErrPaymentNotCompleted)
+	case errors.Is(err, domainpayment.ErrWebhookInvalid):
+		return writeAppError(c, apperrors.ErrWebhookInvalid)
 	case errors.Is(err, domaincart.ErrItemNotFound):
 		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, domaincart.ErrEmpty):
@@ -157,6 +166,8 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("slot_capacity", "must be between 1 and 200"))
 	case errors.Is(err, domainstore.ErrInvalidInstantPrep):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("instant_prep_minutes", "must be 0 to 240 minutes"))
+	case errors.Is(err, domainstore.ErrInvalidPaymentHold):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("payment_hold_minutes", "must be 5 to 120 minutes"))
 	case errors.Is(err, domainstore.ErrClosedDateOutOfRange):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("date", "must be between today and a year ahead"))
 	case errors.Is(err, domainstore.ErrInvalidClosedDateReason):

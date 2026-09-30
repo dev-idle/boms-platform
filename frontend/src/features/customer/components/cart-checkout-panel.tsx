@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { PICKUP_COPY } from "@/constants/pickup";
-import { ROUTE } from "@/constants/routes";
 import { PolicyConsent } from "@/features/legal";
 import { EmailVerificationNotice } from "@/features/user";
 import { ApiErrorCode, isApiError } from "@/lib/errors";
@@ -73,7 +71,6 @@ function slotOptions(
  * offered.
  */
 export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPanelProps) {
-  const router = useRouter();
   const checkout = useCheckoutCart();
   const rulesQuery = usePickupRules();
   const now = useNow(CLOCK_TICK_MS);
@@ -169,7 +166,6 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
     checkout.mutate(
       { pickup_at: bakeryPickupISOFromLocalInput(slot) },
       {
-        onSuccess: (order) => router.push(ROUTE.orderDetail(order.id)),
         // The policies changed while the cart was open: the tick was given to an
         // older version, so it no longer counts.
         onError: (error) => {

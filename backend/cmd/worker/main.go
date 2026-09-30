@@ -1,8 +1,9 @@
 // Command worker delivers the outbox events the API could not deliver right
 // after commit — a crashed process, a Redis outage — deletes delivery records
-// past their retention, and sends the emails events queue. Run it beside the
-// API; several copies can run at once, since sweeps skip rows another copy
-// holds and each queued email goes to one of them.
+// past their retention, sends the emails events queue, and expires orders not
+// paid in time. Run it beside the API; several copies can run at once, since
+// sweeps skip rows another copy holds, each queued email goes to one of them,
+// and an order expires only from awaiting payment.
 package main
 
 import (
@@ -20,6 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/boms/backend/internal/adapter/email"
+	"github.com/boms/backend/internal/adapter/paypal"
 	"github.com/boms/backend/internal/adapter/queue"
 	postgresrepo "github.com/boms/backend/internal/adapter/repository/postgres"
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
@@ -68,17 +70,30 @@ func main() {
 		cfg.Outbox.DispatchTimeout,
 	)
 
-	stopEmails, err := startEmails(cfg.Mail, redisClient.RDB(), pgPool, zlog)
+	// Expiring an order writes events: deliver them at once, as the API does.
+	pgPool.OnCommit(dispatcher.AfterCommit)
+
+	stopEmails, err := startEmails(cfg.Mail, cfg.App.SiteURL, redisClient.RDB(), pgPool, zlog)
 	if err != nil {
 		zlog.Fatal("email_init", zap.Error(err))
 	}
 
+	payments := usecase.NewPaymentUsecase(pgPool, postgresrepo.NewOrderRepository(pgPool),
+		postgresrepo.NewDiscountCodeRepository(pgPool), postgresrepo.NewTicketRepository(pgPool),
+		postgresrepo.NewPaymentRepository(pgPool), paypal.New(cfg.PayPal), postgresrepo.NewOutboxRepository(pgPool),
+		cfg.App.SiteURL, zlog)
+
 	zlog.Info("worker_started",
 		zap.Duration("sweep_interval", cfg.Outbox.SweepInterval),
 		zap.Duration("prune_interval", cfg.Outbox.PruneInterval),
+		zap.Duration("order_expiry_interval", cfg.Order.ExpiryInterval),
 		zap.Int("email_concurrency", cfg.Mail.Concurrency),
 	)
-	run(ctx, dispatcher, cfg.Outbox, zlog)
+	run(ctx, dispatcher, payments, cfg, zlog)
+	// A delivery is a publish and a mark, each within the dispatch timeout.
+	waitCtx, cancel := context.WithTimeout(context.Background(), 2*cfg.Outbox.DispatchTimeout)
+	defer cancel()
+	dispatcher.Wait(waitCtx)
 	// Emails being sent finish, or go back to the queue for another worker.
 	stopEmails()
 	zlog.Info("worker_stopped")
@@ -86,12 +101,12 @@ func main() {
 
 // startEmails sends queued emails through the configured SMTP server, a few at
 // a time, until the returned stop is called.
-func startEmails(cfg config.MailConfig, rdb *redis.Client, pool *postgresrepo.Pool, log *zap.Logger) (func(), error) {
-	orderComposer, err := email.NewOrderComposer(cfg.SiteURL)
+func startEmails(cfg config.MailConfig, siteURL string, rdb *redis.Client, pool *postgresrepo.Pool, log *zap.Logger) (func(), error) {
+	orderComposer, err := email.NewOrderComposer(siteURL)
 	if err != nil {
 		return nil, err
 	}
-	accountComposer, err := email.NewAccountComposer(cfg.SiteURL)
+	accountComposer, err := email.NewAccountComposer(siteURL)
 	if err != nil {
 		return nil, err
 	}
@@ -134,30 +149,46 @@ func startEmails(cfg config.MailConfig, rdb *redis.Client, pool *postgresrepo.Po
 	return server.Shutdown, nil
 }
 
-// outboxJobs is the work the worker schedules.
+// outboxJobs is the outbox work the worker schedules.
 type outboxJobs interface {
 	Sweep(ctx context.Context, grace time.Duration, batch int32) (int, error)
 	Prune(ctx context.Context, retention time.Duration) (int64, error)
 }
 
-// run sweeps and prunes on their intervals until ctx is cancelled.
-func run(ctx context.Context, jobs outboxJobs, cfg config.OutboxConfig, log *zap.Logger) {
-	// A restarted worker recovers at once instead of one interval later.
-	sweep(ctx, jobs, cfg, log)
+// orderJobs is the order work the worker schedules.
+type orderJobs interface {
+	ExpireOverdue(ctx context.Context) (int, error)
+}
 
-	sweepTicker := time.NewTicker(cfg.SweepInterval)
+// run sweeps, prunes and expires on their intervals until ctx is cancelled.
+func run(ctx context.Context, jobs outboxJobs, orders orderJobs, cfg *config.Config, log *zap.Logger) {
+	// A restarted worker recovers at once instead of one interval later.
+	sweep(ctx, jobs, cfg.Outbox, log)
+
+	sweepTicker := time.NewTicker(cfg.Outbox.SweepInterval)
 	defer sweepTicker.Stop()
-	pruneTicker := time.NewTicker(cfg.PruneInterval)
+	pruneTicker := time.NewTicker(cfg.Outbox.PruneInterval)
 	defer pruneTicker.Stop()
+	expiryTicker := time.NewTicker(cfg.Order.ExpiryInterval)
+	defer expiryTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-sweepTicker.C:
-			sweep(ctx, jobs, cfg, log)
+			sweep(ctx, jobs, cfg.Outbox, log)
+		case <-expiryTicker.C:
+			// A failed order is overdue still, so the next tick tries it again.
+			expired, err := orders.ExpireOverdue(ctx)
+			if err != nil {
+				log.Error("order_expiry_failed", zap.Error(err))
+			}
+			if expired > 0 {
+				log.Info("orders_expired", zap.Int("orders", expired))
+			}
 		case <-pruneTicker.C:
-			deleted, err := jobs.Prune(ctx, cfg.Retention)
+			deleted, err := jobs.Prune(ctx, cfg.Outbox.Retention)
 			if err != nil {
 				log.Error("outbox_prune_failed", zap.Error(err))
 				continue

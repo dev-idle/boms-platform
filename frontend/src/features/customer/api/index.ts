@@ -15,6 +15,8 @@ import {
   orderSchema,
   orderSummarySchema,
   ordersListFilterSchema,
+  paymentCaptureSchema,
+  paymentStartSchema,
   pickupRulesSchema,
   pickupSlotsSchema,
   updateCartItemInputSchema,
@@ -25,6 +27,8 @@ import {
   type Order,
   type OrdersListFilterInput,
   type OrdersListResult,
+  type PaymentCapture,
+  type PaymentStart,
   type PickupRules,
   type PickupSlots,
   type UpdateCartItemInput,
@@ -85,13 +89,35 @@ export async function removeCartDiscount(): Promise<Cart> {
   });
 }
 
-/** Places the order with the policies the checkout showed: the API records their version. */
-export async function checkoutCart(input: CheckoutInput): Promise<Order> {
+/**
+ * Places the order with the policies the checkout showed: the API records their
+ * version. The same idempotency key again returns the order the first attempt
+ * placed, when its answer was lost.
+ */
+export async function checkoutCart(input: CheckoutInput, idempotencyKey: string): Promise<Order> {
   const body = checkoutInputSchema.parse(input);
   return browserRequest<Order>("/api/v1/orders/checkout", {
     method: "POST",
     schema: orderSchema,
     json: { ...body, terms_version: TERMS_VERSION },
+    headers: { "Idempotency-Key": idempotencyKey },
+  });
+}
+
+/** The PayPal page the customer approves the order's payment on. */
+export async function startPayment(orderId: string): Promise<string> {
+  const result = await browserRequest<PaymentStart>(`/api/v1/orders/${encodeURIComponent(orderId)}/payment`, {
+    method: "POST",
+    schema: paymentStartSchema,
+  });
+  return result.approve_url;
+}
+
+/** Takes the payment the customer approved on PayPal's page. */
+export async function capturePayment(orderId: string): Promise<PaymentCapture> {
+  return browserRequest<PaymentCapture>(`/api/v1/orders/${encodeURIComponent(orderId)}/payment/capture`, {
+    method: "POST",
+    schema: paymentCaptureSchema,
   });
 }
 

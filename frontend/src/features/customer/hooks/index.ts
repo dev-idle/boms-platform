@@ -6,14 +6,18 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 
+import { ROUTE } from "@/constants/routes";
 import { ApiErrorCode, isApiError } from "@/lib/errors";
 
 import {
   addCartItem,
   applyCartDiscount,
+  capturePayment,
   checkoutCart,
   getCart,
   getOrder,
@@ -22,6 +26,7 @@ import {
   listOrders,
   removeCartDiscount,
   removeCartItem,
+  startPayment,
   updateCartItem,
 } from "../api";
 import {
@@ -136,12 +141,20 @@ const PICKUP_REFUSALS: ReadonlySet<string> = new Set([
 
 export function useCheckoutCart() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  // One key per order being placed: a retry after a lost answer gets back the
+  // order the first attempt placed, instead of an empty cart.
+  const checkoutKey = useRef(crypto.randomUUID());
   return useMutation({
-    mutationFn: (input: CheckoutInput) => checkoutCart(input),
-    onSuccess: () => {
+    mutationFn: (input: CheckoutInput) => checkoutCart(input, checkoutKey.current),
+    // Here, not in the caller: the order's realtime notice can empty the cart
+    // and unmount the checkout panel before this answer arrives.
+    onSuccess: (order) => {
+      checkoutKey.current = crypto.randomUUID();
       queryClient.invalidateQueries({ queryKey: customerQueryKeys.cart });
       queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
-      toast.success("Order placed");
+      toast.success("Order placed. Pay with PayPal to confirm it.");
+      router.push(ROUTE.orderDetail(order.id));
     },
     onError: (error) => {
       // The rules, the slots, or what the cart's items need (a manager may have
@@ -174,6 +187,79 @@ export function useOrders(input: OrdersListFilterInput = defaultOrdersFilter) {
     queryFn: () => listOrders(filter),
     placeholderData: keepPreviousData,
   });
+}
+
+/** Sends the customer to PayPal to approve the order's payment. */
+export function useStartPayment(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => startPayment(orderId),
+    onSuccess: (approveURL) => {
+      window.location.assign(approveURL);
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.code === ApiErrorCode.OrderNotPayable) {
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
+        toast.error("This order can no longer be paid.");
+        return;
+      }
+      toast.error("We could not open PayPal. Please try again.");
+    },
+  });
+}
+
+function useCapturePayment(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => capturePayment(orderId),
+    onSuccess: ({ status }) => {
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
+      toast.success(
+        status === "captured"
+          ? "Payment received. Your order is confirmed."
+          : "PayPal is reviewing your payment. Your order is confirmed as soon as it clears.",
+      );
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.code === ApiErrorCode.OrderNotPayable) {
+        // Back from PayPal after the time to pay ran out: nothing was taken.
+        toast.error("This order can no longer be paid. Nothing was charged.");
+        return;
+      }
+      toast.error(
+        isApiError(error) && error.code === ApiErrorCode.PaymentNotCompleted
+          ? "The payment was not completed. Try again, or choose another way to pay on PayPal."
+          : "We could not confirm your payment. Reload the page to see where it stands.",
+      );
+    },
+  });
+}
+
+/**
+ * Captures the payment once when the customer comes back from approving it on
+ * PayPal (`?paypal=approved`), and takes PayPal's parameters out of the
+ * address bar so a reload does not capture again.
+ */
+export function usePayPalReturn(orderId: string) {
+  const capture = useCapturePayment(orderId);
+  const { mutate } = capture;
+  // A second effect run (Strict Mode) finds the parameters already gone.
+  const handled = useRef(false);
+
+  useEffect(() => {
+    if (handled.current) {
+      return;
+    }
+    handled.current = true;
+    if (new URLSearchParams(window.location.search).get("paypal") !== "approved") {
+      return;
+    }
+    window.history.replaceState(null, "", window.location.pathname);
+    mutate();
+  }, [mutate]);
+
+  return capture;
 }
 
 export function useOrder(id: string) {

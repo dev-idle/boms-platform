@@ -10,10 +10,6 @@ import (
 	"github.com/boms/backend/internal/port"
 )
 
-// orderPath is where the storefront shows one of a customer's orders
-// (ROUTE.orderDetail in frontend/src/constants/routes.ts).
-const orderPath = "/orders/"
-
 // pickupLayout reads as "Tuesday, September 30 at 11:00 AM", in the bakery's
 // own time zone whatever the reader's.
 const pickupLayout = "Monday, January 2 at 3:04 PM"
@@ -58,6 +54,16 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 		lead: []string{
 			"We are sorry: your order has been cancelled and will not be made.",
 			"If you did not expect this, reply to this email or call us and we will help.",
+		},
+	},
+	domainorder.NoticeExpired: {
+		subject:   "Your order %s was not paid in time",
+		preheader: "We held your pickup time, but the payment did not come through.",
+		eyebrow:   "Order expired",
+		heading:   "Your order has expired",
+		lead: []string{
+			"We held your pickup time for you, but the payment did not come through in time, so the order will not be made. Nothing was charged.",
+			"You are welcome to order again whenever you like.",
 		},
 	},
 }
@@ -119,7 +125,7 @@ func (c *OrderComposer) view(words orderCopy, msg port.OrderEmail) orderView {
 			Greeting:    "Hello,",
 			Lead:        words.lead,
 			ActionLabel: "View your order",
-			ActionURL:   c.siteURL + orderPath + order.ID.String(),
+			ActionURL:   c.siteURL + domainorder.PagePath(order.ID),
 			FooterNote:  orderFooterNote,
 		},
 		Code:     order.Code,

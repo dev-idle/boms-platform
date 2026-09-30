@@ -26,6 +26,12 @@ func (h *OrderHandler) Checkout(c fiber.Ctx) error {
 	if !ok {
 		return writeAppError(c, apperrors.ErrUnauthorized)
 	}
+	// Every checkout carries one: a retry with the same key returns the order
+	// the first attempt placed.
+	checkoutKey, err := uuid.Parse(c.Get("Idempotency-Key"))
+	if err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("idempotency_key", "must be a UUID"))
+	}
 	var req dto.CheckoutRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
@@ -33,7 +39,7 @@ func (h *OrderHandler) Checkout(c fiber.Ctx) error {
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	out, err := h.usecase.Checkout(c.Context(), userID, req)
+	out, err := h.usecase.Checkout(c.Context(), userID, checkoutKey, req)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

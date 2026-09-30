@@ -7,8 +7,8 @@ import (
 )
 
 // Notice is an email that tells a customer where their order stands. Only the
-// moments a customer acts on get one: the order was received, it is ready to
-// collect, or it was cancelled. Steps inside the bakery (confirmed, in
+// moments a customer acts on get one: the order was paid and received, it is
+// ready to collect, it was cancelled, or it expired unpaid. Steps inside the bakery (confirmed, in
 // production) are shown live on the order page instead of filling an inbox.
 type Notice string
 
@@ -16,12 +16,13 @@ const (
 	NoticePlaced    Notice = "placed"
 	NoticeReady     Notice = "ready"
 	NoticeCancelled Notice = "cancelled"
+	NoticeExpired   Notice = "expired"
 )
 
 // Valid reports whether n is a notice this package defines.
 func (n Notice) Valid() bool {
 	switch n {
-	case NoticePlaced, NoticeReady, NoticeCancelled:
+	case NoticePlaced, NoticeReady, NoticeCancelled, NoticeExpired:
 		return true
 	default:
 		return false
@@ -33,12 +34,15 @@ func (n Notice) Valid() bool {
 func NoticeFor(e domainevent.Event) (uuid.UUID, Notice, bool) {
 	var notice Notice
 	switch {
-	case e.Topic == TopicOrderCreated:
+	case e.Topic == TopicOrderStatusChanged && Status(e.Data["from"]) == StatusAwaitingPayment &&
+		Status(e.Data["status"]) == StatusConfirmed:
 		notice = NoticePlaced
 	case e.Topic == TopicOrderStatusChanged && Status(e.Data["status"]) == StatusReady:
 		notice = NoticeReady
 	case e.Topic == TopicOrderStatusChanged && Status(e.Data["status"]) == StatusCancelled:
 		notice = NoticeCancelled
+	case e.Topic == TopicOrderStatusChanged && Status(e.Data["status"]) == StatusExpired:
+		notice = NoticeExpired
 	default:
 		return uuid.Nil, "", false
 	}
@@ -62,6 +66,8 @@ func (n Notice) StillApplies(current Status) bool {
 		return current == StatusReady
 	case NoticeCancelled:
 		return current == StatusCancelled
+	case NoticeExpired:
+		return current == StatusExpired
 	default:
 		return false
 	}

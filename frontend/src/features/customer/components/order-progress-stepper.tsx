@@ -6,7 +6,7 @@ import { formatDateTime } from "@/lib/validation/datetime";
 
 import {
   activeOrderProgressIndex,
-  isOrderCancelled,
+  isOrderDropped,
   ORDER_PROGRESS_STEPS,
   statusReachedAt,
 } from "../lib/order-progress";
@@ -19,15 +19,15 @@ type OrderProgressStepperProps = {
 export function OrderProgressStepper({ status, timeline }: OrderProgressStepperProps) {
   const activeIndex = activeOrderProgressIndex(status);
 
-  if (isOrderCancelled(status)) {
-    const cancelledAt = statusReachedAt(timeline, "cancelled");
+  if (isOrderDropped(status)) {
+    const droppedAt = statusReachedAt(timeline, status);
     return (
       <p className="storefront-order-progress storefront-order-progress--cancelled text-caption">
-        This order was cancelled
-        {cancelledAt ? (
+        {status === "expired" ? "This order was not paid in time and expired" : "This order was cancelled"}
+        {droppedAt ? (
           <>
             {" on "}
-            <time dateTime={cancelledAt}>{formatDateTime(cancelledAt)}</time>
+            <time dateTime={droppedAt}>{formatDateTime(droppedAt)}</time>
           </>
         ) : null}
         .

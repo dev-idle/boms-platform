@@ -215,6 +215,7 @@ export const managerDiscountCodeSchema = z.object({
   value: z.number().int().min(1),
   min_order_cents: z.number().int().min(0).nullable().optional(),
   max_uses: z.number().int().min(1).nullable().optional(),
+  max_uses_per_customer: z.number().int().min(1).nullable().optional(),
   max_discount_cents: z.number().int().min(1).nullable().optional(),
   used_count: z.number().int().min(0),
   starts_at: apiDateTimeSchema,
@@ -239,6 +240,13 @@ export const discountCodeFormSchema = z
       .int()
       .min(1)
       .max(CATALOG_INTEGER_MAX, "Maximum uses is too large")
+      .optional()
+      .nullable(),
+    max_uses_per_customer: z
+      .number()
+      .int()
+      .min(1)
+      .max(CATALOG_INTEGER_MAX, "Uses per customer is too large")
       .optional()
       .nullable(),
     max_discount_cents: z.number().int().min(1).optional().nullable(),

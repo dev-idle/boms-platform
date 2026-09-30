@@ -52,7 +52,7 @@ func (u *AdminStoreSettingsUsecase) PatchSettings(
 	req dto.PatchStoreSettingsRequest,
 ) (*dto.StoreSettingsResponse, error) {
 	if req.OpensAt == nil && req.ClosesAt == nil && req.PreorderMinLeadMinutes == nil && req.MaxAdvanceDays == nil &&
-		req.SlotMinutes == nil && req.SlotCapacity == nil && req.InstantPrepMinutes == nil {
+		req.SlotMinutes == nil && req.SlotCapacity == nil && req.InstantPrepMinutes == nil && req.PaymentHoldMinutes == nil {
 		return nil, apperrors.ErrValidation.WithDetail("body", "name at least one setting to change")
 	}
 	var before, after domainstore.Settings
@@ -130,6 +130,13 @@ func patchedSettings(current domainstore.Settings, req dto.PatchStoreSettingsReq
 			return domainstore.Settings{}, domainstore.ErrInvalidInstantPrep
 		}
 		next.InstantPrep = time.Duration(minutes) * time.Minute
+	}
+	if req.PaymentHoldMinutes != nil {
+		minutes := *req.PaymentHoldMinutes
+		if minutes < 0 || minutes > int(domainstore.MaxPaymentHold/time.Minute) {
+			return domainstore.Settings{}, domainstore.ErrInvalidPaymentHold
+		}
+		next.PaymentHold = time.Duration(minutes) * time.Minute
 	}
 	return next, nil
 }
@@ -219,6 +226,7 @@ func toStoreSettingsResponse(s domainstore.Settings) *dto.StoreSettingsResponse 
 		SlotMinutes:            int(s.SlotLength / time.Minute),
 		SlotCapacity:           s.SlotCapacity,
 		InstantPrepMinutes:     int(s.InstantPrep / time.Minute),
+		PaymentHoldMinutes:     int(s.PaymentHold / time.Minute),
 		UpdatedAt:              s.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }

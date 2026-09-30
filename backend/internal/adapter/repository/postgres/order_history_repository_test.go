@@ -108,11 +108,11 @@ func TestOrderRepository_HistoryAndFilters_Integration(t *testing.T) {
 
 	t.Run("history_lists_every_move_in_order", func(t *testing.T) {
 		require.NoError(t, orders.AddStatusEvent(ctx, port.AddOrderStatusEventParams{
-			OrderID: placed.ID, To: domainorder.StatusPending, ActorID: customer.ID, ActorRole: domainuser.RoleCustomer,
+			OrderID: placed.ID, To: domainorder.StatusPending, Actor: &port.OrderActor{ID: customer.ID, Role: domainuser.RoleCustomer},
 		}))
 		from := domainorder.StatusPending
 		require.NoError(t, orders.AddStatusEvent(ctx, port.AddOrderStatusEventParams{
-			OrderID: placed.ID, From: &from, To: domainorder.StatusConfirmed, ActorID: staff.ID, ActorRole: domainuser.RoleStaff,
+			OrderID: placed.ID, From: &from, To: domainorder.StatusConfirmed, Actor: &port.OrderActor{ID: staff.ID, Role: domainuser.RoleStaff},
 		}))
 
 		history, err := orders.ListStatusEvents(ctx, placed.ID)
@@ -128,7 +128,7 @@ func TestOrderRepository_HistoryAndFilters_Integration(t *testing.T) {
 	t.Run("history_refuses_a_move_to_the_same_status", func(t *testing.T) {
 		same := domainorder.StatusPending
 		err := orders.AddStatusEvent(ctx, port.AddOrderStatusEventParams{
-			OrderID: placed.ID, From: &same, To: domainorder.StatusPending, ActorID: staff.ID, ActorRole: domainuser.RoleStaff,
+			OrderID: placed.ID, From: &same, To: domainorder.StatusPending, Actor: &port.OrderActor{ID: staff.ID, Role: domainuser.RoleStaff},
 		})
 		require.Error(t, err)
 	})

@@ -20,18 +20,21 @@ func (t Type) Valid() bool {
 
 // Code is a manager-defined promotion redeemable at checkout.
 type Code struct {
-	ID               uuid.UUID
-	Code             string
-	DiscountType     Type
-	Value            int64
-	MinOrderCents    *int64
-	MaxUses          *int32
-	MaxDiscountCents *int64
-	UsedCount        int32
-	StartsAt         time.Time
-	EndsAt           time.Time
-	IsActive         bool
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	DeletedAt        *time.Time
+	ID            uuid.UUID
+	Code          string
+	DiscountType  Type
+	Value         int64
+	MinOrderCents *int64
+	MaxUses       *int32
+	// MaxUsesPerCustomer caps one customer's orders neither cancelled nor
+	// expired with the code.
+	MaxUsesPerCustomer *int32
+	MaxDiscountCents   *int64
+	UsedCount          int32
+	StartsAt           time.Time
+	EndsAt             time.Time
+	IsActive           bool
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	DeletedAt          *time.Time
 }

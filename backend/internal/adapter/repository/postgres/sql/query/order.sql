@@ -11,7 +11,9 @@ INSERT INTO orders (
   code,
   order_type,
   terms_version,
-  terms_accepted_at
+  terms_accepted_at,
+  checkout_key,
+  payment_due_at
 )
 VALUES (
   sqlc.arg('user_id'),
@@ -27,7 +29,10 @@ VALUES (
   sqlc.narg('terms_version')::text,
   -- Accepted at the instant the order is placed: the transaction clock that
   -- created_at takes.
-  CASE WHEN sqlc.narg('terms_version')::text IS NULL THEN NULL ELSE now() END
+  CASE WHEN sqlc.narg('terms_version')::text IS NULL THEN NULL ELSE now() END,
+  sqlc.narg('checkout_key'),
+  -- Held unpaid until then, on the database clock.
+  now() + make_interval(mins => sqlc.arg('payment_hold_minutes')::int)
 )
 RETURNING
   id,
@@ -44,7 +49,9 @@ RETURNING
   code,
   order_type,
   terms_accepted_at,
-  terms_version;
+  terms_version,
+  checkout_key,
+  payment_due_at;
 
 -- name: GetOrderByIDForUser :one
 SELECT
@@ -62,7 +69,9 @@ SELECT
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 FROM orders
 WHERE id = $1 AND user_id = $2;
 
@@ -82,7 +91,9 @@ SELECT
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 FROM orders
 WHERE user_id = sqlc.arg('user_id')
   AND (
@@ -119,7 +130,9 @@ SELECT
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 FROM orders
 WHERE user_id = sqlc.arg('user_id')
   AND (
@@ -131,12 +144,13 @@ LIMIT sqlc.arg('limit');
 
 -- name: HasOpenOrdersForUser :one
 -- Whether the customer has an order the bakery still has to make or hand
--- over: anything not yet fulfilled or cancelled.
+-- over, or one waiting for payment: anything not fulfilled, cancelled or
+-- expired.
 SELECT EXISTS (
   SELECT 1
   FROM orders
   WHERE user_id = $1
-    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status)
+    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status)
 ) AS open;
 
 -- name: ListOrdersByUserCount :one
@@ -259,10 +273,12 @@ SELECT
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-WHERE (
+-- An order not paid, now or ever, is not the bakery's to see.
+WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+  AND (
     sqlc.narg('status')::order_status IS NULL
     OR o.status = sqlc.narg('status')::order_status
-)
+  )
 ORDER BY o.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
@@ -270,10 +286,11 @@ LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 SELECT COUNT(*)::bigint AS count
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-WHERE (
+WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+  AND (
     sqlc.narg('status')::order_status IS NULL
     OR o.status = sqlc.narg('status')::order_status
-);
+  );
 
 -- name: StaffGetOrderByID :one
 SELECT
@@ -320,7 +337,9 @@ RETURNING
   code,
   order_type,
   terms_accepted_at,
-  terms_version;
+  terms_version,
+  checkout_key,
+  payment_due_at;
 
 -- name: NextOrderDayNumber :one
 -- The day is read from the transaction's clock, the instant orders.created_at
@@ -339,8 +358,8 @@ VALUES (
   sqlc.arg('order_id'),
   sqlc.narg('from_status')::order_status,
   sqlc.arg('to_status')::order_status,
-  sqlc.arg('actor_id'),
-  sqlc.arg('actor_role')::user_role
+  sqlc.narg('actor_id'),
+  sqlc.narg('actor_role')::user_role
 );
 
 -- name: ListOrderStatusEvents :many
@@ -366,29 +385,30 @@ SELECT pg_advisory_xact_lock(
 );
 
 -- name: CountOrdersInSlot :one
--- Orders holding the slot [from_at, to_at): every order not cancelled whose
--- pickup falls in it, wherever in it an earlier slot grid put that pickup.
+-- Orders holding the slot [from_at, to_at): every order not cancelled or
+-- expired whose pickup falls in it, wherever in it an earlier slot grid put
+-- that pickup.
 SELECT count(*)::bigint AS count
 FROM orders
 WHERE pickup_at >= sqlc.arg('from_at')::timestamptz
   AND pickup_at < sqlc.arg('to_at')::timestamptz
-  AND status <> 'cancelled'::order_status;
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status);
 
 -- name: CountCustomerOrdersBetween :one
--- A customer's orders not cancelled with a pickup in [from_at, to_at).
+-- A customer's orders not cancelled or expired with a pickup in [from_at, to_at).
 SELECT count(*)::bigint AS count
 FROM orders
 WHERE user_id = sqlc.arg('user_id')
   AND pickup_at >= sqlc.arg('from_at')::timestamptz
   AND pickup_at < sqlc.arg('to_at')::timestamptz
-  AND status <> 'cancelled'::order_status;
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status);
 
 -- name: CountOrdersByPickupTime :many
 SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
 FROM orders
 WHERE pickup_at >= sqlc.arg('from_at')::timestamptz
   AND pickup_at < sqlc.arg('to_at')::timestamptz
-  AND status <> 'cancelled'::order_status
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 GROUP BY pickup_at;
 
 -- name: LockOrder :one
@@ -410,7 +430,78 @@ SELECT
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 FROM orders
 WHERE id = $1
 FOR UPDATE;
+
+-- name: GetOrderByCheckoutKey :one
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at
+FROM orders
+WHERE user_id = sqlc.arg('user_id')
+  AND checkout_key = sqlc.arg('checkout_key');
+
+-- name: CountCustomerDiscountUses :one
+-- A customer's orders not cancelled or expired that use the discount code.
+SELECT count(*)::bigint AS count
+FROM orders
+WHERE user_id = sqlc.arg('user_id')
+  AND discount_code_id = sqlc.arg('discount_code_id')
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status);
+
+-- name: ListDueUnpaidOrders :many
+-- Orders awaiting payment more than grace_seconds past their due time, the
+-- longest overdue first.
+SELECT id
+FROM orders
+WHERE status = 'awaiting_payment'::order_status
+  AND payment_due_at <= now() - make_interval(secs => sqlc.arg('grace_seconds')::double precision)
+ORDER BY payment_due_at
+LIMIT sqlc.arg('max_rows')::int;
+
+-- name: ExpireOrder :one
+-- An order still awaiting payment more than grace_seconds past its due time
+-- expires; one paid meanwhile does not.
+UPDATE orders
+SET status = 'expired'::order_status,
+    updated_at = now()
+WHERE id = sqlc.arg('id')
+  AND status = 'awaiting_payment'::order_status
+  AND payment_due_at <= now() - make_interval(secs => sqlc.arg('grace_seconds')::double precision)
+RETURNING
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at;

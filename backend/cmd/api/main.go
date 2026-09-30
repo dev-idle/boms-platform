@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/boms/backend/internal/adapter/eventbus"
+	"github.com/boms/backend/internal/adapter/paypal"
 	"github.com/boms/backend/internal/adapter/realtime"
 	postgresrepo "github.com/boms/backend/internal/adapter/repository/postgres"
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
@@ -112,7 +113,9 @@ func main() {
 	eventDispatcher := eventdispatch.New(outboxRepo, bootstrap.EventPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
 	pgPool.OnCommit(eventDispatcher.AfterCommit)
 	ticketRepo := postgresrepo.NewTicketRepository(pgPool)
-	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo)
+	paymentRepo := postgresrepo.NewPaymentRepository(pgPool)
+	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo)
+	paymentUC := usecase.NewPaymentUsecase(pgPool, orderRepo, discountCodeRepo, ticketRepo, paymentRepo, paypal.New(cfg.PayPal), outboxRepo, cfg.App.SiteURL, zlog)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	accountErasureUC := usecase.NewAccountErasureUsecase(
 		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
@@ -127,7 +130,7 @@ func main() {
 		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, cartRepo, sessionStore, auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
-	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
+	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo)
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -152,6 +155,7 @@ func main() {
 	catalogHandler := v1.NewCatalogHandler(catalogUC)
 	cartHandler := v1.NewCartHandler(cartUC)
 	orderHandler := v1.NewOrderHandler(orderUC)
+	paymentHandler := v1.NewPaymentHandler(paymentUC)
 	staffOrderHandler := v1.NewStaffOrderHandler(staffOrderUC)
 	staffTicketHandler := v1.NewStaffTicketHandler(staffTicketUC)
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
@@ -294,6 +298,10 @@ func main() {
 	customerOrders.Post("/checkout", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), orderHandler.Checkout)
 	customerOrders.Get("", orderHandler.List)
 	customerOrders.Get("/:id", orderHandler.Get)
+	customerOrders.Post("/:id/payment", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), paymentHandler.Start)
+	customerOrders.Post("/:id/payment/capture", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), paymentHandler.Capture)
+	// PayPal's notices: no session, each one signed and checked with PayPal.
+	apiV1.Post("/payments/paypal/webhook", middleware.PaymentWebhookRateLimit(rdb, cfg.RateRedis), paymentHandler.Webhook)
 
 	managerRead := apiV1.Group(
 		"/manager",

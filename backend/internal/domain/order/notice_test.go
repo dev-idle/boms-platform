@@ -23,9 +23,10 @@ func TestNoticeFor(t *testing.T) {
 		status Status
 		want   Notice
 	}{
-		{"a_new_order_is_received", CreatedEvent, StatusPending, NoticePlaced},
+		{"a_paid_order_is_received", func(o Order) domainevent.Event { return StatusChangedEvent(StatusAwaitingPayment, o) }, StatusConfirmed, NoticePlaced},
 		{"ready_to_collect", func(o Order) domainevent.Event { return StatusChangedEvent(StatusInProduction, o) }, StatusReady, NoticeReady},
 		{"cancelled", func(o Order) domainevent.Event { return StatusChangedEvent(StatusConfirmed, o) }, StatusCancelled, NoticeCancelled},
+		{"expired_unpaid", func(o Order) domainevent.Event { return StatusChangedEvent(StatusAwaitingPayment, o) }, StatusExpired, NoticeExpired},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -46,6 +47,12 @@ func TestNoticeFor(t *testing.T) {
 			_, _, ok := NoticeFor(StatusChangedEvent(StatusPending, order(to)))
 			assert.False(t, ok, to)
 		}
+	})
+
+	t.Run("an_order_not_paid_yet_sends_nothing", func(t *testing.T) {
+		t.Parallel()
+		_, _, ok := NoticeFor(CreatedEvent(order(StatusAwaitingPayment)))
+		assert.False(t, ok, "the customer hears once the payment is taken")
 	})
 
 	t.Run("other_topics_send_nothing", func(t *testing.T) {
@@ -79,6 +86,8 @@ func TestNotice_StillApplies(t *testing.T) {
 		{NoticeReady, StatusFulfilled, false},
 		{NoticeReady, StatusCancelled, false},
 		{NoticeCancelled, StatusCancelled, true},
+		{NoticeExpired, StatusExpired, true},
+		{NoticeExpired, StatusConfirmed, false},
 		{Notice("shipped"), StatusReady, false},
 	}
 	for _, tc := range cases {

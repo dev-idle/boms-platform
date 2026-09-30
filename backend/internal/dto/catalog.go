@@ -148,41 +148,46 @@ type CatalogComboResponse struct {
 }
 
 type CreateDiscountCodeRequest struct {
-	Code             string    `json:"code" validate:"required,max=64"`
-	DiscountType     string    `json:"discount_type" validate:"required,oneof=percent fixed_cents"`
-	Value            int64     `json:"value" validate:"min=1"`
-	MinOrderCents    *int64    `json:"min_order_cents,omitempty" validate:"omitempty,min=0"`
-	MaxUses          *int32    `json:"max_uses,omitempty"`
-	MaxDiscountCents *int64    `json:"max_discount_cents,omitempty" validate:"omitempty,min=1"`
-	StartsAt         time.Time `json:"starts_at" validate:"required"`
-	EndsAt           time.Time `json:"ends_at" validate:"required"`
-	IsActive         bool      `json:"is_active"`
+	Code          string `json:"code" validate:"required,max=64"`
+	DiscountType  string `json:"discount_type" validate:"required,oneof=percent fixed_cents"`
+	Value         int64  `json:"value" validate:"min=1"`
+	MinOrderCents *int64 `json:"min_order_cents,omitempty" validate:"omitempty,min=0"`
+	MaxUses       *int32 `json:"max_uses,omitempty"`
+	// MaxUsesPerCustomer caps how many of one customer's orders may use the code.
+	MaxUsesPerCustomer *int32    `json:"max_uses_per_customer,omitempty" validate:"omitempty,min=1"`
+	MaxDiscountCents   *int64    `json:"max_discount_cents,omitempty" validate:"omitempty,min=1"`
+	StartsAt           time.Time `json:"starts_at" validate:"required"`
+	EndsAt             time.Time `json:"ends_at" validate:"required"`
+	IsActive           bool      `json:"is_active"`
 }
 
 type UpdateDiscountCodeRequest struct {
-	Code             string    `json:"code" validate:"required,max=64"`
-	DiscountType     string    `json:"discount_type" validate:"required,oneof=percent fixed_cents"`
-	Value            int64     `json:"value" validate:"min=1"`
-	MinOrderCents    *int64    `json:"min_order_cents,omitempty" validate:"omitempty,min=0"`
-	MaxUses          *int32    `json:"max_uses,omitempty"`
-	MaxDiscountCents *int64    `json:"max_discount_cents,omitempty" validate:"omitempty,min=1"`
-	StartsAt         time.Time `json:"starts_at" validate:"required"`
-	EndsAt           time.Time `json:"ends_at" validate:"required"`
-	IsActive         bool      `json:"is_active"`
+	Code          string `json:"code" validate:"required,max=64"`
+	DiscountType  string `json:"discount_type" validate:"required,oneof=percent fixed_cents"`
+	Value         int64  `json:"value" validate:"min=1"`
+	MinOrderCents *int64 `json:"min_order_cents,omitempty" validate:"omitempty,min=0"`
+	MaxUses       *int32 `json:"max_uses,omitempty"`
+	// MaxUsesPerCustomer caps how many of one customer's orders may use the code.
+	MaxUsesPerCustomer *int32    `json:"max_uses_per_customer,omitempty" validate:"omitempty,min=1"`
+	MaxDiscountCents   *int64    `json:"max_discount_cents,omitempty" validate:"omitempty,min=1"`
+	StartsAt           time.Time `json:"starts_at" validate:"required"`
+	EndsAt             time.Time `json:"ends_at" validate:"required"`
+	IsActive           bool      `json:"is_active"`
 }
 
 type DiscountCodeResponse struct {
-	ID               string    `json:"id"`
-	Code             string    `json:"code"`
-	DiscountType     string    `json:"discount_type"`
-	Value            int64     `json:"value"`
-	MinOrderCents    *int64    `json:"min_order_cents,omitempty"`
-	MaxUses          *int32    `json:"max_uses,omitempty"`
-	MaxDiscountCents *int64    `json:"max_discount_cents,omitempty"`
-	UsedCount        int32     `json:"used_count"`
-	StartsAt         time.Time `json:"starts_at"`
-	EndsAt           time.Time `json:"ends_at"`
-	IsActive         bool      `json:"is_active"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID                 string    `json:"id"`
+	Code               string    `json:"code"`
+	DiscountType       string    `json:"discount_type"`
+	Value              int64     `json:"value"`
+	MinOrderCents      *int64    `json:"min_order_cents,omitempty"`
+	MaxUses            *int32    `json:"max_uses,omitempty"`
+	MaxUsesPerCustomer *int32    `json:"max_uses_per_customer,omitempty"`
+	MaxDiscountCents   *int64    `json:"max_discount_cents,omitempty"`
+	UsedCount          int32     `json:"used_count"`
+	StartsAt           time.Time `json:"starts_at"`
+	EndsAt             time.Time `json:"ends_at"`
+	IsActive           bool      `json:"is_active"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }

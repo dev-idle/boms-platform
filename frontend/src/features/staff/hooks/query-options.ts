@@ -24,14 +24,13 @@ export const staffLiveQueryKeys: readonly QueryKey[] = [
 
 /**
  * Queries an event makes stale in a staff tab. The order queue is refetched
- * whole because a status change moves an order between its filters; the prep
+ * whole because a status change moves an order between its filters, and a paid
+ * order arrives as one; the prep
  * queue changes when an order is accepted, handed over or cancelled, and when
  * a ticket moves. A ticket also changes its order's detail.
  */
 export function staffQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
-    case REALTIME_EVENT_TYPE.orderCreated:
-      return [staffQueryKeys.ordersRoot];
     case REALTIME_EVENT_TYPE.orderStatusChanged:
       return [staffQueryKeys.ordersRoot, staffQueryKeys.ticketsRoot];
     case REALTIME_EVENT_TYPE.ticketChanged: {

@@ -26,6 +26,7 @@ type Config struct {
 	Postgres   PostgresConfig
 	Redis      RedisConfig
 	Outbox     OutboxConfig
+	Order      OrderConfig
 	Mail       MailConfig
 	Realtime   RealtimeConfig
 	Log        LogConfig
@@ -35,12 +36,16 @@ type Config struct {
 	Argon2     Argon2Config
 	Seed       SeedConfig
 	Cloudinary CloudinaryConfig
+	PayPal     PayPalConfig
 }
 
 type AppConfig struct {
 	Name  string
 	Env   string
 	Debug bool
+	// SiteURL is the storefront origin: links in emails and PayPal's return
+	// after a payment point to it.
+	SiteURL string
 }
 
 type HTTPConfig struct {
@@ -107,6 +112,9 @@ type RateLimitRedisConfig struct {
 	// Asking for a new confirmation email, per user.
 	VerificationResendMax    int
 	VerificationResendWindow time.Duration
+	// Payment provider notices, per IP.
+	PaymentWebhookMax    int
+	PaymentWebhookWindow time.Duration
 }
 
 type PostgresConfig struct {
@@ -165,6 +173,12 @@ type RealtimeConfig struct {
 
 // maxOutboxSweepBatch bounds one sweep transaction, which holds row locks while it publishes.
 const maxOutboxSweepBatch = 1000
+
+// OrderConfig tunes the worker's order jobs.
+type OrderConfig struct {
+	// ExpiryInterval is how often the worker expires orders not paid in time.
+	ExpiryInterval time.Duration
+}
 
 // OutboxConfig tunes delivery of committed events. A post-commit delivery spends
 // up to DispatchTimeout publishing and as long again recording the outcome, so
@@ -329,9 +343,10 @@ func load() (*Config, error) {
 
 	cfg := &Config{
 		App: AppConfig{
-			Name:  v.GetString("app.name"),
-			Env:   v.GetString("app.env"),
-			Debug: v.GetBool("app.debug"),
+			Name:    v.GetString("app.name"),
+			Env:     v.GetString("app.env"),
+			Debug:   v.GetBool("app.debug"),
+			SiteURL: strings.TrimRight(strings.TrimSpace(v.GetString("app.site_url")), "/"),
 		},
 		HTTP: HTTPConfig{
 			Host:           v.GetString("http.host"),
@@ -387,6 +402,8 @@ func load() (*Config, error) {
 			PasswordResetAccountWindow: v.GetDuration("rate_limit.redis.password_reset_account_window"),
 			VerificationResendMax:      v.GetInt("rate_limit.redis.verification_resend_max"),
 			VerificationResendWindow:   v.GetDuration("rate_limit.redis.verification_resend_window"),
+			PaymentWebhookMax:          v.GetInt("rate_limit.redis.payment_webhook_max"),
+			PaymentWebhookWindow:       v.GetDuration("rate_limit.redis.payment_webhook_window"),
 		},
 		Postgres: PostgresConfig{
 			URL:                v.GetString("postgres.url"),
@@ -408,6 +425,9 @@ func load() (*Config, error) {
 			WriteTimeout:       v.GetDuration("redis.write_timeout"),
 			HealthCheckTimeout: v.GetDuration("redis.health_timeout"),
 		},
+		Order: OrderConfig{
+			ExpiryInterval: v.GetDuration("order.expiry_interval"),
+		},
 		Outbox: OutboxConfig{
 			DispatchTimeout: v.GetDuration("outbox.dispatch_timeout"),
 			SweepInterval:   v.GetDuration("outbox.sweep_interval"),
@@ -425,7 +445,6 @@ func load() (*Config, error) {
 			FromAddress:  strings.TrimSpace(v.GetString("mail.from_address")),
 			FromName:     strings.TrimSpace(v.GetString("mail.from_name")),
 			ReplyTo:      strings.TrimSpace(v.GetString("mail.reply_to")),
-			SiteURL:      strings.TrimRight(strings.TrimSpace(v.GetString("mail.site_url")), "/"),
 			SendTimeout:  v.GetDuration("mail.send_timeout"),
 			Concurrency:  v.GetInt("mail.concurrency"),
 		},
@@ -488,6 +507,12 @@ func load() (*Config, error) {
 			APISecret:    v.GetString("cloudinary.api_secret"),
 			UploadFolder: v.GetString("cloudinary.upload_folder"),
 		},
+		PayPal: PayPalConfig{
+			Mode:         strings.TrimSpace(v.GetString("paypal.mode")),
+			ClientID:     v.GetString("paypal.client_id"),
+			ClientSecret: v.GetString("paypal.client_secret"),
+			WebhookID:    strings.TrimSpace(v.GetString("paypal.webhook_id")),
+		},
 	}
 	return cfg, nil
 }
@@ -496,6 +521,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.name", "boms-api")
 	v.SetDefault("app.env", "development")
 	v.SetDefault("app.debug", false)
+	v.SetDefault("app.site_url", "http://localhost:3000")
 
 	v.SetDefault("http.host", "127.0.0.1")
 	v.SetDefault("http.port", 8080)
@@ -546,6 +572,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.redis.password_reset_account_window", time.Hour)
 	v.SetDefault("rate_limit.redis.verification_resend_max", 3)
 	v.SetDefault("rate_limit.redis.verification_resend_window", time.Hour)
+	v.SetDefault("rate_limit.redis.payment_webhook_max", 60)
+	v.SetDefault("rate_limit.redis.payment_webhook_window", time.Minute)
 
 	// No default DB URL: use Neon (or any Postgres) via POSTGRES_URL in .env / environment.
 	v.SetDefault("postgres.url", "")
@@ -574,7 +602,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("mail.from_address", "orders@chouxbakery.example")
 	v.SetDefault("mail.from_name", "Choux")
 	v.SetDefault("mail.reply_to", "hello@chouxbakery.example")
-	v.SetDefault("mail.site_url", "http://localhost:3000")
 	v.SetDefault("mail.send_timeout", 10*time.Second)
 	v.SetDefault("mail.concurrency", 4)
 
@@ -584,6 +611,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("outbox.sweep_batch", 100)
 	v.SetDefault("outbox.retention", 7*24*time.Hour)
 	v.SetDefault("outbox.prune_interval", time.Hour)
+	v.SetDefault("order.expiry_interval", time.Minute)
 
 	v.SetDefault("realtime.addr", "127.0.0.1:8081")
 	v.SetDefault("realtime.public_url", "ws://localhost:8081/ws")
@@ -633,17 +661,50 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cloudinary.api_key", "")
 	v.SetDefault("cloudinary.api_secret", "")
 	v.SetDefault("cloudinary.upload_folder", "boms/products")
+
+	v.SetDefault("paypal.mode", PayPalModeSandbox)
+	v.SetDefault("paypal.client_id", "")
+	v.SetDefault("paypal.client_secret", "")
+	v.SetDefault("paypal.webhook_id", "")
 }
 
 // Validate enforces production-safe constraints. Call after Load.
 // ValidateWorker checks only what cmd/worker uses — the database, Redis, the
-// outbox settings and the mail server — so the worker never has to hold the
-// API's signing key, internal secret or Cloudinary credentials.
+// outbox and order settings, PayPal and the mail server — so the worker never
+// has to hold the API's signing key, internal secret or Cloudinary credentials.
 func (c *Config) ValidateWorker() error {
 	if err := c.validateStores(); err != nil {
 		return err
 	}
+	if err := validateSiteURL(c.App.Env, c.App.SiteURL); err != nil {
+		return err
+	}
+	if c.Order.ExpiryInterval <= 0 {
+		return errors.New("order.expiry_interval must be positive")
+	}
+	// Before an overdue order expires, the worker asks PayPal whether it was paid.
+	if err := c.PayPal.validate(c.App.Env); err != nil {
+		return err
+	}
 	return c.Mail.validate(c.App.Env)
+}
+
+// validateSiteURL checks the storefront origin links point to.
+func validateSiteURL(env, raw string) error {
+	site, err := url.Parse(raw)
+	if err != nil || !isOrigin(site) {
+		return errors.New("app.site_url must be an http:// or https:// origin: no path, query, fragment or credentials")
+	}
+	env = strings.ToLower(strings.TrimSpace(env))
+	if (env == "production" || env == "staging") && site.Scheme != "https" {
+		return errors.New("app.site_url must use https:// in staging/production")
+	}
+	return nil
+}
+
+func isOrigin(u *url.URL) bool {
+	return (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" && u.User == nil && u.Opaque == "" &&
+		strings.Trim(u.Path, "/") == "" && u.RawQuery == "" && !u.ForceQuery && u.Fragment == ""
 }
 
 // validateStores checks the settings every process that touches the database
@@ -698,6 +759,12 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.validateStores(); err != nil {
+		return err
+	}
+	if err := validateSiteURL(c.App.Env, c.App.SiteURL); err != nil {
+		return err
+	}
+	if err := c.PayPal.validate(c.App.Env); err != nil {
 		return err
 	}
 	if err := c.Realtime.validate(c.App.Env); err != nil {
@@ -960,6 +1027,7 @@ func (c RateLimitRedisConfig) validate() error {
 		{"rate_limit.redis.password_reset", c.PasswordResetMax, c.PasswordResetWindow},
 		{"rate_limit.redis.password_reset_account", c.PasswordResetAccountMax, c.PasswordResetAccountWindow},
 		{"rate_limit.redis.verification_resend", c.VerificationResendMax, c.VerificationResendWindow},
+		{"rate_limit.redis.payment_webhook", c.PaymentWebhookMax, c.PaymentWebhookWindow},
 	}
 	for _, chk := range checks {
 		if chk.max < 1 {

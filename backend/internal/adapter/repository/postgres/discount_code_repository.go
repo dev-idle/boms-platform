@@ -36,15 +36,16 @@ func (r *DiscountCodeRepository) Create(
 		return nil, err
 	}
 	row, err := r.q(ctx).CreateDiscountCode(ctx, sqlcgen.CreateDiscountCodeParams{
-		Code:             params.Code,
-		DiscountType:     discountType,
-		Value:            params.Value,
-		MinOrderCents:    params.MinOrderCents,
-		MaxUses:          params.MaxUses,
-		MaxDiscountCents: params.MaxDiscountCents,
-		StartsAt:         params.StartsAt,
-		EndsAt:           params.EndsAt,
-		IsActive:         params.IsActive,
+		Code:               params.Code,
+		DiscountType:       discountType,
+		Value:              params.Value,
+		MinOrderCents:      params.MinOrderCents,
+		MaxUses:            params.MaxUses,
+		MaxUsesPerCustomer: params.MaxUsesPerCustomer,
+		MaxDiscountCents:   params.MaxDiscountCents,
+		StartsAt:           params.StartsAt,
+		EndsAt:             params.EndsAt,
+		IsActive:           params.IsActive,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create discount code")
@@ -58,6 +59,14 @@ func (r *DiscountCodeRepository) GetByCode(ctx context.Context, code string) (*d
 		return nil, mapRepoError(err, "get discount code by code")
 	}
 	return mapDiscountCode(row)
+}
+
+// ReleaseUse implements port.DiscountCodeRepository.
+func (r *DiscountCodeRepository) ReleaseUse(ctx context.Context, id uuid.UUID) error {
+	if _, err := r.q(ctx).ReleaseDiscountCodeUse(ctx, id); err != nil {
+		return mapRepoError(err, "release discount code use")
+	}
+	return nil
 }
 
 func (r *DiscountCodeRepository) IncrementUsedCount(ctx context.Context, id uuid.UUID) (*domaindiscount.Code, error) {
@@ -89,16 +98,17 @@ func (r *DiscountCodeRepository) Update(
 		return nil, err
 	}
 	row, err := r.q(ctx).UpdateDiscountCode(ctx, sqlcgen.UpdateDiscountCodeParams{
-		ID:               params.ID,
-		Code:             params.Code,
-		DiscountType:     discountType,
-		Value:            params.Value,
-		MinOrderCents:    params.MinOrderCents,
-		MaxUses:          params.MaxUses,
-		MaxDiscountCents: params.MaxDiscountCents,
-		StartsAt:         params.StartsAt,
-		EndsAt:           params.EndsAt,
-		IsActive:         params.IsActive,
+		ID:                 params.ID,
+		Code:               params.Code,
+		DiscountType:       discountType,
+		Value:              params.Value,
+		MinOrderCents:      params.MinOrderCents,
+		MaxUses:            params.MaxUses,
+		MaxUsesPerCustomer: params.MaxUsesPerCustomer,
+		MaxDiscountCents:   params.MaxDiscountCents,
+		StartsAt:           params.StartsAt,
+		EndsAt:             params.EndsAt,
+		IsActive:           params.IsActive,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update discount code")
@@ -154,20 +164,21 @@ func mapDiscountCode(row sqlcgen.DiscountCode) (*domaindiscount.Code, error) {
 		return nil, err
 	}
 	return &domaindiscount.Code{
-		ID:               row.ID,
-		Code:             row.Code,
-		DiscountType:     discountType,
-		Value:            row.Value,
-		UsedCount:        row.UsedCount,
-		StartsAt:         row.StartsAt,
-		EndsAt:           row.EndsAt,
-		IsActive:         row.IsActive,
-		CreatedAt:        row.CreatedAt,
-		UpdatedAt:        row.UpdatedAt,
-		MinOrderCents:    row.MinOrderCents,
-		MaxUses:          row.MaxUses,
-		MaxDiscountCents: row.MaxDiscountCents,
-		DeletedAt:        row.DeletedAt,
+		ID:                 row.ID,
+		Code:               row.Code,
+		DiscountType:       discountType,
+		Value:              row.Value,
+		UsedCount:          row.UsedCount,
+		StartsAt:           row.StartsAt,
+		EndsAt:             row.EndsAt,
+		IsActive:           row.IsActive,
+		CreatedAt:          row.CreatedAt,
+		UpdatedAt:          row.UpdatedAt,
+		MinOrderCents:      row.MinOrderCents,
+		MaxUses:            row.MaxUses,
+		MaxUsesPerCustomer: row.MaxUsesPerCustomer,
+		MaxDiscountCents:   row.MaxDiscountCents,
+		DeletedAt:          row.DeletedAt,
 	}, nil
 }
 

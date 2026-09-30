@@ -41,20 +41,20 @@ func newTicketFixture(t *testing.T) *ticketFixture {
 		clerk:           f.newWorker(t, domainuser.RoleStaff),
 		checkoutFixture: f,
 		tickets:         tickets,
-		staff:           usecase.NewStaffOrderUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
+		staff:           usecase.NewStaffOrderUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil, postgresadapter.NewPaymentRepository(f.pool)),
 		counter:         usecase.NewStaffTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
 		kitchen:         usecase.NewBakerTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
 	}
 }
 
-// placeConfirmed checks out a cart of these lines tomorrow and has the counter
-// accept the order.
+// placeConfirmed checks out a cart of these lines tomorrow and pays for it,
+// which confirms the order.
 func (f *ticketFixture) placeConfirmed(t *testing.T, products, combos []uuid.UUID, hour int) *dto.OrderResponse {
 	t.Helper()
-	order, err := f.orderUC.Checkout(context.Background(), f.newCustomer(t, products, combos), acceptingTerms(tomorrowAt(hour, 0)))
+	customer := f.newCustomer(t, products, combos)
+	order, err := f.orderUC.Checkout(context.Background(), customer, uuid.New(), acceptingTerms(tomorrowAt(hour, 0)))
 	require.NoError(t, err)
-	_, err = f.staff.PatchStatus(context.Background(), f.clerk, domainuser.RoleStaff, uuid.MustParse(order.ID), domainorder.StatusConfirmed)
-	require.NoError(t, err)
+	f.pay(t, customer, order.ID)
 	return order
 }
 
@@ -135,7 +135,7 @@ func TestTickets_Integration(t *testing.T) {
 		}
 		hour := 8
 		for name, tc := range cases {
-			order, err := f.orderUC.Checkout(ctx, f.newCustomer(t, tc.products, tc.combos), acceptingTerms(tomorrowAt(hour, 0)))
+			order, err := f.orderUC.Checkout(ctx, f.newCustomer(t, tc.products, tc.combos), uuid.New(), acceptingTerms(tomorrowAt(hour, 0)))
 			require.NoError(t, err, name)
 			hour++
 			tickets, err := f.tickets.ListByOrder(ctx, uuid.MustParse(order.ID))
@@ -156,7 +156,7 @@ func TestTickets_Integration(t *testing.T) {
 	})
 
 	t.Run("tickets_wait_for_the_counter_to_accept_the_order", func(t *testing.T) {
-		order, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), acceptingTerms(tomorrowAt(12, 0)))
+		order, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), uuid.New(), acceptingTerms(tomorrowAt(12, 0)))
 		require.NoError(t, err)
 		ticket := f.ticketAt(t, order.ID, domaincategory.StationKitchen)
 
@@ -221,12 +221,12 @@ func TestTickets_Integration(t *testing.T) {
 		require.NoError(t, err)
 		var statuses []string
 		for _, entry := range detail.Timeline {
-			statuses = append(statuses, entry.Status+":"+entry.ActorRole)
+			statuses = append(statuses, entry.Status+":"+*entry.ActorRole)
 		}
-		assert.Equal(t, []string{"pending:customer", "confirmed:staff", "in_production:baker", "ready:staff"}, statuses,
+		assert.Equal(t, []string{"awaiting_payment:customer", "confirmed:customer", "in_production:baker", "ready:staff"}, statuses,
 			"each derived move is recorded as made by whoever caused it")
 		assert.Equal(t, []string{
-			"order.created:pending", "order.status_changed:confirmed",
+			"order.created:awaiting_payment", "order.status_changed:confirmed",
 			"order.status_changed:in_production", "ticket.changed:in_progress",
 			"ticket.changed:ready",
 			"ticket.changed:in_progress", "order.status_changed:ready", "ticket.changed:ready",

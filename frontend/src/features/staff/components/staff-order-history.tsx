@@ -15,7 +15,7 @@ type StaffOrderHistoryProps = {
   timeline: StaffOrder["timeline"];
 };
 
-/** Every status the order entered, when, and which role moved it there. */
+/** Every status the order entered, when, and which role — or the system — moved it there. */
 export function StaffOrderHistory({ timeline }: StaffOrderHistoryProps) {
   return (
     <DashboardProfileSection id="staff-order-history" title="Status history" variant="plain">
@@ -32,7 +32,9 @@ export function StaffOrderHistory({ timeline }: StaffOrderHistoryProps) {
                   {formatDateTime(entry.at)}
                 </time>
               </div>
-              <p className="dashboard-activity-feed-meta">{roleDisplayLabel(entry.actor_role)}</p>
+              <p className="dashboard-activity-feed-meta">
+                {entry.actor_role ? roleDisplayLabel(entry.actor_role) : "System"}
+              </p>
             </li>
           ))}
         </ol>

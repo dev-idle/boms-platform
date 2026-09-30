@@ -8,9 +8,10 @@ INSERT INTO discount_codes (
     max_discount_cents,
     starts_at,
     ends_at,
-    is_active
+    is_active,
+    max_uses_per_customer
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING
     id,
     code,
@@ -18,6 +19,7 @@ RETURNING
     value,
     min_order_cents,
     max_uses,
+    max_uses_per_customer,
     max_discount_cents,
     used_count,
     starts_at,
@@ -35,6 +37,7 @@ SELECT
     value,
     min_order_cents,
     max_uses,
+    max_uses_per_customer,
     max_discount_cents,
     used_count,
     starts_at,
@@ -58,6 +61,7 @@ SET code               = $2,
     starts_at          = $8,
     ends_at            = $9,
     is_active          = $10,
+    max_uses_per_customer = $11,
     updated_at         = now()
 WHERE id = $1
   AND deleted_at IS NULL
@@ -68,6 +72,7 @@ RETURNING
     value,
     min_order_cents,
     max_uses,
+    max_uses_per_customer,
     max_discount_cents,
     used_count,
     starts_at,
@@ -92,6 +97,7 @@ SELECT
     value,
     min_order_cents,
     max_uses,
+    max_uses_per_customer,
     max_discount_cents,
     used_count,
     starts_at,
@@ -117,6 +123,7 @@ SELECT
     value,
     min_order_cents,
     max_uses,
+    max_uses_per_customer,
     max_discount_cents,
     used_count,
     starts_at,
@@ -143,6 +150,7 @@ RETURNING
     value,
     min_order_cents,
     max_uses,
+    max_uses_per_customer,
     max_discount_cents,
     used_count,
     starts_at,
@@ -160,3 +168,11 @@ WHERE deleted_at IS NULL
     sqlc.narg('search')::text IS NULL
     OR code ILIKE '%' || sqlc.narg('search')::text || '%'
   );
+
+-- name: ReleaseDiscountCodeUse :execrows
+-- Gives back the use an order held that will not be paid.
+UPDATE discount_codes
+SET used_count = used_count - 1,
+    updated_at = now()
+WHERE id = $1
+  AND used_count > 0;

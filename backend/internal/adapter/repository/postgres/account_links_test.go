@@ -206,7 +206,7 @@ func TestAccountEmails_Integration(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.fillCart(customer.ID, []uuid.UUID{f.pastry}, nil))
 
-	_, err = f.orderUC.Checkout(ctx, customer.ID, acceptingTerms(tomorrowAt(12, 0)))
+	_, err = f.orderUC.Checkout(ctx, customer.ID, uuid.New(), acceptingTerms(tomorrowAt(12, 0)))
 	require.ErrorIs(t, err, domainuser.ErrEmailNotVerified, "no order before the address is confirmed")
 
 	require.NoError(t, verification.Resend(ctx, customer.ID))
@@ -221,7 +221,7 @@ func TestAccountEmails_Integration(t *testing.T) {
 	assert.True(t, confirmed.EmailVerified)
 	require.ErrorIs(t, verification.Verify(ctx, token), domainaccount.ErrLinkInvalid, "a link works once")
 
-	_, err = f.orderUC.Checkout(ctx, customer.ID, acceptingTerms(tomorrowAt(12, 0)))
+	_, err = f.orderUC.Checkout(ctx, customer.ID, uuid.New(), acceptingTerms(tomorrowAt(12, 0)))
 	require.NoError(t, err, "a confirmed customer orders")
 
 	require.NoError(t, reset.Request(ctx, "New-Customer@example.com"))

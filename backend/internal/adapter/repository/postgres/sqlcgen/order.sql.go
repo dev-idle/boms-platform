@@ -13,13 +13,40 @@ import (
 	"github.com/google/uuid"
 )
 
+const countCustomerDiscountUses = `-- name: CountCustomerDiscountUses :one
+SELECT count(*)::bigint AS count
+FROM orders
+WHERE user_id = $1
+  AND discount_code_id = $2
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+`
+
+type CountCustomerDiscountUsesParams struct {
+	UserID         uuid.UUID  `json:"userId"`
+	DiscountCodeID *uuid.UUID `json:"discountCodeId"`
+}
+
+// A customer's orders not cancelled or expired that use the discount code.
+//
+//	SELECT count(*)::bigint AS count
+//	FROM orders
+//	WHERE user_id = $1
+//	  AND discount_code_id = $2
+//	  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+func (q *Queries) CountCustomerDiscountUses(ctx context.Context, arg CountCustomerDiscountUsesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCustomerDiscountUses, arg.UserID, arg.DiscountCodeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countCustomerOrdersBetween = `-- name: CountCustomerOrdersBetween :one
 SELECT count(*)::bigint AS count
 FROM orders
 WHERE user_id = $1
   AND pickup_at >= $2::timestamptz
   AND pickup_at < $3::timestamptz
-  AND status <> 'cancelled'::order_status
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 `
 
 type CountCustomerOrdersBetweenParams struct {
@@ -28,14 +55,14 @@ type CountCustomerOrdersBetweenParams struct {
 	ToAt   time.Time `json:"toAt"`
 }
 
-// A customer's orders not cancelled with a pickup in [from_at, to_at).
+// A customer's orders not cancelled or expired with a pickup in [from_at, to_at).
 //
 //	SELECT count(*)::bigint AS count
 //	FROM orders
 //	WHERE user_id = $1
 //	  AND pickup_at >= $2::timestamptz
 //	  AND pickup_at < $3::timestamptz
-//	  AND status <> 'cancelled'::order_status
+//	  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 func (q *Queries) CountCustomerOrdersBetween(ctx context.Context, arg CountCustomerOrdersBetweenParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countCustomerOrdersBetween, arg.UserID, arg.FromAt, arg.ToAt)
 	var count int64
@@ -48,7 +75,7 @@ SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
 FROM orders
 WHERE pickup_at >= $1::timestamptz
   AND pickup_at < $2::timestamptz
-  AND status <> 'cancelled'::order_status
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 GROUP BY pickup_at
 `
 
@@ -68,7 +95,7 @@ type CountOrdersByPickupTimeRow struct {
 //	FROM orders
 //	WHERE pickup_at >= $1::timestamptz
 //	  AND pickup_at < $2::timestamptz
-//	  AND status <> 'cancelled'::order_status
+//	  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 //	GROUP BY pickup_at
 func (q *Queries) CountOrdersByPickupTime(ctx context.Context, arg CountOrdersByPickupTimeParams) ([]CountOrdersByPickupTimeRow, error) {
 	rows, err := q.db.Query(ctx, countOrdersByPickupTime, arg.FromAt, arg.ToAt)
@@ -95,7 +122,7 @@ SELECT count(*)::bigint AS count
 FROM orders
 WHERE pickup_at >= $1::timestamptz
   AND pickup_at < $2::timestamptz
-  AND status <> 'cancelled'::order_status
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 `
 
 type CountOrdersInSlotParams struct {
@@ -103,14 +130,15 @@ type CountOrdersInSlotParams struct {
 	ToAt   time.Time `json:"toAt"`
 }
 
-// Orders holding the slot [from_at, to_at): every order not cancelled whose
-// pickup falls in it, wherever in it an earlier slot grid put that pickup.
+// Orders holding the slot [from_at, to_at): every order not cancelled or
+// expired whose pickup falls in it, wherever in it an earlier slot grid put
+// that pickup.
 //
 //	SELECT count(*)::bigint AS count
 //	FROM orders
 //	WHERE pickup_at >= $1::timestamptz
 //	  AND pickup_at < $2::timestamptz
-//	  AND status <> 'cancelled'::order_status
+//	  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 func (q *Queries) CountOrdersInSlot(ctx context.Context, arg CountOrdersInSlotParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countOrdersInSlot, arg.FromAt, arg.ToAt)
 	var count int64
@@ -131,7 +159,9 @@ INSERT INTO orders (
   code,
   order_type,
   terms_version,
-  terms_accepted_at
+  terms_accepted_at,
+  checkout_key,
+  payment_due_at
 )
 VALUES (
   $1,
@@ -147,7 +177,10 @@ VALUES (
   $11::text,
   -- Accepted at the instant the order is placed: the transaction clock that
   -- created_at takes.
-  CASE WHEN $11::text IS NULL THEN NULL ELSE now() END
+  CASE WHEN $11::text IS NULL THEN NULL ELSE now() END,
+  $12,
+  -- Held unpaid until then, on the database clock.
+  now() + make_interval(mins => $13::int)
 )
 RETURNING
   id,
@@ -164,7 +197,9 @@ RETURNING
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 `
 
 type CreateOrderParams struct {
@@ -179,6 +214,8 @@ type CreateOrderParams struct {
 	Code                 string      `json:"code"`
 	OrderType            OrderType   `json:"orderType"`
 	TermsVersion         *string     `json:"termsVersion"`
+	CheckoutKey          *uuid.UUID  `json:"checkoutKey"`
+	PaymentHoldMinutes   int32       `json:"paymentHoldMinutes"`
 }
 
 // CreateOrder
@@ -195,7 +232,9 @@ type CreateOrderParams struct {
 //	  code,
 //	  order_type,
 //	  terms_version,
-//	  terms_accepted_at
+//	  terms_accepted_at,
+//	  checkout_key,
+//	  payment_due_at
 //	)
 //	VALUES (
 //	  $1,
@@ -211,7 +250,10 @@ type CreateOrderParams struct {
 //	  $11::text,
 //	  -- Accepted at the instant the order is placed: the transaction clock that
 //	  -- created_at takes.
-//	  CASE WHEN $11::text IS NULL THEN NULL ELSE now() END
+//	  CASE WHEN $11::text IS NULL THEN NULL ELSE now() END,
+//	  $12,
+//	  -- Held unpaid until then, on the database clock.
+//	  now() + make_interval(mins => $13::int)
 //	)
 //	RETURNING
 //	  id,
@@ -228,7 +270,9 @@ type CreateOrderParams struct {
 //	  code,
 //	  order_type,
 //	  terms_accepted_at,
-//	  terms_version
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
 	row := q.db.QueryRow(ctx, createOrder,
 		arg.UserID,
@@ -242,6 +286,8 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		arg.Code,
 		arg.OrderType,
 		arg.TermsVersion,
+		arg.CheckoutKey,
+		arg.PaymentHoldMinutes,
 	)
 	var i Order
 	err := row.Scan(
@@ -260,6 +306,8 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.OrderType,
 		&i.TermsAcceptedAt,
 		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
 	)
 	return i, err
 }
@@ -363,8 +411,8 @@ type CreateOrderStatusEventParams struct {
 	OrderID    uuid.UUID    `json:"orderId"`
 	FromStatus *OrderStatus `json:"fromStatus"`
 	ToStatus   OrderStatus  `json:"toStatus"`
-	ActorID    uuid.UUID    `json:"actorId"`
-	ActorRole  UserRole     `json:"actorRole"`
+	ActorID    *uuid.UUID   `json:"actorId"`
+	ActorRole  *UserRole    `json:"actorRole"`
 }
 
 // CreateOrderStatusEvent
@@ -388,6 +436,167 @@ func (q *Queries) CreateOrderStatusEvent(ctx context.Context, arg CreateOrderSta
 	return err
 }
 
+const expireOrder = `-- name: ExpireOrder :one
+UPDATE orders
+SET status = 'expired'::order_status,
+    updated_at = now()
+WHERE id = $1
+  AND status = 'awaiting_payment'::order_status
+  AND payment_due_at <= now() - make_interval(secs => $2::double precision)
+RETURNING
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at
+`
+
+type ExpireOrderParams struct {
+	ID           uuid.UUID `json:"id"`
+	GraceSeconds float64   `json:"graceSeconds"`
+}
+
+// An order still awaiting payment more than grace_seconds past its due time
+// expires; one paid meanwhile does not.
+//
+//	UPDATE orders
+//	SET status = 'expired'::order_status,
+//	    updated_at = now()
+//	WHERE id = $1
+//	  AND status = 'awaiting_payment'::order_status
+//	  AND payment_due_at <= now() - make_interval(secs => $2::double precision)
+//	RETURNING
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  pickup_at,
+//	  created_at,
+//	  updated_at,
+//	  code,
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at
+func (q *Queries) ExpireOrder(ctx context.Context, arg ExpireOrderParams) (Order, error) {
+	row := q.db.QueryRow(ctx, expireOrder, arg.ID, arg.GraceSeconds)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.PickupAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
+	)
+	return i, err
+}
+
+const getOrderByCheckoutKey = `-- name: GetOrderByCheckoutKey :one
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at
+FROM orders
+WHERE user_id = $1
+  AND checkout_key = $2
+`
+
+type GetOrderByCheckoutKeyParams struct {
+	UserID      uuid.UUID  `json:"userId"`
+	CheckoutKey *uuid.UUID `json:"checkoutKey"`
+}
+
+// GetOrderByCheckoutKey
+//
+//	SELECT
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  pickup_at,
+//	  created_at,
+//	  updated_at,
+//	  code,
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at
+//	FROM orders
+//	WHERE user_id = $1
+//	  AND checkout_key = $2
+func (q *Queries) GetOrderByCheckoutKey(ctx context.Context, arg GetOrderByCheckoutKeyParams) (Order, error) {
+	row := q.db.QueryRow(ctx, getOrderByCheckoutKey, arg.UserID, arg.CheckoutKey)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.PickupAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
+	)
+	return i, err
+}
+
 const getOrderByIDForUser = `-- name: GetOrderByIDForUser :one
 SELECT
   id,
@@ -404,7 +613,9 @@ SELECT
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 FROM orders
 WHERE id = $1 AND user_id = $2
 `
@@ -431,7 +642,9 @@ type GetOrderByIDForUserParams struct {
 //	  code,
 //	  order_type,
 //	  terms_accepted_at,
-//	  terms_version
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at
 //	FROM orders
 //	WHERE id = $1 AND user_id = $2
 func (q *Queries) GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error) {
@@ -453,6 +666,8 @@ func (q *Queries) GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUs
 		&i.OrderType,
 		&i.TermsAcceptedAt,
 		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
 	)
 	return i, err
 }
@@ -462,24 +677,68 @@ SELECT EXISTS (
   SELECT 1
   FROM orders
   WHERE user_id = $1
-    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status)
+    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status)
 ) AS open
 `
 
 // Whether the customer has an order the bakery still has to make or hand
-// over: anything not yet fulfilled or cancelled.
+// over, or one waiting for payment: anything not fulfilled, cancelled or
+// expired.
 //
 //	SELECT EXISTS (
 //	  SELECT 1
 //	  FROM orders
 //	  WHERE user_id = $1
-//	    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status)
+//	    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status)
 //	) AS open
 func (q *Queries) HasOpenOrdersForUser(ctx context.Context, userID uuid.UUID) (bool, error) {
 	row := q.db.QueryRow(ctx, hasOpenOrdersForUser, userID)
 	var open bool
 	err := row.Scan(&open)
 	return open, err
+}
+
+const listDueUnpaidOrders = `-- name: ListDueUnpaidOrders :many
+SELECT id
+FROM orders
+WHERE status = 'awaiting_payment'::order_status
+  AND payment_due_at <= now() - make_interval(secs => $1::double precision)
+ORDER BY payment_due_at
+LIMIT $2::int
+`
+
+type ListDueUnpaidOrdersParams struct {
+	GraceSeconds float64 `json:"graceSeconds"`
+	MaxRows      int32   `json:"maxRows"`
+}
+
+// Orders awaiting payment more than grace_seconds past their due time, the
+// longest overdue first.
+//
+//	SELECT id
+//	FROM orders
+//	WHERE status = 'awaiting_payment'::order_status
+//	  AND payment_due_at <= now() - make_interval(secs => $1::double precision)
+//	ORDER BY payment_due_at
+//	LIMIT $2::int
+func (q *Queries) ListDueUnpaidOrders(ctx context.Context, arg ListDueUnpaidOrdersParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listDueUnpaidOrders, arg.GraceSeconds, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listOrderItemsByOrderID = `-- name: ListOrderItemsByOrderID :many
@@ -631,7 +890,7 @@ ORDER BY created_at ASC, id ASC
 
 type ListOrderStatusEventsRow struct {
 	ToStatus  OrderStatus `json:"toStatus"`
-	ActorRole UserRole    `json:"actorRole"`
+	ActorRole *UserRole   `json:"actorRole"`
 	CreatedAt time.Time   `json:"createdAt"`
 }
 
@@ -671,7 +930,7 @@ ORDER BY order_id, created_at ASC, id ASC
 type ListOrderStatusEventsByOrderIDsRow struct {
 	OrderID   uuid.UUID   `json:"orderId"`
 	ToStatus  OrderStatus `json:"toStatus"`
-	ActorRole UserRole    `json:"actorRole"`
+	ActorRole *UserRole   `json:"actorRole"`
 	CreatedAt time.Time   `json:"createdAt"`
 }
 
@@ -722,7 +981,9 @@ SELECT
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 FROM orders
 WHERE user_id = $1
   AND (
@@ -767,7 +1028,9 @@ type ListOrdersByUserParams struct {
 //	  code,
 //	  order_type,
 //	  terms_accepted_at,
-//	  terms_version
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at
 //	FROM orders
 //	WHERE user_id = $1
 //	  AND (
@@ -816,6 +1079,8 @@ func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserPara
 			&i.OrderType,
 			&i.TermsAcceptedAt,
 			&i.TermsVersion,
+			&i.CheckoutKey,
+			&i.PaymentDueAt,
 		); err != nil {
 			return nil, err
 		}
@@ -843,7 +1108,9 @@ SELECT
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 FROM orders
 WHERE user_id = $1
   AND (
@@ -880,7 +1147,9 @@ type ListOrdersByUserBeforeParams struct {
 //	  code,
 //	  order_type,
 //	  terms_accepted_at,
-//	  terms_version
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at
 //	FROM orders
 //	WHERE user_id = $1
 //	  AND (
@@ -919,6 +1188,8 @@ func (q *Queries) ListOrdersByUserBefore(ctx context.Context, arg ListOrdersByUs
 			&i.OrderType,
 			&i.TermsAcceptedAt,
 			&i.TermsVersion,
+			&i.CheckoutKey,
+			&i.PaymentDueAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1000,7 +1271,9 @@ SELECT
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 FROM orders
 WHERE id = $1
 FOR UPDATE
@@ -1025,7 +1298,9 @@ FOR UPDATE
 //	  code,
 //	  order_type,
 //	  terms_accepted_at,
-//	  terms_version
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at
 //	FROM orders
 //	WHERE id = $1
 //	FOR UPDATE
@@ -1048,6 +1323,8 @@ func (q *Queries) LockOrder(ctx context.Context, id uuid.UUID) (Order, error) {
 		&i.OrderType,
 		&i.TermsAcceptedAt,
 		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
 	)
 	return i, err
 }
@@ -1217,10 +1494,11 @@ SELECT
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-WHERE (
+WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+  AND (
     $1::order_status IS NULL
     OR o.status = $1::order_status
-)
+  )
 ORDER BY o.created_at DESC
 LIMIT $3 OFFSET $2
 `
@@ -1250,7 +1528,7 @@ type StaffListOrdersRow struct {
 	CustomerDisplayName   *string     `json:"customerDisplayName"`
 }
 
-// StaffListOrders
+// An order not paid, now or ever, is not the bakery's to see.
 //
 //	SELECT
 //	  o.id,
@@ -1272,10 +1550,11 @@ type StaffListOrdersRow struct {
 //	FROM orders o
 //	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 //	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-//	WHERE (
+//	WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+//	  AND (
 //	    $1::order_status IS NULL
 //	    OR o.status = $1::order_status
-//	)
+//	  )
 //	ORDER BY o.created_at DESC
 //	LIMIT $3 OFFSET $2
 func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error) {
@@ -1319,10 +1598,11 @@ const staffListOrdersCount = `-- name: StaffListOrdersCount :one
 SELECT COUNT(*)::bigint AS count
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-WHERE (
+WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+  AND (
     $1::order_status IS NULL
     OR o.status = $1::order_status
-)
+  )
 `
 
 // StaffListOrdersCount
@@ -1330,10 +1610,11 @@ WHERE (
 //	SELECT COUNT(*)::bigint AS count
 //	FROM orders o
 //	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	WHERE (
+//	WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+//	  AND (
 //	    $1::order_status IS NULL
 //	    OR o.status = $1::order_status
-//	)
+//	  )
 func (q *Queries) StaffListOrdersCount(ctx context.Context, status *OrderStatus) (int64, error) {
 	row := q.db.QueryRow(ctx, staffListOrdersCount, status)
 	var count int64
@@ -1400,7 +1681,9 @@ RETURNING
   code,
   order_type,
   terms_accepted_at,
-  terms_version
+  terms_version,
+  checkout_key,
+  payment_due_at
 `
 
 type UpdateOrderStatusParams struct {
@@ -1431,7 +1714,9 @@ type UpdateOrderStatusParams struct {
 //	  code,
 //	  order_type,
 //	  terms_accepted_at,
-//	  terms_version
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at
 func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error) {
 	row := q.db.QueryRow(ctx, updateOrderStatus, arg.ToStatus, arg.ID, arg.FromStatus)
 	var i Order
@@ -1451,6 +1736,8 @@ func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusPa
 		&i.OrderType,
 		&i.TermsAcceptedAt,
 		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
 	)
 	return i, err
 }

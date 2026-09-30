@@ -4,15 +4,26 @@ import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 /** Order lifecycle — mirrors backend `domain/order.Status`; the single frontend source. */
 export const orderStatusSchema = z.enum([
+  "awaiting_payment",
   "pending",
   "confirmed",
   "in_production",
   "ready",
   "cancelled",
   "fulfilled",
+  "expired",
 ]);
 
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
+
+/** Where an order's payment stands — null on the order before the customer starts paying. */
+export const orderPaymentSchema = z.object({
+  provider: z.enum(["paypal"]),
+  status: z.enum(["created", "pending", "captured", "denied"]),
+  captured_at: apiDateTimeSchema.nullable(),
+});
+
+export type OrderPayment = z.infer<typeof orderPaymentSchema>;
 
 /** How an order is prepared — mirrors backend `domain/order.Type`. */
 export const orderTypeSchema = z.enum(["instant", "pre_order"]);

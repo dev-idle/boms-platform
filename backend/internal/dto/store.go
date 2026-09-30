@@ -42,6 +42,7 @@ type StoreSettingsResponse struct {
 	SlotMinutes            int    `json:"slot_minutes"`
 	SlotCapacity           int    `json:"slot_capacity"`
 	InstantPrepMinutes     int    `json:"instant_prep_minutes"`
+	PaymentHoldMinutes     int    `json:"payment_hold_minutes"`
 	UpdatedAt              string `json:"updated_at"`
 }
 
@@ -54,6 +55,7 @@ type PatchStoreSettingsRequest struct {
 	SlotMinutes            *int    `json:"slot_minutes"`
 	SlotCapacity           *int    `json:"slot_capacity"`
 	InstantPrepMinutes     *int    `json:"instant_prep_minutes"`
+	PaymentHoldMinutes     *int    `json:"payment_hold_minutes"`
 }
 
 // ClosedDateResponse is a closed day as admins manage it.

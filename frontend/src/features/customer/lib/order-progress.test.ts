@@ -2,20 +2,34 @@ import { describe, expect, it } from "vitest";
 
 import {
   activeOrderProgressIndex,
-  isOrderCancelled,
+  isOrderDropped,
+  isWithTheBakery,
   statusReachedAt,
 } from "./order-progress";
 
 describe("order progress", () => {
   it("maps lifecycle statuses to step index", () => {
+    expect(activeOrderProgressIndex("awaiting_payment")).toBe(0);
     expect(activeOrderProgressIndex("pending")).toBe(0);
+    expect(activeOrderProgressIndex("confirmed")).toBe(1);
     expect(activeOrderProgressIndex("ready")).toBe(3);
     expect(activeOrderProgressIndex("fulfilled")).toBe(4);
   });
 
-  it("marks cancelled orders separately", () => {
+  it("marks orders that will not be made separately", () => {
     expect(activeOrderProgressIndex("cancelled")).toBe(-1);
-    expect(isOrderCancelled("cancelled")).toBe(true);
+    expect(activeOrderProgressIndex("expired")).toBe(-1);
+    expect(isOrderDropped("cancelled")).toBe(true);
+    expect(isOrderDropped("expired")).toBe(true);
+    expect(isOrderDropped("awaiting_payment")).toBe(false);
+  });
+
+  it("shows the stations only once the bakery has the order", () => {
+    expect(isWithTheBakery("awaiting_payment")).toBe(false);
+    expect(isWithTheBakery("cancelled")).toBe(false);
+    expect(isWithTheBakery("expired")).toBe(false);
+    expect(isWithTheBakery("confirmed")).toBe(true);
+    expect(isWithTheBakery("ready")).toBe(true);
   });
 
   it("reads when each step was reached from the timeline", () => {

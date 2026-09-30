@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	domaincart "github.com/boms/backend/internal/domain/cart"
+	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainstore "github.com/boms/backend/internal/domain/store"
@@ -23,15 +25,17 @@ const (
 )
 
 type OrderUsecase struct {
-	users    port.UserRepository
-	orders   port.OrderRepository
-	carts    port.CartRepository
-	discount port.DiscountCodeRepository
-	cartUC   *CartUsecase
-	tx       port.TxManager
-	events   port.EventOutbox
-	store    port.StoreSettingsRepository
-	tickets  port.TicketRepository
+	users       port.UserRepository
+	orders      port.OrderRepository
+	carts       port.CartRepository
+	discount    port.DiscountCodeRepository
+	cartUC      *CartUsecase
+	tx          port.TxManager
+	events      port.EventOutbox
+	store       port.StoreSettingsRepository
+	tickets     port.TicketRepository
+	payments    port.PaymentRepository
+	transitions orderTransitions
 }
 
 func NewOrderUsecase(
@@ -44,15 +48,26 @@ func NewOrderUsecase(
 	events port.EventOutbox,
 	store port.StoreSettingsRepository,
 	tickets port.TicketRepository,
+	payments port.PaymentRepository,
 ) *OrderUsecase {
 	return &OrderUsecase{
 		users: users, orders: orders, carts: carts, discount: discount, cartUC: cartUC,
-		tx: tx, events: events, store: store, tickets: tickets,
+		tx: tx, events: events, store: store, tickets: tickets, payments: payments,
+		transitions: orderTransitions{tx: tx, orders: orders, tickets: tickets, events: events},
 	}
 }
 
-func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, req dto.CheckoutRequest) (*dto.OrderResponse, error) {
+// Checkout places the customer's cart as an order awaiting payment: it holds
+// its pickup slot and discount until paid. checkoutKey is the request's
+// Idempotency-Key: the same key again returns the order it placed, so a retry
+// after a lost answer places nothing twice.
+func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UUID, req dto.CheckoutRequest) (*dto.OrderResponse, error) {
 	if err := domainpolicy.RequireAccepted(req.TermsVersion); err != nil {
+		return nil, err
+	}
+	if placed, err := u.orders.GetByCheckoutKey(ctx, userID, checkoutKey); err == nil {
+		return u.orderResponse(ctx, userID, placed.ID)
+	} else if !errors.Is(err, apperrors.ErrNotFound) {
 		return nil, err
 	}
 	pickupAt := req.PickupAt
@@ -92,6 +107,9 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, req dto.C
 		var discountCodeID *uuid.UUID
 		var discountSnapshot *string
 		if discountCode != nil {
+			if err := u.holdDiscount(txCtx, userID, discountCode.ID); err != nil {
+				return err
+			}
 			discountCodeID = &discountCode.ID
 			snapshot := discountCode.Code
 			discountSnapshot = &snapshot
@@ -105,7 +123,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, req dto.C
 		order, err := u.orders.Create(txCtx, port.CreateOrderParams{
 			UserID:               userID,
 			Code:                 domainorder.Code(day, number),
-			Status:               domainorder.StatusPending,
+			Status:               domainorder.StatusAwaitingPayment,
 			Type:                 booking.orderType,
 			SubtotalCents:        totals.SubtotalCents,
 			DiscountCents:        totals.DiscountCents,
@@ -114,6 +132,8 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, req dto.C
 			DiscountCodeSnapshot: discountSnapshot,
 			PickupAt:             &pickupAt,
 			TermsVersion:         &req.TermsVersion,
+			CheckoutKey:          &checkoutKey,
+			PaymentHold:          settings.PaymentHold,
 		})
 		if err != nil {
 			return err
@@ -142,17 +162,11 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, req dto.C
 			return err
 		}
 		if err := u.orders.AddStatusEvent(txCtx, port.AddOrderStatusEventParams{
-			OrderID:   order.ID,
-			To:        order.Status,
-			ActorID:   userID,
-			ActorRole: domainuser.RoleCustomer,
+			OrderID: order.ID,
+			To:      order.Status,
+			Actor:   &port.OrderActor{ID: userID, Role: domainuser.RoleCustomer},
 		}); err != nil {
 			return err
-		}
-		if discountCode != nil {
-			if _, err := u.discount.IncrementUsedCount(txCtx, discountCode.ID); err != nil {
-				return err
-			}
 		}
 		if err := u.carts.DeleteAllItems(txCtx, cart.ID); err != nil {
 			return err
@@ -163,6 +177,18 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, req dto.C
 		if err := u.events.Add(txCtx, domainorder.CreatedEvent(*order)); err != nil {
 			return err
 		}
+		// Nothing to pay, as when a discount covers the whole order: it is paid
+		// at once and goes to the bakery the way a paid order does.
+		if order.TotalCents == 0 {
+			customer := &port.OrderActor{ID: userID, Role: domainuser.RoleCustomer}
+			if order, err = u.transitions.applyInTx(txCtx, customer, port.UpdateOrderStatusParams{
+				OrderID:    order.ID,
+				FromStatus: domainorder.StatusAwaitingPayment,
+				ToStatus:   domainorder.StatusConfirmed,
+			}); err != nil {
+				return err
+			}
+		}
 		if booking.fillsSlot {
 			if err := u.events.Add(txCtx, domainorder.SlotsChangedEvent(domainstore.DayOf(pickupAt))); err != nil {
 				return err
@@ -171,10 +197,39 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, req dto.C
 		created = order
 		return nil
 	})
+	if errors.Is(err, domaincart.ErrEmpty) || errors.Is(err, apperrors.ErrConflict) {
+		// A request with the same key placed the order while this one waited
+		// on the cart.
+		if placed, lookupErr := u.orders.GetByCheckoutKey(ctx, userID, checkoutKey); lookupErr == nil {
+			return u.orderResponse(ctx, userID, placed.ID)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
 	return u.orderResponse(ctx, userID, created.ID)
+}
+
+// holdDiscount takes one of the code's uses for the order being placed. The
+// code's row stays locked until the order commits, so orders placed at the
+// same time count each other: neither the code's cap nor its cap per customer
+// is passed.
+func (u *OrderUsecase) holdDiscount(txCtx context.Context, userID, codeID uuid.UUID) error {
+	code, err := u.discount.IncrementUsedCount(txCtx, codeID)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return domaindiscount.ErrExhausted
+	}
+	if err != nil || code.MaxUsesPerCustomer == nil {
+		return err
+	}
+	used, err := u.orders.CountCustomerDiscountUses(txCtx, userID, codeID)
+	if err != nil {
+		return err
+	}
+	if used >= int(*code.MaxUsesPerCustomer) {
+		return domaindiscount.ErrUsedUpByCustomer
+	}
+	return nil
 }
 
 // createTickets splits a new order into one ticket per station, combos by the
@@ -297,7 +352,7 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		}
 		return nil, err
 	}
-	parts, err := readOrderDetail(ctx, u.orders, u.tickets, order.ID)
+	parts, err := readOrderDetail(ctx, u.orders, u.tickets, u.payments, order.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -314,6 +369,8 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		Items:                mapOrderItemsToDTO(parts.items),
 		Timeline:             mapOrderTimelineToDTO(parts.timeline),
 		Tickets:              mapTicketSummariesToDTO(parts.tickets),
+		Payment:              mapOrderPaymentToDTO(parts.payment),
+		PaymentDueAt:         order.PaymentDueAt,
 		CreatedAt:            order.CreatedAt,
 		UpdatedAt:            order.UpdatedAt,
 	}

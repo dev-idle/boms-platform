@@ -628,6 +628,11 @@ table "discount_codes" {
     type = int
     null = true
   }
+  // How many of one customer's orders not cancelled may use the code.
+  column "max_uses_per_customer" {
+    type = int
+    null = true
+  }
   column "max_discount_cents" {
     type = bigint
     null = true
@@ -688,6 +693,9 @@ table "discount_codes" {
   check "discount_codes_max_uses_check" {
     expr = "max_uses IS NULL OR max_uses > 0"
   }
+  check "discount_codes_max_uses_per_customer_check" {
+    expr = "max_uses_per_customer IS NULL OR max_uses_per_customer > 0"
+  }
   check "discount_codes_value_percent_check" {
     expr = "discount_type <> 'percent' OR (value >= 1 AND value <= 100)"
   }
@@ -712,7 +720,7 @@ enum "line_type" {
 
 enum "order_status" {
   schema = schema.public
-  values = ["pending", "confirmed", "in_production", "ready", "fulfilled", "cancelled"]
+  values = ["pending", "confirmed", "in_production", "ready", "fulfilled", "cancelled", "awaiting_payment", "expired"]
 }
 
 // How an order is prepared: instant (ready-made, collected the same day) or a pre-order.
@@ -920,6 +928,17 @@ table "orders" {
     type = text
     null = true
   }
+  // The Idempotency-Key of the checkout that placed the order: the same key
+  // from the same customer returns this order instead of placing another.
+  column "checkout_key" {
+    type = uuid
+    null = true
+  }
+  // When an order awaiting payment expires unpaid, on the database clock.
+  column "payment_due_at" {
+    type = timestamptz
+    null = true
+  }
   primary_key {
     columns = [column.id]
   }
@@ -949,6 +968,16 @@ table "orders" {
   index "orders_code_idx" {
     unique  = true
     columns = [column.code]
+  }
+  // Orders waiting for payment, found by when they expire.
+  index "orders_payment_due_idx" {
+    columns = [column.payment_due_at]
+    where   = "status = 'awaiting_payment'::order_status"
+  }
+  index "orders_checkout_key_idx" {
+    unique  = true
+    columns = [column.user_id, column.checkout_key]
+    where   = "checkout_key IS NOT NULL"
   }
   // Orders holding a pickup slot, counted when a checkout takes one.
   index "orders_pickup_slot_idx" {
@@ -1200,13 +1229,14 @@ table "order_status_events" {
     type = enum.order_status
     null = false
   }
+  // Both empty: the system made the move, as when an unpaid order expires.
   column "actor_id" {
     type = uuid
-    null = false
+    null = true
   }
   column "actor_role" {
     type = enum.user_role
-    null = false
+    null = true
   }
   column "created_at" {
     type    = timestamptz
@@ -1231,6 +1261,9 @@ table "order_status_events" {
   }
   check "order_status_events_move_check" {
     expr = "from_status IS DISTINCT FROM to_status"
+  }
+  check "order_status_events_actor_check" {
+    expr = "(actor_id IS NULL) = (actor_role IS NULL)"
   }
 }
 
@@ -1334,6 +1367,12 @@ table "store_settings" {
     null    = false
     default = 20
   }
+  // How long an order placed online holds its slot and discount unpaid.
+  column "payment_hold_minutes" {
+    type    = smallint
+    null    = false
+    default = 15
+  }
   primary_key {
     columns = [column.id]
   }
@@ -1357,6 +1396,9 @@ table "store_settings" {
   }
   check "store_settings_instant_prep_check" {
     expr = "instant_prep_minutes >= 0 AND instant_prep_minutes <= 240"
+  }
+  check "store_settings_payment_hold_check" {
+    expr = "payment_hold_minutes >= 5 AND payment_hold_minutes <= 120"
   }
 }
 
@@ -1458,5 +1500,111 @@ table "user_tokens" {
   }
   check "user_tokens_token_hash_check" {
     expr = "octet_length(token_hash) = 32"
+  }
+}
+
+enum "payment_provider" {
+  schema = schema.public
+  values = ["paypal"]
+}
+
+// created: the buyer was sent to approve; pending: the provider holds the
+// capture for review; captured: the money is taken; denied: the provider
+// refused a pending capture, and the buyer may pay again.
+enum "payment_status" {
+  schema = schema.public
+  values = ["created", "pending", "captured", "denied"]
+}
+
+// How an order is paid: one row per order, never deleted. Only the provider's
+// ids, the amount and the outcome are kept, never its payload, which carries
+// the payer's personal details.
+table "payments" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "order_id" {
+    type = uuid
+    null = false
+  }
+  column "provider" {
+    type = enum.payment_provider
+    null = false
+  }
+  column "provider_order_id" {
+    type = text
+    null = false
+  }
+  // The provider page the buyer approves the payment on.
+  column "approve_url" {
+    type = text
+    null = false
+  }
+  column "status" {
+    type    = enum.payment_status
+    null    = false
+    default = "created"
+  }
+  column "capture_id" {
+    type = text
+    null = true
+  }
+  column "amount_cents" {
+    type = bigint
+    null = false
+  }
+  column "currency" {
+    type = text
+    null = false
+  }
+  column "captured_at" {
+    type = timestamptz
+    null = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "payments_order_id_fkey" {
+    columns     = [column.order_id]
+    ref_columns = [table.orders.column.id]
+    on_delete   = RESTRICT
+  }
+  index "payments_order_id_idx" {
+    unique  = true
+    columns = [column.order_id]
+  }
+  index "payments_provider_order_idx" {
+    unique  = true
+    columns = [column.provider, column.provider_order_id]
+  }
+  index "payments_capture_idx" {
+    unique  = true
+    columns = [column.provider, column.capture_id]
+    where   = "capture_id IS NOT NULL"
+  }
+  check "payments_amount_cents_check" {
+    expr = "amount_cents > 0"
+  }
+  check "payments_currency_check" {
+    expr = "currency ~ '^[A-Z]{3}$'"
+  }
+  check "payments_capture_check" {
+    expr = "(status = 'created') = (capture_id IS NULL)"
+  }
+  check "payments_captured_at_check" {
+    expr = "(status = 'captured') = (captured_at IS NOT NULL)"
   }
 }

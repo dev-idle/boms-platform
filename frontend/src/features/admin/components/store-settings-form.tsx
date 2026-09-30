@@ -17,9 +17,11 @@ import { usePatchStoreSettings } from "../hooks";
 import {
   MAX_ADVANCE_DAYS,
   MAX_INSTANT_PREP_MINUTES,
+  MAX_PAYMENT_HOLD_MINUTES,
   MAX_PREORDER_LEAD_MINUTES,
   MAX_SLOT_CAPACITY,
   MIN_ADVANCE_DAYS,
+  MIN_PAYMENT_HOLD_MINUTES,
   SLOT_MINUTE_OPTIONS,
   storeSettingsFormSchema,
   type StoreSettings,
@@ -35,6 +37,7 @@ const STORE_SETTINGS_FIELDS = [
   "preorder_min_lead_minutes",
   "instant_prep_minutes",
   "max_advance_days",
+  "payment_hold_minutes",
 ] as const;
 
 type StoreSettingsFormProps = {
@@ -50,10 +53,11 @@ function formValues(settings: StoreSettings): StoreSettingsFormInput {
     slot_minutes: settings.slot_minutes,
     slot_capacity: settings.slot_capacity,
     instant_prep_minutes: settings.instant_prep_minutes,
+    payment_hold_minutes: settings.payment_hold_minutes,
   };
 }
 
-/** Opening hours, slots, notice and booking window — checkout enforces them at once. */
+/** Opening hours, slots, notice, booking window and time to pay — checkout enforces them at once. */
 export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
   const patchSettings = usePatchStoreSettings();
   const form = useForm<StoreSettingsFormInput>({
@@ -219,6 +223,23 @@ export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
                 label="Booking window"
               >
                 <IntegerFieldInput max={MAX_ADVANCE_DAYS} min={MIN_ADVANCE_DAYS} {...field} />
+              </FieldControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="payment_hold_minutes"
+          render={({ field }) => (
+            <FormItem>
+              <FieldControl
+                hint={`How long an order waits for its PayPal payment before it expires and frees its pickup time, in minutes (${MIN_PAYMENT_HOLD_MINUTES}–${MAX_PAYMENT_HOLD_MINUTES}).`}
+                hintId="store-payment-hold-hint"
+                label="Time to pay"
+              >
+                <IntegerFieldInput max={MAX_PAYMENT_HOLD_MINUTES} min={MIN_PAYMENT_HOLD_MINUTES} {...field} />
               </FieldControl>
               <FormMessage />
             </FormItem>

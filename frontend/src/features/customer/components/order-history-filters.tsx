@@ -13,12 +13,14 @@ const ALL_STATUSES = "all";
 /** Every status a row can show, labelled as its status dot reads. */
 const ORDER_HISTORY_STATUS_OPTIONS: Array<{ value: OrderStatus | typeof ALL_STATUSES; label: string }> = [
   { value: ALL_STATUSES, label: "All orders" },
+  { value: "awaiting_payment", label: "Awaiting payment" },
   { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
   { value: "in_production", label: "In production" },
   { value: "ready", label: "Ready" },
   { value: "fulfilled", label: "Fulfilled" },
   { value: "cancelled", label: "Cancelled" },
+  { value: "expired", label: "Expired" },
 ];
 
 const dayInputSchema = z.union([z.literal(""), z.iso.date()]);

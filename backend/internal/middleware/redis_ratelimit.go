@@ -187,6 +187,15 @@ func VerificationResendRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisC
 	}, cfg.VerificationResendMax, cfg.VerificationResendWindow, true)
 }
 
+// PaymentWebhookRateLimit limits payment provider notices per IP: checking
+// each one costs a call to the provider, so a flood of forged ones is cut off
+// before it makes that call.
+func PaymentWebhookRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		return "rl:ip:" + ClientIP(c) + ":payment_webhook"
+	}, cfg.PaymentWebhookMax, cfg.PaymentWebhookWindow, true)
+}
+
 // OrderWriteRateLimit limits order mutations (checkout, status transitions) per user.
 func OrderWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c fiber.Ctx) string {

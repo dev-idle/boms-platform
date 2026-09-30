@@ -151,6 +151,12 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
               <span>Total</span>
               <span className="text-tabular">{formatPriceCents(order.total_cents)}</span>
             </div>
+            {order.payment?.captured_at ? (
+              <div className="dashboard-order-totals-row text-muted">
+                <span>Paid with PayPal</span>
+                <span>{formatDateTime(order.payment.captured_at)}</span>
+              </div>
+            ) : null}
           </div>
 
           {actions.length > 0 ? (

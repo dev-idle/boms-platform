@@ -94,7 +94,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	store := postgresadapter.NewStoreSettingsRepository(pool)
 
 	cartUC := usecase.NewCartUsecase(carts, products, combos, discounts)
-	orderUC := usecase.NewOrderUsecase(users, orders, carts, discounts, cartUC, pool, outbox, store, postgresadapter.NewTicketRepository(pool))
+	orderUC := usecase.NewOrderUsecase(users, orders, carts, discounts, cartUC, pool, outbox, store, postgresadapter.NewTicketRepository(pool), postgresadapter.NewPaymentRepository(pool))
 
 	customer, err := users.Create(ctx, port.CreateUserParams{
 		Email: "outbox-checkout@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,
@@ -111,7 +111,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	_, err = cartUC.AddItem(ctx, customer.ID, dto.AddCartItemRequest{ProductID: &productID, Quantity: 1})
 	require.NoError(t, err)
 
-	order, err := orderUC.Checkout(ctx, customer.ID, acceptingTerms(nextPickupSlot(time.Now())))
+	order, err := orderUC.Checkout(ctx, customer.ID, uuid.New(), acceptingTerms(nextPickupSlot(time.Now())))
 	require.NoError(t, err)
 
 	var created []string
@@ -126,7 +126,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	placedOn := domainstore.DayOf(order.CreatedAt).Format("060102")
 	assert.Equal(t, "CH-"+placedOn+"-001", order.Code, "the first order of the bakery day it was placed on")
 	require.Len(t, order.Timeline, 1)
-	assert.Equal(t, string(domainorder.StatusPending), order.Timeline[0].Status, "placing the order starts its history")
+	assert.Equal(t, string(domainorder.StatusAwaitingPayment), order.Timeline[0].Status, "placing the order starts its history")
 }
 
 // nextPickupSlot is tomorrow at 10:00 bakery time: inside the seeded opening

@@ -32,6 +32,7 @@ export function StatusPill({ variant, label, className }: StatusPillProps) {
 /** Map API order status strings to semantic pill variants. */
 export function orderStatusToPillVariant(status: OrderStatus): StatusPillVariant {
   switch (status) {
+    case "awaiting_payment":
     case "pending":
       return "pending";
     case "confirmed":
@@ -43,6 +44,7 @@ export function orderStatusToPillVariant(status: OrderStatus): StatusPillVariant
     case "fulfilled":
       return "completed";
     case "cancelled":
+    case "expired":
       return "cancelled";
   }
 }

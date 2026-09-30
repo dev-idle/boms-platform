@@ -36,6 +36,11 @@ const (
 	MaxSlotCapacity = 200
 	// MaxInstantPrep is the longest the counter may take to pack an instant order.
 	MaxInstantPrep = 4 * time.Hour
+	// MinPaymentHold and MaxPaymentHold bound how long an order placed online
+	// may hold its slot unpaid: long enough to pay, short enough not to keep
+	// a slot from other customers.
+	MinPaymentHold = 5 * time.Minute
+	MaxPaymentHold = 2 * time.Hour
 )
 
 const (
@@ -50,7 +55,8 @@ const (
 // midnight within one day: pickups start on SlotLength marks from OpensAt, up
 // to, not including, ClosesAt. SlotCapacity orders may share a slot.
 // InstantPrep is how long the counter needs to pack a same-day order of
-// ready-made items; every other order waits PreorderMinLead.
+// ready-made items; every other order waits PreorderMinLead. An order placed
+// online holds its slot and discount unpaid for PaymentHold.
 type Settings struct {
 	OpensAt         time.Duration
 	ClosesAt        time.Duration
@@ -59,6 +65,7 @@ type Settings struct {
 	SlotLength      time.Duration
 	SlotCapacity    int
 	InstantPrep     time.Duration
+	PaymentHold     time.Duration
 	UpdatedAt       time.Time
 }
 
@@ -85,6 +92,9 @@ func (s Settings) Validate() error {
 	}
 	if !wholeMinutes(s.InstantPrep) || s.InstantPrep < 0 || s.InstantPrep > MaxInstantPrep {
 		return ErrInvalidInstantPrep
+	}
+	if !wholeMinutes(s.PaymentHold) || s.PaymentHold < MinPaymentHold || s.PaymentHold > MaxPaymentHold {
+		return ErrInvalidPaymentHold
 	}
 	return nil
 }

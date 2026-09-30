@@ -102,6 +102,8 @@ func policyFromRules(t *testing.T, cases pickupCases) PickupPolicy {
 			SlotLength:      time.Duration(rules.SlotMinutes) * time.Minute,
 			SlotCapacity:    1,
 			InstantPrep:     time.Duration(rules.InstantPrep) * time.Minute,
+			// Not a pickup rule: any hold an admin could save.
+			PaymentHold: domainstore.MinPaymentHold,
 		},
 		ClosedDays: closed,
 	}

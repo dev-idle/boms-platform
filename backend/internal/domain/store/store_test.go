@@ -12,7 +12,7 @@ import (
 func validSettings() Settings {
 	return Settings{
 		OpensAt: 8 * time.Hour, ClosesAt: 18 * time.Hour, PreorderMinLead: 2 * time.Hour, MaxAdvanceDays: 14,
-		SlotLength: 30 * time.Minute, SlotCapacity: 10, InstantPrep: 20 * time.Minute,
+		SlotLength: 30 * time.Minute, SlotCapacity: 10, InstantPrep: 20 * time.Minute, PaymentHold: 15 * time.Minute,
 	}
 }
 
@@ -42,6 +42,8 @@ func TestSettingsValidate(t *testing.T) {
 		"negative_instant_prep":      {func(s *Settings) { s.InstantPrep = -time.Minute }, ErrInvalidInstantPrep},
 		"instant_prep_over_4_hours":  {func(s *Settings) { s.InstantPrep = MaxInstantPrep + time.Minute }, ErrInvalidInstantPrep},
 		"instant_prep_with_seconds":  {func(s *Settings) { s.InstantPrep = time.Minute + time.Second }, ErrInvalidInstantPrep},
+		"payment_hold_too_short":     {func(s *Settings) { s.PaymentHold = MinPaymentHold - time.Minute }, ErrInvalidPaymentHold},
+		"payment_hold_too_long":      {func(s *Settings) { s.PaymentHold = MaxPaymentHold + time.Minute }, ErrInvalidPaymentHold},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -56,7 +58,7 @@ func TestSettingsValidate(t *testing.T) {
 		t.Parallel()
 		s := Settings{
 			OpensAt: 0, ClosesAt: 23*time.Hour + 59*time.Minute, PreorderMinLead: 0, MaxAdvanceDays: 1,
-			SlotLength: 10 * time.Minute, SlotCapacity: 1, InstantPrep: 0,
+			SlotLength: 10 * time.Minute, SlotCapacity: 1, InstantPrep: 0, PaymentHold: MinPaymentHold,
 		}
 		require.NoError(t, s.Validate())
 	})

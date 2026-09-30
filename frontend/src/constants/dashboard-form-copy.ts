@@ -17,6 +17,7 @@ export const FORM_FIELD_HINT = {
     "Notice this product needs before pickup, in minutes. An order waits the longer of this and the bakery's own notice (at most 10080).",
   comboItems: "Each product once. Add two products, or one product with quantity at least 2.",
   discountMaxUses: "Leave empty for unlimited uses.",
+  discountMaxUsesPerCustomer: "How many of one customer's orders may use it. Leave empty for no limit.",
   discountMinOrder: "Minimum cart total. Leave empty for no minimum.",
   discountMaxDiscount: "Caps a percent discount. Leave empty for no cap.",
   discountPercentOff: "Whole number from 1 to 100.",

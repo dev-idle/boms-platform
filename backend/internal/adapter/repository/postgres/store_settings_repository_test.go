@@ -31,12 +31,13 @@ func TestStoreSettingsRepository_Settings_Integration(t *testing.T) {
 	assert.Equal(t, 30*time.Minute, seeded.SlotLength)
 	assert.Equal(t, 10, seeded.SlotCapacity)
 	assert.Equal(t, 20*time.Minute, seeded.InstantPrep)
+	assert.Equal(t, 15*time.Minute, seeded.PaymentHold)
 	require.NoError(t, seeded.Validate(), "the migration seeds rules an admin could save")
 
 	edited := domainstore.Settings{
 		OpensAt: 7*time.Hour + 30*time.Minute, ClosesAt: 22 * time.Hour,
 		PreorderMinLead: 90 * time.Minute, MaxAdvanceDays: 30,
-		SlotLength: 15 * time.Minute, SlotCapacity: 6, InstantPrep: 45 * time.Minute,
+		SlotLength: 15 * time.Minute, SlotCapacity: 6, InstantPrep: 45 * time.Minute, PaymentHold: 30 * time.Minute,
 	}
 	var saved domainstore.Settings
 	require.NoError(t, pool.WithTx(ctx, func(txCtx context.Context) error {

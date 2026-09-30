@@ -139,7 +139,7 @@ func defaultMail() config.MailConfig {
 	return config.MailConfig{
 		SMTPHost: "127.0.0.1", SMTPPort: 1025, SMTPTLS: config.SMTPTLSNone,
 		FromAddress: "orders@chouxbakery.example", FromName: "Choux", ReplyTo: "hello@chouxbakery.example",
-		SiteURL: "http://localhost:3000", SendTimeout: 10 * time.Second, Concurrency: 4,
+		SendTimeout: 10 * time.Second, Concurrency: 4,
 	}
 }
 
@@ -161,6 +161,7 @@ func defaultRateRedis() config.RateLimitRedisConfig {
 		PasswordResetMax: 5, PasswordResetWindow: 15 * time.Minute,
 		PasswordResetAccountMax: 3, PasswordResetAccountWindow: time.Hour,
 		VerificationResendMax: 3, VerificationResendWindow: time.Hour,
+		PaymentWebhookMax: 60, PaymentWebhookWindow: time.Minute,
 	}
 }
 
@@ -182,7 +183,9 @@ func minimalProductionConfig() *config.Config {
 	cfg.Mail.SMTPTLS = config.SMTPTLSStartTLS
 	cfg.Mail.SMTPUsername = "apikey"
 	cfg.Mail.SMTPPassword = "smtp-password-fixture"
-	cfg.Mail.SiteURL = "https://app.example.com"
+	cfg.App.SiteURL = "https://app.example.com"
+	cfg.PayPal.Mode = config.PayPalModeLive
+	cfg.PayPal.WebhookID = "webhook-id-fixture"
 	cfg.Mail.FromAddress = "orders@choux.vn"
 	cfg.Mail.ReplyTo = "hello@choux.vn"
 	return cfg
@@ -190,7 +193,10 @@ func minimalProductionConfig() *config.Config {
 
 func minimalDevConfig() *config.Config {
 	return &config.Config{
-		App: config.AppConfig{Env: "development", Debug: false},
+		App: config.AppConfig{Env: "development", Debug: false, SiteURL: "http://localhost:3000"},
+		PayPal: config.PayPalConfig{
+			Mode: config.PayPalModeSandbox, ClientID: "client-id-fixture", ClientSecret: "client-secret-fixture",
+		},
 		HTTP: config.HTTPConfig{
 			Port: 8080, BodyLimit: 1024,
 			ReadTimeout: time.Second, WriteTimeout: time.Second, IdleTimeout: time.Second,
@@ -198,6 +204,7 @@ func minimalDevConfig() *config.Config {
 		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		RateRedis: defaultRateRedis(),
 		Outbox:    defaultOutbox(),
+		Order:     config.OrderConfig{ExpiryInterval: time.Minute},
 		Mail:      defaultMail(),
 		Realtime:  defaultRealtime(),
 		Postgres: config.PostgresConfig{
@@ -332,6 +339,15 @@ func TestValidateWorker_NeedsOnlyTheStoresAndMail(t *testing.T) {
 	}
 }
 
+func TestValidateWorker_OrderExpiry(t *testing.T) {
+	t.Parallel()
+	cfg := minimalDevConfig()
+	cfg.Order.ExpiryInterval = 0
+	if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), "order.expiry_interval") {
+		t.Fatalf("expected order.expiry_interval error, got: %v", err)
+	}
+}
+
 func TestValidateWorker_Mail(t *testing.T) {
 	t.Parallel()
 
@@ -347,9 +363,6 @@ func TestValidateWorker_Mail(t *testing.T) {
 		{"takes_both_credentials_or_neither", false, func(m *config.MailConfig) { m.SMTPUsername = "apikey" }, "set together"},
 		{"sends_from_a_plain_address", false, func(m *config.MailConfig) { m.FromAddress = "Choux <orders@chouxbakery.example>" }, "mail.from_address"},
 		{"replies_to_a_plain_address", false, func(m *config.MailConfig) { m.ReplyTo = "nobody" }, "mail.reply_to"},
-		{"links_to_an_origin", false, func(m *config.MailConfig) { m.SiteURL = "http://localhost:3000/shop" }, "mail.site_url"},
-		{"links_without_a_query", false, func(m *config.MailConfig) { m.SiteURL = "http://localhost:3000?x=" }, "mail.site_url"},
-		{"links_without_credentials", false, func(m *config.MailConfig) { m.SiteURL = "http://user@localhost:3000" }, "mail.site_url"},
 		{"names_the_sender_on_one_line", false, func(m *config.MailConfig) { m.FromName = "Choux\r\nBcc: x" }, "mail.from_name"},
 		{"sends_from_the_bakery_domain_when_deployed", true, func(m *config.MailConfig) { m.FromAddress = "orders@chouxbakery.example" }, "mail.from_address must be an address at the bakery"},
 		{"takes_replies_at_the_bakery_domain_when_deployed", true, func(m *config.MailConfig) { m.ReplyTo = "hello@shop.test" }, "mail.reply_to must be an address at the bakery"},
@@ -358,7 +371,6 @@ func TestValidateWorker_Mail(t *testing.T) {
 		{"bounds_concurrency", false, func(m *config.MailConfig) { m.Concurrency = 0 }, "mail.concurrency"},
 		{"encrypts_when_deployed", true, func(m *config.MailConfig) { m.SMTPTLS = config.SMTPTLSNone }, "must not be none"},
 		{"authenticates_when_deployed", true, func(m *config.MailConfig) { m.SMTPUsername, m.SMTPPassword = "", "" }, "required in staging/production"},
-		{"links_over_https_when_deployed", true, func(m *config.MailConfig) { m.SiteURL = "http://app.example.com" }, "https://"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -378,6 +390,75 @@ func TestValidateWorker_Mail(t *testing.T) {
 		t.Parallel()
 		if err := minimalDevConfig().ValidateWorker(); err != nil {
 			t.Fatalf("expected the development mail settings to be valid, got: %v", err)
+		}
+	})
+}
+
+func TestValidate_SiteURL(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		production bool
+		siteURL    string
+		want       string
+	}{
+		{"an_origin", false, "http://localhost:3000/shop", "app.site_url"},
+		{"without_a_query", false, "http://localhost:3000?x=", "app.site_url"},
+		{"without_credentials", false, "http://user@localhost:3000", "app.site_url"},
+		{"over_https_when_deployed", true, "http://app.example.com", "https://"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := minimalDevConfig()
+			if tc.production {
+				cfg = minimalProductionConfig()
+			}
+			cfg.App.SiteURL = tc.siteURL
+			for name, validate := range map[string]func() error{"api": cfg.Validate, "worker": cfg.ValidateWorker} {
+				if err := validate(); err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("%s: expected %q, got: %v", name, tc.want, err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidate_PayPal(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		production bool
+		change     func(*config.PayPalConfig)
+		want       string
+	}{
+		{"names_a_known_mode", false, func(p *config.PayPalConfig) { p.Mode = "test" }, "paypal.mode"},
+		{"needs_the_app_credentials", false, func(p *config.PayPalConfig) { p.ClientSecret = "" }, "paypal.client_id and paypal.client_secret"},
+		{"takes_real_money_in_production", true, func(p *config.PayPalConfig) { p.Mode = config.PayPalModeSandbox }, "must be live in production"},
+		{"verifies_webhooks_when_deployed", true, func(p *config.PayPalConfig) { p.WebhookID = "" }, "paypal.webhook_id"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := minimalDevConfig()
+			if tc.production {
+				cfg = minimalProductionConfig()
+			}
+			tc.change(&cfg.PayPal)
+			for name, validate := range map[string]func() error{"api": cfg.Validate, "worker": cfg.ValidateWorker} {
+				if err := validate(); err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("%s: expected %q, got: %v", name, tc.want, err)
+				}
+			}
+		})
+	}
+
+	t.Run("development_needs_no_webhook", func(t *testing.T) {
+		t.Parallel()
+		if err := minimalDevConfig().Validate(); err != nil {
+			t.Fatalf("expected the development PayPal settings to be valid, got: %v", err)
 		}
 	})
 }

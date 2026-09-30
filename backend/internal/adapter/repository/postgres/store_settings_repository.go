@@ -105,6 +105,7 @@ func settingsFromRow(row sqlcgen.GetStoreSettingsRow) domainstore.Settings {
 		SlotLength:      time.Duration(row.SlotMinutes) * time.Minute,
 		SlotCapacity:    int(row.SlotCapacity),
 		InstantPrep:     time.Duration(row.InstantPrepMinutes) * time.Minute,
+		PaymentHold:     time.Duration(row.PaymentHoldMinutes) * time.Minute,
 		UpdatedAt:       row.UpdatedAt,
 	}
 }
@@ -134,6 +135,10 @@ func settingsParams(s domainstore.Settings) (sqlcgen.UpdateStoreSettingsParams, 
 	if err != nil {
 		return sqlcgen.UpdateStoreSettingsParams{}, err
 	}
+	hold, err := int16Of("payment_hold_minutes", int64(s.PaymentHold/time.Minute))
+	if err != nil {
+		return sqlcgen.UpdateStoreSettingsParams{}, err
+	}
 	lead := int64(s.PreorderMinLead / time.Minute)
 	if lead < math.MinInt32 || lead > math.MaxInt32 {
 		return sqlcgen.UpdateStoreSettingsParams{}, apperrors.Errorf("preorder_min_lead_minutes %d out of range", lead)
@@ -146,6 +151,7 @@ func settingsParams(s domainstore.Settings) (sqlcgen.UpdateStoreSettingsParams, 
 		SlotMinutes:            slot,
 		SlotCapacity:           capacity,
 		InstantPrepMinutes:     prep,
+		PaymentHoldMinutes:     hold,
 	}, nil
 }
 

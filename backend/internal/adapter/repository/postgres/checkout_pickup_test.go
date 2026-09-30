@@ -10,10 +10,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -25,38 +27,45 @@ import (
 // checkoutFixture is a bakery with a kitchen cake, a counter pastry and a combo
 // of both, and a way to fill a new customer's cart.
 type checkoutFixture struct {
-	pool     *postgresadapter.Pool
-	users    *postgresadapter.UserRepository
-	carts    *postgresadapter.CartRepository
-	orders   *postgresadapter.OrderRepository
-	store    *postgresadapter.StoreSettingsRepository
-	outbox   *postgresadapter.OutboxRepository
-	cartUC   *usecase.CartUsecase
-	orderUC  *usecase.OrderUsecase
-	cake     uuid.UUID
-	pastry   uuid.UUID
-	combo    uuid.UUID
-	customer int
+	pool      *postgresadapter.Pool
+	connStr   string
+	users     *postgresadapter.UserRepository
+	carts     *postgresadapter.CartRepository
+	orders    *postgresadapter.OrderRepository
+	store     *postgresadapter.StoreSettingsRepository
+	outbox    *postgresadapter.OutboxRepository
+	cartUC    *usecase.CartUsecase
+	orderUC   *usecase.OrderUsecase
+	paymentUC *usecase.PaymentUsecase
+	cake      uuid.UUID
+	pastry    uuid.UUID
+	combo     uuid.UUID
+	customer  int
 }
 
 func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	t.Helper()
 	ctx := context.Background()
-	pool := newIntegrationPool(t, maxConns)
+	pool, connStr := newIntegrationDB(t, maxConns)
 	f := &checkoutFixture{
-		pool:   pool,
-		users:  postgresadapter.NewUserRepository(pool),
-		carts:  postgresadapter.NewCartRepository(pool),
-		orders: postgresadapter.NewOrderRepository(pool),
-		store:  postgresadapter.NewStoreSettingsRepository(pool),
-		outbox: postgresadapter.NewOutboxRepository(pool),
+		pool:    pool,
+		connStr: connStr,
+		users:   postgresadapter.NewUserRepository(pool),
+		carts:   postgresadapter.NewCartRepository(pool),
+		orders:  postgresadapter.NewOrderRepository(pool),
+		store:   postgresadapter.NewStoreSettingsRepository(pool),
+		outbox:  postgresadapter.NewOutboxRepository(pool),
 	}
 	categories := postgresadapter.NewCategoryRepository(pool)
 	products := postgresadapter.NewProductRepository(pool)
 	combos := postgresadapter.NewComboRepository(pool)
 	discounts := postgresadapter.NewDiscountCodeRepository(pool)
+	tickets := postgresadapter.NewTicketRepository(pool)
+	payments := postgresadapter.NewPaymentRepository(pool)
 	f.cartUC = usecase.NewCartUsecase(f.carts, products, combos, discounts)
-	f.orderUC = usecase.NewOrderUsecase(f.users, f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, postgresadapter.NewTicketRepository(pool))
+	f.orderUC = usecase.NewOrderUsecase(f.users, f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, tickets, payments)
+	f.paymentUC = usecase.NewPaymentUsecase(pool, f.orders, discounts, tickets, payments, &paidPayPal{amounts: map[string]int64{}},
+		f.outbox, "https://shop.example", zap.NewNop())
 
 	kitchen, err := categories.Create(ctx, port.CreateCategoryParams{Name: "Cakes", Slug: "cakes", IsActive: true, Station: domaincategory.StationKitchen})
 	require.NoError(t, err)
@@ -80,6 +89,48 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	}))
 	f.cake, f.pastry, f.combo = cake.ID, pastry.ID, combo.ID
 	return f
+}
+
+// paidPayPal stands in for PayPal with a buyer who approves every payment and
+// pays it in full; a webhook call panics.
+type paidPayPal struct {
+	port.PaymentGateway
+	mu      sync.Mutex
+	amounts map[string]int64
+}
+
+func (p *paidPayPal) CreateOrder(_ context.Context, req port.PaymentOrderRequest) (string, string, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	id := "PAYPAL-" + req.OrderID.String()
+	p.amounts[id] = req.AmountCents
+	return id, "https://www.sandbox.paypal.com/checkoutnow?token=" + id, nil
+}
+
+// Lookup finds nothing captured: a buyer who never came back from PayPal.
+func (p *paidPayPal) Lookup(context.Context, string) (*domainpayment.Capture, error) {
+	return nil, nil
+}
+
+func (p *paidPayPal) Capture(_ context.Context, providerOrderID string) (domainpayment.Capture, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return domainpayment.Capture{
+		ID: "CAPTURE-" + providerOrderID, Status: domainpayment.StatusCaptured,
+		AmountCents: p.amounts[providerOrderID], Currency: domainpayment.Currency,
+	}, nil
+}
+
+// pay pays for the customer's order the way a buyer does: approve on PayPal's
+// page, come back, and the payment is captured.
+func (f *checkoutFixture) pay(t *testing.T, customerID uuid.UUID, orderID string) {
+	t.Helper()
+	ctx := context.Background()
+	_, err := f.paymentUC.Start(ctx, customerID, uuid.MustParse(orderID))
+	require.NoError(t, err)
+	status, err := f.paymentUC.Capture(ctx, customerID, uuid.MustParse(orderID))
+	require.NoError(t, err)
+	require.Equal(t, domainpayment.StatusCaptured, status)
 }
 
 // acceptingTerms is a checkout for pickupAt by a customer who accepted the
@@ -183,7 +234,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 	t.Run("a_kitchen_order_is_a_pre_order", func(t *testing.T) {
 		customer := f.newCustomer(t, []uuid.UUID{f.cake}, nil)
 
-		order, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(10, 0)))
+		order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(10, 0)))
 
 		require.NoError(t, err)
 		assert.Equal(t, string(domainorder.TypePreOrder), order.OrderType)
@@ -192,7 +243,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 	t.Run("a_time_between_slots_is_refused", func(t *testing.T) {
 		customer := f.newCustomer(t, []uuid.UUID{f.cake}, nil)
 
-		_, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(10, 10)))
+		_, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(10, 10)))
 
 		require.ErrorIs(t, err, domainorder.ErrPickupOffSlot)
 		cart, err := f.cartUC.Get(ctx, customer)
@@ -204,19 +255,19 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		f.setSettings(t, func(s *domainstore.Settings) { s.SlotCapacity = 1 })
 		slot := tomorrowAt(11, 0)
 		notices := f.slotNotices(t)
-		first, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), acceptingTerms(slot))
+		first, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), uuid.New(), acceptingTerms(slot))
 		require.NoError(t, err)
 		assert.Equal(t, notices+1, f.slotNotices(t), "taking the last place tells open checkouts")
 
 		late := f.newCustomer(t, []uuid.UUID{f.cake}, nil)
-		_, err = f.orderUC.Checkout(ctx, late, acceptingTerms(slot))
+		_, err = f.orderUC.Checkout(ctx, late, uuid.New(), acceptingTerms(slot))
 		require.ErrorIs(t, err, domainorder.ErrPickupSlotFull)
 
 		_, err = f.orders.UpdateStatus(ctx, port.UpdateOrderStatusParams{
-			OrderID: uuid.MustParse(first.ID), FromStatus: domainorder.StatusPending, ToStatus: domainorder.StatusCancelled,
+			OrderID: uuid.MustParse(first.ID), FromStatus: domainorder.StatusAwaitingPayment, ToStatus: domainorder.StatusCancelled,
 		})
 		require.NoError(t, err)
-		_, err = f.orderUC.Checkout(ctx, late, acceptingTerms(slot))
+		_, err = f.orderUC.Checkout(ctx, late, uuid.New(), acceptingTerms(slot))
 		require.NoError(t, err, "a cancelled order no longer holds its slot")
 	})
 
@@ -231,7 +282,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		for i, customer := range racers {
 			wg.Go(func() {
 				<-start
-				_, errs[i] = f.orderUC.Checkout(ctx, customer, acceptingTerms(slot))
+				_, errs[i] = f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(slot))
 			})
 		}
 		close(start)
@@ -258,7 +309,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		f.setSettings(t, func(s *domainstore.Settings) { s.SlotCapacity = 10 })
 		notices := f.slotNotices(t)
 
-		_, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), acceptingTerms(tomorrowAt(13, 0)))
+		_, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), uuid.New(), acceptingTerms(tomorrowAt(13, 0)))
 
 		require.NoError(t, err)
 		assert.Equal(t, notices, f.slotNotices(t), "the slot list still shows the same")
@@ -270,14 +321,14 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		for i, slot := range []time.Time{tomorrowAt(14, 0), tomorrowAt(14, 30), tomorrowAt(15, 0), tomorrowAt(15, 30)} {
 			_, err := f.cartUC.AddItem(ctx, customer, dto.AddCartItemRequest{ProductID: &cake, Quantity: 1})
 			require.NoError(t, err)
-			_, err = f.orderUC.Checkout(ctx, customer, acceptingTerms(slot))
+			_, err = f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(slot))
 			if i < domainorder.MaxOrdersPerCustomerPerDay {
 				require.NoError(t, err, "order %d", i+1)
 				continue
 			}
 			require.ErrorIs(t, err, domainorder.ErrPickupDayLimit)
 		}
-		_, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(14, 0).AddDate(0, 0, 1)))
+		_, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(14, 0).AddDate(0, 0, 1)))
 		require.NoError(t, err, "the next day has its own allowance")
 	})
 
@@ -293,7 +344,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		}
 		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
 
-		order, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(next))
+		order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(next))
 
 		require.NoError(t, err)
 		assert.Equal(t, string(domainorder.TypeInstant), order.OrderType)
@@ -348,7 +399,7 @@ func TestCheckoutPickup_OffGridOrdersCount_Integration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), acceptingTerms(tomorrowAt(10, 0)))
+	_, err = f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), uuid.New(), acceptingTerms(tomorrowAt(10, 0)))
 
 	require.ErrorIs(t, err, domainorder.ErrPickupSlotFull, "10:15 sits in the 10:00 slot of the current grid")
 }

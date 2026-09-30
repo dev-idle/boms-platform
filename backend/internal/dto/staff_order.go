@@ -25,8 +25,9 @@ type StaffOrderSummaryResponse struct {
 // StaffOrderTimelineEntryResponse is a status the order entered, when, and the
 // role of whoever moved it there — enough to answer a customer at the counter.
 type StaffOrderTimelineEntryResponse struct {
-	Status    string    `json:"status"`
-	ActorRole string    `json:"actor_role"`
+	Status string `json:"status"`
+	// ActorRole is null when the system made the move.
+	ActorRole *string   `json:"actor_role"`
 	At        time.Time `json:"at"`
 }
 
@@ -44,6 +45,7 @@ type StaffOrderResponse struct {
 	Timeline             []StaffOrderTimelineEntryResponse `json:"timeline"`
 	Tickets              []OrderTicketResponse             `json:"tickets"`
 	Customer             StaffOrderCustomerResponse        `json:"customer"`
+	Payment              *OrderPaymentResponse             `json:"payment"`
 	CreatedAt            time.Time                         `json:"created_at"`
 	UpdatedAt            time.Time                         `json:"updated_at"`
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"net/url"
 	"strings"
 	"time"
 	"unicode"
@@ -39,9 +38,7 @@ type MailConfig struct {
 	FromName     string
 	// ReplyTo is where a customer's reply goes: the bakery's own inbox, not the
 	// address the mail is sent from.
-	ReplyTo string
-	// SiteURL is the storefront origin that links in emails point to.
-	SiteURL     string
+	ReplyTo     string
 	SendTimeout time.Duration
 	// Concurrency is how many emails the worker sends at once.
 	Concurrency int
@@ -73,10 +70,6 @@ func (c MailConfig) validate(env string) error {
 	if c.FromName == "" || strings.ContainsFunc(c.FromName, unicode.IsControl) {
 		return errors.New("mail.from_name is required and must be one line of text")
 	}
-	site, err := url.Parse(c.SiteURL)
-	if err != nil || !isOrigin(site) {
-		return errors.New("mail.site_url must be an http:// or https:// origin: no path, query, fragment or credentials")
-	}
 	if c.SendTimeout <= 0 || c.SendTimeout > maxMailSendTimeout {
 		return fmt.Errorf("mail.send_timeout must be positive and at most %s", maxMailSendTimeout)
 	}
@@ -90,9 +83,6 @@ func (c MailConfig) validate(env string) error {
 		if c.SMTPUsername == "" {
 			return errors.New("mail.smtp_username and mail.smtp_password are required in staging/production")
 		}
-		if site.Scheme != "https" {
-			return errors.New("mail.site_url must use https:// in staging/production")
-		}
 		for _, mailbox := range []struct{ name, value string }{
 			{"mail.from_address", c.FromAddress},
 			{"mail.reply_to", c.ReplyTo},
@@ -103,11 +93,6 @@ func (c MailConfig) validate(env string) error {
 		}
 	}
 	return nil
-}
-
-func isOrigin(u *url.URL) bool {
-	return (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" && u.User == nil && u.Opaque == "" &&
-		strings.Trim(u.Path, "/") == "" && u.RawQuery == "" && !u.ForceQuery && u.Fragment == ""
 }
 
 // isReservedMailDomain reports whether address is at a domain RFC 2606 keeps

@@ -132,7 +132,7 @@ func TestAccountErasure_Integration(t *testing.T) {
 
 	t.Run("waits_until_no_order_is_open", func(t *testing.T) {
 		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
-		_, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(12, 0)))
+		_, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(12, 0)))
 		require.NoError(t, err)
 		link, err := tokens.Issue(ctx, customer, domainaccount.PurposeResetPassword)
 		require.NoError(t, err)
@@ -167,7 +167,7 @@ func TestAccountErasure_Integration(t *testing.T) {
 		// A session that outlived the erasure fills the cart again.
 		require.NoError(t, f.fillCart(customer, []uuid.UUID{f.pastry}, nil))
 
-		_, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(12, 0)))
+		_, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(12, 0)))
 
 		require.ErrorIs(t, err, usecase.ErrMeNotFound)
 	})

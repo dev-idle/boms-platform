@@ -92,6 +92,7 @@ var (
 	ErrDiscountExpired              = New(http.StatusUnprocessableEntity, "discount_expired", "Discount code has expired")
 	ErrDiscountExhausted            = New(http.StatusUnprocessableEntity, "discount_exhausted", "Discount code has no uses remaining")
 	ErrDiscountMinOrderNotMet       = New(http.StatusUnprocessableEntity, "discount_min_order_not_met", "Order subtotal does not meet the discount minimum")
+	ErrDiscountUsedUp               = New(http.StatusUnprocessableEntity, "discount_used_up", "You have already used this discount code as often as it allows")
 	ErrCartEmpty                    = New(http.StatusUnprocessableEntity, "cart_empty", "Cart is empty")
 	ErrCartMaxItems                 = New(http.StatusUnprocessableEntity, "cart_max_items", "Cart cannot hold more items")
 	ErrProductUnavailable           = New(http.StatusUnprocessableEntity, "product_unavailable", "Product is not available")
@@ -115,6 +116,9 @@ var (
 	ErrEmailNotVerified             = New(http.StatusUnprocessableEntity, "email_not_verified", "Confirm your email address before placing an order")
 	ErrEmailAlreadyVerified         = New(http.StatusConflict, "email_already_verified", "Your email address is already confirmed")
 	ErrInvalidLink                  = New(http.StatusUnprocessableEntity, "invalid_link", "This link has expired or has already been used")
+	ErrOrderNotPayable              = New(http.StatusUnprocessableEntity, "order_not_payable", "This order can no longer be paid")
+	ErrPaymentNotCompleted          = New(http.StatusUnprocessableEntity, "payment_not_completed", "The payment was not completed")
+	ErrWebhookInvalid               = New(http.StatusBadRequest, "webhook_invalid", "The notice is not signed by the payment provider")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

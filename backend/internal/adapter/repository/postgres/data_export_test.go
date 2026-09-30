@@ -76,7 +76,7 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 
 	t.Run("an_order_records_the_version_accepted_at_checkout", func(t *testing.T) {
 		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
-		placed, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(9, 0)))
+		placed, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(9, 0)))
 		require.NoError(t, err)
 
 		order, err := f.orders.GetByIDForUser(ctx, customer, uuid.MustParse(placed.ID))
@@ -91,10 +91,10 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 		name, phone := "Mai", "+84901234567"
 		_, err := customerProfiles.Create(ctx, port.UpsertCustomerProfileParams{UserID: customer, DisplayName: &name, Phone: &phone})
 		require.NoError(t, err)
-		first, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(10, 0)))
+		first, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(10, 0)))
 		require.NoError(t, err)
 		require.NoError(t, f.fillCart(customer, []uuid.UUID{f.pastry}, []uuid.UUID{f.combo}))
-		second, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(11, 0)))
+		second, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(11, 0)))
 		require.NoError(t, err)
 		require.NoError(t, f.fillCart(customer, []uuid.UUID{f.cake}, nil))
 		f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
@@ -121,7 +121,7 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 		assert.Equal(t, []string{second.ID, first.ID}, []string{export.Orders[0].ID, export.Orders[1].ID}, "newest first")
 		for _, order := range export.Orders {
 			assert.Len(t, order.Items, 2)
-			assert.Equal(t, "pending", order.Timeline[0].Status)
+			assert.Equal(t, "awaiting_payment", order.Timeline[0].Status)
 			require.NotNil(t, order.TermsAcceptance)
 			assert.Equal(t, domainpolicy.TermsVersion, order.TermsAcceptance.Version)
 		}

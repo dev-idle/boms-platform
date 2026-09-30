@@ -341,14 +341,22 @@ type Querier interface {
 	//  FROM cart_items
 	//  WHERE cart_id = $1
 	CountCartItems(ctx context.Context, cartID uuid.UUID) (int64, error)
-	// A customer's orders not cancelled with a pickup in [from_at, to_at).
+	// A customer's orders not cancelled or expired that use the discount code.
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM orders
+	//  WHERE user_id = $1
+	//    AND discount_code_id = $2
+	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+	CountCustomerDiscountUses(ctx context.Context, arg CountCustomerDiscountUsesParams) (int64, error)
+	// A customer's orders not cancelled or expired with a pickup in [from_at, to_at).
 	//
 	//  SELECT count(*)::bigint AS count
 	//  FROM orders
 	//  WHERE user_id = $1
 	//    AND pickup_at >= $2::timestamptz
 	//    AND pickup_at < $3::timestamptz
-	//    AND status <> 'cancelled'::order_status
+	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 	CountCustomerOrdersBetween(ctx context.Context, arg CountCustomerOrdersBetweenParams) (int64, error)
 	//CountOrdersByPickupTime
 	//
@@ -356,17 +364,18 @@ type Querier interface {
 	//  FROM orders
 	//  WHERE pickup_at >= $1::timestamptz
 	//    AND pickup_at < $2::timestamptz
-	//    AND status <> 'cancelled'::order_status
+	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 	//  GROUP BY pickup_at
 	CountOrdersByPickupTime(ctx context.Context, arg CountOrdersByPickupTimeParams) ([]CountOrdersByPickupTimeRow, error)
-	// Orders holding the slot [from_at, to_at): every order not cancelled whose
-	// pickup falls in it, wherever in it an earlier slot grid put that pickup.
+	// Orders holding the slot [from_at, to_at): every order not cancelled or
+	// expired whose pickup falls in it, wherever in it an earlier slot grid put
+	// that pickup.
 	//
 	//  SELECT count(*)::bigint AS count
 	//  FROM orders
 	//  WHERE pickup_at >= $1::timestamptz
 	//    AND pickup_at < $2::timestamptz
-	//    AND status <> 'cancelled'::order_status
+	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 	CountOrdersInSlot(ctx context.Context, arg CountOrdersInSlotParams) (int64, error)
 	//CountStationTickets
 	//
@@ -444,9 +453,10 @@ type Querier interface {
 	//      max_discount_cents,
 	//      starts_at,
 	//      ends_at,
-	//      is_active
+	//      is_active,
+	//      max_uses_per_customer
 	//  )
-	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	//  RETURNING
 	//      id,
 	//      code,
@@ -454,6 +464,7 @@ type Querier interface {
 	//      value,
 	//      min_order_cents,
 	//      max_uses,
+	//      max_uses_per_customer,
 	//      max_discount_cents,
 	//      used_count,
 	//      starts_at,
@@ -477,7 +488,9 @@ type Querier interface {
 	//    code,
 	//    order_type,
 	//    terms_version,
-	//    terms_accepted_at
+	//    terms_accepted_at,
+	//    checkout_key,
+	//    payment_due_at
 	//  )
 	//  VALUES (
 	//    $1,
@@ -493,7 +506,10 @@ type Querier interface {
 	//    $11::text,
 	//    -- Accepted at the instant the order is placed: the transaction clock that
 	//    -- created_at takes.
-	//    CASE WHEN $11::text IS NULL THEN NULL ELSE now() END
+	//    CASE WHEN $11::text IS NULL THEN NULL ELSE now() END,
+	//    $12,
+	//    -- Held unpaid until then, on the database clock.
+	//    now() + make_interval(mins => $13::int)
 	//  )
 	//  RETURNING
 	//    id,
@@ -510,7 +526,9 @@ type Querier interface {
 	//    code,
 	//    order_type,
 	//    terms_accepted_at,
-	//    terms_version
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
 	// One round trip for every checkout line: the items arrive as a JSON array and
 	// Postgres casts each field to the column type (constraints still apply per row).
@@ -581,6 +599,21 @@ type Querier interface {
 	//  FROM jsonb_to_recordset($2::jsonb) AS ticket (station station)
 	//  RETURNING id, order_id, station, status, created_at, updated_at
 	CreateOrderTickets(ctx context.Context, arg CreateOrderTicketsParams) ([]OrderTicket, error)
+	// One payment per order: when the order already has one, nothing is written
+	// and no row comes back.
+	//
+	//  INSERT INTO payments (order_id, provider, provider_order_id, approve_url, amount_cents, currency)
+	//  VALUES (
+	//    $1,
+	//    $2,
+	//    $3,
+	//    $4,
+	//    $5,
+	//    $6
+	//  )
+	//  ON CONFLICT (order_id) DO NOTHING
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error)
 	//CreateProduct
 	//
 	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes)
@@ -681,6 +714,34 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	EraseUser(ctx context.Context, id uuid.UUID) (int64, error)
+	// An order still awaiting payment more than grace_seconds past its due time
+	// expires; one paid meanwhile does not.
+	//
+	//  UPDATE orders
+	//  SET status = 'expired'::order_status,
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND status = 'awaiting_payment'::order_status
+	//    AND payment_due_at <= now() - make_interval(secs => $2::double precision)
+	//  RETURNING
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    pickup_at,
+	//    created_at,
+	//    updated_at,
+	//    code,
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at
+	ExpireOrder(ctx context.Context, arg ExpireOrderParams) (Order, error)
 	//GetAdminProfileByUserID
 	//
 	//  SELECT user_id, full_name, phone, created_at, updated_at
@@ -747,6 +808,7 @@ type Querier interface {
 	//      value,
 	//      min_order_cents,
 	//      max_uses,
+	//      max_uses_per_customer,
 	//      max_discount_cents,
 	//      used_count,
 	//      starts_at,
@@ -768,6 +830,7 @@ type Querier interface {
 	//      value,
 	//      min_order_cents,
 	//      max_uses,
+	//      max_uses_per_customer,
 	//      max_discount_cents,
 	//      used_count,
 	//      starts_at,
@@ -797,6 +860,30 @@ type Querier interface {
 	//  INNER JOIN products p ON p.id = lp.product_id AND p.deleted_at IS NULL
 	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
 	GetFulfillmentOf(ctx context.Context, arg GetFulfillmentOfParams) (GetFulfillmentOfRow, error)
+	//GetOrderByCheckoutKey
+	//
+	//  SELECT
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    pickup_at,
+	//    created_at,
+	//    updated_at,
+	//    code,
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at
+	//  FROM orders
+	//  WHERE user_id = $1
+	//    AND checkout_key = $2
+	GetOrderByCheckoutKey(ctx context.Context, arg GetOrderByCheckoutKeyParams) (Order, error)
 	//GetOrderByIDForUser
 	//
 	//  SELECT
@@ -814,7 +901,9 @@ type Querier interface {
 	//    code,
 	//    order_type,
 	//    terms_accepted_at,
-	//    terms_version
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at
 	//  FROM orders
 	//  WHERE id = $1 AND user_id = $2
 	GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error)
@@ -824,6 +913,19 @@ type Querier interface {
 	//  FROM order_tickets
 	//  WHERE id = $1
 	GetOrderTicket(ctx context.Context, id uuid.UUID) (OrderTicket, error)
+	//GetPaymentByOrderID
+	//
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	//  FROM payments
+	//  WHERE order_id = $1
+	GetPaymentByOrderID(ctx context.Context, orderID uuid.UUID) (Payment, error)
+	//GetPaymentByProviderOrderID
+	//
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	//  FROM payments
+	//  WHERE provider = $1
+	//    AND provider_order_id = $2
+	GetPaymentByProviderOrderID(ctx context.Context, arg GetPaymentByProviderOrderIDParams) (Payment, error)
 	//GetProductByID
 	//
 	//  SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
@@ -839,13 +941,13 @@ type Querier interface {
 	GetStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (StaffProfile, error)
 	//GetStoreSettings
 	//
-	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
+	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, payment_hold_minutes, updated_at
 	//  FROM store_settings
 	//  WHERE id = 1
 	GetStoreSettings(ctx context.Context) (GetStoreSettingsRow, error)
 	// Locks the row so two admins editing at once cannot undo each other.
 	//
-	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
+	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, payment_hold_minutes, updated_at
 	//  FROM store_settings
 	//  WHERE id = 1
 	//  FOR UPDATE
@@ -888,13 +990,14 @@ type Querier interface {
 	//  WHERE id = $1 AND deleted_at IS NULL
 	GetUserTermsAcceptance(ctx context.Context, id uuid.UUID) (GetUserTermsAcceptanceRow, error)
 	// Whether the customer has an order the bakery still has to make or hand
-	// over: anything not yet fulfilled or cancelled.
+	// over, or one waiting for payment: anything not fulfilled, cancelled or
+	// expired.
 	//
 	//  SELECT EXISTS (
 	//    SELECT 1
 	//    FROM orders
 	//    WHERE user_id = $1
-	//      AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status)
+	//      AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status)
 	//  ) AS open
 	HasOpenOrdersForUser(ctx context.Context, userID uuid.UUID) (bool, error)
 	//IncrementDiscountCodeUsedCount
@@ -912,6 +1015,7 @@ type Querier interface {
 	//      value,
 	//      min_order_cents,
 	//      max_uses,
+	//      max_uses_per_customer,
 	//      max_discount_cents,
 	//      used_count,
 	//      starts_at,
@@ -1035,6 +1139,16 @@ type Querier interface {
 	//  WHERE ci.combo_id = ANY($1::uuid[])
 	//  ORDER BY ci.combo_id ASC, p.name ASC
 	ListComboItemsByComboIDs(ctx context.Context, comboIds []uuid.UUID) ([]ListComboItemsByComboIDsRow, error)
+	// Orders awaiting payment more than grace_seconds past their due time, the
+	// longest overdue first.
+	//
+	//  SELECT id
+	//  FROM orders
+	//  WHERE status = 'awaiting_payment'::order_status
+	//    AND payment_due_at <= now() - make_interval(secs => $1::double precision)
+	//  ORDER BY payment_due_at
+	//  LIMIT $2::int
+	ListDueUnpaidOrders(ctx context.Context, arg ListDueUnpaidOrdersParams) ([]uuid.UUID, error)
 	//ListOrderItemsByOrderID
 	//
 	//  SELECT
@@ -1148,7 +1262,9 @@ type Querier interface {
 	//    code,
 	//    order_type,
 	//    terms_accepted_at,
-	//    terms_version
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at
 	//  FROM orders
 	//  WHERE user_id = $1
 	//    AND (
@@ -1185,7 +1301,9 @@ type Querier interface {
 	//    code,
 	//    order_type,
 	//    terms_accepted_at,
-	//    terms_version
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at
 	//  FROM orders
 	//  WHERE user_id = $1
 	//    AND (
@@ -1298,7 +1416,9 @@ type Querier interface {
 	//    code,
 	//    order_type,
 	//    terms_accepted_at,
-	//    terms_version
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at
 	//  FROM orders
 	//  WHERE id = $1
 	//  FOR UPDATE
@@ -1395,6 +1515,7 @@ type Querier interface {
 	//      value,
 	//      min_order_cents,
 	//      max_uses,
+	//      max_uses_per_customer,
 	//      max_discount_cents,
 	//      used_count,
 	//      starts_at,
@@ -1573,6 +1694,18 @@ type Querier interface {
 	//  WHERE id = ANY($2::uuid[])
 	//    AND published_at IS NULL
 	RecordOutboxPublishFailure(ctx context.Context, arg RecordOutboxPublishFailureParams) error
+	// Records the provider's answer to a capture: taken, held for review, or a
+	// held one refused. A payment already taken or refused stays as it is.
+	//
+	//  UPDATE payments
+	//  SET status      = $1,
+	//      capture_id  = $2,
+	//      captured_at = CASE WHEN $1::payment_status = 'captured' THEN now() END,
+	//      updated_at  = now()
+	//  WHERE id = $3
+	//    AND status IN ('created', 'pending')
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	RecordPaymentCapture(ctx context.Context, arg RecordPaymentCaptureParams) (Payment, error)
 	// Single use: the token goes as it is redeemed, in one statement, so two
 	// requests with the same link cannot both succeed. An expired token, or one
 	// of a closed account, opens nothing.
@@ -1586,6 +1719,14 @@ type Querier interface {
 	//    AND u.deleted_at IS NULL
 	//  RETURNING t.user_id
 	RedeemUserToken(ctx context.Context, arg RedeemUserTokenParams) (uuid.UUID, error)
+	// Gives back the use an order held that will not be paid.
+	//
+	//  UPDATE discount_codes
+	//  SET used_count = used_count - 1,
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND used_count > 0
+	ReleaseDiscountCodeUse(ctx context.Context, id uuid.UUID) (int64, error)
 	// Clears the phone on whichever profile the user has. Used when a returning
 	// account finds its number taken by an active one: the active holder keeps it.
 	//
@@ -1623,6 +1764,18 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	ResetUserPassword(ctx context.Context, arg ResetUserPasswordParams) (int64, error)
+	// A payment the provider denied starts over with a new provider order.
+	//
+	//  UPDATE payments
+	//  SET provider_order_id = $1,
+	//      approve_url       = $2,
+	//      status            = 'created',
+	//      capture_id        = NULL,
+	//      updated_at        = now()
+	//  WHERE order_id = $3
+	//    AND status = 'denied'
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	RestartPayment(ctx context.Context, arg RestartPaymentParams) (Payment, error)
 	// Removes an erased account's personal data from the audit trail and keeps
 	// the trail: changes to the account and its profile lose their before and
 	// after values (a profile change holds a name or phone number), and the
@@ -1736,7 +1889,7 @@ type Querier interface {
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
 	//  WHERE o.id = $1
 	StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGetOrderByIDRow, error)
-	//StaffListOrders
+	// An order not paid, now or ever, is not the bakery's to see.
 	//
 	//  SELECT
 	//    o.id,
@@ -1758,10 +1911,11 @@ type Querier interface {
 	//  FROM orders o
 	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-	//  WHERE (
+	//  WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+	//    AND (
 	//      $1::order_status IS NULL
 	//      OR o.status = $1::order_status
-	//  )
+	//    )
 	//  ORDER BY o.created_at DESC
 	//  LIMIT $3 OFFSET $2
 	StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error)
@@ -1770,10 +1924,11 @@ type Querier interface {
 	//  SELECT COUNT(*)::bigint AS count
 	//  FROM orders o
 	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//  WHERE (
+	//  WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+	//    AND (
 	//      $1::order_status IS NULL
 	//      OR o.status = $1::order_status
-	//  )
+	//    )
 	StaffListOrdersCount(ctx context.Context, status *OrderStatus) (int64, error)
 	//SumOrderItemQuantitiesByOrderIDs
 	//
@@ -1847,6 +2002,7 @@ type Querier interface {
 	//      starts_at          = $8,
 	//      ends_at            = $9,
 	//      is_active          = $10,
+	//      max_uses_per_customer = $11,
 	//      updated_at         = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -1857,6 +2013,7 @@ type Querier interface {
 	//      value,
 	//      min_order_cents,
 	//      max_uses,
+	//      max_uses_per_customer,
 	//      max_discount_cents,
 	//      used_count,
 	//      starts_at,
@@ -1888,7 +2045,9 @@ type Querier interface {
 	//    code,
 	//    order_type,
 	//    terms_accepted_at,
-	//    terms_version
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	// A move made at the ticket's own station; a ticket that already moved on, or
 	// sits at another station, is left alone.
@@ -1944,9 +2103,10 @@ type Querier interface {
 	//      slot_minutes = $5,
 	//      slot_capacity = $6,
 	//      instant_prep_minutes = $7,
+	//      payment_hold_minutes = $8,
 	//      updated_at = now()
 	//  WHERE id = 1
-	//  RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, updated_at
+	//  RETURNING opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, payment_hold_minutes, updated_at
 	UpdateStoreSettings(ctx context.Context, arg UpdateStoreSettingsParams) (UpdateStoreSettingsRow, error)
 	// A new password ends every session: refresh tokens of the old version are refused.
 	//

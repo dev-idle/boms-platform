@@ -162,13 +162,14 @@ export const storeSettingsSchema = z.object({
   slot_minutes: z.number().int().min(1),
   slot_capacity: z.number().int().min(1),
   instant_prep_minutes: z.number().int().min(0),
+  payment_hold_minutes: z.number().int().min(1),
   updated_at: apiDateTimeSchema,
 });
 
 /**
  * Bounds of backend `store.Settings`: at most seven days' notice, 1 to 90 days
- * ahead, slots that divide an hour, 1 to 200 orders a slot, and at most four
- * hours to pack an instant order.
+ * ahead, slots that divide an hour, 1 to 200 orders a slot, at most four
+ * hours to pack an instant order, and 5 to 120 minutes to pay.
  */
 export const MAX_PREORDER_LEAD_MINUTES = 7 * 24 * 60;
 export const MIN_ADVANCE_DAYS = 1;
@@ -176,6 +177,8 @@ export const MAX_ADVANCE_DAYS = 90;
 export const SLOT_MINUTE_OPTIONS = [10, 15, 20, 30, 60] as const;
 export const MAX_SLOT_CAPACITY = 200;
 export const MAX_INSTANT_PREP_MINUTES = 4 * 60;
+export const MIN_PAYMENT_HOLD_MINUTES = 5;
+export const MAX_PAYMENT_HOLD_MINUTES = 120;
 
 const storeSettingsFieldsSchema = z.object({
   opens_at: clockTimeSchema,
@@ -203,6 +206,11 @@ const storeSettingsFieldsSchema = z.object({
     .int()
     .min(0)
     .max(MAX_INSTANT_PREP_MINUTES, `At most ${MAX_INSTANT_PREP_MINUTES} minutes (4 hours)`),
+  payment_hold_minutes: z
+    .number({ error: "Enter the time in minutes" })
+    .int()
+    .min(MIN_PAYMENT_HOLD_MINUTES, `At least ${MIN_PAYMENT_HOLD_MINUTES} minutes`)
+    .max(MAX_PAYMENT_HOLD_MINUTES, `At most ${MAX_PAYMENT_HOLD_MINUTES} minutes (2 hours)`),
 });
 
 /**

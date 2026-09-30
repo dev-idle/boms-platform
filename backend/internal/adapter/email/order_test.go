@@ -89,6 +89,12 @@ func TestOrderComposer(t *testing.T) {
 		assert.Equal(t, "Your order CH-260930-007 was cancelled", cancelled.Subject)
 		assert.Contains(t, cancelled.HTML, "will not be made")
 		assert.NotContains(t, cancelled.HTML, "Subtotal")
+
+		expired, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeExpired))
+		require.NoError(t, err)
+		assert.Equal(t, "Your order CH-260930-007 was not paid in time", expired.Subject)
+		assert.Contains(t, expired.Text, "Nothing was charged")
+		assert.NotContains(t, expired.Text, "Subtotal")
 	})
 
 	t.Run("a_customer_without_a_name_is_greeted_plainly", func(t *testing.T) {

@@ -13,6 +13,7 @@ const order = {
   items: [],
   tickets: [],
   customer: { user_id: "00000000-0000-4000-8000-000000000002", email: "mai@example.com" },
+  payment: { provider: "paypal", status: "captured", captured_at: "2026-09-28T09:05:00+07:00" },
   created_at: "2026-09-28T09:00:00+07:00",
   updated_at: "2026-09-28T09:05:00+07:00",
 };
@@ -25,6 +26,18 @@ describe("staff order timeline", () => {
       timeline: [
         { status: "pending", actor_role: "customer", at: "2026-09-28T09:00:00+07:00" },
         { status: "confirmed", actor_role: "staff", at: "2026-09-28T09:05:00+07:00" },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("reads a move the system made", () => {
+    const result = staffOrderSchema.safeParse({
+      ...order,
+      status: "expired",
+      timeline: [
+        { status: "awaiting_payment", actor_role: "customer", at: "2026-09-28T09:00:00+07:00" },
+        { status: "expired", actor_role: null, at: "2026-09-28T09:15:00+07:00" },
       ],
     });
     expect(result.success).toBe(true);

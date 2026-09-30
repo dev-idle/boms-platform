@@ -1,4 +1,4 @@
-h1:7sJzO6CtgARguQmjrlVYUYNUxWqV6hS4gjYCa+soLJ0=
+h1:S1Ij+DpQPer8LqVJHJptFy4h34lLti2E8Lm2202IYkg=
 20260601120000_initial_schema.sql h1:hWLNRIrLbMJTc/CLUGjWNH0Fb09J/y8XzuQEt/QGGrk=
 20260922102739_normalize_vietnam_phones.sql h1:4oExt+YB+B+QSWpmLCr5iOkIt9eXN1vbQEOgeop4cP0=
 20260923183657_add_combo_image_url.sql h1:NpmnOxO237rYpbOISIYiKx+e7OcCxw3JcWrpBlmMW9c=
@@ -12,3 +12,7 @@ h1:7sJzO6CtgARguQmjrlVYUYNUxWqV6hS4gjYCa+soLJ0=
 20260930072644_add_account_erasure.sql h1:8vIs2/1Vy6xDAtcIrKRgjGjlA6sT70QbA75+GVaBx4M=
 20260930105709_add_user_tokens.sql h1:OhqAJZScIYGwxDx1U3CyZAyCar/JTlJTs6uvffUuDAo=
 20260930130524_add_session_version.sql h1:dE8L6QK0QS/8LxDwpX+728BTRWfvd1480mU/B/cL3xI=
+20260930140945_add_payments.sql h1:3dGSJJYRd6+6dd2Roulr1XoxPgxYP2eCc4sa0tuJKpk=
+20260930140958_index_orders_checkout_key.sql h1:u+QyMPARL1jfab850xe4B/1Cpg5ExgvBlvmxcBfW7WU=
+20260930142650_expire_unpaid_orders.sql h1:SFC9CpdA3eVqYUk8ij3E2qBBPEl/24n3PEuiB2Ky2tE=
+20260930142705_index_orders_payment_due.sql h1:N/KGEcoZDGFZ+svz9lJ4XVp1jLrS9YUyUBhviDhTr6M=

@@ -59,6 +59,7 @@ const DISCOUNT_CODE_FORM_FIELDS = [
   "value",
   "min_order_cents",
   "max_uses",
+  "max_uses_per_customer",
   "max_discount_cents",
   "starts_at",
   "ends_at",
@@ -80,6 +81,7 @@ export function DiscountCodeForm({
       ...(discountCode ? { value: discountCode.value } : {}),
       min_order_cents: discountCode?.min_order_cents ?? null,
       max_uses: discountCode?.max_uses ?? null,
+      max_uses_per_customer: discountCode?.max_uses_per_customer ?? null,
       max_discount_cents: discountCode?.max_discount_cents ?? null,
       starts_at: discountCode?.starts_at ?? windowStartsNow(),
       ends_at: discountCode?.ends_at ?? windowEndsInDays(30),
@@ -230,6 +232,28 @@ export function DiscountCodeForm({
               <FieldControl
                 hint={FORM_FIELD_HINT.discountMaxUses}
                 label="Maximum uses"
+                optional
+              >
+                <OptionalIntegerFieldInput
+                  max={CATALOG_INTEGER_MAX}
+                  min={1}
+                  {...field}
+                  value={field.value ?? null}
+                />
+              </FieldControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="max_uses_per_customer"
+          render={({ field }) => (
+            <FormItem>
+              <FieldControl
+                hint={FORM_FIELD_HINT.discountMaxUsesPerCustomer}
+                label="Uses per customer"
                 optional
               >
                 <OptionalIntegerFieldInput

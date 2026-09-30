@@ -9,6 +9,7 @@ var (
 	ErrInvalidSlotLength       = errors.New("pickup slots must be 10, 15, 20, 30 or 60 minutes and fit in the opening hours")
 	ErrInvalidSlotCapacity     = errors.New("a pickup slot must take between 1 and 200 orders")
 	ErrInvalidInstantPrep      = errors.New("instant preparation must be whole minutes, at most four hours")
+	ErrInvalidPaymentHold      = errors.New("payment hold must be whole minutes, from 5 to 120")
 	ErrClosedDateOutOfRange    = errors.New("closed date must be between today and a year ahead")
 	ErrInvalidClosedDateReason = errors.New("closed date reason must be 1 to 200 characters")
 	ErrClosedDateExists        = errors.New("that day is already closed")

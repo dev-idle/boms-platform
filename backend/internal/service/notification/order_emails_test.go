@@ -36,9 +36,11 @@ func TestOrderEmails_Publish(t *testing.T) {
 
 	t.Run("queues_one_task_per_notice_keyed_by_its_event", func(t *testing.T) {
 		t.Parallel()
-		placed, ready, confirmed := order(domainorder.StatusPending), order(domainorder.StatusReady), order(domainorder.StatusConfirmed)
+		placed, paid, ready, confirmed := order(domainorder.StatusAwaitingPayment), order(domainorder.StatusConfirmed),
+			order(domainorder.StatusReady), order(domainorder.StatusConfirmed)
 		events := []domainevent.Event{
 			domainorder.CreatedEvent(placed),
+			domainorder.StatusChangedEvent(domainorder.StatusAwaitingPayment, paid),
 			domainorder.StatusChangedEvent(domainorder.StatusPending, confirmed),
 			domainorder.StatusChangedEvent(domainorder.StatusInProduction, ready),
 		}
@@ -47,9 +49,9 @@ func TestOrderEmails_Publish(t *testing.T) {
 		require.NoError(t, NewOrderEmails(queue).Publish(ctx, events))
 
 		assert.Equal(t, []port.OrderEmailTask{
-			{EventID: events[0].ID, OrderID: placed.ID, Notice: domainorder.NoticePlaced},
-			{EventID: events[2].ID, OrderID: ready.ID, Notice: domainorder.NoticeReady},
-		}, queue.tasks, "confirming an order sends nothing")
+			{EventID: events[1].ID, OrderID: paid.ID, Notice: domainorder.NoticePlaced},
+			{EventID: events[3].ID, OrderID: ready.ID, Notice: domainorder.NoticeReady},
+		}, queue.tasks, "placing an order not paid yet, or confirming one, sends nothing")
 	})
 
 	t.Run("a_queue_failure_fails_the_delivery", func(t *testing.T) {
@@ -57,7 +59,9 @@ func TestOrderEmails_Publish(t *testing.T) {
 		down := errors.New("redis unavailable")
 		queue := &recordingQueue{failWith: down}
 
-		err := NewOrderEmails(queue).Publish(ctx, []domainevent.Event{domainorder.CreatedEvent(order(domainorder.StatusPending))})
+		err := NewOrderEmails(queue).Publish(ctx, []domainevent.Event{
+			domainorder.StatusChangedEvent(domainorder.StatusInProduction, order(domainorder.StatusReady)),
+		})
 
 		require.ErrorIs(t, err, down, "the outbox keeps the event and delivers it again")
 	})

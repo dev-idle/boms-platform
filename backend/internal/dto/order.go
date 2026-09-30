@@ -33,8 +33,30 @@ type OrderResponse struct {
 	Items                []OrderItemResponse          `json:"items"`
 	Timeline             []OrderTimelineEntryResponse `json:"timeline"`
 	Tickets              []TicketSummaryResponse      `json:"tickets"`
-	CreatedAt            time.Time                    `json:"created_at"`
-	UpdatedAt            time.Time                    `json:"updated_at"`
+	Payment              *OrderPaymentResponse        `json:"payment"`
+	// PaymentDueAt is when the order expires if it is still unpaid.
+	PaymentDueAt *time.Time `json:"payment_due_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+// OrderPaymentResponse is where an order's payment stands; null before the
+// customer started paying.
+type OrderPaymentResponse struct {
+	Provider   string     `json:"provider"`
+	Status     string     `json:"status"`
+	CapturedAt *time.Time `json:"captured_at"`
+}
+
+// PaymentStartResponse is the provider page the customer approves the payment on.
+type PaymentStartResponse struct {
+	ApproveURL string `json:"approve_url"`
+}
+
+// PaymentCaptureResponse is where the payment stands after the capture:
+// captured, or pending while the provider reviews it.
+type PaymentCaptureResponse struct {
+	Status string `json:"status"`
 }
 
 type OrderSummaryResponse struct {

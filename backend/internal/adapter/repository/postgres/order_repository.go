@@ -12,6 +12,7 @@ import (
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainstore "github.com/boms/backend/internal/domain/store"
+	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/utils"
@@ -53,11 +54,55 @@ func (r *OrderRepository) Create(ctx context.Context, params port.CreateOrderPar
 		DiscountCodeSnapshot: params.DiscountCodeSnapshot,
 		PickupAt:             params.PickupAt,
 		TermsVersion:         params.TermsVersion,
+		CheckoutKey:          params.CheckoutKey,
+		PaymentHoldMinutes:   utils.Int32FromInt64(int64(params.PaymentHold / time.Minute)),
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create order")
 	}
 	return mapOrder(row), nil
+}
+
+// GetByCheckoutKey implements port.OrderRepository.
+func (r *OrderRepository) GetByCheckoutKey(ctx context.Context, userID, checkoutKey uuid.UUID) (*domainorder.Order, error) {
+	row, err := r.q(ctx).GetOrderByCheckoutKey(ctx, sqlcgen.GetOrderByCheckoutKeyParams{
+		UserID:      userID,
+		CheckoutKey: &checkoutKey,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "get order by checkout key")
+	}
+	return mapOrder(row), nil
+}
+
+// ListDueUnpaid implements port.OrderRepository.
+func (r *OrderRepository) ListDueUnpaid(ctx context.Context, grace time.Duration, limit int32) ([]uuid.UUID, error) {
+	ids, err := r.q(ctx).ListDueUnpaidOrders(ctx, sqlcgen.ListDueUnpaidOrdersParams{GraceSeconds: grace.Seconds(), MaxRows: limit})
+	if err != nil {
+		return nil, mapRepoError(err, "list due unpaid orders")
+	}
+	return ids, nil
+}
+
+// Expire implements port.OrderRepository.
+func (r *OrderRepository) Expire(ctx context.Context, orderID uuid.UUID, grace time.Duration) (*domainorder.Order, error) {
+	row, err := r.q(ctx).ExpireOrder(ctx, sqlcgen.ExpireOrderParams{ID: orderID, GraceSeconds: grace.Seconds()})
+	if err != nil {
+		return nil, mapRepoError(err, "expire order")
+	}
+	return mapOrder(row), nil
+}
+
+// CountCustomerDiscountUses implements port.OrderRepository.
+func (r *OrderRepository) CountCustomerDiscountUses(ctx context.Context, userID, discountCodeID uuid.UUID) (int, error) {
+	count, err := r.q(ctx).CountCustomerDiscountUses(ctx, sqlcgen.CountCustomerDiscountUsesParams{
+		UserID:         userID,
+		DiscountCodeID: &discountCodeID,
+	})
+	if err != nil {
+		return 0, mapRepoError(err, "count customer discount uses")
+	}
+	return int(count), nil
 }
 
 func (r *OrderRepository) GetByIDForUser(ctx context.Context, userID, orderID uuid.UUID) (*domainorder.Order, error) {
@@ -332,7 +377,7 @@ func (r *OrderRepository) ListStatusEventsByOrderIDs(
 	for _, row := range rows {
 		out[row.OrderID] = append(out[row.OrderID], domainorder.StatusEvent{
 			To:        mapOrderStatusFromSQL(row.ToStatus),
-			ActorRole: fromSQLRole(row.ActorRole),
+			ActorRole: actorRoleFromSQL(row.ActorRole),
 			At:        row.CreatedAt,
 		})
 	}
@@ -410,16 +455,21 @@ func (r *OrderRepository) AddStatusEvent(ctx context.Context, params port.AddOrd
 	if err != nil {
 		return err
 	}
-	role, err := toSQLRole(params.ActorRole)
-	if err != nil {
-		return err
+	var actorID *uuid.UUID
+	var actorRole *sqlcgen.UserRole
+	if params.Actor != nil {
+		role, err := toSQLRole(params.Actor.Role)
+		if err != nil {
+			return err
+		}
+		actorID, actorRole = &params.Actor.ID, &role
 	}
 	err = r.q(ctx).CreateOrderStatusEvent(ctx, sqlcgen.CreateOrderStatusEventParams{
 		OrderID:    params.OrderID,
 		FromStatus: from,
 		ToStatus:   to,
-		ActorID:    params.ActorID,
-		ActorRole:  role,
+		ActorID:    actorID,
+		ActorRole:  actorRole,
 	})
 	if err != nil {
 		return mapRepoError(err, "create order status event")
@@ -436,11 +486,19 @@ func (r *OrderRepository) ListStatusEvents(ctx context.Context, orderID uuid.UUI
 	for _, row := range rows {
 		out = append(out, domainorder.StatusEvent{
 			To:        mapOrderStatusFromSQL(row.ToStatus),
-			ActorRole: fromSQLRole(row.ActorRole),
+			ActorRole: actorRoleFromSQL(row.ActorRole),
 			At:        row.CreatedAt,
 		})
 	}
 	return out, nil
+}
+
+// actorRoleFromSQL is the role of whoever moved an order; empty for the system.
+func actorRoleFromSQL(role *sqlcgen.UserRole) domainuser.Role {
+	if role == nil {
+		return ""
+	}
+	return fromSQLRole(*role)
 }
 
 func mapOrder(row sqlcgen.Order) *domainorder.Order {
@@ -458,6 +516,7 @@ func mapOrder(row sqlcgen.Order) *domainorder.Order {
 		DiscountCodeID:       row.DiscountCodeID,
 		DiscountCodeSnapshot: row.DiscountCodeSnapshot,
 		PickupAt:             row.PickupAt,
+		PaymentDueAt:         row.PaymentDueAt,
 		Terms:                mapTermsAcceptance(row.TermsVersion, row.TermsAcceptedAt),
 	}
 }
@@ -505,6 +564,8 @@ func mapOrderTypeToSQL(t domainorder.Type) (sqlcgen.OrderType, error) {
 
 func mapOrderStatusToSQL(s domainorder.Status) (sqlcgen.OrderStatus, error) {
 	switch s {
+	case domainorder.StatusAwaitingPayment:
+		return sqlcgen.OrderStatusAwaitingPayment, nil
 	case domainorder.StatusPending:
 		return sqlcgen.OrderStatusPending, nil
 	case domainorder.StatusConfirmed:
@@ -515,6 +576,8 @@ func mapOrderStatusToSQL(s domainorder.Status) (sqlcgen.OrderStatus, error) {
 		return sqlcgen.OrderStatusReady, nil
 	case domainorder.StatusCancelled:
 		return sqlcgen.OrderStatusCancelled, nil
+	case domainorder.StatusExpired:
+		return sqlcgen.OrderStatusExpired, nil
 	case domainorder.StatusFulfilled:
 		return sqlcgen.OrderStatusFulfilled, nil
 	default:
@@ -621,6 +684,8 @@ func optionalOrderStatus(status *domainorder.Status) (*sqlcgen.OrderStatus, erro
 
 func mapOrderStatusFromSQL(s sqlcgen.OrderStatus) domainorder.Status {
 	switch s {
+	case sqlcgen.OrderStatusAwaitingPayment:
+		return domainorder.StatusAwaitingPayment
 	case sqlcgen.OrderStatusPending:
 		return domainorder.StatusPending
 	case sqlcgen.OrderStatusConfirmed:
@@ -631,6 +696,8 @@ func mapOrderStatusFromSQL(s sqlcgen.OrderStatus) domainorder.Status {
 		return domainorder.StatusReady
 	case sqlcgen.OrderStatusCancelled:
 		return domainorder.StatusCancelled
+	case sqlcgen.OrderStatusExpired:
+		return domainorder.StatusExpired
 	case sqlcgen.OrderStatusFulfilled:
 		return domainorder.StatusFulfilled
 	default:

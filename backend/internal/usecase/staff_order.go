@@ -19,6 +19,7 @@ import (
 type StaffOrderUsecase struct {
 	orders      port.OrderRepository
 	tickets     port.TicketRepository
+	payments    port.PaymentRepository
 	transitions orderTransitions
 	audit       *auditlogger.Service
 	log         *zap.Logger
@@ -31,10 +32,12 @@ func NewStaffOrderUsecase(
 	events port.EventOutbox,
 	audit *auditlogger.Service,
 	log *zap.Logger,
+	payments port.PaymentRepository,
 ) *StaffOrderUsecase {
 	return &StaffOrderUsecase{
 		orders:      orders,
 		tickets:     tickets,
+		payments:    payments,
 		transitions: orderTransitions{tx: tx, orders: orders, tickets: tickets, events: events},
 		audit:       audit,
 		log:         log,
@@ -106,7 +109,10 @@ func (u *StaffOrderUsecase) Get(ctx context.Context, orderID uuid.UUID) (*dto.St
 		}
 		return nil, err
 	}
-	parts, err := readOrderDetail(ctx, u.orders, u.tickets, row.Order.ID)
+	if !row.Order.Status.VisibleToStaff() {
+		return nil, domainorder.ErrNotFound
+	}
+	parts, err := readOrderDetail(ctx, u.orders, u.tickets, u.payments, row.Order.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +141,7 @@ func (u *StaffOrderUsecase) PatchStatus(
 		return nil, domainorder.ErrInvalidStatusTransition
 	}
 
-	updated, err := u.transitions.apply(ctx, actorID, actorRole, port.UpdateOrderStatusParams{
+	updated, err := u.transitions.apply(ctx, &port.OrderActor{ID: actorID, Role: actorRole}, port.UpdateOrderStatusParams{
 		OrderID:    orderID,
 		FromStatus: beforeRow.Order.Status,
 		ToStatus:   targetStatus,
@@ -151,7 +157,7 @@ func (u *StaffOrderUsecase) PatchStatus(
 		map[string]string{"status": string(updated.Status)},
 	)
 
-	parts, err := readOrderDetail(ctx, u.orders, u.tickets, orderID)
+	parts, err := readOrderDetail(ctx, u.orders, u.tickets, u.payments, orderID)
 	if err != nil {
 		return nil, err
 	}
@@ -182,6 +188,7 @@ func toStaffOrderResponse(row *port.StaffOrderListRow, parts orderDetailParts) *
 		Timeline:             mapStaffOrderTimelineToDTO(parts.timeline),
 		Tickets:              mapOrderTicketsToDTO(parts.tickets),
 		Customer:             toStaffOrderCustomer(row),
+		Payment:              mapOrderPaymentToDTO(parts.payment),
 		CreatedAt:            row.Order.CreatedAt,
 		UpdatedAt:            row.Order.UpdatedAt,
 	}

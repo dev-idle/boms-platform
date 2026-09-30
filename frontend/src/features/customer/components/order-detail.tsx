@@ -16,7 +16,9 @@ import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
-import { useOrder } from "../hooks";
+import { useOrder, usePayPalReturn } from "../hooks";
+import { isWithTheBakery } from "../lib/order-progress";
+import { OrderPayment } from "./order-payment";
 import { OrderProgressStepper } from "./order-progress-stepper";
 
 type OrderDetailProps = {
@@ -26,6 +28,7 @@ type OrderDetailProps = {
 export function OrderDetail({ orderId }: OrderDetailProps) {
   const isValidId = z.uuid().safeParse(orderId).success;
   const orderQuery = useOrder(orderId);
+  const paying = usePayPalReturn(orderId);
 
   if (!isValidId) {
     return <p className="text-sm text-muted">Invalid order link.</p>;
@@ -72,7 +75,9 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
 
         <OrderProgressStepper status={order.status} timeline={order.timeline} />
 
-        {order.status !== "cancelled" && order.tickets.length > 0 ? (
+        {order.status === "awaiting_payment" ? <OrderPayment confirming={paying.isPending} order={order} /> : null}
+
+        {isWithTheBakery(order.status) && order.tickets.length > 0 ? (
           <section
             aria-labelledby="order-preparation"
             className="storefront-order-detail__preparation"
@@ -137,6 +142,9 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
               {formatPriceCents(order.total_cents)}
             </span>
           </div>
+          {order.payment?.captured_at ? (
+            <p className="text-caption">Paid with PayPal on {formatDateTime(order.payment.captured_at)}</p>
+          ) : null}
         </div>
       </div>
     </div>

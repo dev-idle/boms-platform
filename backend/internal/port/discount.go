@@ -9,28 +9,30 @@ import (
 )
 
 type CreateDiscountCodeParams struct {
-	Code             string
-	DiscountType     domaindiscount.Type
-	Value            int64
-	MinOrderCents    *int64
-	MaxUses          *int32
-	MaxDiscountCents *int64
-	StartsAt         time.Time
-	EndsAt           time.Time
-	IsActive         bool
+	Code               string
+	DiscountType       domaindiscount.Type
+	Value              int64
+	MinOrderCents      *int64
+	MaxUses            *int32
+	MaxUsesPerCustomer *int32
+	MaxDiscountCents   *int64
+	StartsAt           time.Time
+	EndsAt             time.Time
+	IsActive           bool
 }
 
 type UpdateDiscountCodeParams struct {
-	ID               uuid.UUID
-	Code             string
-	DiscountType     domaindiscount.Type
-	Value            int64
-	MinOrderCents    *int64
-	MaxUses          *int32
-	MaxDiscountCents *int64
-	StartsAt         time.Time
-	EndsAt           time.Time
-	IsActive         bool
+	ID                 uuid.UUID
+	Code               string
+	DiscountType       domaindiscount.Type
+	Value              int64
+	MinOrderCents      *int64
+	MaxUses            *int32
+	MaxUsesPerCustomer *int32
+	MaxDiscountCents   *int64
+	StartsAt           time.Time
+	EndsAt             time.Time
+	IsActive           bool
 }
 
 type ManagerListDiscountCodesParams struct {
@@ -48,4 +50,6 @@ type DiscountCodeRepository interface {
 	ManagerList(ctx context.Context, params ManagerListDiscountCodesParams) ([]domaindiscount.Code, error)
 	ManagerListCount(ctx context.Context, search *string) (int64, error)
 	IncrementUsedCount(ctx context.Context, id uuid.UUID) (*domaindiscount.Code, error)
+	// ReleaseUse gives back the use an order held that will not be paid.
+	ReleaseUse(ctx context.Context, id uuid.UUID) error
 }

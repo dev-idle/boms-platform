@@ -100,12 +100,14 @@ func (ns NullLineType) Value() (driver.Value, error) {
 type OrderStatus string
 
 const (
-	OrderStatusPending      OrderStatus = "pending"
-	OrderStatusConfirmed    OrderStatus = "confirmed"
-	OrderStatusInProduction OrderStatus = "in_production"
-	OrderStatusReady        OrderStatus = "ready"
-	OrderStatusFulfilled    OrderStatus = "fulfilled"
-	OrderStatusCancelled    OrderStatus = "cancelled"
+	OrderStatusPending         OrderStatus = "pending"
+	OrderStatusConfirmed       OrderStatus = "confirmed"
+	OrderStatusInProduction    OrderStatus = "in_production"
+	OrderStatusReady           OrderStatus = "ready"
+	OrderStatusFulfilled       OrderStatus = "fulfilled"
+	OrderStatusCancelled       OrderStatus = "cancelled"
+	OrderStatusAwaitingPayment OrderStatus = "awaiting_payment"
+	OrderStatusExpired         OrderStatus = "expired"
 )
 
 func (e *OrderStatus) Scan(src interface{}) error {
@@ -183,6 +185,91 @@ func (ns NullOrderType) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.OrderType), nil
+}
+
+type PaymentProvider string
+
+const (
+	PaymentProviderPaypal PaymentProvider = "paypal"
+)
+
+func (e *PaymentProvider) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PaymentProvider(s)
+	case string:
+		*e = PaymentProvider(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PaymentProvider: %T", src)
+	}
+	return nil
+}
+
+type NullPaymentProvider struct {
+	PaymentProvider PaymentProvider `json:"paymentProvider"`
+	Valid           bool            `json:"valid"` // Valid is true if PaymentProvider is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPaymentProvider) Scan(value interface{}) error {
+	if value == nil {
+		ns.PaymentProvider, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PaymentProvider.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPaymentProvider) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PaymentProvider), nil
+}
+
+type PaymentStatus string
+
+const (
+	PaymentStatusCreated  PaymentStatus = "created"
+	PaymentStatusPending  PaymentStatus = "pending"
+	PaymentStatusCaptured PaymentStatus = "captured"
+	PaymentStatusDenied   PaymentStatus = "denied"
+)
+
+func (e *PaymentStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PaymentStatus(s)
+	case string:
+		*e = PaymentStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PaymentStatus: %T", src)
+	}
+	return nil
+}
+
+type NullPaymentStatus struct {
+	PaymentStatus PaymentStatus `json:"paymentStatus"`
+	Valid         bool          `json:"valid"` // Valid is true if PaymentStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPaymentStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.PaymentStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PaymentStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPaymentStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PaymentStatus), nil
 }
 
 type Station string
@@ -421,20 +508,21 @@ type CustomerProfile struct {
 }
 
 type DiscountCode struct {
-	ID               uuid.UUID    `json:"id"`
-	Code             string       `json:"code"`
-	DiscountType     DiscountType `json:"discountType"`
-	Value            int64        `json:"value"`
-	MinOrderCents    *int64       `json:"minOrderCents"`
-	MaxUses          *int32       `json:"maxUses"`
-	MaxDiscountCents *int64       `json:"maxDiscountCents"`
-	UsedCount        int32        `json:"usedCount"`
-	StartsAt         time.Time    `json:"startsAt"`
-	EndsAt           time.Time    `json:"endsAt"`
-	IsActive         bool         `json:"isActive"`
-	CreatedAt        time.Time    `json:"createdAt"`
-	UpdatedAt        time.Time    `json:"updatedAt"`
-	DeletedAt        *time.Time   `json:"deletedAt"`
+	ID                 uuid.UUID    `json:"id"`
+	Code               string       `json:"code"`
+	DiscountType       DiscountType `json:"discountType"`
+	Value              int64        `json:"value"`
+	MinOrderCents      *int64       `json:"minOrderCents"`
+	MaxUses            *int32       `json:"maxUses"`
+	MaxUsesPerCustomer *int32       `json:"maxUsesPerCustomer"`
+	MaxDiscountCents   *int64       `json:"maxDiscountCents"`
+	UsedCount          int32        `json:"usedCount"`
+	StartsAt           time.Time    `json:"startsAt"`
+	EndsAt             time.Time    `json:"endsAt"`
+	IsActive           bool         `json:"isActive"`
+	CreatedAt          time.Time    `json:"createdAt"`
+	UpdatedAt          time.Time    `json:"updatedAt"`
+	DeletedAt          *time.Time   `json:"deletedAt"`
 }
 
 type Order struct {
@@ -453,6 +541,8 @@ type Order struct {
 	OrderType            OrderType   `json:"orderType"`
 	TermsAcceptedAt      *time.Time  `json:"termsAcceptedAt"`
 	TermsVersion         *string     `json:"termsVersion"`
+	CheckoutKey          *uuid.UUID  `json:"checkoutKey"`
+	PaymentDueAt         *time.Time  `json:"paymentDueAt"`
 }
 
 type OrderDayCounter struct {
@@ -482,6 +572,21 @@ type OrderTicket struct {
 	Status    TicketStatus `json:"status"`
 	CreatedAt time.Time    `json:"createdAt"`
 	UpdatedAt time.Time    `json:"updatedAt"`
+}
+
+type Payment struct {
+	ID              uuid.UUID       `json:"id"`
+	OrderID         uuid.UUID       `json:"orderId"`
+	Provider        PaymentProvider `json:"provider"`
+	ProviderOrderID string          `json:"providerOrderId"`
+	ApproveUrl      string          `json:"approveUrl"`
+	Status          PaymentStatus   `json:"status"`
+	CaptureID       *string         `json:"captureId"`
+	AmountCents     int64           `json:"amountCents"`
+	Currency        string          `json:"currency"`
+	CapturedAt      *time.Time      `json:"capturedAt"`
+	CreatedAt       time.Time       `json:"createdAt"`
+	UpdatedAt       time.Time       `json:"updatedAt"`
 }
 
 type Product struct {

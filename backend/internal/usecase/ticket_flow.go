@@ -126,7 +126,7 @@ func (f ticketFlow) followTickets(txCtx context.Context, actor ticketActor, orde
 		return domainorder.Order{}, err
 	}
 	if err := f.orders.AddStatusEvent(txCtx, port.AddOrderStatusEventParams{
-		OrderID: order.ID, From: &order.Status, To: next, ActorID: actor.id, ActorRole: actor.role,
+		OrderID: order.ID, From: &order.Status, To: next, Actor: &port.OrderActor{ID: actor.id, Role: actor.role},
 	}); err != nil {
 		return domainorder.Order{}, err
 	}

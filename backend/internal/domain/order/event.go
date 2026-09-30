@@ -22,13 +22,16 @@ const (
 	TopicTicketChanged domainevent.Topic = "ticket.changed"
 )
 
-// TicketChangedEvent announces ticket to the order's customer and the counter,
-// and to the kitchen when bakers see the order — a kitchen ticket shows where
+// TicketChangedEvent announces ticket to the order's customer, to the counter
+// when staff see the order, and to the kitchen when bakers see it — a kitchen ticket shows where
 // the order's other tickets stand, so the kitchen hears those too, as it hears
 // the order's status changes. orderStatus is the status the kitchen knows the
 // order by: for a cancellation, the status it left.
 func TicketChangedEvent(customerID uuid.UUID, orderStatus Status, ticket Ticket) domainevent.Event {
-	roles := []domainuser.Role{domainuser.RoleStaff}
+	var roles []domainuser.Role
+	if orderStatus.VisibleToStaff() {
+		roles = append(roles, domainuser.RoleStaff)
+	}
 	if orderStatus.VisibleToBaker() {
 		roles = append(roles, domainuser.RoleBaker)
 	}
@@ -53,32 +56,33 @@ func SlotsChangedEvent(day time.Time) domainevent.Event {
 	})
 }
 
-// CreatedEvent announces order to its customer and the counter. The kitchen is
-// not told: a new order is not yet production work it may see.
+// CreatedEvent announces order to its customer only: it awaits payment, and
+// the bakery hears about it when it is paid.
 func CreatedEvent(order Order) domainevent.Event {
-	return orderEvent(TopicOrderCreated, order, domainevent.Audience{
-		UserIDs: []uuid.UUID{order.UserID},
-		Roles:   []domainuser.Role{domainuser.RoleStaff},
+	return domainevent.New(TopicOrderCreated, domainevent.Audience{UserIDs: []uuid.UUID{order.UserID}}, map[string]string{
+		"order_id": order.ID.String(),
+		"status":   string(order.Status),
 	})
 }
 
 // StatusChangedEvent announces order's move from the status it left. The
-// kitchen hears about it only when the order enters, leaves or moves within the
-// statuses bakers work with; every other order is not theirs to see.
+// counter hears about it unless the order was never paid, and the kitchen only
+// when the order enters, leaves or moves within the statuses bakers work with;
+// every other order is not theirs to see.
 func StatusChangedEvent(from Status, order Order) domainevent.Event {
-	roles := []domainuser.Role{domainuser.RoleStaff}
+	var roles []domainuser.Role
+	if from.VisibleToStaff() || order.Status.VisibleToStaff() {
+		roles = append(roles, domainuser.RoleStaff)
+	}
 	if from.VisibleToBaker() || order.Status.VisibleToBaker() {
 		roles = append(roles, domainuser.RoleBaker)
 	}
-	return orderEvent(TopicOrderStatusChanged, order, domainevent.Audience{
+	return domainevent.New(TopicOrderStatusChanged, domainevent.Audience{
 		UserIDs: []uuid.UUID{order.UserID},
 		Roles:   roles,
-	})
-}
-
-func orderEvent(topic domainevent.Topic, order Order, audience domainevent.Audience) domainevent.Event {
-	return domainevent.New(topic, audience, map[string]string{
+	}, map[string]string{
 		"order_id": order.ID.String(),
+		"from":     string(from),
 		"status":   string(order.Status),
 	})
 }

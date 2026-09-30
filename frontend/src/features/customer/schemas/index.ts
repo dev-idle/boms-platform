@@ -3,6 +3,7 @@ import { z } from "zod";
 import { catalogSlugSchema } from "@/lib/validation/catalog";
 import {
   orderCodeSchema,
+  orderPaymentSchema,
   orderStatusSchema,
   orderTimelineEntrySchema,
   orderTypeSchema,
@@ -95,8 +96,21 @@ export const orderSchema = z.object({
   items: z.array(orderItemSchema),
   timeline: z.array(orderTimelineEntrySchema),
   tickets: z.array(ticketSummarySchema),
+  payment: orderPaymentSchema.nullable(),
+  /** When the order expires if still unpaid; null on an order placed before online payment. */
+  payment_due_at: apiDateTimeSchema.nullable(),
   created_at: apiDateTimeSchema,
   updated_at: apiDateTimeSchema,
+});
+
+/** POST /orders/:id/payment — the PayPal page the customer approves the payment on. */
+export const paymentStartSchema = z.object({
+  approve_url: z.url({ protocol: /^https$/, hostname: /(^|\.)paypal\.com$/ }),
+});
+
+/** POST /orders/:id/payment/capture — taken, or held by PayPal for review. */
+export const paymentCaptureSchema = z.object({
+  status: z.enum(["captured", "pending"]),
 });
 
 export const orderSummarySchema = z.object({
@@ -157,6 +171,8 @@ export type UpdateCartItemInput = z.infer<typeof updateCartItemInputSchema>;
 export type ApplyCartDiscountInput = z.infer<typeof applyCartDiscountInputSchema>;
 export type CheckoutInput = z.infer<typeof checkoutInputSchema>;
 export type Order = z.infer<typeof orderSchema>;
+export type PaymentStart = z.infer<typeof paymentStartSchema>;
+export type PaymentCapture = z.infer<typeof paymentCaptureSchema>;
 type OrderSummary = z.infer<typeof orderSummarySchema>;
 export type OrdersListFilterInput = z.infer<typeof ordersListFilterSchema>;
 export type PickupRules = z.infer<typeof pickupRulesSchema>;
