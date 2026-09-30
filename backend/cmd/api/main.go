@@ -110,8 +110,14 @@ func main() {
 	eventDispatcher := eventdispatch.New(outboxRepo, eventbus.NewRedisPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
 	pgPool.OnCommit(eventDispatcher.AfterCommit)
 	ticketRepo := postgresrepo.NewTicketRepository(pgPool)
-	orderUC := usecase.NewOrderUsecase(orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo)
+	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
+	accountErasureUC := usecase.NewAccountErasureUsecase(
+		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, auditLogRepo, sessionStore, auditLogger, hasher,
+	)
+	dataExportUC := usecase.NewDataExportUsecase(
+		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, cartRepo, sessionStore, auditLogRepo,
+	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
@@ -125,6 +131,8 @@ func main() {
 
 	authHandler := v1.NewAuthHandler(authUC, cfg)
 	meHandler := v1.NewMeHandler(meUC)
+	dataExportHandler := v1.NewDataExportHandler(dataExportUC)
+	accountErasureHandler := v1.NewAccountErasureHandler(accountErasureUC)
 	adminUserHandler := v1.NewAdminUserHandler(adminUserUC)
 	managerCategoryHandler := v1.NewManagerCategoryHandler(managerCategoryUC)
 	managerProductHandler := v1.NewManagerProductHandler(managerProductUC)
@@ -179,7 +187,14 @@ func main() {
 	apiV1.Get("/me", middleware.RequireAuth(tokenSigner), meHandler.Get)
 	apiV1.Patch("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, selfWrite, meHandler.Patch)
 	apiV1.Patch("/me/password", middleware.RequireAuthWithSession(tokenSigner, sessionStore), selfWrite, meHandler.PatchPassword)
-	apiV1.Delete("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, selfWrite, meHandler.Delete)
+	apiV1.Delete("/me", middleware.RequireAuthWithSession(tokenSigner, sessionStore), passwordChanged, selfWrite, accountErasureHandler.Erase)
+	apiV1.Get(
+		"/me/export",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		passwordChanged,
+		middleware.DataExportRateLimit(rdb, cfg.RateRedis),
+		dataExportHandler.Export,
+	)
 
 	// Any signed-in session may open the push socket: the ticket records its role,
 	// and the realtime listener picks the channels from it.

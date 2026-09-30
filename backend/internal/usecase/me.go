@@ -89,12 +89,28 @@ func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto
 
 	var profile any
 	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// Holds the account open, as checkout does: an erasure waits for this
+		// change and then erases it, and a change that waited on an erasure (or
+		// a disable) finds the account closed instead of writing to it.
+		if _, lockErr := u.users.GetByIDForShare(txCtx, userID); lockErr != nil {
+			if errors.Is(lockErr, apperrors.ErrNotFound) {
+				return ErrMeNotFound
+			}
+			return lockErr
+		}
 		if claimErr := claimPhone(txCtx, u.users, userID, req.Phone, profilePhone(before)); claimErr != nil {
 			return claimErr
 		}
 		var writeErr error
 		profile, writeErr = u.writeProfile(txCtx, userID, before, req)
-		return writeErr
+		if writeErr != nil {
+			return writeErr
+		}
+		// Recorded with the change, so an erasure that follows scrubs it too.
+		if auditErr := u.audit.Log(txCtx, domainuser.AuditActionMeUpdatedProfile, userID, user.Role, &userID, "user_profile", before, profile); auditErr != nil {
+			return apperrors.Errorf("record profile change: %w", auditErr)
+		}
+		return nil
 	}); err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
 			return nil, nil, domainuser.ErrEmployeeCodeExists
@@ -102,7 +118,6 @@ func (u *MeUsecase) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto
 		return nil, nil, err
 	}
 
-	u.logAudit(ctx, domainuser.AuditActionMeUpdatedProfile, userID, user.Role, &userID, "user_profile", before, profile)
 	return user, profile, nil
 }
 
@@ -165,27 +180,6 @@ func (u *MeUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldPwd
 		return err
 	}
 	u.logAudit(ctx, domainuser.AuditActionMeChangedPassword, userID, user.Role, &userID, "user", nil, map[string]any{"changed": true})
-	return nil
-}
-
-func (u *MeUsecase) SoftDeleteSelf(ctx context.Context, userID uuid.UUID) error {
-	user, err := u.users.GetByID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, apperrors.ErrNotFound) {
-			return ErrMeNotFound
-		}
-		return err
-	}
-	if user.Role != domainuser.RoleCustomer {
-		return domainuser.ErrSelfDeleteCustomerOnly
-	}
-	if err := u.users.SoftDelete(ctx, userID); err != nil {
-		return err
-	}
-	if err := u.sessions.DeleteAllForUser(ctx, userID.String()); err != nil {
-		return err
-	}
-	u.logAudit(ctx, domainuser.AuditActionMeSoftDeleted, userID, user.Role, &userID, "user", map[string]any{"disabled": false}, map[string]any{"disabled": true})
 	return nil
 }
 

@@ -5,7 +5,10 @@ import { Fragment } from "react";
 import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
 import { cn } from "@/lib/utils";
 
-import { isAdminAccountManagementLocked } from "../lib/account-management";
+import {
+  ERASED_ACCOUNT_REASON,
+  isAdminAccountManagementLocked,
+} from "../lib/account-management";
 import type { AdminUser } from "../schemas";
 
 type AdminUserDetailActionsProps = {
@@ -75,10 +78,10 @@ export function AdminUserDetailActions({
     !accountLocked ? (
         user.disabled ? (
           <InlineAction
-            disabled={actionsPending}
+            disabled={actionsPending || user.erased}
             onClick={onEnable}
             pendingLabel={accountPending ? "Enabling…" : undefined}
-            title={busyReason}
+            title={user.erased ? ERASED_ACCOUNT_REASON : busyReason}
             tone="accent"
           >
             Enable account

@@ -129,9 +129,26 @@ INSERT INTO orders (
   discount_code_snapshot,
   pickup_at,
   code,
-  order_type
+  order_type,
+  terms_version,
+  terms_accepted_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7,
+  $8,
+  $9,
+  $10,
+  $11::text,
+  -- Accepted at the instant the order is placed: the transaction clock that
+  -- created_at takes.
+  CASE WHEN $11::text IS NULL THEN NULL ELSE now() END
+)
 RETURNING
   id,
   user_id,
@@ -145,7 +162,9 @@ RETURNING
   created_at,
   updated_at,
   code,
-  order_type
+  order_type,
+  terms_accepted_at,
+  terms_version
 `
 
 type CreateOrderParams struct {
@@ -159,6 +178,7 @@ type CreateOrderParams struct {
 	PickupAt             *time.Time  `json:"pickupAt"`
 	Code                 string      `json:"code"`
 	OrderType            OrderType   `json:"orderType"`
+	TermsVersion         *string     `json:"termsVersion"`
 }
 
 // CreateOrder
@@ -173,9 +193,26 @@ type CreateOrderParams struct {
 //	  discount_code_snapshot,
 //	  pickup_at,
 //	  code,
-//	  order_type
+//	  order_type,
+//	  terms_version,
+//	  terms_accepted_at
 //	)
-//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+//	VALUES (
+//	  $1,
+//	  $2,
+//	  $3,
+//	  $4,
+//	  $5,
+//	  $6,
+//	  $7,
+//	  $8,
+//	  $9,
+//	  $10,
+//	  $11::text,
+//	  -- Accepted at the instant the order is placed: the transaction clock that
+//	  -- created_at takes.
+//	  CASE WHEN $11::text IS NULL THEN NULL ELSE now() END
+//	)
 //	RETURNING
 //	  id,
 //	  user_id,
@@ -189,7 +226,9 @@ type CreateOrderParams struct {
 //	  created_at,
 //	  updated_at,
 //	  code,
-//	  order_type
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
 	row := q.db.QueryRow(ctx, createOrder,
 		arg.UserID,
@@ -202,6 +241,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		arg.PickupAt,
 		arg.Code,
 		arg.OrderType,
+		arg.TermsVersion,
 	)
 	var i Order
 	err := row.Scan(
@@ -218,6 +258,8 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.UpdatedAt,
 		&i.Code,
 		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
 	)
 	return i, err
 }
@@ -360,7 +402,9 @@ SELECT
   created_at,
   updated_at,
   code,
-  order_type
+  order_type,
+  terms_accepted_at,
+  terms_version
 FROM orders
 WHERE id = $1 AND user_id = $2
 `
@@ -385,7 +429,9 @@ type GetOrderByIDForUserParams struct {
 //	  created_at,
 //	  updated_at,
 //	  code,
-//	  order_type
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version
 //	FROM orders
 //	WHERE id = $1 AND user_id = $2
 func (q *Queries) GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error) {
@@ -405,8 +451,35 @@ func (q *Queries) GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUs
 		&i.UpdatedAt,
 		&i.Code,
 		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
 	)
 	return i, err
+}
+
+const hasOpenOrdersForUser = `-- name: HasOpenOrdersForUser :one
+SELECT EXISTS (
+  SELECT 1
+  FROM orders
+  WHERE user_id = $1
+    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status)
+) AS open
+`
+
+// Whether the customer has an order the bakery still has to make or hand
+// over: anything not yet fulfilled or cancelled.
+//
+//	SELECT EXISTS (
+//	  SELECT 1
+//	  FROM orders
+//	  WHERE user_id = $1
+//	    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status)
+//	) AS open
+func (q *Queries) HasOpenOrdersForUser(ctx context.Context, userID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasOpenOrdersForUser, userID)
+	var open bool
+	err := row.Scan(&open)
+	return open, err
 }
 
 const listOrderItemsByOrderID = `-- name: ListOrderItemsByOrderID :many
@@ -479,6 +552,76 @@ func (q *Queries) ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID
 	return items, nil
 }
 
+const listOrderItemsByOrderIDs = `-- name: ListOrderItemsByOrderIDs :many
+SELECT
+  id,
+  order_id,
+  line_type,
+  product_id,
+  combo_id,
+  configuration,
+  name,
+  slug,
+  quantity,
+  unit_price_cents,
+  line_total_cents,
+  created_at
+FROM order_items
+WHERE order_id = ANY($1::uuid[])
+ORDER BY order_id, created_at ASC
+`
+
+// The lines of many orders in one round trip, as a data export reads them.
+//
+//	SELECT
+//	  id,
+//	  order_id,
+//	  line_type,
+//	  product_id,
+//	  combo_id,
+//	  configuration,
+//	  name,
+//	  slug,
+//	  quantity,
+//	  unit_price_cents,
+//	  line_total_cents,
+//	  created_at
+//	FROM order_items
+//	WHERE order_id = ANY($1::uuid[])
+//	ORDER BY order_id, created_at ASC
+func (q *Queries) ListOrderItemsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]OrderItem, error) {
+	rows, err := q.db.Query(ctx, listOrderItemsByOrderIDs, orderIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrderItem{}
+	for rows.Next() {
+		var i OrderItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.LineType,
+			&i.ProductID,
+			&i.ComboID,
+			&i.Configuration,
+			&i.Name,
+			&i.Slug,
+			&i.Quantity,
+			&i.UnitPriceCents,
+			&i.LineTotalCents,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOrderStatusEvents = `-- name: ListOrderStatusEvents :many
 SELECT to_status, actor_role, created_at
 FROM order_status_events
@@ -518,6 +661,51 @@ func (q *Queries) ListOrderStatusEvents(ctx context.Context, orderID uuid.UUID) 
 	return items, nil
 }
 
+const listOrderStatusEventsByOrderIDs = `-- name: ListOrderStatusEventsByOrderIDs :many
+SELECT order_id, to_status, actor_role, created_at
+FROM order_status_events
+WHERE order_id = ANY($1::uuid[])
+ORDER BY order_id, created_at ASC, id ASC
+`
+
+type ListOrderStatusEventsByOrderIDsRow struct {
+	OrderID   uuid.UUID   `json:"orderId"`
+	ToStatus  OrderStatus `json:"toStatus"`
+	ActorRole UserRole    `json:"actorRole"`
+	CreatedAt time.Time   `json:"createdAt"`
+}
+
+// The history of many orders in one round trip, as a data export reads it.
+//
+//	SELECT order_id, to_status, actor_role, created_at
+//	FROM order_status_events
+//	WHERE order_id = ANY($1::uuid[])
+//	ORDER BY order_id, created_at ASC, id ASC
+func (q *Queries) ListOrderStatusEventsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]ListOrderStatusEventsByOrderIDsRow, error) {
+	rows, err := q.db.Query(ctx, listOrderStatusEventsByOrderIDs, orderIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOrderStatusEventsByOrderIDsRow{}
+	for rows.Next() {
+		var i ListOrderStatusEventsByOrderIDsRow
+		if err := rows.Scan(
+			&i.OrderID,
+			&i.ToStatus,
+			&i.ActorRole,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOrdersByUser = `-- name: ListOrdersByUser :many
 SELECT
   id,
@@ -532,7 +720,9 @@ SELECT
   created_at,
   updated_at,
   code,
-  order_type
+  order_type,
+  terms_accepted_at,
+  terms_version
 FROM orders
 WHERE user_id = $1
   AND (
@@ -575,7 +765,9 @@ type ListOrdersByUserParams struct {
 //	  created_at,
 //	  updated_at,
 //	  code,
-//	  order_type
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version
 //	FROM orders
 //	WHERE user_id = $1
 //	  AND (
@@ -622,6 +814,111 @@ func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserPara
 			&i.UpdatedAt,
 			&i.Code,
 			&i.OrderType,
+			&i.TermsAcceptedAt,
+			&i.TermsVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrdersByUserBefore = `-- name: ListOrdersByUserBefore :many
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version
+FROM orders
+WHERE user_id = $1
+  AND (
+    $2::timestamptz IS NULL
+    OR (created_at, id) < ($2::timestamptz, $3::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $4
+`
+
+type ListOrdersByUserBeforeParams struct {
+	UserID   uuid.UUID  `json:"userId"`
+	BeforeAt *time.Time `json:"beforeAt"`
+	BeforeID *uuid.UUID `json:"beforeId"`
+	Limit    int32      `json:"limit"`
+}
+
+// A customer's orders newest first, a page at a time by keyset: each page
+// starts below the last order of the page before, so an order placed while a
+// data export reads never repeats or hides one across a page boundary.
+//
+//	SELECT
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  pickup_at,
+//	  created_at,
+//	  updated_at,
+//	  code,
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version
+//	FROM orders
+//	WHERE user_id = $1
+//	  AND (
+//	    $2::timestamptz IS NULL
+//	    OR (created_at, id) < ($2::timestamptz, $3::uuid)
+//	  )
+//	ORDER BY created_at DESC, id DESC
+//	LIMIT $4
+func (q *Queries) ListOrdersByUserBefore(ctx context.Context, arg ListOrdersByUserBeforeParams) ([]Order, error) {
+	rows, err := q.db.Query(ctx, listOrdersByUserBefore,
+		arg.UserID,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Order{}
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Status,
+			&i.SubtotalCents,
+			&i.DiscountCents,
+			&i.TotalCents,
+			&i.DiscountCodeID,
+			&i.DiscountCodeSnapshot,
+			&i.PickupAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Code,
+			&i.OrderType,
+			&i.TermsAcceptedAt,
+			&i.TermsVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -701,7 +998,9 @@ SELECT
   created_at,
   updated_at,
   code,
-  order_type
+  order_type,
+  terms_accepted_at,
+  terms_version
 FROM orders
 WHERE id = $1
 FOR UPDATE
@@ -724,7 +1023,9 @@ FOR UPDATE
 //	  created_at,
 //	  updated_at,
 //	  code,
-//	  order_type
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version
 //	FROM orders
 //	WHERE id = $1
 //	FOR UPDATE
@@ -745,6 +1046,8 @@ func (q *Queries) LockOrder(ctx context.Context, id uuid.UUID) (Order, error) {
 		&i.UpdatedAt,
 		&i.Code,
 		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
 	)
 	return i, err
 }
@@ -1087,7 +1390,9 @@ RETURNING
   created_at,
   updated_at,
   code,
-  order_type
+  order_type,
+  terms_accepted_at,
+  terms_version
 `
 
 type UpdateOrderStatusParams struct {
@@ -1116,7 +1421,9 @@ type UpdateOrderStatusParams struct {
 //	  created_at,
 //	  updated_at,
 //	  code,
-//	  order_type
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version
 func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error) {
 	row := q.db.QueryRow(ctx, updateOrderStatus, arg.ToStatus, arg.ID, arg.FromStatus)
 	var i Order
@@ -1134,6 +1441,8 @@ func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusPa
 		&i.UpdatedAt,
 		&i.Code,
 		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
 	)
 	return i, err
 }

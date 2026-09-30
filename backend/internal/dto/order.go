@@ -57,4 +57,7 @@ type OrderHistoryQuery struct {
 
 type CheckoutRequest struct {
 	PickupAt time.Time `json:"pickup_at" validate:"required"`
+	// TermsVersion is the version of the policies the customer accepted for this
+	// order; the usecase refuses any but the current one.
+	TermsVersion string `json:"terms_version" validate:"max=32"`
 }

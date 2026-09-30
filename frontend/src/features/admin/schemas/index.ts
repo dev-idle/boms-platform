@@ -27,6 +27,7 @@ export const adminUserSchema = z.object({
   email_verified: z.boolean(),
   must_change_password: z.boolean(),
   disabled: z.boolean(),
+  erased: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
   display_name: optionalNullableTrimmedString(255, "Display name"),

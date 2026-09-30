@@ -135,13 +135,13 @@ frontend/src/
 ├── proxy.ts                     # Next.js proxy (page cookie gate, header strip)
 ├── app/api/v1/[...path]/route.ts # BFF: browser /api/v1 → Fiber + X-Internal-Secret + Set-Cookie
 ├── app/                         # Route layer ONLY (thin pages)
-│   ├── (public)/                # /, /login, /register (+ PublicSessionGate layout)
+│   ├── (public)/                # /, /login, /register, /terms, /privacy, /refund-policy (+ PublicSessionGate layout)
 │   ├── (customer)/              # /products, /cart, /orders, /customer/account/*
 │   ├── (staff)/                 # /staff/orders, /staff/prep, /staff/account/*
 │   ├── (baker)/                 # /baker/production, /baker/account/*
 │   ├── (manager)/               # /manager, /manager/categories, /manager/products, /combos, /discount-codes, /account/*
 │   └── (admin)/admin/           # /admin, /admin/users, /admin/settings, /admin/account/*
-├── features/                    # Feature slices (auth | user | admin | manager | staff | baker | customer | catalog)
+├── features/                    # Feature slices (auth | user | admin | manager | staff | baker | customer | catalog | legal)
 │   ├── auth/                    # api/, schemas/, hooks/, components/, lib/, provider/
 │   ├── user/                    # api/, schemas/, types/, hooks/, components/
 │   ├── admin/                   # api/, schemas/, types/, hooks/, components/
@@ -149,7 +149,8 @@ frontend/src/
 │   ├── staff/                   # order and prep queues → /api/v1/staff/orders/*, /staff/tickets/*
 │   ├── baker/                   # kitchen queue → /api/v1/baker/tickets/*
 │   ├── customer/                # cart, checkout, orders → /api/v1/cart/*, /orders/*
-│   └── catalog/                 # storefront browse → /api/v1/catalog/*
+│   ├── catalog/                 # storefront browse → /api/v1/catalog/*
+│   └── legal/                   # policy pages and the consent tick used at sign-up and checkout (no API)
 ├── components/
 │   ├── ui/                      # Primitives (button, input, form, confirm-dialog)
 │   └── layouts/                 # dashboard-shell.tsx, staff/manager/baker/admin-shell.tsx
@@ -202,7 +203,7 @@ features/<slice>/
 | Realtime push | `lib/realtime/` (socket, `useLiveQueries`, `LiveIndicator` status) + per slice `<slice>QueryKeysForEvent` in `hooks/query-options.ts` and `<Slice>LiveUpdates` mounted in the role layout |
 | RSC auth bootstrap | `features/auth/server.ts` → `provider/auth-bootstrap.tsx` (not `@/features/auth` barrel) |
 | Validation messages | `lib/validation/messages.ts` |
-| Identity API | `features/user` owns `GET /me` only |
+| Identity API | `features/user` owns `GET /me` and the personal data export `GET /me/export` |
 
 **Rules:** no `features/index.ts` meta-barrel; `app/` pages stay thin; RBAC gates are UX — backend enforces roles.
 
@@ -210,7 +211,7 @@ features/<slice>/
 
 | Audience | URLs |
 |----------|------|
-| Public | `/`, `/login`, `/register` |
+| Public | `/`, `/login`, `/register`, `/terms`, `/privacy`, `/refund-policy` |
 | Customer | `/products`, `/cart`, `/orders`, `/customer/account/{profile,password,delete}` |
 | Staff | `/staff/orders`, `/staff/orders/{id}`, `/staff/prep`, `/staff/account/{profile,password}` |
 | Baker | `/baker/production`, `/baker/production/:id` (a kitchen ticket), `/baker/account/{profile,password}` |
@@ -253,7 +254,7 @@ features/<slice>/
 | Password attack | Argon2id (params from config); timing-safe dummy hash on login |
 | Replay | request-id propagation; refresh rotation |
 | CSRF | SameSite=Lax cookie, internal proxy secret on inbound headers, sanitize `X-User-Role`, `X-Request-ID`, `X-Auth-Hint` |
-| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout, staff order status, ticket status and ticket moves (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + self-service account writes — `PATCH /me`, `PATCH /me/password`, `DELETE /me` (10/min, `RATE_LIMIT_REDIS_SELF_WRITE_*`) + discount code attempts per customer — `PUT /cart/discount` (10/15 min, `RATE_LIMIT_REDIS_DISCOUNT_ATTEMPT_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) + realtime tickets per user (60/min, `RATE_LIMIT_REDIS_REALTIME_TICKET_*`) |
+| Bruteforce | Redis-backed rate limit per IP (login/refresh/logout) + per-user admin writes (30/min), manager catalog writes (30/min, `RATE_LIMIT_REDIS_MANAGER_WRITE_*`), order mutations — checkout, staff order status, ticket status and ticket moves (20/min, `RATE_LIMIT_REDIS_ORDER_WRITE_*`) + self-service account writes — `PATCH /me`, `PATCH /me/password`, `DELETE /me` (10/min, `RATE_LIMIT_REDIS_SELF_WRITE_*`) + discount code attempts per customer — `PUT /cart/discount` (10/15 min, `RATE_LIMIT_REDIS_DISCOUNT_ATTEMPT_*`) + manager Cloudinary signatures (20/min, `RATE_LIMIT_REDIS_MANAGER_MEDIA_*`) + realtime tickets per user (60/min, `RATE_LIMIT_REDIS_REALTIME_TICKET_*`) + personal data exports per user — `GET /me/export` (5/hour, `RATE_LIMIT_REDIS_DATA_EXPORT_*`) |
 | RBAC | `RequireRole(Admin)` on `/admin/*`; admin can't modify self; staff self-update only fills `full_name`, `phone` |
 | Forced password change | `must_change_password` flag → `RequirePasswordChanged` middleware blocks all routes except `/me` GET and `/me/password` PATCH |
 | Audit | All admin mutations write to `audit_logs` with actor/target/before/after |
@@ -316,6 +317,7 @@ URL path parsing for folder checks is duplicated in `backend/internal/domain/med
 | Concern | Owner |
 |---------|-------|
 | Session identity (`/me`) | `features/user` (FE) + `usecase/me` (BE) |
+| Customer policies and personal data | `features/legal` + `features/user` (FE) + `domain/policy` + `usecase/data_export` (BE) — `/terms`, `/privacy`, `/refund-policy`, `GET /me/export` |
 | Auth (login/register/logout) | `features/auth` (FE) + `usecase/auth` (BE) |
 | Admin user CRUD | `features/admin` (FE) + `usecase/admin_user` (BE) |
 | Store settings (pickup rules) | `features/admin` settings + `features/customer` checkout panel (FE) + `domain/store` + `usecase/admin_store_settings` + `usecase/store` (BE) — `/admin/settings`, `/admin/closed-dates/*`, public `/store/pickup-rules` and `/store/pickup-slots` |
@@ -407,6 +409,10 @@ BOMS is a **bakery pickup** flow, not delivery or shipping.
 **Staff workflow:** counter confirm/cancel, its own prep queue, and handoff when `ready`; the kitchen works its own tickets.
 
 **Tickets:** production works on `order_tickets`, not on the priced receipt lines. Checkout splits an order into one ticket per station (`order_ticket_items`; a combo arrives as its products, each at its category's station). A ticket goes `queued` → `in_progress` → `ready`, or `cancelled` with its order; the kitchen moves kitchen tickets (`/baker/tickets/*`), the counter its own (`/staff/tickets/*`), and only once the order is accepted (`confirmed` or `in_production`). Every ticket move locks the order row first (`OrderRepository.LockForUpdate`) and derives the order status in the same transaction (`order.DeriveStatus`): the first ticket started puts the order `in_production`, the last one ready makes it `ready`, recorded in `order_status_events` as moved by whoever moved the ticket. With the lock taken first, two stations finishing at once make the order ready once. Staff may move a ticket nobody started to the other station — one ticket per station per order, audited. Cancelling an order cancels its tickets in the same transaction. Order details carry the tickets: customers and the kitchen see where each station stands, staff also see what each makes.
+
+**Policies and personal data:** the terms of sale, privacy policy and refund policy are one versioned set (`domain/policy.TermsVersion`, `constants/policies.ts`, both tested against `contracts/terms-version.json`). Registration and checkout send the version the customer ticked and are refused with `terms_not_accepted` (422) unless it is the current one, so a page left open across a policy change does not count as agreement; the version and the instant (the transaction clock, like `created_at`) are recorded on `users` and on each `orders` row (`terms_version`, `terms_accepted_at`, both set or neither). `GET /me/export` (session, password changed, rate limited, `Cache-Control: no-store`) returns everything held about the signed-in person: account and profile as `GET /me` shapes them, the version accepted at sign-up, their live sign-in sessions (when, network and browser — never a session's id or token), the changes recorded to the account (`audit_logs` about them; the network and browser only for changes they made themselves), and for a customer their cart and every order with its lines and history. Orders and changes are read 100 at a time by keyset on `(created_at, id)`, so a row written while the export reads never repeats or goes missing, with each order page's lines and histories in one round trip. The frontend saves it as a JSON file without dropping any field.
+
+**Erasing an account:** `DELETE /me` is a customer's right to erasure (`usecase/account_erasure`), not a soft delete. It cannot be undone, so it takes the current password again (`{"password"}`; a wrong one is `invalid_credentials`, 401). It is refused with `account_has_open_orders` (422) while any of their orders is neither fulfilled nor cancelled — the bakery still has to make or hand it over. It locks the cart row and then the account row before that check, the order checkout takes them in: checkout holds the account with `FOR SHARE` while it places an order, so an erasure waits for that order and sees it. A checkout that starts during an erasure waits on the cart and finds it emptied; one with a cart filled after the erasure, or during an admin disable, finds the account closed (`me_not_found`). `PATCH /me` holds the account the same way and records its audit entry in its own transaction, so a profile change never lands on, or outlives the scrub of, an erased account. In one transaction it then empties the cart, clears the profile's name and phone, turns the email into `erased-<id>@erased.invalid` (freeing the address, RFC 2606), makes the password unmatchable, closes the account (`deleted_at` and `erased_at`), records `me.erased_account` (the record commits with the erasure or not at all), and scrubs the audit trail: entries about the account and its profile lose their before/after values and the account's own entries lose their network and browser, while what happened, when and by which role stays. Every session ends after the commit; if that fails, asking again finishes it — for an erased account `DELETE /me` only ends the remaining sessions and answers 204. The row itself stays, so the customer's orders remain anonymous sales records, which accounting law requires. An erased account never comes back: admins see it as Erased with Enable greyed, `Enable` refuses it with `account_erased`, and the restore query ignores it. Staff accounts are closed by an administrator, not erased by their holder.
 
 **Order code and history:** every order carries `CH-YYMMDD-NNN` — the bakery day it was placed and its number that day. Checkout takes the number from `order_day_counters` with an upsert inside its transaction, on the bakery day of the transaction clock (the instant `created_at` records); the counter row stays locked until commit, so numbers are unique and gap-free per day. `order_status_events` records each status an order enters, when, and who moved it (actor id and role), written in the transaction that makes the move — checkout writes the first entry, staff transitions and ticket moves the rest. Order details return it as `timeline` (customers: status and time; staff: also the actor role); the kitchen gets the code only. Customers filter their history by `status` and by the bakery days orders were placed on (`from`, `to`, both inclusive).
 

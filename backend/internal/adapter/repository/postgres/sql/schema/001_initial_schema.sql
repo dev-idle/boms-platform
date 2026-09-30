@@ -28,7 +28,12 @@ CREATE TABLE "users" (
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now(),
   "deleted_at" timestamptz NULL,
-  PRIMARY KEY ("id")
+  "terms_accepted_at" timestamptz NULL,
+  "terms_version" text NULL,
+  "erased_at" timestamptz NULL,
+  PRIMARY KEY ("id"),
+  CONSTRAINT "users_erased_closed_check" CHECK ((erased_at IS NULL) OR (deleted_at IS NOT NULL)),
+  CONSTRAINT "users_terms_pair_check" CHECK ((terms_accepted_at IS NULL) = (terms_version IS NULL))
 );
 CREATE UNIQUE INDEX "users_email_active_idx" ON "users" ("email") WHERE (deleted_at IS NULL);
 CREATE INDEX "users_role_idx" ON "users" ("role") WHERE (deleted_at IS NULL);
@@ -245,6 +250,8 @@ CREATE TABLE "orders" (
   "updated_at" timestamptz NOT NULL DEFAULT now(),
   "code" text NOT NULL,
   "order_type" "order_type" NOT NULL,
+  "terms_accepted_at" timestamptz NULL,
+  "terms_version" text NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "orders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "orders_discount_code_id_fkey" FOREIGN KEY ("discount_code_id") REFERENCES "discount_codes" ("id") ON DELETE SET NULL,
@@ -252,7 +259,8 @@ CREATE TABLE "orders" (
   CONSTRAINT "orders_discount_cents_check" CHECK (discount_cents >= 0),
   CONSTRAINT "orders_total_cents_check" CHECK (total_cents >= 0),
   CONSTRAINT "orders_total_balance_check" CHECK (total_cents = subtotal_cents - discount_cents),
-  CONSTRAINT "orders_code_check" CHECK (code ~ '^CH-[0-9]{6}-[0-9]{3,}$'::text)
+  CONSTRAINT "orders_code_check" CHECK (code ~ '^CH-[0-9]{6}-[0-9]{3,}$'::text),
+  CONSTRAINT "orders_terms_pair_check" CHECK ((terms_accepted_at IS NULL) = (terms_version IS NULL))
 );
 CREATE UNIQUE INDEX "orders_code_idx" ON "orders" ("code");
 CREATE INDEX "orders_pickup_slot_idx" ON "orders" ("pickup_at") WHERE (status <> 'cancelled'::order_status);

@@ -51,7 +51,7 @@ func newTicketFixture(t *testing.T) *ticketFixture {
 // accept the order.
 func (f *ticketFixture) placeConfirmed(t *testing.T, products, combos []uuid.UUID, hour int) *dto.OrderResponse {
 	t.Helper()
-	order, err := f.orderUC.Checkout(context.Background(), f.newCustomer(t, products, combos), tomorrowAt(hour, 0))
+	order, err := f.orderUC.Checkout(context.Background(), f.newCustomer(t, products, combos), acceptingTerms(tomorrowAt(hour, 0)))
 	require.NoError(t, err)
 	_, err = f.staff.PatchStatus(context.Background(), f.clerk, domainuser.RoleStaff, uuid.MustParse(order.ID), domainorder.StatusConfirmed)
 	require.NoError(t, err)
@@ -135,7 +135,7 @@ func TestTickets_Integration(t *testing.T) {
 		}
 		hour := 8
 		for name, tc := range cases {
-			order, err := f.orderUC.Checkout(ctx, f.newCustomer(t, tc.products, tc.combos), tomorrowAt(hour, 0))
+			order, err := f.orderUC.Checkout(ctx, f.newCustomer(t, tc.products, tc.combos), acceptingTerms(tomorrowAt(hour, 0)))
 			require.NoError(t, err, name)
 			hour++
 			tickets, err := f.tickets.ListByOrder(ctx, uuid.MustParse(order.ID))
@@ -156,7 +156,7 @@ func TestTickets_Integration(t *testing.T) {
 	})
 
 	t.Run("tickets_wait_for_the_counter_to_accept_the_order", func(t *testing.T) {
-		order, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), tomorrowAt(12, 0))
+		order, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), acceptingTerms(tomorrowAt(12, 0)))
 		require.NoError(t, err)
 		ticket := f.ticketAt(t, order.ID, domaincategory.StationKitchen)
 

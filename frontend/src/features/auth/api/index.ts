@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from "@/constants/policies";
 import {
   browserRequest,
   browserRequestVoid,
@@ -14,11 +15,12 @@ import {
   type User,
 } from "../schemas";
 
+/** Signs up with the policies the form showed: the API records their version. */
 export async function register(body: RegisterInput): Promise<User> {
-  const parsed = registerSchema.parse(body);
+  const { email, password } = registerSchema.parse(body);
   return browserRequest<User>("/api/v1/auth/register", {
     method: "POST",
-    json: parsed,
+    json: { email, password, terms_version: TERMS_VERSION },
     schema: userSchema,
     skipAuth: true,
     skipRefreshRetry: true,

@@ -147,6 +147,7 @@ func defaultRateRedis() config.RateLimitRedisConfig {
 		AuthUserMax: 60, AuthUserWindow: time.Minute,
 		DiscountAttemptMax: 10, DiscountAttemptWindow: 15 * time.Minute,
 		RealtimeTicketMax: 60, RealtimeTicketWindow: time.Minute,
+		DataExportMax: 5, DataExportWindow: time.Hour,
 	}
 }
 

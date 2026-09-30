@@ -151,7 +151,11 @@ export function useCheckoutCart() {
         void queryClient.invalidateQueries({ queryKey: customerQueryKeys.pickupSlotsRoot });
         void queryClient.invalidateQueries({ queryKey: customerQueryKeys.cart });
       }
-      toast.error(cartMutationErrorMessage(error, "Checkout failed"));
+      toast.error(
+        isApiError(error) && error.code === ApiErrorCode.TermsNotAccepted
+          ? "Our policies were just updated. Reload the page, then read and accept the current version."
+          : cartMutationErrorMessage(error, "Checkout failed"),
+      );
     },
   });
 }

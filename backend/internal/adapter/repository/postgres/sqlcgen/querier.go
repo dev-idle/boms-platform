@@ -17,21 +17,21 @@ type Querier interface {
 	//
 	//  INSERT INTO users (email, password_hash, role, must_change_password)
 	//  VALUES ($1, $2, $3, $4)
-	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
-	AdminCreate(ctx context.Context, arg AdminCreateParams) (User, error)
+	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+	AdminCreate(ctx context.Context, arg AdminCreateParams) (AdminCreateRow, error)
 	//AdminGetByID
 	//
-	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
 	//  FROM users
 	//  WHERE id = $1
-	AdminGetByID(ctx context.Context, id uuid.UUID) (User, error)
+	AdminGetByID(ctx context.Context, id uuid.UUID) (AdminGetByIDRow, error)
 	// Disabled rows included, like AdminGetByID: the caller reports "user is disabled".
 	//
-	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
 	//  FROM users
 	//  WHERE id = $1
 	//  FOR UPDATE
-	AdminGetByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error)
+	AdminGetByIDForUpdate(ctx context.Context, id uuid.UUID) (AdminGetByIDForUpdateRow, error)
 	//AdminList
 	//
 	//  SELECT
@@ -43,6 +43,7 @@ type Querier interface {
 	//      u.created_at,
 	//      u.updated_at,
 	//      u.deleted_at,
+	//      u.erased_at,
 	//      cp.display_name,
 	//      COALESCE(sp.full_name, ap.full_name, '') AS full_name,
 	//      COALESCE(sp.phone, ap.phone, cp.phone) AS phone,
@@ -82,13 +83,14 @@ type Querier interface {
 	//      OR u.role::text = $2
 	//    )
 	AdminListCount(ctx context.Context, arg AdminListCountParams) (int64, error)
-	//AdminRestore
+	// An erased account never comes back: its details are gone for good.
 	//
 	//  UPDATE users
 	//  SET deleted_at = NULL,
 	//      updated_at = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NOT NULL
+	//    AND erased_at IS NULL
 	AdminRestore(ctx context.Context, id uuid.UUID) (int64, error)
 	//AdminUpdateUserPassword
 	//
@@ -463,9 +465,26 @@ type Querier interface {
 	//    discount_code_snapshot,
 	//    pickup_at,
 	//    code,
-	//    order_type
+	//    order_type,
+	//    terms_version,
+	//    terms_accepted_at
 	//  )
-	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	//  VALUES (
+	//    $1,
+	//    $2,
+	//    $3,
+	//    $4,
+	//    $5,
+	//    $6,
+	//    $7,
+	//    $8,
+	//    $9,
+	//    $10,
+	//    $11::text,
+	//    -- Accepted at the instant the order is placed: the transaction clock that
+	//    -- created_at takes.
+	//    CASE WHEN $11::text IS NULL THEN NULL ELSE now() END
+	//  )
 	//  RETURNING
 	//    id,
 	//    user_id,
@@ -479,7 +498,9 @@ type Querier interface {
 	//    created_at,
 	//    updated_at,
 	//    code,
-	//    order_type
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
 	// One round trip for every checkout line: the items arrive as a JSON array and
 	// Postgres casts each field to the column type (constraints still apply per row).
@@ -568,12 +589,19 @@ type Querier interface {
 	//  VALUES ($1, $2)
 	//  RETURNING id, closed_on, reason, created_at
 	CreateStoreClosedDate(ctx context.Context, arg CreateStoreClosedDateParams) (CreateStoreClosedDateRow, error)
-	//CreateUser
+	// A version means the person accepted those terms as the account was created.
 	//
-	//  INSERT INTO users (email, password_hash, role, must_change_password)
-	//  VALUES ($1, $2, $3, $4)
-	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
-	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	//  INSERT INTO users (email, password_hash, role, must_change_password, terms_version, terms_accepted_at)
+	//  VALUES (
+	//    $1,
+	//    $2,
+	//    $3,
+	//    $4,
+	//    $5::text,
+	//    CASE WHEN $5::text IS NULL THEN NULL ELSE now() END
+	//  )
+	//  RETURNING id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	//DeleteAdminProfileByUserID
 	//
 	//  DELETE FROM admin_profiles
@@ -614,6 +642,30 @@ type Querier interface {
 	//  DELETE FROM staff_profiles
 	//  WHERE user_id = $1
 	DeleteStaffProfileByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	// Clears what a customer told us about themselves; the row stays, empty.
+	//
+	//  UPDATE customer_profiles
+	//  SET display_name = NULL,
+	//      phone = NULL,
+	//      updated_at = now()
+	//  WHERE user_id = $1
+	EraseCustomerProfile(ctx context.Context, userID uuid.UUID) error
+	// Erases an account's personal details at its owner's request and closes it.
+	// The email becomes a placeholder nobody can sign in with or receive mail at
+	// (RFC 2606 reserves .invalid), freeing the address, and the password can no
+	// longer match. The row stays, so the orders it placed remain the bakery's
+	// anonymous sales records.
+	//
+	//  UPDATE users
+	//  SET email = 'erased-' || id::text || '@erased.invalid',
+	//      password_hash = 'erased',
+	//      must_change_password = false,
+	//      deleted_at = now(),
+	//      erased_at = now(),
+	//      updated_at = now()
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	EraseUser(ctx context.Context, id uuid.UUID) (int64, error)
 	//GetAdminProfileByUserID
 	//
 	//  SELECT user_id, full_name, phone, created_at, updated_at
@@ -745,7 +797,9 @@ type Querier interface {
 	//    created_at,
 	//    updated_at,
 	//    code,
-	//    order_type
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version
 	//  FROM orders
 	//  WHERE id = $1 AND user_id = $2
 	GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error)
@@ -783,26 +837,51 @@ type Querier interface {
 	GetStoreSettingsForUpdate(ctx context.Context) (GetStoreSettingsForUpdateRow, error)
 	//GetUserByEmail
 	//
-	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
 	//  FROM users
 	//  WHERE email = $1
 	//    AND deleted_at IS NULL
-	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	//GetUserByID
 	//
-	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
 	//  FROM users
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
+	// Holds the account open until the transaction ends: closing it (an erasure, a
+	// disable) waits, and a reader that waited on a closing finds no row.
+	//
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
+	//  FROM users
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	//  FOR SHARE
+	GetUserByIDForShare(ctx context.Context, id uuid.UUID) (GetUserByIDForShareRow, error)
 	//GetUserByIDForUpdate
 	//
-	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at
+	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at
 	//  FROM users
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	//  FOR UPDATE
-	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error)
+	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (GetUserByIDForUpdateRow, error)
+	//GetUserTermsAcceptance
+	//
+	//  SELECT terms_version, terms_accepted_at
+	//  FROM users
+	//  WHERE id = $1 AND deleted_at IS NULL
+	GetUserTermsAcceptance(ctx context.Context, id uuid.UUID) (GetUserTermsAcceptanceRow, error)
+	// Whether the customer has an order the bakery still has to make or hand
+	// over: anything not yet fulfilled or cancelled.
+	//
+	//  SELECT EXISTS (
+	//    SELECT 1
+	//    FROM orders
+	//    WHERE user_id = $1
+	//      AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status)
+	//  ) AS open
+	HasOpenOrdersForUser(ctx context.Context, userID uuid.UUID) (bool, error)
 	//IncrementDiscountCodeUsedCount
 	//
 	//  UPDATE discount_codes
@@ -864,6 +943,30 @@ type Querier interface {
 	//  ORDER BY al.created_at DESC
 	//  LIMIT $2 OFFSET $3
 	ListAuditLogsByTargetID(ctx context.Context, arg ListAuditLogsByTargetIDParams) ([]ListAuditLogsByTargetIDRow, error)
+	// What was recorded about one account — the account itself and its profile —
+	// newest first, a page at a time by keyset, as the account holder's data
+	// export reads it.
+	//
+	//  SELECT
+	//      id,
+	//      actor_id,
+	//      actor_role,
+	//      action,
+	//      before_jsonb,
+	//      after_jsonb,
+	//      COALESCE(host(ip), '')::text AS ip,
+	//      user_agent,
+	//      created_at
+	//  FROM audit_logs
+	//  WHERE target_type IN ('user', 'user_profile')
+	//    AND target_id = $1
+	//    AND (
+	//      $2::timestamptz IS NULL
+	//      OR (created_at, id) < ($2::timestamptz, $3::uuid)
+	//    )
+	//  ORDER BY created_at DESC, id DESC
+	//  LIMIT $4
+	ListAuditLogsForSubjectBefore(ctx context.Context, arg ListAuditLogsForSubjectBeforeParams) ([]ListAuditLogsForSubjectBeforeRow, error)
 	//ListCartItemsByCartID
 	//
 	//  SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
@@ -936,6 +1039,25 @@ type Querier interface {
 	//  WHERE order_id = $1
 	//  ORDER BY created_at ASC
 	ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]OrderItem, error)
+	// The lines of many orders in one round trip, as a data export reads them.
+	//
+	//  SELECT
+	//    id,
+	//    order_id,
+	//    line_type,
+	//    product_id,
+	//    combo_id,
+	//    configuration,
+	//    name,
+	//    slug,
+	//    quantity,
+	//    unit_price_cents,
+	//    line_total_cents,
+	//    created_at
+	//  FROM order_items
+	//  WHERE order_id = ANY($1::uuid[])
+	//  ORDER BY order_id, created_at ASC
+	ListOrderItemsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]OrderItem, error)
 	//ListOrderStatusEvents
 	//
 	//  SELECT to_status, actor_role, created_at
@@ -943,6 +1065,13 @@ type Querier interface {
 	//  WHERE order_id = $1
 	//  ORDER BY created_at ASC, id ASC
 	ListOrderStatusEvents(ctx context.Context, orderID uuid.UUID) ([]ListOrderStatusEventsRow, error)
+	// The history of many orders in one round trip, as a data export reads it.
+	//
+	//  SELECT order_id, to_status, actor_role, created_at
+	//  FROM order_status_events
+	//  WHERE order_id = ANY($1::uuid[])
+	//  ORDER BY order_id, created_at ASC, id ASC
+	ListOrderStatusEventsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]ListOrderStatusEventsByOrderIDsRow, error)
 	// The items of every ticket of an order.
 	//
 	//  SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity
@@ -1002,7 +1131,9 @@ type Querier interface {
 	//    created_at,
 	//    updated_at,
 	//    code,
-	//    order_type
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version
 	//  FROM orders
 	//  WHERE user_id = $1
 	//    AND (
@@ -1020,6 +1151,35 @@ type Querier interface {
 	//  ORDER BY created_at DESC
 	//  LIMIT $6 OFFSET $5
 	ListOrdersByUser(ctx context.Context, arg ListOrdersByUserParams) ([]Order, error)
+	// A customer's orders newest first, a page at a time by keyset: each page
+	// starts below the last order of the page before, so an order placed while a
+	// data export reads never repeats or hides one across a page boundary.
+	//
+	//  SELECT
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    pickup_at,
+	//    created_at,
+	//    updated_at,
+	//    code,
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version
+	//  FROM orders
+	//  WHERE user_id = $1
+	//    AND (
+	//      $2::timestamptz IS NULL
+	//      OR (created_at, id) < ($2::timestamptz, $3::uuid)
+	//    )
+	//  ORDER BY created_at DESC, id DESC
+	//  LIMIT $4
+	ListOrdersByUserBefore(ctx context.Context, arg ListOrdersByUserBeforeParams) ([]Order, error)
 	//ListOrdersByUserCount
 	//
 	//  SELECT COUNT(*)::bigint AS count
@@ -1121,7 +1281,9 @@ type Querier interface {
 	//    created_at,
 	//    updated_at,
 	//    code,
-	//    order_type
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version
 	//  FROM orders
 	//  WHERE id = $1
 	//  FOR UPDATE
@@ -1398,6 +1560,26 @@ type Querier interface {
 	//  )
 	//  UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
 	ReleasePhone(ctx context.Context, userID uuid.UUID) error
+	// Removes an erased account's personal data from the audit trail and keeps
+	// the trail: changes to the account and its profile lose their before and
+	// after values (a profile change holds a name or phone number), and the
+	// account's own actions lose the network and browser they came from. What
+	// happened, when, and by which role stays on record.
+	//
+	//  UPDATE audit_logs
+	//  SET before_jsonb = CASE
+	//        WHEN target_type IN ('user', 'user_profile') AND target_id = $1 THEN '{}'::jsonb
+	//        ELSE before_jsonb
+	//      END,
+	//      after_jsonb = CASE
+	//        WHEN target_type IN ('user', 'user_profile') AND target_id = $1 THEN '{}'::jsonb
+	//        ELSE after_jsonb
+	//      END,
+	//      ip = CASE WHEN actor_id = $1 THEN NULL ELSE ip END,
+	//      user_agent = CASE WHEN actor_id = $1 THEN NULL ELSE user_agent END
+	//  WHERE actor_id = $1
+	//     OR (target_type IN ('user', 'user_profile') AND target_id = $1)
+	ScrubAuditLogsForSubject(ctx context.Context, subjectID *uuid.UUID) error
 	//SetCartDiscountCodeID
 	//
 	//  UPDATE carts
@@ -1638,7 +1820,9 @@ type Querier interface {
 	//    created_at,
 	//    updated_at,
 	//    code,
-	//    order_type
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	// A move made at the ticket's own station; a ticket that already moved on, or
 	// sits at another station, is left alone.

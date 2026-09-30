@@ -5,6 +5,7 @@ import {
   Controller,
   FormProvider,
   useFormContext,
+  useFormState,
   type ControllerProps,
   type FieldPath,
   type FieldValues,
@@ -46,7 +47,10 @@ function FormField<
 function useFormField() {
   const fieldContext = React.useContext(FormFieldContext);
   const itemContext = React.useContext(FormItemContext);
-  const { getFieldState, formState } = useFormContext();
+  const { getFieldState } = useFormContext();
+  // Subscribes this field on its own: the compiler memoizes the form subtree on
+  // a stable `form` object, so a re-render of the form owner never reaches it.
+  const formState = useFormState({ name: fieldContext.name });
 
   const fieldState = getFieldState(fieldContext.name, formState);
 

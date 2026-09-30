@@ -80,3 +80,11 @@ func mapCustomerProfile(row sqlcgen.CustomerProfile) *domainprofile.Customer {
 }
 
 var _ port.CustomerProfileRepository = (*CustomerProfileRepository)(nil)
+
+// Erase implements port.CustomerProfileRepository.
+func (r *CustomerProfileRepository) Erase(ctx context.Context, userID uuid.UUID) error {
+	if err := r.q(ctx).EraseCustomerProfile(ctx, userID); err != nil {
+		return mapRepoError(err, "erase customer profile")
+	}
+	return nil
+}

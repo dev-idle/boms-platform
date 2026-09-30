@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/google/uuid"
 )
@@ -14,6 +15,9 @@ type CreateUserParams struct {
 	PasswordHash       string
 	Role               domainuser.Role
 	MustChangePassword bool
+	// TermsVersion is the policy version accepted at sign-up; accounts an admin
+	// creates have none.
+	TermsVersion *string
 }
 
 type AdminListUsersParams struct {
@@ -32,6 +36,7 @@ type AdminListUser struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	DeletedAt          *time.Time
+	ErasedAt           *time.Time
 	FullName           *string
 	Phone              *string
 	EmployeeCode       *string
@@ -45,6 +50,10 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*domainuser.User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error)
 	GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error)
+	// GetByIDForShare is GetByID with the account held open until the
+	// transaction ends: closing it waits, and a read that waited on a closing
+	// finds the account gone.
+	GetByIDForShare(ctx context.Context, id uuid.UUID) (*domainuser.User, error)
 	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	UpdateRole(ctx context.Context, id uuid.UUID, role domainuser.Role) error
 	SetMustChangePassword(ctx context.Context, id uuid.UUID) error
@@ -62,4 +71,9 @@ type UserRepository interface {
 	ClaimPhone(ctx context.Context, phone string, userID uuid.UUID) (held bool, err error)
 	// ReleasePhone clears the phone on the user's profile, whichever type it is.
 	ReleasePhone(ctx context.Context, userID uuid.UUID) error
+	// Erase clears the account's personal details and closes it for good; the
+	// row stays for the orders it placed. It refuses an account already closed.
+	Erase(ctx context.Context, id uuid.UUID) error
+	// TermsAcceptance is the policy version the user accepted at sign-up, or nil.
+	TermsAcceptance(ctx context.Context, userID uuid.UUID) (*domainpolicy.Acceptance, error)
 }

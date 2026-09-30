@@ -6,6 +6,7 @@ import (
 	"time"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
@@ -22,6 +23,7 @@ const (
 )
 
 type OrderUsecase struct {
+	users    port.UserRepository
 	orders   port.OrderRepository
 	carts    port.CartRepository
 	discount port.DiscountCodeRepository
@@ -33,6 +35,7 @@ type OrderUsecase struct {
 }
 
 func NewOrderUsecase(
+	users port.UserRepository,
 	orders port.OrderRepository,
 	carts port.CartRepository,
 	discount port.DiscountCodeRepository,
@@ -43,12 +46,16 @@ func NewOrderUsecase(
 	tickets port.TicketRepository,
 ) *OrderUsecase {
 	return &OrderUsecase{
-		orders: orders, carts: carts, discount: discount, cartUC: cartUC,
+		users: users, orders: orders, carts: carts, discount: discount, cartUC: cartUC,
 		tx: tx, events: events, store: store, tickets: tickets,
 	}
 }
 
-func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt time.Time) (*dto.OrderResponse, error) {
+func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, req dto.CheckoutRequest) (*dto.OrderResponse, error) {
+	if err := domainpolicy.RequireAccepted(req.TermsVersion); err != nil {
+		return nil, err
+	}
+	pickupAt := req.PickupAt
 	now := time.Now()
 	settings, closed, err := readPickupRules(ctx, u.store, now)
 	if err != nil {
@@ -60,6 +67,16 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 	err = u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		cart, lines, discountCode, totals, err := u.cartUC.pricedCartForCheckout(txCtx, userID)
 		if err != nil {
+			return err
+		}
+		// Taken after the cart, the order an erasure takes them in, so an erasure
+		// or a disable waits for this order. The other way round, an erasure
+		// holds the cart and this checkout finds it emptied; a cart filled after
+		// the erasure, or a disable, leaves the account closed here.
+		if _, err := u.users.GetByIDForShare(txCtx, userID); err != nil {
+			if errors.Is(err, apperrors.ErrNotFound) {
+				return ErrMeNotFound
+			}
 			return err
 		}
 		booking, err := u.bookPickup(txCtx, userID, lines, pickupAt, now, policy)
@@ -91,6 +108,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID uuid.UUID, pickupAt 
 			DiscountCodeID:       discountCodeID,
 			DiscountCodeSnapshot: discountSnapshot,
 			PickupAt:             &pickupAt,
+			TermsVersion:         &req.TermsVersion,
 		})
 		if err != nil {
 			return err

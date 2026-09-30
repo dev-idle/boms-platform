@@ -1,4 +1,4 @@
-h1:f+RyFoJsP2vafebLSNP+wHrFIkZNkOCE6oJcIFjrS+s=
+h1:qMRSk4aN3Gn3l6mPMFWKZ9xQOvkYu/8TwY7cRO8RnfI=
 20260601120000_initial_schema.sql h1:hWLNRIrLbMJTc/CLUGjWNH0Fb09J/y8XzuQEt/QGGrk=
 20260922102739_normalize_vietnam_phones.sql h1:4oExt+YB+B+QSWpmLCr5iOkIt9eXN1vbQEOgeop4cP0=
 20260923183657_add_combo_image_url.sql h1:NpmnOxO237rYpbOISIYiKx+e7OcCxw3JcWrpBlmMW9c=
@@ -8,3 +8,5 @@ h1:f+RyFoJsP2vafebLSNP+wHrFIkZNkOCE6oJcIFjrS+s=
 20260928225221_add_stations_and_pickup_slots.sql h1:Y6AiXFLpESnG5ePl834LUGLS4Jr0Re69PVXDsvMpdiY=
 20260928225222_index_pickup_slots.sql h1:xIfxPThk8wIGqIvdOCwKZQsuWapynw9QSlTalVGSEKs=
 20260929004729_add_order_tickets.sql h1:6Lxy+NVHEQi6run7PCG/g5+7tiufBEJdkNZ8zSQr2hk=
+20260929071605_add_policy_acceptance.sql h1:oRsNiCpxQ9Jd6tIhY1ieHu8aOEGGG6JrRITzmY2B0hw=
+20260930072644_add_account_erasure.sql h1:8vIs2/1Vy6xDAtcIrKRgjGjlA6sT70QbA75+GVaBx4M=

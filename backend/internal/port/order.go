@@ -22,6 +22,9 @@ type CreateOrderParams struct {
 	DiscountCodeID       *uuid.UUID
 	DiscountCodeSnapshot *string
 	PickupAt             *time.Time
+	// TermsVersion is the policy version the customer accepted; the order
+	// records it with the instant it was placed.
+	TermsVersion *string
 }
 
 type CreateOrderItemParams struct {
@@ -96,6 +99,11 @@ type OrderRepository interface {
 	LockForUpdate(ctx context.Context, orderID uuid.UUID) (*domainorder.Order, error)
 	StaffGetByID(ctx context.Context, orderID uuid.UUID) (*StaffOrderListRow, error)
 	ListByUser(ctx context.Context, params ListOrdersParams) ([]domainorder.Order, error)
+	// HasOpen reports whether the customer has an order not yet fulfilled or
+	// cancelled — one the bakery still has to make or hand over.
+	HasOpen(ctx context.Context, userID uuid.UUID) (bool, error)
+	// ListByUserBefore pages a customer's orders newest first by keyset.
+	ListByUserBefore(ctx context.Context, userID uuid.UUID, before *PageCursor, limit int32) ([]domainorder.Order, error)
 	ListCountByUser(ctx context.Context, userID uuid.UUID, filter OrderHistoryFilter) (int64, error)
 	StaffList(ctx context.Context, params StaffListOrdersParams) ([]StaffOrderListRow, error)
 	StaffListCount(ctx context.Context, status *domainorder.Status) (int64, error)
@@ -103,6 +111,10 @@ type OrderRepository interface {
 	CreateItems(ctx context.Context, items []CreateOrderItemParams) error
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domainorder.Item, error)
 	SumItemQuantitiesByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID]int32, error)
+	// ListItemsByOrderIDs and ListStatusEventsByOrderIDs read many orders' lines
+	// and histories in one round trip each, keyed by order.
+	ListItemsByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID][]domainorder.Item, error)
+	ListStatusEventsByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID][]domainorder.StatusEvent, error)
 	// NextDayNumber hands out the next order number of the bakery day the
 	// transaction runs on, and that day. It must run in the transaction that
 	// creates the order: the number is held until then.

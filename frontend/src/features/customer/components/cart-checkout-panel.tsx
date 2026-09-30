@@ -6,6 +6,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PICKUP_COPY } from "@/constants/pickup";
 import { ROUTE } from "@/constants/routes";
+import { PolicyConsent } from "@/features/legal";
+import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { useNow } from "@/lib/hooks/use-now";
 import { clockToMinutes, formatClockMinutes } from "@/lib/validation/clock";
 import {
@@ -32,6 +34,7 @@ import type { Cart, PickupSlots } from "../schemas";
 import { PickupSlotPicker, type PickupSlotOption } from "./pickup-slot-picker";
 
 const ERROR_ID = "pickup-error";
+const CONSENT_HINT_ID = "checkout-consent-hint";
 /** How often the suggested pickup and its checks move with the clock. */
 const CLOCK_TICK_MS = 30_000;
 
@@ -74,6 +77,7 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
   const now = useNow(CLOCK_TICK_MS);
   const [chosenDay, setChosenDay] = useState<string | null>(null);
   const [chosenSlot, setChosenSlot] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState(false);
 
   const items = toPickupFulfillment(fulfillment);
   const pickupWindow = rulesQuery.data ? toPickupWindow(rulesQuery.data) : null;
@@ -141,7 +145,13 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
   const message = dayMessage ?? slotMessage;
   const type = pickupWindow && slot !== "" && message === null ? pickupOrderType(slot, now, items) : null;
   const canCheckout =
-    checkoutReady && pickupWindow !== null && slot !== "" && message === null && !loadingSlots && !checkout.isPending;
+    checkoutReady &&
+    accepted &&
+    pickupWindow !== null &&
+    slot !== "" &&
+    message === null &&
+    !loadingSlots &&
+    !checkout.isPending;
 
   function placeOrder(): void {
     if (!canCheckout || !pickupWindow) {
@@ -153,7 +163,16 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
     }
     checkout.mutate(
       { pickup_at: bakeryPickupISOFromLocalInput(slot) },
-      { onSuccess: (order) => router.push(ROUTE.orderDetail(order.id)) },
+      {
+        onSuccess: (order) => router.push(ROUTE.orderDetail(order.id)),
+        // The policies changed while the cart was open: the tick was given to an
+        // older version, so it no longer counts.
+        onError: (error) => {
+          if (isApiError(error) && error.code === ApiErrorCode.TermsNotAccepted) {
+            setAccepted(false);
+          }
+        },
+      },
     );
   }
 
@@ -180,9 +199,22 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
       />
 
       <div className="storefront-cart-summary__checkout">
+        <PolicyConsent
+          checked={accepted}
+          describedBy={accepted ? undefined : CONSENT_HINT_ID}
+          disabled={checkout.isPending}
+          onCheckedChange={setAccepted}
+          scope="order"
+        />
+        {accepted ? null : (
+          <p className="sr-only" id={CONSENT_HINT_ID}>
+            Checkout opens once you accept the terms and the refund policy.
+          </p>
+        )}
         <Button
           className="storefront-cart-summary__checkout-btn"
           disabled={!canCheckout}
+          title={accepted ? undefined : "Accept the terms and the refund policy to check out"}
           type="button"
           onClick={placeOrder}
         >

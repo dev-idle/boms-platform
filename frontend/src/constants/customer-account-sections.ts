@@ -4,6 +4,7 @@ import { ROUTE } from "@/constants/routes";
 export const CUSTOMER_ACCOUNT_SECTION = {
   profile: "customer-profile",
   password: "customer-password",
+  data: "customer-data",
   delete: "customer-delete-account",
 } as const;
 

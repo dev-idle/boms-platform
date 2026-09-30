@@ -7,10 +7,17 @@ import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
 import { endLocalSession } from "@/lib/auth";
+import { saveJsonFile } from "@/lib/dom/save-json-file";
+import { isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
 
-import { changePassword, deleteAccount, updateProfile } from "../api";
-import { type ChangePasswordInput, type UpdateSelfProfileInput } from "../schemas/index";
+import { changePassword, deleteAccount, exportMyData, updateProfile } from "../api";
+import { dataExportFileName } from "../lib/data-export-file-name";
+import {
+  type ChangePasswordInput,
+  type EraseMyAccountInput,
+  type UpdateSelfProfileInput,
+} from "../schemas/index";
 import { meQueryOptions, userQueryKeys } from "./query-options";
 
 export { userQueryKeys } from "./query-options";
@@ -73,15 +80,33 @@ export function useDeleteAccount() {
   const beginLogout = useAuthStore((state) => state.beginLogout);
 
   return useMutation({
-    mutationFn: () => deleteAccount(),
-    onMutate: () => {
-      beginLogout();
-    },
+    mutationFn: (input: EraseMyAccountInput) => deleteAccount(input),
+    // Signing out starts only once the account is gone: a refused erasure leaves
+    // the customer on the page, where the form says why.
     onSuccess: () => {
+      beginLogout();
       endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });
-      toast.success("Account deleted");
+      toast.success("Your account and personal details were erased");
       router.push(ROUTE.login);
+    },
+  });
+}
+
+/** Downloads everything the bakery holds about the signed-in person as a JSON file. */
+export function useDownloadMyData() {
+  return useMutation({
+    mutationFn: () => exportMyData(),
+    onSuccess: (data) => {
+      saveJsonFile(dataExportFileName(new Date(data.exported_at)), data);
+      toast.success("Your data is downloading");
+    },
+    onError: (error) => {
+      toast.error(
+        isApiError(error) && error.isRateLimited()
+          ? "You have downloaded your data several times recently. Please try again later."
+          : "We could not prepare your data. Please try again.",
+      );
     },
   });
 }

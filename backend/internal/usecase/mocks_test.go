@@ -7,6 +7,7 @@ package usecase_test
 import (
 	"context"
 
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	domainsession "github.com/boms/backend/internal/domain/session"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -48,6 +49,11 @@ func (m *mockUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domainuser.U
 	return u, args.Error(1)
 }
 func (m *mockUserRepo) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
+	args := m.Called(ctx, id)
+	u, _ := args.Get(0).(*domainuser.User)
+	return u, args.Error(1)
+}
+func (m *mockUserRepo) GetByIDForShare(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
 	args := m.Called(ctx, id)
 	u, _ := args.Get(0).(*domainuser.User)
 	return u, args.Error(1)
@@ -101,12 +107,27 @@ func (m *mockUserRepo) ReleasePhone(ctx context.Context, userID uuid.UUID) error
 	return m.Called(ctx, userID).Error(0)
 }
 
+func (m *mockUserRepo) Erase(ctx context.Context, id uuid.UUID) error {
+	return m.Called(ctx, id).Error(0)
+}
+
+func (m *mockUserRepo) TermsAcceptance(ctx context.Context, userID uuid.UUID) (*domainpolicy.Acceptance, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domainpolicy.Acceptance), args.Error(1)
+}
+
 type mockCustomerProfileRepo struct{ mock.Mock }
 
 func (m *mockCustomerProfileRepo) Create(ctx context.Context, params port.UpsertCustomerProfileParams) (*domainprofile.Customer, error) {
 	args := m.Called(ctx, params)
 	out, _ := args.Get(0).(*domainprofile.Customer)
 	return out, args.Error(1)
+}
+func (m *mockCustomerProfileRepo) Erase(ctx context.Context, userID uuid.UUID) error {
+	return m.Called(ctx, userID).Error(0)
 }
 func (m *mockCustomerProfileRepo) GetByUserID(ctx context.Context, userID uuid.UUID) (*domainprofile.Customer, error) {
 	args := m.Called(ctx, userID)
@@ -151,6 +172,28 @@ type passthroughTxManager struct{}
 
 func (passthroughTxManager) WithTx(ctx context.Context, fn func(txCtx context.Context) error) error {
 	return fn(ctx)
+}
+
+// recordingAuditLogs keeps the actions written to the audit trail and whether
+// it was scrubbed; any other call panics.
+type recordingAuditLogs struct {
+	port.AuditLogRepository
+	failWith error
+	actions  []domainuser.AuditAction
+	scrubbed bool
+}
+
+func (a *recordingAuditLogs) Create(_ context.Context, params port.CreateAuditLogParams) error {
+	if a.failWith != nil {
+		return a.failWith
+	}
+	a.actions = append(a.actions, params.Action)
+	return nil
+}
+
+func (a *recordingAuditLogs) ScrubSubject(context.Context, uuid.UUID) error {
+	a.scrubbed = true
+	return nil
 }
 
 type mockSessionStore struct{ mock.Mock }

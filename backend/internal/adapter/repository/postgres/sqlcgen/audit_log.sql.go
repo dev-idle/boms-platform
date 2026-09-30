@@ -165,3 +165,142 @@ func (q *Queries) ListAuditLogsByTargetID(ctx context.Context, arg ListAuditLogs
 	}
 	return items, nil
 }
+
+const listAuditLogsForSubjectBefore = `-- name: ListAuditLogsForSubjectBefore :many
+SELECT
+    id,
+    actor_id,
+    actor_role,
+    action,
+    before_jsonb,
+    after_jsonb,
+    COALESCE(host(ip), '')::text AS ip,
+    user_agent,
+    created_at
+FROM audit_logs
+WHERE target_type IN ('user', 'user_profile')
+  AND target_id = $1
+  AND (
+    $2::timestamptz IS NULL
+    OR (created_at, id) < ($2::timestamptz, $3::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $4
+`
+
+type ListAuditLogsForSubjectBeforeParams struct {
+	SubjectID *uuid.UUID `json:"subjectId"`
+	BeforeAt  *time.Time `json:"beforeAt"`
+	BeforeID  *uuid.UUID `json:"beforeId"`
+	Limit     int32      `json:"limit"`
+}
+
+type ListAuditLogsForSubjectBeforeRow struct {
+	ID          uuid.UUID       `json:"id"`
+	ActorID     uuid.UUID       `json:"actorId"`
+	ActorRole   UserRole        `json:"actorRole"`
+	Action      string          `json:"action"`
+	BeforeJsonb json.RawMessage `json:"beforeJsonb"`
+	AfterJsonb  json.RawMessage `json:"afterJsonb"`
+	Ip          string          `json:"ip"`
+	UserAgent   *string         `json:"userAgent"`
+	CreatedAt   time.Time       `json:"createdAt"`
+}
+
+// What was recorded about one account — the account itself and its profile —
+// newest first, a page at a time by keyset, as the account holder's data
+// export reads it.
+//
+//	SELECT
+//	    id,
+//	    actor_id,
+//	    actor_role,
+//	    action,
+//	    before_jsonb,
+//	    after_jsonb,
+//	    COALESCE(host(ip), '')::text AS ip,
+//	    user_agent,
+//	    created_at
+//	FROM audit_logs
+//	WHERE target_type IN ('user', 'user_profile')
+//	  AND target_id = $1
+//	  AND (
+//	    $2::timestamptz IS NULL
+//	    OR (created_at, id) < ($2::timestamptz, $3::uuid)
+//	  )
+//	ORDER BY created_at DESC, id DESC
+//	LIMIT $4
+func (q *Queries) ListAuditLogsForSubjectBefore(ctx context.Context, arg ListAuditLogsForSubjectBeforeParams) ([]ListAuditLogsForSubjectBeforeRow, error) {
+	rows, err := q.db.Query(ctx, listAuditLogsForSubjectBefore,
+		arg.SubjectID,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAuditLogsForSubjectBeforeRow{}
+	for rows.Next() {
+		var i ListAuditLogsForSubjectBeforeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorID,
+			&i.ActorRole,
+			&i.Action,
+			&i.BeforeJsonb,
+			&i.AfterJsonb,
+			&i.Ip,
+			&i.UserAgent,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const scrubAuditLogsForSubject = `-- name: ScrubAuditLogsForSubject :exec
+UPDATE audit_logs
+SET before_jsonb = CASE
+      WHEN target_type IN ('user', 'user_profile') AND target_id = $1 THEN '{}'::jsonb
+      ELSE before_jsonb
+    END,
+    after_jsonb = CASE
+      WHEN target_type IN ('user', 'user_profile') AND target_id = $1 THEN '{}'::jsonb
+      ELSE after_jsonb
+    END,
+    ip = CASE WHEN actor_id = $1 THEN NULL ELSE ip END,
+    user_agent = CASE WHEN actor_id = $1 THEN NULL ELSE user_agent END
+WHERE actor_id = $1
+   OR (target_type IN ('user', 'user_profile') AND target_id = $1)
+`
+
+// Removes an erased account's personal data from the audit trail and keeps
+// the trail: changes to the account and its profile lose their before and
+// after values (a profile change holds a name or phone number), and the
+// account's own actions lose the network and browser they came from. What
+// happened, when, and by which role stays on record.
+//
+//	UPDATE audit_logs
+//	SET before_jsonb = CASE
+//	      WHEN target_type IN ('user', 'user_profile') AND target_id = $1 THEN '{}'::jsonb
+//	      ELSE before_jsonb
+//	    END,
+//	    after_jsonb = CASE
+//	      WHEN target_type IN ('user', 'user_profile') AND target_id = $1 THEN '{}'::jsonb
+//	      ELSE after_jsonb
+//	    END,
+//	    ip = CASE WHEN actor_id = $1 THEN NULL ELSE ip END,
+//	    user_agent = CASE WHEN actor_id = $1 THEN NULL ELSE user_agent END
+//	WHERE actor_id = $1
+//	   OR (target_type IN ('user', 'user_profile') AND target_id = $1)
+func (q *Queries) ScrubAuditLogsForSubject(ctx context.Context, subjectID *uuid.UUID) error {
+	_, err := q.db.Exec(ctx, scrubAuditLogsForSubject, subjectID)
+	return err
+}

@@ -201,4 +201,32 @@ func TestUserRepository_Integration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Nil(t, profile.Phone)
 	})
+
+	t.Run("account locks see only open accounts and need a transaction", func(t *testing.T) {
+		user, err := repo.Create(ctx, port.CreateUserParams{
+			Email:        "account-lock@example.com",
+			PasswordHash: testPasswordHashFixture,
+			Role:         domainuser.RoleCustomer,
+		})
+		require.NoError(t, err)
+
+		require.NoError(t, pool.WithTx(ctx, func(txCtx context.Context) error {
+			if _, err := repo.GetByIDForShare(txCtx, user.ID); err != nil {
+				return err
+			}
+			_, err := repo.GetByIDForUpdate(txCtx, user.ID)
+			return err
+		}))
+		_, err = repo.GetByIDForShare(ctx, user.ID)
+		assert.Error(t, err, "outside a transaction the lock would guard nothing")
+		_, err = repo.GetByIDForUpdate(ctx, user.ID)
+		assert.Error(t, err, "outside a transaction the lock would guard nothing")
+
+		require.NoError(t, repo.SoftDelete(ctx, user.ID))
+		require.NoError(t, pool.WithTx(ctx, func(txCtx context.Context) error {
+			_, err := repo.GetByIDForShare(txCtx, user.ID)
+			assert.ErrorIs(t, err, apperrors.ErrNotFound, "a closed account is not held open")
+			return nil
+		}))
+	})
 }

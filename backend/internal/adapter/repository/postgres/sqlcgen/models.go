@@ -409,6 +409,8 @@ type Order struct {
 	UpdatedAt            time.Time   `json:"updatedAt"`
 	Code                 string      `json:"code"`
 	OrderType            OrderType   `json:"orderType"`
+	TermsAcceptedAt      *time.Time  `json:"termsAcceptedAt"`
+	TermsVersion         *string     `json:"termsVersion"`
 }
 
 type OrderDayCounter struct {
@@ -470,16 +472,4 @@ type StaffProfile struct {
 	EmployeeCode string    `json:"employeeCode"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
-}
-
-type User struct {
-	ID                 uuid.UUID  `json:"id"`
-	Email              string     `json:"email"`
-	PasswordHash       string     `json:"passwordHash"`
-	Role               UserRole   `json:"role"`
-	EmailVerifiedAt    *time.Time `json:"emailVerifiedAt"`
-	MustChangePassword bool       `json:"mustChangePassword"`
-	CreatedAt          time.Time  `json:"createdAt"`
-	UpdatedAt          time.Time  `json:"updatedAt"`
-	DeletedAt          *time.Time `json:"deletedAt"`
 }

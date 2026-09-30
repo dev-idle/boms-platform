@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
@@ -37,9 +38,53 @@ func TestAuthUsecase_RegisterDuplicateEmail(t *testing.T) {
 	hasher.On("Hash", "Password1").Return("hash", nil)
 	users.On("Create", mock.Anything, mock.Anything).Return(nil, apperrors.ErrConflict)
 
-	_, err := uc.Register(context.Background(), dto.RegisterRequest{Email: "a@b.com", Password: "Password1"})
+	_, err := uc.Register(context.Background(), dto.RegisterRequest{
+		Email: "a@b.com", Password: "Password1", TermsVersion: domainpolicy.TermsVersion,
+	})
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, usecase.ErrEmailExists))
+}
+
+func TestAuthUsecase_RegisterRecordsTheAcceptedTerms(t *testing.T) {
+	t.Parallel()
+	users := new(mockUserRepo)
+	customerProfiles := new(mockCustomerProfileRepo)
+	hasher := new(mockHasher)
+	uc := newAuthUC(t, users, customerProfiles, new(mockSessionStore), hasher, new(mockSigner))
+	created := &domainuser.User{ID: uuid.New(), Email: "a@b.com", Role: domainuser.RoleCustomer}
+
+	hasher.On("Hash", "Password1").Return("hash", nil)
+	users.On("Create", mock.Anything, mock.MatchedBy(func(p port.CreateUserParams) bool {
+		return p.TermsVersion != nil && *p.TermsVersion == domainpolicy.TermsVersion
+	})).Return(created, nil)
+	customerProfiles.On("Create", mock.Anything, mock.Anything).Return(nil, nil)
+
+	user, err := uc.Register(context.Background(), dto.RegisterRequest{
+		Email: "a@b.com", Password: "Password1", TermsVersion: domainpolicy.TermsVersion,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, created, user)
+	users.AssertExpectations(t)
+}
+
+// Nobody gets an account without accepting the policies shown to them: an
+// empty or outdated version is refused before anything is hashed or stored.
+func TestAuthUsecase_RegisterWithoutTheCurrentTerms(t *testing.T) {
+	t.Parallel()
+	for _, version := range []string{"", "2025-01-01"} {
+		users := new(mockUserRepo)
+		hasher := new(mockHasher)
+		uc := newAuthUC(t, users, new(mockCustomerProfileRepo), new(mockSessionStore), hasher, new(mockSigner))
+
+		_, err := uc.Register(context.Background(), dto.RegisterRequest{
+			Email: "a@b.com", Password: "Password1", TermsVersion: version,
+		})
+
+		require.ErrorIs(t, err, domainpolicy.ErrTermsNotAccepted, "version %q", version)
+		users.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+		hasher.AssertNotCalled(t, "Hash", "Password1")
+	}
 }
 
 func TestAuthUsecase_LoginWrongPassword(t *testing.T) {

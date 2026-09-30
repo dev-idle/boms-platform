@@ -37,6 +37,9 @@ export const registerSchema = z.object({
         .max(255, "Email must be at most 255 characters"),
     ),
   password: newPasswordZodString(),
+  accept_terms: z
+    .boolean()
+    .refine((accepted) => accepted, "Accept the terms and the privacy policy to create an account"),
 });
 
 export const loginSchema = z.object({

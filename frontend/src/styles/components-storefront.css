@@ -1636,7 +1636,8 @@
     font-size: 1.75rem;
   }
 
-  .storefront-account-danger__copy {
+  .storefront-account-danger__copy,
+  .storefront-account-data__copy {
     color: var(--color-ink-2);
     font-size: 0.875rem;
     line-height: 1.7;
@@ -1674,10 +1675,15 @@
     justify-content: flex-start;
   }
 
-  .storefront-account-danger {
+  .storefront-account-danger,
+  .storefront-account-data {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+  }
+
+  .storefront-account-data .btn-chrome {
+    align-self: flex-start;
   }
 
   .storefront-page-header {
@@ -1714,6 +1720,125 @@
     line-height: 1.75;
     margin: 0;
     max-width: 46ch;
+  }
+
+  /* Policy pages (terms, privacy, refunds): archetype A, one reading column
+     under the page header. */
+  .storefront-policy {
+    display: grid;
+    gap: 2rem;
+  }
+
+  .storefront-policy__meta {
+    align-items: center;
+    color: var(--color-muted);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    gap: 0.5rem 2.5rem;
+    justify-content: space-between;
+  }
+
+  .storefront-policy__meta p {
+    margin: 0;
+  }
+
+  .storefront-policy__version {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .storefront-policy__nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.75rem;
+  }
+
+  /* Micro-label links; the current page is ink. */
+  .storefront-policy__nav a {
+    align-items: center;
+    color: var(--color-muted);
+    display: inline-flex;
+    font-size: var(--label-size);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking);
+    min-height: 2.75rem;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .storefront-policy__nav a:hover,
+  .storefront-policy__nav a:focus-visible,
+  .storefront-policy__nav a[aria-current="page"] {
+    color: var(--color-ink);
+  }
+
+  .storefront-policy__body {
+    display: grid;
+    gap: 3rem;
+    max-width: 46rem;
+  }
+
+  .storefront-policy__section {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .storefront-policy__heading {
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-size: 1.75rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1.15;
+    margin: 0;
+  }
+
+  .storefront-policy__section p,
+  .storefront-policy__section li {
+    color: var(--color-ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    max-width: 65ch;
+  }
+
+  .storefront-policy__section p {
+    margin: 0;
+  }
+
+  .storefront-policy__section ul {
+    display: grid;
+    gap: 0.625rem;
+    list-style: disc;
+    margin: 0;
+    padding-inline-start: 1.25rem;
+  }
+
+  .storefront-policy__section li::marker {
+    color: var(--color-brass);
+  }
+
+  .storefront-policy__section strong {
+    color: var(--color-ink);
+    font-weight: 500;
+  }
+
+  /* Links inside running text: policy sections and checkbox labels. */
+  .storefront-policy__section a,
+  .form-checkbox a {
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    transition: color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .storefront-policy__section a:hover,
+  .storefront-policy__section a:focus-visible,
+  .form-checkbox a:hover,
+  .form-checkbox a:focus-visible {
+    color: var(--color-matcha-500);
   }
 
   .storefront-panel {
@@ -2907,43 +3032,66 @@
     border-bottom-color: var(--color-ink);
   }
 
-  .auth-remember {
-    align-items: center;
+  /* Checkbox with its label (CheckboxField): the whole line toggles the box, and
+     its block padding makes a one-line label a 44px target. */
+  .form-checkbox {
+    align-items: flex-start;
     color: var(--color-ink-2);
     cursor: pointer;
     display: flex;
     font-size: 0.8125rem;
     gap: 0.75rem;
-    min-height: 1.75rem;
+    line-height: 1.6;
+    padding-block: 0.75rem;
+  }
+
+  .form-checkbox:has(:disabled) {
+    color: var(--color-disabled);
+    cursor: not-allowed;
   }
 
   /* Square 16px box; checked = the selected-item pair (matcha fill, light tick).
      A data-URI SVG cannot read custom properties, so the tick mirrors #F7FAF6. */
-  .auth-remember__input {
+  .form-checkbox__input {
     appearance: none;
     background-color: transparent;
     background-position: center;
     background-repeat: no-repeat;
     background-size: 0.5625rem;
-    border: 1px solid var(--color-line-strong);
+    /* Muted, not a line token: an unticked box must still read at 3:1. */
+    border: 1px solid var(--color-muted);
     cursor: pointer;
     flex-shrink: 0;
     height: 1rem;
-    margin: 0;
+    /* Level with the first line of a label that wraps. */
+    margin: calc((1lh - 1rem) / 2) 0 0;
     transition:
       background-color var(--duration-micro) var(--ease-luxury),
       border-color var(--duration-micro) var(--ease-luxury);
     width: 1rem;
   }
 
-  .auth-remember__input:hover {
+  .form-checkbox__input:hover:not(:disabled) {
     border-color: var(--color-matcha-500);
   }
 
-  .auth-remember__input:checked {
+  .form-checkbox__input:disabled {
+    cursor: not-allowed;
+  }
+
+  .form-checkbox__input[aria-invalid="true"] {
+    border-color: var(--color-danger);
+  }
+
+  .form-checkbox__input:checked {
     background-color: var(--color-matcha-500);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f7faf6' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5L20 7'/%3E%3C/svg%3E");
     border-color: var(--color-matcha-500);
+  }
+
+  .form-checkbox__input:disabled:checked {
+    background-color: var(--color-disabled);
+    border-color: var(--color-disabled);
   }
 
   /* Scoped under .auth-form to outrank the theme button tracking. */

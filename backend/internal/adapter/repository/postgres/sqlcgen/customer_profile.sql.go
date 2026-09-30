@@ -58,6 +58,26 @@ func (q *Queries) DeleteCustomerProfileByUserID(ctx context.Context, userID uuid
 	return result.RowsAffected(), nil
 }
 
+const eraseCustomerProfile = `-- name: EraseCustomerProfile :exec
+UPDATE customer_profiles
+SET display_name = NULL,
+    phone = NULL,
+    updated_at = now()
+WHERE user_id = $1
+`
+
+// Clears what a customer told us about themselves; the row stays, empty.
+//
+//	UPDATE customer_profiles
+//	SET display_name = NULL,
+//	    phone = NULL,
+//	    updated_at = now()
+//	WHERE user_id = $1
+func (q *Queries) EraseCustomerProfile(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, eraseCustomerProfile, userID)
+	return err
+}
+
 const getCustomerProfileByUserID = `-- name: GetCustomerProfileByUserID :one
 SELECT user_id, display_name, phone, created_at, updated_at
 FROM customer_profiles

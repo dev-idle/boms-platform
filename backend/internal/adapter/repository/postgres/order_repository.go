@@ -10,6 +10,7 @@ import (
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -51,6 +52,7 @@ func (r *OrderRepository) Create(ctx context.Context, params port.CreateOrderPar
 		DiscountCodeID:       params.DiscountCodeID,
 		DiscountCodeSnapshot: params.DiscountCodeSnapshot,
 		PickupAt:             params.PickupAt,
+		TermsVersion:         params.TermsVersion,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create order")
@@ -274,6 +276,69 @@ func (r *OrderRepository) ListItemsByOrderID(ctx context.Context, orderID uuid.U
 	return out, nil
 }
 
+func (r *OrderRepository) HasOpen(ctx context.Context, userID uuid.UUID) (bool, error) {
+	open, err := r.q(ctx).HasOpenOrdersForUser(ctx, userID)
+	if err != nil {
+		return false, mapRepoError(err, "has open orders for user")
+	}
+	return open, nil
+}
+
+func (r *OrderRepository) ListByUserBefore(
+	ctx context.Context,
+	userID uuid.UUID,
+	before *port.PageCursor,
+	limit int32,
+) ([]domainorder.Order, error) {
+	params := sqlcgen.ListOrdersByUserBeforeParams{UserID: userID, Limit: limit}
+	if before != nil {
+		params.BeforeAt, params.BeforeID = &before.At, &before.ID
+	}
+	rows, err := r.q(ctx).ListOrdersByUserBefore(ctx, params)
+	if err != nil {
+		return nil, mapRepoError(err, "list orders by user before")
+	}
+	out := make([]domainorder.Order, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, *mapOrder(row))
+	}
+	return out, nil
+}
+
+func (r *OrderRepository) ListItemsByOrderIDs(
+	ctx context.Context,
+	orderIDs []uuid.UUID,
+) (map[uuid.UUID][]domainorder.Item, error) {
+	rows, err := r.q(ctx).ListOrderItemsByOrderIDs(ctx, orderIDs)
+	if err != nil {
+		return nil, mapRepoError(err, "list order items by order ids")
+	}
+	out := make(map[uuid.UUID][]domainorder.Item, len(orderIDs))
+	for _, row := range rows {
+		out[row.OrderID] = append(out[row.OrderID], mapOrderItem(row))
+	}
+	return out, nil
+}
+
+func (r *OrderRepository) ListStatusEventsByOrderIDs(
+	ctx context.Context,
+	orderIDs []uuid.UUID,
+) (map[uuid.UUID][]domainorder.StatusEvent, error) {
+	rows, err := r.q(ctx).ListOrderStatusEventsByOrderIDs(ctx, orderIDs)
+	if err != nil {
+		return nil, mapRepoError(err, "list order status events by order ids")
+	}
+	out := make(map[uuid.UUID][]domainorder.StatusEvent, len(orderIDs))
+	for _, row := range rows {
+		out[row.OrderID] = append(out[row.OrderID], domainorder.StatusEvent{
+			To:        mapOrderStatusFromSQL(row.ToStatus),
+			ActorRole: fromSQLRole(row.ActorRole),
+			At:        row.CreatedAt,
+		})
+	}
+	return out, nil
+}
+
 func (r *OrderRepository) NextDayNumber(ctx context.Context) (time.Time, int, error) {
 	if txFromContext(ctx) == nil {
 		return time.Time{}, 0, apperrors.Errorf("next order day number: requires a transaction")
@@ -393,7 +458,17 @@ func mapOrder(row sqlcgen.Order) *domainorder.Order {
 		DiscountCodeID:       row.DiscountCodeID,
 		DiscountCodeSnapshot: row.DiscountCodeSnapshot,
 		PickupAt:             row.PickupAt,
+		Terms:                mapTermsAcceptance(row.TermsVersion, row.TermsAcceptedAt),
 	}
+}
+
+// mapTermsAcceptance reads the version and instant a row recorded together;
+// the table's check keeps them both set or both empty.
+func mapTermsAcceptance(version *string, acceptedAt *time.Time) *domainpolicy.Acceptance {
+	if version == nil || acceptedAt == nil {
+		return nil
+	}
+	return &domainpolicy.Acceptance{Version: *version, AcceptedAt: *acceptedAt}
 }
 
 func mapOrderItem(row sqlcgen.OrderItem) domainorder.Item {

@@ -42,3 +42,9 @@ type AuditLogRepository interface {
 	CountByTargetID(ctx context.Context, targetID uuid.UUID) (int64, error)
 	ListByTargetID(ctx context.Context, params ListAuditLogsByTargetParams) ([]AuditLogEntry, error)
 }
+
+// AuditScrubber removes an erased account's personal data from the audit trail
+// while keeping what happened, when, and by which role.
+type AuditScrubber interface {
+	ScrubSubject(ctx context.Context, subjectID uuid.UUID) error
+}

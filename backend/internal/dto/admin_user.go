@@ -56,6 +56,7 @@ type AdminUserResponse struct {
 	EmailVerified      bool      `json:"email_verified"`
 	MustChangePassword bool      `json:"must_change_password"`
 	Disabled           bool      `json:"disabled"`
+	Erased             bool      `json:"erased"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 	DisplayName        *string   `json:"display_name,omitempty"`

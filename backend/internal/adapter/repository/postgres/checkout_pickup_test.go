@@ -14,6 +14,7 @@ import (
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
@@ -55,7 +56,7 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	combos := postgresadapter.NewComboRepository(pool)
 	discounts := postgresadapter.NewDiscountCodeRepository(pool)
 	f.cartUC = usecase.NewCartUsecase(f.carts, products, combos, discounts)
-	f.orderUC = usecase.NewOrderUsecase(f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, postgresadapter.NewTicketRepository(pool))
+	f.orderUC = usecase.NewOrderUsecase(f.users, f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, postgresadapter.NewTicketRepository(pool))
 
 	kitchen, err := categories.Create(ctx, port.CreateCategoryParams{Name: "Cakes", Slug: "cakes", IsActive: true, Station: domaincategory.StationKitchen})
 	require.NoError(t, err)
@@ -81,6 +82,12 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	return f
 }
 
+// acceptingTerms is a checkout for pickupAt by a customer who accepted the
+// current policies.
+func acceptingTerms(pickupAt time.Time) dto.CheckoutRequest {
+	return dto.CheckoutRequest{PickupAt: pickupAt, TermsVersion: domainpolicy.TermsVersion}
+}
+
 // newCustomer signs up a customer whose cart holds one of each line given.
 func (f *checkoutFixture) newCustomer(t *testing.T, products []uuid.UUID, combos []uuid.UUID) uuid.UUID {
 	t.Helper()
@@ -92,17 +99,26 @@ func (f *checkoutFixture) newCustomer(t *testing.T, products []uuid.UUID, combos
 		Role:         domainuser.RoleCustomer,
 	})
 	require.NoError(t, err)
+	require.NoError(t, f.fillCart(customer.ID, products, combos))
+	return customer.ID
+}
+
+// fillCart puts one of each line given in the customer's cart.
+func (f *checkoutFixture) fillCart(customerID uuid.UUID, products []uuid.UUID, combos []uuid.UUID) error {
+	ctx := context.Background()
 	for _, id := range products {
 		productID := id.String()
-		_, err := f.cartUC.AddItem(ctx, customer.ID, dto.AddCartItemRequest{ProductID: &productID, Quantity: 1})
-		require.NoError(t, err)
+		if _, err := f.cartUC.AddItem(ctx, customerID, dto.AddCartItemRequest{ProductID: &productID, Quantity: 1}); err != nil {
+			return err
+		}
 	}
 	for _, id := range combos {
 		comboID := id.String()
-		_, err := f.cartUC.AddItem(ctx, customer.ID, dto.AddCartItemRequest{ComboID: &comboID, Quantity: 1})
-		require.NoError(t, err)
+		if _, err := f.cartUC.AddItem(ctx, customerID, dto.AddCartItemRequest{ComboID: &comboID, Quantity: 1}); err != nil {
+			return err
+		}
 	}
-	return customer.ID
+	return nil
 }
 
 // slotNotices counts the slots.changed notices waiting in the outbox.
@@ -165,7 +181,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 	t.Run("a_kitchen_order_is_a_pre_order", func(t *testing.T) {
 		customer := f.newCustomer(t, []uuid.UUID{f.cake}, nil)
 
-		order, err := f.orderUC.Checkout(ctx, customer, tomorrowAt(10, 0))
+		order, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(10, 0)))
 
 		require.NoError(t, err)
 		assert.Equal(t, string(domainorder.TypePreOrder), order.OrderType)
@@ -174,7 +190,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 	t.Run("a_time_between_slots_is_refused", func(t *testing.T) {
 		customer := f.newCustomer(t, []uuid.UUID{f.cake}, nil)
 
-		_, err := f.orderUC.Checkout(ctx, customer, tomorrowAt(10, 10))
+		_, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(10, 10)))
 
 		require.ErrorIs(t, err, domainorder.ErrPickupOffSlot)
 		cart, err := f.cartUC.Get(ctx, customer)
@@ -186,19 +202,19 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		f.setSettings(t, func(s *domainstore.Settings) { s.SlotCapacity = 1 })
 		slot := tomorrowAt(11, 0)
 		notices := f.slotNotices(t)
-		first, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), slot)
+		first, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), acceptingTerms(slot))
 		require.NoError(t, err)
 		assert.Equal(t, notices+1, f.slotNotices(t), "taking the last place tells open checkouts")
 
 		late := f.newCustomer(t, []uuid.UUID{f.cake}, nil)
-		_, err = f.orderUC.Checkout(ctx, late, slot)
+		_, err = f.orderUC.Checkout(ctx, late, acceptingTerms(slot))
 		require.ErrorIs(t, err, domainorder.ErrPickupSlotFull)
 
 		_, err = f.orders.UpdateStatus(ctx, port.UpdateOrderStatusParams{
 			OrderID: uuid.MustParse(first.ID), FromStatus: domainorder.StatusPending, ToStatus: domainorder.StatusCancelled,
 		})
 		require.NoError(t, err)
-		_, err = f.orderUC.Checkout(ctx, late, slot)
+		_, err = f.orderUC.Checkout(ctx, late, acceptingTerms(slot))
 		require.NoError(t, err, "a cancelled order no longer holds its slot")
 	})
 
@@ -213,7 +229,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		for i, customer := range racers {
 			wg.Go(func() {
 				<-start
-				_, errs[i] = f.orderUC.Checkout(ctx, customer, slot)
+				_, errs[i] = f.orderUC.Checkout(ctx, customer, acceptingTerms(slot))
 			})
 		}
 		close(start)
@@ -240,7 +256,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		f.setSettings(t, func(s *domainstore.Settings) { s.SlotCapacity = 10 })
 		notices := f.slotNotices(t)
 
-		_, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), tomorrowAt(13, 0))
+		_, err := f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), acceptingTerms(tomorrowAt(13, 0)))
 
 		require.NoError(t, err)
 		assert.Equal(t, notices, f.slotNotices(t), "the slot list still shows the same")
@@ -252,14 +268,14 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		for i, slot := range []time.Time{tomorrowAt(14, 0), tomorrowAt(14, 30), tomorrowAt(15, 0), tomorrowAt(15, 30)} {
 			_, err := f.cartUC.AddItem(ctx, customer, dto.AddCartItemRequest{ProductID: &cake, Quantity: 1})
 			require.NoError(t, err)
-			_, err = f.orderUC.Checkout(ctx, customer, slot)
+			_, err = f.orderUC.Checkout(ctx, customer, acceptingTerms(slot))
 			if i < domainorder.MaxOrdersPerCustomerPerDay {
 				require.NoError(t, err, "order %d", i+1)
 				continue
 			}
 			require.ErrorIs(t, err, domainorder.ErrPickupDayLimit)
 		}
-		_, err := f.orderUC.Checkout(ctx, customer, tomorrowAt(14, 0).AddDate(0, 0, 1))
+		_, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(tomorrowAt(14, 0).AddDate(0, 0, 1)))
 		require.NoError(t, err, "the next day has its own allowance")
 	})
 
@@ -275,7 +291,7 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		}
 		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
 
-		order, err := f.orderUC.Checkout(ctx, customer, next)
+		order, err := f.orderUC.Checkout(ctx, customer, acceptingTerms(next))
 
 		require.NoError(t, err)
 		assert.Equal(t, string(domainorder.TypeInstant), order.OrderType)
@@ -330,7 +346,7 @@ func TestCheckoutPickup_OffGridOrdersCount_Integration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), tomorrowAt(10, 0))
+	_, err = f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), acceptingTerms(tomorrowAt(10, 0)))
 
 	require.ErrorIs(t, err, domainorder.ErrPickupSlotFull, "10:15 sits in the 10:00 slot of the current grid")
 }

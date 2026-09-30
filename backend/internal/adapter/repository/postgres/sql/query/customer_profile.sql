@@ -19,3 +19,11 @@ RETURNING user_id, display_name, phone, created_at, updated_at;
 -- name: DeleteCustomerProfileByUserID :execrows
 DELETE FROM customer_profiles
 WHERE user_id = $1;
+
+-- name: EraseCustomerProfile :exec
+-- Clears what a customer told us about themselves; the row stays, empty.
+UPDATE customer_profiles
+SET display_name = NULL,
+    phone = NULL,
+    updated_at = now()
+WHERE user_id = $1;

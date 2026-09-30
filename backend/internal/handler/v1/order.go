@@ -33,7 +33,7 @@ func (h *OrderHandler) Checkout(c fiber.Ctx) error {
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	out, err := h.usecase.Checkout(c.Context(), userID, req.PickupAt)
+	out, err := h.usecase.Checkout(c.Context(), userID, req)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

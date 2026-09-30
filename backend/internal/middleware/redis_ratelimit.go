@@ -169,6 +169,18 @@ func RealtimeTicketRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfi
 	}, cfg.RealtimeTicketMax, cfg.RealtimeTicketWindow, true)
 }
 
+// DataExportRateLimit limits how often one user may download their data. Each
+// export reads every order they ever placed and hands out their personal data,
+// so a stolen session cannot pull it in a loop.
+func DataExportRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":data_export"
+		}
+		return "rl:ip:" + ClientIP(c) + ":data_export"
+	}, cfg.DataExportMax, cfg.DataExportWindow, true)
+}
+
 // OrderWriteRateLimit limits order mutations (checkout, status transitions) per user.
 func OrderWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c fiber.Ctx) string {

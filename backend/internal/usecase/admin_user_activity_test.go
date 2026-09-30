@@ -29,6 +29,11 @@ func TestFormatUserAuditSummary(t *testing.T) {
 			want:   "Role changed from staff to manager",
 		},
 		{
+			name:   "erased at the owner's request",
+			action: domainuser.AuditActionMeErasedAccount,
+			want:   "Account erased at the user's request",
+		},
+		{
 			name:   "created with role",
 			action: domainuser.AuditActionAdminCreatedUser,
 			after:  []byte(`{"role":"baker"}`),

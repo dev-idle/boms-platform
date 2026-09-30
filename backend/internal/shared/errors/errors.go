@@ -109,6 +109,9 @@ var (
 	ErrTicketStationTaken           = New(http.StatusConflict, "ticket_station_taken", "The order already has a ticket at that station")
 	ErrPickupDayLimit               = New(http.StatusUnprocessableEntity, "pickup_day_limit", "You already have as many orders as one customer can book for that day")
 	ErrClosedDateExists             = New(http.StatusConflict, "closed_date_exists", "That day is already closed")
+	ErrTermsNotAccepted             = New(http.StatusUnprocessableEntity, "terms_not_accepted", "Please accept the current terms, privacy policy and refund policy")
+	ErrAccountHasOpenOrders         = New(http.StatusUnprocessableEntity, "account_has_open_orders", "You have an order that is not collected or cancelled yet")
+	ErrAccountErased                = New(http.StatusUnprocessableEntity, "account_erased", "This account was erased at its owner's request and cannot be restored")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

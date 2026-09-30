@@ -4,8 +4,12 @@ import { meSchema, type Me } from "@/lib/schemas/me";
 
 import {
   changePasswordSchema,
+  dataExportSchema,
+  eraseMyAccountSchema,
   updateSelfProfileSchema,
   type ChangePasswordInput,
+  type DataExport,
+  type EraseMyAccountInput,
   type UpdateSelfProfileInput,
 } from "../schemas/index";
 
@@ -33,8 +37,17 @@ export async function changePassword(body: ChangePasswordInput): Promise<void> {
   });
 }
 
-export async function deleteAccount(): Promise<void> {
+export async function deleteAccount(body: EraseMyAccountInput): Promise<void> {
+  const parsed = eraseMyAccountSchema.parse(body);
   await browserRequestVoid("/api/v1/me", {
     method: "DELETE",
+    json: parsed,
+  });
+}
+
+export async function exportMyData(): Promise<DataExport> {
+  return browserRequest<DataExport>("/api/v1/me/export", {
+    method: "GET",
+    schema: dataExportSchema,
   });
 }

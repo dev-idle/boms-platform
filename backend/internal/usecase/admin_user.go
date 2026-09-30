@@ -310,6 +310,9 @@ func (u *AdminUserUsecase) Enable(ctx context.Context, actorID uuid.UUID, actorR
 	if err != nil {
 		return err
 	}
+	if target.Erased() {
+		return domainuser.ErrAccountErased
+	}
 	var released *string
 	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if restoreErr := u.users.Restore(txCtx, targetID); restoreErr != nil {
@@ -492,6 +495,7 @@ func (u *AdminUserUsecase) getAdminUserResponse(ctx context.Context, userID uuid
 		EmailVerified:      user.EmailVerified,
 		MustChangePassword: user.MustChangePassword,
 		Disabled:           user.Disabled(),
+		Erased:             user.Erased(),
 		CreatedAt:          user.CreatedAt,
 		UpdatedAt:          user.UpdatedAt,
 	}
@@ -522,6 +526,7 @@ func mapAdminListItem(in port.AdminListUser) dto.AdminUserResponse {
 		EmailVerified:      in.EmailVerified,
 		MustChangePassword: in.MustChangePassword,
 		Disabled:           in.DeletedAt != nil,
+		Erased:             in.ErasedAt != nil,
 		CreatedAt:          in.CreatedAt,
 		UpdatedAt:          in.UpdatedAt,
 		DisplayName:        in.DisplayName,

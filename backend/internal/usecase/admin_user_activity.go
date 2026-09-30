@@ -95,6 +95,8 @@ func formatUserAuditSummary(
 		return "Password changed by user"
 	case domainuser.AuditActionMeSoftDeleted:
 		return "Account deleted by user"
+	case domainuser.AuditActionMeErasedAccount:
+		return "Account erased at the user's request"
 	default:
 		return string(action)
 	}

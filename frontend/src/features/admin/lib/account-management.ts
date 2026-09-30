@@ -6,6 +6,10 @@ export function isAdminAccountManagementLocked(user: { role: UserRole }): boolea
   return user.role === USER_ROLE.admin;
 }
 
+/** Why an erased account's Enable is greyed, on the list row and the detail page. */
+export const ERASED_ACCOUNT_REASON =
+  "This account was erased at its owner's request and cannot be restored.";
+
 type AdminAccountStatus = {
   label: string;
   variant: StatusPillVariant;
@@ -17,10 +21,14 @@ type AdminAccountStatus = {
  */
 export function adminUserAccountStatus(user: {
   disabled: boolean;
+  erased: boolean;
   role: UserRole;
 }): AdminAccountStatus {
   if (isAdminAccountManagementLocked(user)) {
     return { label: "Protected", variant: "completed" };
+  }
+  if (user.erased) {
+    return { label: "Erased", variant: "cancelled" };
   }
 
   return user.disabled
@@ -30,6 +38,7 @@ export function adminUserAccountStatus(user: {
 
 type RowActionTarget = {
   disabled: boolean;
+  erased: boolean;
   id: string;
   role: UserRole;
 };
@@ -39,7 +48,7 @@ type AdminRowAction =
   | { kind: "blocked"; reason: string };
 
 export type AdminUserRowActions = {
-  /** Slot 1 — the label follows account state; blocked keeps the "Disable" word. */
+  /** Slot 1 — the label follows account state: "Enable" once the account is closed. */
   account: AdminRowAction & { label: "Disable" | "Enable" };
   /** Slot 2 — revoke sessions. */
   sessions: AdminRowAction;
@@ -73,6 +82,16 @@ export function adminUserRowActions(
         reason: "Admin accounts cannot be disabled here.",
       },
       sessions: { kind: "blocked", reason: "Admin sessions cannot be revoked here." },
+    };
+  }
+
+  if (user.erased) {
+    return {
+      account: { kind: "blocked", label: "Enable", reason: ERASED_ACCOUNT_REASON },
+      sessions: {
+        kind: "blocked",
+        reason: "Erasing this account already revoked its sessions.",
+      },
     };
   }
 

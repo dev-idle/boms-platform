@@ -13,6 +13,7 @@ import (
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -69,6 +70,9 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "ticket_not_movable", err: domainorder.ErrTicketNotMovable, wantStatus: 422, wantCode: "ticket_not_movable"},
 		{name: "ticket_station_taken", err: domainorder.ErrTicketStationTaken, wantStatus: 409, wantCode: "ticket_station_taken"},
 		{name: "pickup_day_limit", err: domainorder.ErrPickupDayLimit, wantStatus: 422, wantCode: "pickup_day_limit"},
+		{name: "terms_not_accepted", err: domainpolicy.ErrTermsNotAccepted, wantStatus: 422, wantCode: "terms_not_accepted"},
+		{name: "account_has_open_orders", err: domainuser.ErrAccountHasOpenOrders, wantStatus: 422, wantCode: "account_has_open_orders"},
+		{name: "account_erased", err: domainuser.ErrAccountErased, wantStatus: 422, wantCode: "account_erased"},
 		{name: "store_invalid_hours", err: domainstore.ErrInvalidHours, wantStatus: 400, wantCode: "validation_error"},
 		{name: "store_invalid_lead_time", err: domainstore.ErrInvalidLeadTime, wantStatus: 400, wantCode: "validation_error"},
 		{name: "store_invalid_advance_days", err: domainstore.ErrInvalidAdvanceDays, wantStatus: 400, wantCode: "validation_error"},

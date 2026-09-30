@@ -17,6 +17,12 @@ type ChangeMyPasswordRequest struct {
 	NewPassword string `json:"new_password" validate:"required,min=8,max=128,password_complexity"`
 }
 
+// EraseMyAccountRequest is DELETE /me: the current password, asked again
+// because an erasure cannot be undone.
+type EraseMyAccountRequest struct {
+	Password string `json:"password" validate:"required,max=128"`
+}
+
 type MeCustomerProfileResponse struct {
 	Type        string  `json:"type"`
 	DisplayName *string `json:"display_name,omitempty"`

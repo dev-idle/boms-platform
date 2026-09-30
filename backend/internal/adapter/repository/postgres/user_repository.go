@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -41,12 +42,13 @@ func (r *UserRepository) Create(ctx context.Context, params port.CreateUserParam
 		PasswordHash:       params.PasswordHash,
 		Role:               role,
 		MustChangePassword: params.MustChangePassword,
+		TermsVersion:       params.TermsVersion,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create user")
 	}
 	return mapUserFields(
-		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
 	), nil
 }
 
@@ -66,7 +68,7 @@ func (r *UserRepository) AdminCreate(ctx context.Context, params port.CreateUser
 		return nil, mapRepoError(err, "admin create user")
 	}
 	return mapUserFields(
-		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
 	), nil
 }
 
@@ -77,7 +79,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domainu
 		return nil, mapRepoError(err, "get user by email")
 	}
 	return mapUserFields(
-		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
 	), nil
 }
 
@@ -88,18 +90,35 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainuser
 		return nil, mapRepoError(err, "get user by id")
 	}
 	return mapUserFields(
-		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
 	), nil
 }
 
 // GetByIDForUpdate implements port.UserRepository.
 func (r *UserRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
+	if txFromContext(ctx) == nil {
+		return nil, apperrors.Errorf("get user for update: requires a transaction")
+	}
 	row, err := r.q(ctx).GetUserByIDForUpdate(ctx, id)
 	if err != nil {
 		return nil, mapRepoError(err, "get user by id for update")
 	}
 	return mapUserFields(
-		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
+	), nil
+}
+
+// GetByIDForShare implements port.UserRepository.
+func (r *UserRepository) GetByIDForShare(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
+	if txFromContext(ctx) == nil {
+		return nil, apperrors.Errorf("get user for share: requires a transaction")
+	}
+	row, err := r.q(ctx).GetUserByIDForShare(ctx, id)
+	if err != nil {
+		return nil, mapRepoError(err, "get user by id for share")
+	}
+	return mapUserFields(
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
 	), nil
 }
 
@@ -180,7 +199,7 @@ func (r *UserRepository) AdminGetByID(ctx context.Context, id uuid.UUID) (*domai
 		return nil, mapRepoError(err, "admin get user by id")
 	}
 	return mapUserFields(
-		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
 	), nil
 }
 
@@ -194,7 +213,7 @@ func (r *UserRepository) AdminGetByIDForUpdate(ctx context.Context, id uuid.UUID
 		return nil, mapRepoError(err, "admin get user by id for update")
 	}
 	return mapUserFields(
-		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt,
+		row.ID, row.Email, row.PasswordHash, row.Role, row.EmailVerifiedAt, row.MustChangePassword, row.CreatedAt, row.UpdatedAt, row.DeletedAt, row.ErasedAt,
 	), nil
 }
 
@@ -256,6 +275,7 @@ func (r *UserRepository) AdminList(ctx context.Context, params port.AdminListUse
 			EmployeeCode:       stringPtrOrNil(row.EmployeeCode),
 			DisplayName:        row.DisplayName,
 			DeletedAt:          row.DeletedAt,
+			ErasedAt:           row.ErasedAt,
 		}
 		out = append(out, item)
 	}
@@ -289,7 +309,7 @@ func mapUserFields(
 	emailVerifiedAt *time.Time,
 	mustChangePassword bool,
 	createdAt, updatedAt time.Time,
-	deletedAt *time.Time,
+	deletedAt, erasedAt *time.Time,
 ) *domainuser.User {
 	return &domainuser.User{
 		ID:                 id,
@@ -301,6 +321,7 @@ func mapUserFields(
 		CreatedAt:          createdAt,
 		UpdatedAt:          updatedAt,
 		DeletedAt:          deletedAt,
+		ErasedAt:           erasedAt,
 	}
 }
 
@@ -369,6 +390,27 @@ func (r *UserRepository) ClaimPhone(ctx context.Context, phone string, userID uu
 func (r *UserRepository) ReleasePhone(ctx context.Context, userID uuid.UUID) error {
 	if err := r.q(ctx).ReleasePhone(ctx, userID); err != nil {
 		return mapRepoError(err, "release phone")
+	}
+	return nil
+}
+
+// TermsAcceptance implements port.UserRepository.
+func (r *UserRepository) TermsAcceptance(ctx context.Context, userID uuid.UUID) (*domainpolicy.Acceptance, error) {
+	row, err := r.q(ctx).GetUserTermsAcceptance(ctx, userID)
+	if err != nil {
+		return nil, mapRepoError(err, "get user terms acceptance")
+	}
+	return mapTermsAcceptance(row.TermsVersion, row.TermsAcceptedAt), nil
+}
+
+// Erase implements port.UserRepository.
+func (r *UserRepository) Erase(ctx context.Context, id uuid.UUID) error {
+	rows, err := r.q(ctx).EraseUser(ctx, id)
+	if err != nil {
+		return mapRepoError(err, "erase user")
+	}
+	if rows == 0 {
+		return apperrors.ErrNotFound
 	}
 	return nil
 }

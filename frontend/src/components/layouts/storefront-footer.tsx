@@ -64,9 +64,9 @@ export async function StorefrontFooter() {
             © {await getCurrentYear()} {BRAND.name}. All rights reserved.
           </p>
           <nav aria-label="Policies" className="storefront-footer__policies">
-            <Link href={ROUTE.home}>Privacy</Link>
-            <Link href={ROUTE.home}>Terms</Link>
-            <Link href={ROUTE.home}>Pickup policy</Link>
+            <Link href={ROUTE.privacy}>Privacy</Link>
+            <Link href={ROUTE.terms}>Terms</Link>
+            <Link href={ROUTE.refundPolicy}>Refund policy</Link>
           </nav>
         </div>
       </div>

@@ -18,18 +18,22 @@ import (
 )
 
 // Per-user limiters that fail open: the discount limiter, where each answer says
-// whether a code exists so the cap stops the code space being walked, and the
-// realtime ticket limiter, where each ticket costs a Redis write and a socket.
+// whether a code exists so the cap stops the code space being walked, the
+// realtime ticket limiter, where each ticket costs a Redis write and a socket,
+// and the data export limiter, where each export reads everything held about
+// the person.
 func TestPerUserRateLimits(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.RateLimitRedisConfig{
 		DiscountAttemptMax: 2, DiscountAttemptWindow: time.Minute,
 		RealtimeTicketMax: 2, RealtimeTicketWindow: time.Minute,
+		DataExportMax: 2, DataExportWindow: time.Minute,
 	}
 	limiters := map[string]func(*goredis.Client, config.RateLimitRedisConfig) fiber.Handler{
 		"discount_attempts": DiscountAttemptRateLimit,
 		"realtime_tickets":  RealtimeTicketRateLimit,
+		"data_exports":      DataExportRateLimit,
 	}
 	for name, limiter := range limiters {
 		t.Run(name, func(t *testing.T) {

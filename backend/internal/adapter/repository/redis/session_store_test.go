@@ -68,6 +68,27 @@ func TestSessionStore(t *testing.T) {
 		assert.Equal(t, apperrors.ErrNotFound.Code, ae.Code)
 	})
 
+	t.Run("ListForUser lists only that user's sessions", func(t *testing.T) {
+		t.Parallel()
+		store, _ := newTestSessionStore(t)
+		ctx := context.Background()
+		meta := sampleMeta()
+		require.NoError(t, store.Create(ctx, "user-5", "s1", meta))
+		require.NoError(t, store.Create(ctx, "user-5", "s2", meta))
+		require.NoError(t, store.Create(ctx, "user-6", "s1", meta))
+
+		sessions, err := store.ListForUser(ctx, "user-5")
+
+		require.NoError(t, err)
+		require.Len(t, sessions, 2)
+		assert.Equal(t, meta.IP, sessions[0].IP)
+		assert.Equal(t, meta.UserAgent, sessions[1].UserAgent)
+
+		none, err := store.ListForUser(ctx, "user-7")
+		require.NoError(t, err)
+		assert.Empty(t, none)
+	})
+
 	t.Run("DeleteAllForUser scope", func(t *testing.T) {
 		t.Parallel()
 		store, mr := newTestSessionStore(t)

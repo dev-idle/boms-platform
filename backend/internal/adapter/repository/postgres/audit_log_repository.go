@@ -86,3 +86,48 @@ func (r *AuditLogRepository) ListByTargetID(
 }
 
 var _ port.AuditLogRepository = (*AuditLogRepository)(nil)
+
+// ListForSubject implements port.AccountActivityReader.
+func (r *AuditLogRepository) ListForSubject(
+	ctx context.Context,
+	subjectID uuid.UUID,
+	before *port.PageCursor,
+	limit int32,
+) ([]port.AccountActivity, error) {
+	params := sqlcgen.ListAuditLogsForSubjectBeforeParams{SubjectID: &subjectID, Limit: limit}
+	if before != nil {
+		params.BeforeAt, params.BeforeID = &before.At, &before.ID
+	}
+	rows, err := r.q(ctx).ListAuditLogsForSubjectBefore(ctx, params)
+	if err != nil {
+		return nil, mapRepoError(err, "list audit logs for subject")
+	}
+	out := make([]port.AccountActivity, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, port.AccountActivity{
+			ID:         row.ID,
+			ActorID:    row.ActorID,
+			ActorRole:  domainuser.Role(row.ActorRole),
+			Action:     domainuser.AuditAction(row.Action),
+			BeforeJSON: row.BeforeJsonb,
+			AfterJSON:  row.AfterJsonb,
+			IP:         row.Ip,
+			UserAgent:  row.UserAgent,
+			At:         row.CreatedAt,
+		})
+	}
+	return out, nil
+}
+
+// ScrubSubject implements port.AuditScrubber.
+func (r *AuditLogRepository) ScrubSubject(ctx context.Context, subjectID uuid.UUID) error {
+	if err := r.q(ctx).ScrubAuditLogsForSubject(ctx, &subjectID); err != nil {
+		return mapRepoError(err, "scrub audit logs for subject")
+	}
+	return nil
+}
+
+var (
+	_ port.AccountActivityReader = (*AuditLogRepository)(nil)
+	_ port.AuditScrubber         = (*AuditLogRepository)(nil)
+)

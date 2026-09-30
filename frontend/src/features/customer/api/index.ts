@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { TERMS_VERSION } from "@/constants/policies";
 import {
   browserRequest,
   browserRequestWithMeta,
@@ -84,12 +85,13 @@ export async function removeCartDiscount(): Promise<Cart> {
   });
 }
 
+/** Places the order with the policies the checkout showed: the API records their version. */
 export async function checkoutCart(input: CheckoutInput): Promise<Order> {
   const body = checkoutInputSchema.parse(input);
   return browserRequest<Order>("/api/v1/orders/checkout", {
     method: "POST",
     schema: orderSchema,
-    json: body,
+    json: { ...body, terms_version: TERMS_VERSION },
   });
 }
 

@@ -75,18 +75,6 @@ func (h *MeHandler) PatchPassword(c fiber.Ctx) error {
 	return response.NoContent(c)
 }
 
-func (h *MeHandler) Delete(c fiber.Ctx) error {
-	response.EnsureRequestID(c)
-	userID, ok := middleware.GetUserID(c)
-	if !ok {
-		return writeAppError(c, apperrors.ErrUnauthorized)
-	}
-	if err := h.usecase.SoftDeleteSelf(c.Context(), userID); err != nil {
-		return writeMapUsecaseError(c, err)
-	}
-	return response.NoContent(c)
-}
-
 func toMeResponse(user *domainuser.User, profile any) dto.MeResponse {
 	res := dto.MeResponse{
 		ID:                 user.ID.String(),

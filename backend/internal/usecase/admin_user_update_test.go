@@ -18,6 +18,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAdminUserUsecase_Enable_RefusesAnErasedAccount(t *testing.T) {
+	t.Parallel()
+	users := new(mockUserRepo)
+	uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+	targetID := uuid.New()
+	erasedAt := time.Now()
+	users.On("AdminGetByID", mock.Anything, targetID).Return(&domainuser.User{
+		ID: targetID, Role: domainuser.RoleCustomer, DeletedAt: &erasedAt, ErasedAt: &erasedAt,
+	}, nil)
+
+	err := uc.Enable(context.Background(), uuid.New(), domainuser.RoleAdmin, targetID)
+
+	require.ErrorIs(t, err, domainuser.ErrAccountErased)
+	users.AssertNotCalled(t, "Restore", mock.Anything, mock.Anything)
+}
+
 func TestAdminUserUsecase_RefusesAdminTargets(t *testing.T) {
 	t.Parallel()
 

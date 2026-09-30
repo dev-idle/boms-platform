@@ -7,6 +7,7 @@ customer.
 | File | Rule | Read by |
 |---|---|---|
 | `vietnam-phone-cases.json` | Vietnam mobile number: accepted spellings, stored form, rejections, display form | `backend/internal/shared/utils/phone_test.go` · `frontend/src/lib/validation/phone.test.ts` |
+| `terms-version.json` | The version of the customer policies registration and checkout accept | `backend/internal/domain/policy/policy_test.go` · `frontend/src/constants/policies.test.ts` |
 | `pickup-rules-cases.json` | Store clock times (HH:MM) and which pickup times checkout accepts under a set of pickup rules | `backend/internal/domain/store/clock_test.go` · `backend/internal/domain/order/pickup_test.go` · `frontend/src/lib/validation/clock.test.ts` · `frontend/src/lib/validation/pickup.test.ts` |
 
 ## What belongs here

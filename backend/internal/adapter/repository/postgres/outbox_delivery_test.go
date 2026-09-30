@@ -94,7 +94,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	store := postgresadapter.NewStoreSettingsRepository(pool)
 
 	cartUC := usecase.NewCartUsecase(carts, products, combos, discounts)
-	orderUC := usecase.NewOrderUsecase(orders, carts, discounts, cartUC, pool, outbox, store, postgresadapter.NewTicketRepository(pool))
+	orderUC := usecase.NewOrderUsecase(users, orders, carts, discounts, cartUC, pool, outbox, store, postgresadapter.NewTicketRepository(pool))
 
 	customer, err := users.Create(ctx, port.CreateUserParams{
 		Email: "outbox-checkout@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,
@@ -110,7 +110,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	_, err = cartUC.AddItem(ctx, customer.ID, dto.AddCartItemRequest{ProductID: &productID, Quantity: 1})
 	require.NoError(t, err)
 
-	order, err := orderUC.Checkout(ctx, customer.ID, nextPickupSlot(time.Now()))
+	order, err := orderUC.Checkout(ctx, customer.ID, acceptingTerms(nextPickupSlot(time.Now())))
 	require.NoError(t, err)
 
 	var created []string

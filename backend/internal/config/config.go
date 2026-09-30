@@ -93,6 +93,8 @@ type RateLimitRedisConfig struct {
 	DiscountAttemptWindow time.Duration
 	RealtimeTicketMax     int
 	RealtimeTicketWindow  time.Duration
+	DataExportMax         int
+	DataExportWindow      time.Duration
 }
 
 type PostgresConfig struct {
@@ -367,6 +369,8 @@ func load() (*Config, error) {
 			DiscountAttemptWindow: v.GetDuration("rate_limit.redis.discount_attempt_window"),
 			RealtimeTicketMax:     v.GetInt("rate_limit.redis.realtime_ticket_max"),
 			RealtimeTicketWindow:  v.GetDuration("rate_limit.redis.realtime_ticket_window"),
+			DataExportMax:         v.GetInt("rate_limit.redis.data_export_max"),
+			DataExportWindow:      v.GetDuration("rate_limit.redis.data_export_window"),
 		},
 		Postgres: PostgresConfig{
 			URL:                v.GetString("postgres.url"),
@@ -506,6 +510,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.redis.discount_attempt_window", 15*time.Minute)
 	v.SetDefault("rate_limit.redis.realtime_ticket_max", 60)
 	v.SetDefault("rate_limit.redis.realtime_ticket_window", time.Minute)
+	v.SetDefault("rate_limit.redis.data_export_max", 5)
+	v.SetDefault("rate_limit.redis.data_export_window", time.Hour)
 
 	// No default DB URL: use Neon (or any Postgres) via POSTGRES_URL in .env / environment.
 	v.SetDefault("postgres.url", "")
@@ -902,6 +908,7 @@ func (c RateLimitRedisConfig) validate() error {
 		{"rate_limit.redis.auth_user", c.AuthUserMax, c.AuthUserWindow},
 		{"rate_limit.redis.discount_attempt", c.DiscountAttemptMax, c.DiscountAttemptWindow},
 		{"rate_limit.redis.realtime_ticket", c.RealtimeTicketMax, c.RealtimeTicketWindow},
+		{"rate_limit.redis.data_export", c.DataExportMax, c.DataExportWindow},
 	}
 	for _, chk := range checks {
 		if chk.max < 1 {

@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
+	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/usecase"
 )
@@ -31,10 +33,28 @@ func TestOrderUsecase_Checkout_StoreUnreachable(t *testing.T) {
 	t.Parallel()
 	store, tx := newMemoryStore(), &countingTxManager{}
 	store.err = errors.New("database unavailable")
-	uc := usecase.NewOrderUsecase(nil, nil, nil, nil, tx, &recordingOutbox{}, store, nil)
+	uc := usecase.NewOrderUsecase(nil, nil, nil, nil, nil, tx, &recordingOutbox{}, store, nil)
 
-	_, err := uc.Checkout(context.Background(), uuid.New(), time.Now().Add(24*time.Hour))
+	_, err := uc.Checkout(context.Background(), uuid.New(), dto.CheckoutRequest{PickupAt: time.Now().Add(24 * time.Hour), TermsVersion: domainpolicy.TermsVersion})
 
 	require.ErrorIs(t, err, store.err)
+	assert.Zero(t, tx.calls)
+}
+
+// An order without the current policies accepted is refused before the rules
+// are read or anything is locked.
+func TestOrderUsecase_Checkout_WithoutTheCurrentTerms(t *testing.T) {
+	t.Parallel()
+	store, tx := newMemoryStore(), &countingTxManager{}
+	store.err = errors.New("the rules must not be read")
+	uc := usecase.NewOrderUsecase(nil, nil, nil, nil, nil, tx, &recordingOutbox{}, store, nil)
+
+	for _, version := range []string{"", "2025-01-01"} {
+		_, err := uc.Checkout(context.Background(), uuid.New(), dto.CheckoutRequest{
+			PickupAt: time.Now().Add(24 * time.Hour), TermsVersion: version,
+		})
+
+		require.ErrorIs(t, err, domainpolicy.ErrTermsNotAccepted, "version %q", version)
+	}
 	assert.Zero(t, tx.calls)
 }

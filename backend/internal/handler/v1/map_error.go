@@ -8,6 +8,7 @@ import (
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -47,6 +48,10 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrForbidden)
 	case errors.Is(err, domainuser.ErrSelfDeleteCustomerOnly):
 		return writeAppError(c, apperrors.ErrSelfDeleteCustomerOnly)
+	case errors.Is(err, domainuser.ErrAccountHasOpenOrders):
+		return writeAppError(c, apperrors.ErrAccountHasOpenOrders)
+	case errors.Is(err, domainuser.ErrAccountErased):
+		return writeAppError(c, apperrors.ErrAccountErased)
 	case errors.Is(err, domainuser.ErrProfileNotFound):
 		return writeAppError(c, apperrors.ErrProfileNotFound)
 	case errors.Is(err, domainuser.ErrEmployeeCodeExists):
@@ -131,6 +136,8 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrTicketStationTaken)
 	case errors.Is(err, domainorder.ErrPickupDayLimit):
 		return writeAppError(c, apperrors.ErrPickupDayLimit)
+	case errors.Is(err, domainpolicy.ErrTermsNotAccepted):
+		return writeAppError(c, apperrors.ErrTermsNotAccepted)
 	case errors.Is(err, domainstore.ErrInvalidHours):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("closes_at", "must be after the opening time, within the day"))
 	case errors.Is(err, domainstore.ErrInvalidLeadTime):

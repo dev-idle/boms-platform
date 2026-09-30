@@ -9,6 +9,7 @@ import (
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
+	"github.com/boms/backend/internal/service/auditlogger"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/usecase"
 	"github.com/google/uuid"
@@ -57,6 +58,7 @@ func TestPhoneClaim(t *testing.T) {
 		userID := uuid.New()
 
 		users.On("GetByID", mock.Anything, userID).Return(&domainuser.User{ID: userID, Role: domainuser.RoleCustomer}, nil).Once()
+		users.On("GetByIDForShare", mock.Anything, userID).Return(&domainuser.User{ID: userID, Role: domainuser.RoleCustomer}, nil).Once()
 		customers.On("GetByUserID", mock.Anything, userID).Return(&domainprofile.Customer{UserID: userID}, nil).Once()
 		users.On("ClaimPhone", mock.Anything, storedPhone, userID).Return(true, nil).Once()
 
@@ -72,11 +74,13 @@ func TestPhoneClaim(t *testing.T) {
 		t.Parallel()
 		users := new(mockUserRepo)
 		customers := new(mockCustomerProfileRepo)
-		uc := usecase.NewMeUsecase(users, customers, nil, nil, nil, passthroughTxManager{}, nil, nil, nil)
+		audit := &recordingAuditLogs{}
+		uc := usecase.NewMeUsecase(users, customers, nil, nil, nil, passthroughTxManager{}, nil, auditlogger.NewService(audit), nil)
 		userID := uuid.New()
 		current := &domainprofile.Customer{UserID: userID, Phone: phonePtr(storedPhone)}
 
 		users.On("GetByID", mock.Anything, userID).Return(&domainuser.User{ID: userID, Role: domainuser.RoleCustomer}, nil).Once()
+		users.On("GetByIDForShare", mock.Anything, userID).Return(&domainuser.User{ID: userID, Role: domainuser.RoleCustomer}, nil).Once()
 		customers.On("GetByUserID", mock.Anything, userID).Return(current, nil).Once()
 		customers.On("UpdateByUserID", mock.Anything, port.UpsertCustomerProfileParams{
 			UserID:      userID,
@@ -92,6 +96,7 @@ func TestPhoneClaim(t *testing.T) {
 		require.NoError(t, err)
 		users.AssertNotCalled(t, "ClaimPhone", mock.Anything, mock.Anything, mock.Anything)
 		customers.AssertExpectations(t)
+		assert.Equal(t, []domainuser.AuditAction{domainuser.AuditActionMeUpdatedProfile}, audit.actions, "the change is recorded with it")
 	})
 
 	t.Run("self_update_fails_on_a_phone_the_validator_would_reject", func(t *testing.T) {

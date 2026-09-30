@@ -59,8 +59,26 @@ table "users" {
     type = timestamptz
     null = true
   }
+  column "terms_accepted_at" {
+    type = timestamptz
+    null = true
+  }
+  column "terms_version" {
+    type = text
+    null = true
+  }
+  column "erased_at" {
+    type = timestamptz
+    null = true
+  }
   primary_key {
     columns = [column.id]
+  }
+  check "users_erased_closed_check" {
+    expr = "erased_at IS NULL OR deleted_at IS NOT NULL"
+  }
+  check "users_terms_pair_check" {
+    expr = "(terms_accepted_at IS NULL) = (terms_version IS NULL)"
   }
   index "users_email_active_idx" {
     unique  = true
@@ -889,6 +907,14 @@ table "orders" {
     type = enum.order_type
     null = false
   }
+  column "terms_accepted_at" {
+    type = timestamptz
+    null = true
+  }
+  column "terms_version" {
+    type = text
+    null = true
+  }
   primary_key {
     columns = [column.id]
   }
@@ -938,6 +964,9 @@ table "orders" {
   }
   check "orders_total_balance_check" {
     expr = "total_cents = subtotal_cents - discount_cents"
+  }
+  check "orders_terms_pair_check" {
+    expr = "(terms_accepted_at IS NULL) = (terms_version IS NULL)"
   }
 }
 

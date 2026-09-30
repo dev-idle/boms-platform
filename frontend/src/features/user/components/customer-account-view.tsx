@@ -7,8 +7,9 @@ import { ChangePasswordForm } from "./change-password-form";
 import { CustomerAccountSignedInAs } from "./customer-account-signed-in-as";
 import { CustomerAccountProfileForm } from "./customer-account-profile-form";
 import { DeleteAccountCard } from "./delete-account-card";
+import { DownloadMyDataCard } from "./download-my-data-card";
 
-/** Customer self-service — profile, password, and delete on one page. */
+/** Customer self-service — profile, password, your data, and delete on one page. */
 export function CustomerAccountView() {
   return (
     <div className="storefront-customer-section storefront-customer-section--account">
@@ -37,7 +38,15 @@ export function CustomerAccountView() {
         </StorefrontAccountSection>
 
         <StorefrontAccountSection
-          description="Permanently remove your customer account and order access."
+          description="Download a copy of everything we keep about you."
+          id={CUSTOMER_ACCOUNT_SECTION.data}
+          title="Your data"
+        >
+          <DownloadMyDataCard />
+        </StorefrontAccountSection>
+
+        <StorefrontAccountSection
+          description="Erase your account and the personal details we keep."
           id={CUSTOMER_ACCOUNT_SECTION.delete}
           title="Delete account"
           variant="danger"

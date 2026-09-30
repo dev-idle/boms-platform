@@ -7,6 +7,7 @@ const (
 	AuditActionMeUpdatedProfile         AuditAction = "me.updated_profile"
 	AuditActionMeChangedPassword        AuditAction = "me.changed_password"
 	AuditActionMeSoftDeleted            AuditAction = "me.soft_deleted"
+	AuditActionMeErasedAccount          AuditAction = "me.erased_account"
 	AuditActionAdminCreatedUser         AuditAction = "admin.created_user"
 	AuditActionAdminUpdatedProfile      AuditAction = "admin.updated_profile"
 	AuditActionAdminUpdatedRole         AuditAction = "admin.updated_role"

@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { CheckboxField } from "@/components/ui/checkbox-field";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -157,15 +158,12 @@ export function LoginForm() {
             )}
           />
 
-          <label className="auth-remember">
-            <input
-              checked={keepSignedIn}
-              className="auth-remember__input"
-              onChange={(event) => setKeepSignedIn(event.target.checked)}
-              type="checkbox"
-            />
+          <CheckboxField
+            checked={keepSignedIn}
+            onChange={(event) => setKeepSignedIn(event.target.checked)}
+          >
             Keep me signed in on this device
-          </label>
+          </CheckboxField>
 
           {form.formState.errors.root?.message ? (
             <p className="text-caption text-error" role="alert">

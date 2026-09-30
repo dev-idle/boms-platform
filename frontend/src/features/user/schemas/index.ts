@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { apiDateTimeSchema } from "@/lib/validation/datetime";
 import { newPasswordZodString } from "@/lib/validation/password";
 import { vietnamPhoneZodString } from "@/lib/validation/phone";
 
@@ -61,5 +62,24 @@ export type FullNamePhoneSelfProfileFormValues = z.infer<
 export type CustomerSelfProfileFormValues = z.infer<
   typeof customerSelfProfileFormSchema
 >;
+/** DELETE /api/v1/me — erasure asks for the current password again. */
+export const eraseMyAccountSchema = z.object({
+  password: z.string().min(1, "Enter your current password"),
+});
+
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type ChangePasswordFormInput = z.infer<typeof changePasswordFormSchema>;
+export type EraseMyAccountInput = z.infer<typeof eraseMyAccountSchema>;
+
+/**
+ * GET /api/v1/me/export — everything the bakery holds about the signed-in
+ * person. Checked for its shape, then saved exactly as sent: loose objects
+ * keep every field, so nothing the API includes is dropped from the download.
+ */
+export const dataExportSchema = z.looseObject({
+  exported_at: apiDateTimeSchema,
+  account: z.looseObject({ id: z.uuid(), email: z.string().min(1) }),
+  orders: z.array(z.looseObject({ id: z.uuid() })),
+});
+
+export type DataExport = z.infer<typeof dataExportSchema>;

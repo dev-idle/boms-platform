@@ -18,9 +18,17 @@ type User struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	DeletedAt          *time.Time
+	// ErasedAt is set once the account's owner had its personal details erased;
+	// such an account is closed for good.
+	ErasedAt *time.Time
 }
 
 // Disabled reports whether the user was soft-deleted.
 func (u User) Disabled() bool {
 	return u.DeletedAt != nil
+}
+
+// Erased reports whether the account was erased at its owner's request.
+func (u User) Erased() bool {
+	return u.ErasedAt != nil
 }

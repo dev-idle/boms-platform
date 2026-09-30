@@ -14,6 +14,8 @@ type UpsertCustomerProfileParams struct {
 }
 
 type CustomerProfileRepository interface {
+	// Erase clears the name and phone a customer gave; the row stays, empty.
+	Erase(ctx context.Context, userID uuid.UUID) error
 	Create(ctx context.Context, params UpsertCustomerProfileParams) (*domainprofile.Customer, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*domainprofile.Customer, error)
 	UpdateByUserID(ctx context.Context, params UpsertCustomerProfileParams) (*domainprofile.Customer, error)

@@ -9,9 +9,26 @@ INSERT INTO orders (
   discount_code_snapshot,
   pickup_at,
   code,
-  order_type
+  order_type,
+  terms_version,
+  terms_accepted_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES (
+  sqlc.arg('user_id'),
+  sqlc.arg('status'),
+  sqlc.arg('subtotal_cents'),
+  sqlc.arg('discount_cents'),
+  sqlc.arg('total_cents'),
+  sqlc.narg('discount_code_id'),
+  sqlc.narg('discount_code_snapshot'),
+  sqlc.narg('pickup_at'),
+  sqlc.arg('code'),
+  sqlc.arg('order_type'),
+  sqlc.narg('terms_version')::text,
+  -- Accepted at the instant the order is placed: the transaction clock that
+  -- created_at takes.
+  CASE WHEN sqlc.narg('terms_version')::text IS NULL THEN NULL ELSE now() END
+)
 RETURNING
   id,
   user_id,
@@ -25,7 +42,9 @@ RETURNING
   created_at,
   updated_at,
   code,
-  order_type;
+  order_type,
+  terms_accepted_at,
+  terms_version;
 
 -- name: GetOrderByIDForUser :one
 SELECT
@@ -41,7 +60,9 @@ SELECT
   created_at,
   updated_at,
   code,
-  order_type
+  order_type,
+  terms_accepted_at,
+  terms_version
 FROM orders
 WHERE id = $1 AND user_id = $2;
 
@@ -59,7 +80,9 @@ SELECT
   created_at,
   updated_at,
   code,
-  order_type
+  order_type,
+  terms_accepted_at,
+  terms_version
 FROM orders
 WHERE user_id = sqlc.arg('user_id')
   AND (
@@ -76,6 +99,45 @@ WHERE user_id = sqlc.arg('user_id')
   )
 ORDER BY created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: ListOrdersByUserBefore :many
+-- A customer's orders newest first, a page at a time by keyset: each page
+-- starts below the last order of the page before, so an order placed while a
+-- data export reads never repeats or hides one across a page boundary.
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version
+FROM orders
+WHERE user_id = sqlc.arg('user_id')
+  AND (
+    sqlc.narg('before_at')::timestamptz IS NULL
+    OR (created_at, id) < (sqlc.narg('before_at')::timestamptz, sqlc.narg('before_id')::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: HasOpenOrdersForUser :one
+-- Whether the customer has an order the bakery still has to make or hand
+-- over: anything not yet fulfilled or cancelled.
+SELECT EXISTS (
+  SELECT 1
+  FROM orders
+  WHERE user_id = $1
+    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status)
+) AS open;
 
 -- name: ListOrdersByUserCount :one
 SELECT COUNT(*)::bigint AS count
@@ -157,6 +219,25 @@ FROM order_items
 WHERE order_id = $1
 ORDER BY created_at ASC;
 
+-- name: ListOrderItemsByOrderIDs :many
+-- The lines of many orders in one round trip, as a data export reads them.
+SELECT
+  id,
+  order_id,
+  line_type,
+  product_id,
+  combo_id,
+  configuration,
+  name,
+  slug,
+  quantity,
+  unit_price_cents,
+  line_total_cents,
+  created_at
+FROM order_items
+WHERE order_id = ANY(sqlc.arg('order_ids')::uuid[])
+ORDER BY order_id, created_at ASC;
+
 -- name: StaffListOrders :many
 SELECT
   o.id,
@@ -235,7 +316,9 @@ RETURNING
   created_at,
   updated_at,
   code,
-  order_type;
+  order_type,
+  terms_accepted_at,
+  terms_version;
 
 -- name: NextOrderDayNumber :one
 -- The day is read from the transaction's clock, the instant orders.created_at
@@ -263,6 +346,13 @@ SELECT to_status, actor_role, created_at
 FROM order_status_events
 WHERE order_id = $1
 ORDER BY created_at ASC, id ASC;
+
+-- name: ListOrderStatusEventsByOrderIDs :many
+-- The history of many orders in one round trip, as a data export reads it.
+SELECT order_id, to_status, actor_role, created_at
+FROM order_status_events
+WHERE order_id = ANY(sqlc.arg('order_ids')::uuid[])
+ORDER BY order_id, created_at ASC, id ASC;
 
 -- name: LockPickupSlot :exec
 -- Holds the slot starting at starts_at until the transaction ends, so two
@@ -316,7 +406,9 @@ SELECT
   created_at,
   updated_at,
   code,
-  order_type
+  order_type,
+  terms_accepted_at,
+  terms_version
 FROM orders
 WHERE id = $1
 FOR UPDATE;

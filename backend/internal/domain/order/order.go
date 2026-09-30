@@ -5,6 +5,7 @@ import (
 	"time"
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	"github.com/google/uuid"
 )
 
@@ -42,8 +43,11 @@ type Order struct {
 	DiscountCodeID       *uuid.UUID
 	DiscountCodeSnapshot *string
 	PickupAt             *time.Time
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	// Terms is the policy version the customer accepted placing the order; orders
+	// placed before acceptance was recorded have none.
+	Terms     *domainpolicy.Acceptance
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Item is an immutable order line captured at checkout.

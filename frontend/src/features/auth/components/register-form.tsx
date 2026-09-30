@@ -10,8 +10,9 @@ import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PolicyConsent } from "@/features/legal";
 import { loginHrefWithNext, validateNext } from "@/lib/validate-next";
-import { isApiError } from "@/lib/errors";
+import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
 import { useRegister } from "../hooks";
@@ -30,6 +31,7 @@ export function RegisterForm() {
     defaultValues: {
       email: "",
       password: "",
+      accept_terms: false,
     },
   });
 
@@ -50,6 +52,15 @@ export function RegisterForm() {
           }
           if (error.isEmailExists()) {
             form.setError("email", { message: "Email already registered" });
+            return;
+          }
+          // The policies changed while the form was open: the ones on screen are
+          // no longer the ones in force.
+          if (error.code === ApiErrorCode.TermsNotAccepted) {
+            form.setValue("accept_terms", false);
+            form.setError("accept_terms", {
+              message: "Our policies were just updated. Reload the page to read and accept the current version.",
+            });
             return;
           }
           if (error.status === 422 && error.details) {
@@ -115,6 +126,23 @@ export function RegisterForm() {
                 </FieldControl>
                 <AuthPasswordChecklist password={password} />
                 <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="accept_terms"
+            render={({ field, fieldState }) => (
+              <FormItem className="auth-field">
+                <PolicyConsent
+                  checked={field.value}
+                  describedBy={fieldState.error ? "register-terms-error" : undefined}
+                  invalid={Boolean(fieldState.error)}
+                  onCheckedChange={field.onChange}
+                  scope="account"
+                />
+                <FormMessage id="register-terms-error" />
               </FormItem>
             )}
           />

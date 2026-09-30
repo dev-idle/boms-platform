@@ -6,6 +6,9 @@ import "time"
 type RegisterRequest struct {
 	Email    string `json:"email" validate:"required,email,max=255"`
 	Password string `json:"password" validate:"required,min=8,max=128,password_complexity"`
+	// TermsVersion is the version of the policies the customer accepted; the
+	// usecase refuses any but the current one.
+	TermsVersion string `json:"terms_version" validate:"max=32"`
 }
 
 // LoginRequest is the JSON body for POST /api/v1/auth/login.

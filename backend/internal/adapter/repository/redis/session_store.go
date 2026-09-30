@@ -176,4 +176,54 @@ func (s *SessionStore) DeleteAllForUser(ctx context.Context, userID string) erro
 	return nil
 }
 
-var _ port.SessionStore = (*SessionStore)(nil)
+// ListForUser implements port.SessionLister: every live session of the user,
+// read with SCAN (never KEYS) and one MGET per batch. A session that expires
+// between the two reads is skipped.
+func (s *SessionStore) ListForUser(ctx context.Context, userID string) ([]domainsession.SessionMeta, error) {
+	if userID == "" {
+		return nil, apperrors.ErrValidation.WithDetail("field", "user_id")
+	}
+	out := make([]domainsession.SessionMeta, 0)
+	// SCAN may return a key more than once; each session is listed once.
+	seen := make(map[string]struct{})
+	var cursor uint64
+	for {
+		scanned, next, err := s.rdb.Scan(ctx, cursor, scanPattern(userID), 100).Result()
+		if err != nil {
+			return nil, fmt.Errorf("scan sessions: %w", err)
+		}
+		keys := make([]string, 0, len(scanned))
+		for _, key := range scanned {
+			if _, listed := seen[key]; !listed {
+				seen[key] = struct{}{}
+				keys = append(keys, key)
+			}
+		}
+		if len(keys) > 0 {
+			values, err := s.rdb.MGet(ctx, keys...).Result()
+			if err != nil {
+				return nil, fmt.Errorf("read sessions: %w", err)
+			}
+			for _, value := range values {
+				raw, ok := value.(string)
+				if !ok {
+					continue
+				}
+				var meta domainsession.SessionMeta
+				if err := json.Unmarshal([]byte(raw), &meta); err != nil {
+					return nil, fmt.Errorf("decode session: %w", err)
+				}
+				out = append(out, meta)
+			}
+		}
+		cursor = next
+		if cursor == 0 {
+			return out, nil
+		}
+	}
+}
+
+var (
+	_ port.SessionStore  = (*SessionStore)(nil)
+	_ port.SessionLister = (*SessionStore)(nil)
+)

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainsession "github.com/boms/backend/internal/domain/session"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
@@ -67,8 +68,12 @@ func NewAuthUsecase(
 	}, nil
 }
 
-// Register hashes the password and creates a customer account.
+// Register hashes the password and creates a customer account, recording the
+// policies the customer accepted.
 func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*domainuser.User, error) {
+	if err := domainpolicy.RequireAccepted(req.TermsVersion); err != nil {
+		return nil, err
+	}
 	req.Email = utils.NormalizeEmail(req.Email)
 	hash, err := a.hasher.Hash(req.Password)
 	if err != nil {
@@ -82,6 +87,7 @@ func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*d
 			PasswordHash:       hash,
 			Role:               domainuser.RoleCustomer,
 			MustChangePassword: false,
+			TermsVersion:       &req.TermsVersion,
 		})
 		if createErr != nil {
 			return createErr
