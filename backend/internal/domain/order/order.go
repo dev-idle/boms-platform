@@ -1,11 +1,15 @@
 package order
 
 import (
+	"strings"
 	"time"
+	"unicode/utf8"
+
+	"github.com/google/uuid"
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
-	"github.com/google/uuid"
+	domainstore "github.com/boms/backend/internal/domain/store"
 )
 
 // Status is the lifecycle state of a customer order.
@@ -51,11 +55,50 @@ func (s Status) BeforeProduction() bool {
 	return s == StatusAwaitingPayment || s == StatusPending || s == StatusConfirmed
 }
 
+// Channel is where an order was taken.
+type Channel string
+
+const (
+	// ChannelOnline is an order its customer placed and paid online.
+	ChannelOnline Channel = "online"
+	// ChannelCounter and ChannelPhone are orders staff took for a customer or a
+	// guest; they are paid in cash when collected.
+	ChannelCounter Channel = "counter"
+	ChannelPhone   Channel = "phone"
+)
+
+// TakenByStaff reports whether staff took the order, at the counter or on the phone.
+func (c Channel) TakenByStaff() bool {
+	return c == ChannelCounter || c == ChannelPhone
+}
+
+// Guest is who collects an order taken for someone without an account.
+type Guest struct {
+	Name  string
+	Phone string
+}
+
+// maxGuestNameLength is the longest name staff write down for a guest.
+const maxGuestNameLength = 100
+
+// NewGuest checks who collects a guest's order: a name of 1 to 100 plain
+// characters, trimmed, and phone in the form it is stored in.
+func NewGuest(name, phone string) (Guest, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || utf8.RuneCountInString(name) > maxGuestNameLength || !domainstore.PlainText(name) {
+		return Guest{}, ErrInvalidGuestName
+	}
+	return Guest{Name: name, Phone: phone}, nil
+}
+
 // Order is a placed checkout snapshot with server-computed totals.
 type Order struct {
-	ID                   uuid.UUID
-	Code                 string
-	UserID               uuid.UUID
+	ID   uuid.UUID
+	Code string
+	// UserID is the customer's account; nil for a guest's order, which Guest names.
+	UserID               *uuid.UUID
+	Guest                *Guest
+	Channel              Channel
 	Status               Status
 	Type                 Type
 	SubtotalCents        int64
@@ -71,6 +114,13 @@ type Order struct {
 	Terms     *domainpolicy.Acceptance
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// HasPickupCode reports whether the customer collects the order with a pickup
+// code now: one placed online, from when the bakery accepts it until it is
+// collected. An order staff took is handed over as its cash is paid.
+func (o Order) HasPickupCode() bool {
+	return o.Channel == ChannelOnline && o.Status.HasPickupCode()
 }
 
 // Payable reports whether the order still takes its payment at now: it awaits

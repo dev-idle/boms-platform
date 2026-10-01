@@ -11,13 +11,60 @@ import (
 	"github.com/google/uuid"
 )
 
+const collectCashPayment = `-- name: CollectCashPayment :execrows
+UPDATE payments
+SET status      = 'captured',
+    captured_at = now(),
+    updated_at  = now()
+WHERE order_id = $1
+  AND provider = 'cash'::payment_provider
+  AND status = 'created'
+`
+
+// The counter took the cash due as it handed the order over.
+//
+//	UPDATE payments
+//	SET status      = 'captured',
+//	    captured_at = now(),
+//	    updated_at  = now()
+//	WHERE order_id = $1
+//	  AND provider = 'cash'::payment_provider
+//	  AND status = 'created'
+func (q *Queries) CollectCashPayment(ctx context.Context, orderID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, collectCashPayment, orderID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const createCashPayment = `-- name: CreateCashPayment :exec
+INSERT INTO payments (order_id, provider, amount_cents, currency)
+VALUES ($1, 'cash'::payment_provider, $2, $3)
+`
+
+type CreateCashPaymentParams struct {
+	OrderID     uuid.UUID `json:"orderId"`
+	AmountCents int64     `json:"amountCents"`
+	Currency    string    `json:"currency"`
+}
+
+// Cash due when the order is collected.
+//
+//	INSERT INTO payments (order_id, provider, amount_cents, currency)
+//	VALUES ($1, 'cash'::payment_provider, $2, $3)
+func (q *Queries) CreateCashPayment(ctx context.Context, arg CreateCashPaymentParams) error {
+	_, err := q.db.Exec(ctx, createCashPayment, arg.OrderID, arg.AmountCents, arg.Currency)
+	return err
+}
+
 const createPayment = `-- name: CreatePayment :one
 INSERT INTO payments (order_id, provider, provider_order_id, approve_url, amount_cents, currency)
 VALUES (
   $1,
   $2,
-  $3,
-  $4,
+  $3::text,
+  $4::text,
   $5,
   $6
 )
@@ -41,8 +88,8 @@ type CreatePaymentParams struct {
 //	VALUES (
 //	  $1,
 //	  $2,
-//	  $3,
-//	  $4,
+//	  $3::text,
+//	  $4::text,
 //	  $5,
 //	  $6
 //	)
@@ -116,7 +163,7 @@ const getPaymentByProviderOrderID = `-- name: GetPaymentByProviderOrderID :one
 SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 FROM payments
 WHERE provider = $1
-  AND provider_order_id = $2
+  AND provider_order_id = $2::text
 `
 
 type GetPaymentByProviderOrderIDParams struct {
@@ -129,7 +176,7 @@ type GetPaymentByProviderOrderIDParams struct {
 //	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 //	FROM payments
 //	WHERE provider = $1
-//	  AND provider_order_id = $2
+//	  AND provider_order_id = $2::text
 func (q *Queries) GetPaymentByProviderOrderID(ctx context.Context, arg GetPaymentByProviderOrderIDParams) (Payment, error) {
 	row := q.db.QueryRow(ctx, getPaymentByProviderOrderID, arg.Provider, arg.ProviderOrderID)
 	var i Payment
@@ -334,8 +381,8 @@ func (q *Queries) RequestPaymentRefund(ctx context.Context, orderID uuid.UUID) e
 
 const restartPayment = `-- name: RestartPayment :one
 UPDATE payments
-SET provider_order_id = $1,
-    approve_url       = $2,
+SET provider_order_id = $1::text,
+    approve_url       = $2::text,
     status            = 'created',
     capture_id        = NULL,
     updated_at        = now()
@@ -353,8 +400,8 @@ type RestartPaymentParams struct {
 // A payment the provider denied starts over with a new provider order.
 //
 //	UPDATE payments
-//	SET provider_order_id = $1,
-//	    approve_url       = $2,
+//	SET provider_order_id = $1::text,
+//	    approve_url       = $2::text,
 //	    status            = 'created',
 //	    capture_id        = NULL,
 //	    updated_at        = now()

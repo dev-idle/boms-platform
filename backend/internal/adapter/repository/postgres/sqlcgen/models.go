@@ -97,6 +97,49 @@ func (ns NullLineType) Value() (driver.Value, error) {
 	return string(ns.LineType), nil
 }
 
+type OrderChannel string
+
+const (
+	OrderChannelOnline  OrderChannel = "online"
+	OrderChannelCounter OrderChannel = "counter"
+	OrderChannelPhone   OrderChannel = "phone"
+)
+
+func (e *OrderChannel) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrderChannel(s)
+	case string:
+		*e = OrderChannel(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrderChannel: %T", src)
+	}
+	return nil
+}
+
+type NullOrderChannel struct {
+	OrderChannel OrderChannel `json:"orderChannel"`
+	Valid        bool         `json:"valid"` // Valid is true if OrderChannel is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrderChannel) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrderChannel, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrderChannel.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrderChannel) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrderChannel), nil
+}
+
 type OrderStatus string
 
 const (
@@ -192,6 +235,7 @@ type PaymentProvider string
 
 const (
 	PaymentProviderPaypal PaymentProvider = "paypal"
+	PaymentProviderCash   PaymentProvider = "cash"
 )
 
 func (e *PaymentProvider) Scan(src interface{}) error {
@@ -571,23 +615,26 @@ type DiscountCode struct {
 }
 
 type Order struct {
-	ID                   uuid.UUID   `json:"id"`
-	UserID               uuid.UUID   `json:"userId"`
-	Status               OrderStatus `json:"status"`
-	SubtotalCents        int64       `json:"subtotalCents"`
-	DiscountCents        int64       `json:"discountCents"`
-	TotalCents           int64       `json:"totalCents"`
-	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
-	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
-	PickupAt             *time.Time  `json:"pickupAt"`
-	CreatedAt            time.Time   `json:"createdAt"`
-	UpdatedAt            time.Time   `json:"updatedAt"`
-	Code                 string      `json:"code"`
-	OrderType            OrderType   `json:"orderType"`
-	TermsAcceptedAt      *time.Time  `json:"termsAcceptedAt"`
-	TermsVersion         *string     `json:"termsVersion"`
-	CheckoutKey          *uuid.UUID  `json:"checkoutKey"`
-	PaymentDueAt         *time.Time  `json:"paymentDueAt"`
+	ID                   uuid.UUID    `json:"id"`
+	UserID               *uuid.UUID   `json:"userId"`
+	Status               OrderStatus  `json:"status"`
+	SubtotalCents        int64        `json:"subtotalCents"`
+	DiscountCents        int64        `json:"discountCents"`
+	TotalCents           int64        `json:"totalCents"`
+	DiscountCodeID       *uuid.UUID   `json:"discountCodeId"`
+	DiscountCodeSnapshot *string      `json:"discountCodeSnapshot"`
+	PickupAt             *time.Time   `json:"pickupAt"`
+	CreatedAt            time.Time    `json:"createdAt"`
+	UpdatedAt            time.Time    `json:"updatedAt"`
+	Code                 string       `json:"code"`
+	OrderType            OrderType    `json:"orderType"`
+	TermsAcceptedAt      *time.Time   `json:"termsAcceptedAt"`
+	TermsVersion         *string      `json:"termsVersion"`
+	CheckoutKey          *uuid.UUID   `json:"checkoutKey"`
+	PaymentDueAt         *time.Time   `json:"paymentDueAt"`
+	Channel              OrderChannel `json:"channel"`
+	GuestName            *string      `json:"guestName"`
+	GuestPhone           *string      `json:"guestPhone"`
 }
 
 type OrderDayCounter struct {
@@ -623,8 +670,8 @@ type Payment struct {
 	ID                uuid.UUID       `json:"id"`
 	OrderID           uuid.UUID       `json:"orderId"`
 	Provider          PaymentProvider `json:"provider"`
-	ProviderOrderID   string          `json:"providerOrderId"`
-	ApproveUrl        string          `json:"approveUrl"`
+	ProviderOrderID   *string         `json:"providerOrderId"`
+	ApproveUrl        *string         `json:"approveUrl"`
 	Status            PaymentStatus   `json:"status"`
 	CaptureID         *string         `json:"captureId"`
 	AmountCents       int64           `json:"amountCents"`
@@ -650,6 +697,7 @@ type Product struct {
 	DeletedAt       *time.Time `json:"deletedAt"`
 	LeadTimeMinutes int32      `json:"leadTimeMinutes"`
 	IsCustomizable  bool       `json:"isCustomizable"`
+	SoldOutOn       *time.Time `json:"soldOutOn"`
 }
 
 type ProductImage struct {

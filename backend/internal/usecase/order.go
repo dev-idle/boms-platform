@@ -110,7 +110,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UU
 		if err != nil {
 			return err
 		}
-		booking, err := u.bookPickup(txCtx, userID, items, pickupAt, now, policy, nil)
+		booking, err := bookPickup(txCtx, u.orders, &userID, items, pickupAt, now, policy, nil)
 		if err != nil {
 			return err
 		}
@@ -132,7 +132,8 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UU
 			return err
 		}
 		order, err := u.orders.Create(txCtx, port.CreateOrderParams{
-			UserID:               userID,
+			UserID:               &userID,
+			Channel:              domainorder.ChannelOnline,
 			Code:                 domainorder.Code(day, number),
 			Status:               domainorder.StatusAwaitingPayment,
 			Type:                 booking.orderType,
@@ -150,26 +151,10 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UU
 			return err
 		}
 
-		orderItems := make([]port.CreateOrderItemParams, 0, len(lines))
-		for _, line := range lines {
-			params := port.CreateOrderItemParams{
-				OrderID:        order.ID,
-				LineType:       line.Item.LineType,
-				Customization:  line.Customization,
-				Name:           line.Name,
-				Slug:           line.Slug,
-				Quantity:       line.Item.Quantity,
-				UnitPriceCents: line.UnitPriceCents,
-				LineTotalCents: line.LineTotalCents,
-				ProductID:      line.Item.ProductID,
-				ComboID:        line.Item.ComboID,
-			}
-			orderItems = append(orderItems, params)
-		}
-		if err := u.orders.CreateItems(txCtx, orderItems); err != nil {
+		if err := u.orders.CreateItems(txCtx, orderItemsOf(order.ID, lines)); err != nil {
 			return err
 		}
-		if err := u.createTickets(txCtx, order.ID); err != nil {
+		if err := createOrderTickets(txCtx, u.tickets, order.ID); err != nil {
 			return err
 		}
 		if err := u.orders.AddStatusEvent(txCtx, port.AddOrderStatusEventParams{
@@ -243,14 +228,34 @@ func (u *OrderUsecase) holdDiscount(txCtx context.Context, userID, codeID uuid.U
 	return nil
 }
 
-// createTickets splits a new order into one ticket per station, combos by the
-// products they hold.
-func (u *OrderUsecase) createTickets(txCtx context.Context, orderID uuid.UUID) error {
-	lines, err := u.tickets.ListLines(txCtx, orderID)
+// orderItemsOf turns priced lines into a new order's receipt lines.
+func orderItemsOf(orderID uuid.UUID, lines []pricedCartLine) []port.CreateOrderItemParams {
+	items := make([]port.CreateOrderItemParams, 0, len(lines))
+	for _, line := range lines {
+		items = append(items, port.CreateOrderItemParams{
+			OrderID:        orderID,
+			LineType:       line.Item.LineType,
+			Customization:  line.Customization,
+			Name:           line.Name,
+			Slug:           line.Slug,
+			Quantity:       line.Item.Quantity,
+			UnitPriceCents: line.UnitPriceCents,
+			LineTotalCents: line.LineTotalCents,
+			ProductID:      line.Item.ProductID,
+			ComboID:        line.Item.ComboID,
+		})
+	}
+	return items
+}
+
+// createOrderTickets splits a new order into one ticket per station, combos by
+// the products they hold.
+func createOrderTickets(txCtx context.Context, tickets port.TicketRepository, orderID uuid.UUID) error {
+	lines, err := tickets.ListLines(txCtx, orderID)
 	if err != nil {
 		return err
 	}
-	_, err = u.tickets.CreateForOrder(txCtx, orderID, domainorder.Decompose(lines))
+	_, err = tickets.CreateForOrder(txCtx, orderID, domainorder.Decompose(lines))
 	return err
 }
 
@@ -264,26 +269,33 @@ type pickupBooking struct {
 // bookPickup decides the order's type from what its items ask of the bakery,
 // checks the pickup time against the rules for that type, and holds its slot
 // until the transaction ends. It refuses a slot that is already full and a
-// customer who already holds as many orders for that day as one may; current
-// is the pickup an order being moved holds now, nil at checkout. Both holds
-// last until the transaction ends, so neither count can race.
-func (u *OrderUsecase) bookPickup(
+// customer who already holds as many orders for that day as one may (a guest,
+// nil customer, has no account to count); current is the pickup an order being
+// moved holds now, nil for a new order. Both holds last until the transaction
+// ends, so neither count can race.
+func bookPickup(
 	txCtx context.Context,
-	userID uuid.UUID,
+	orders port.OrderRepository,
+	customer *uuid.UUID,
 	items domainorder.Fulfillment,
 	pickupAt, now time.Time,
 	policy domainorder.PickupPolicy,
 	current *time.Time,
 ) (pickupBooking, error) {
+	day := domainstore.DayOf(pickupAt)
+	// An order moving within its own day holds that day already: it counts
+	// toward it, and its items are its own though one has sold out since.
+	sameDay := current != nil && domainstore.DayOf(*current).Equal(day)
+	if sameDay {
+		items = items.HeldOn(day)
+	}
 	orderType, err := policy.Validate(pickupAt, now, items)
 	if err != nil {
 		return pickupBooking{}, err
 	}
-	day := domainstore.DayOf(pickupAt)
-	// An order moving within its own day counts toward that day already.
-	if current == nil || !domainstore.DayOf(*current).Equal(day) {
+	if customer != nil && !sameDay {
 		dayStart := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, domainstore.Location)
-		mine, err := u.orders.HoldCustomerDay(txCtx, userID, dayStart, dayStart.AddDate(0, 0, 1))
+		mine, err := orders.HoldCustomerDay(txCtx, *customer, dayStart, dayStart.AddDate(0, 0, 1))
 		if err != nil {
 			return pickupBooking{}, err
 		}
@@ -291,7 +303,7 @@ func (u *OrderUsecase) bookPickup(
 			return pickupBooking{}, domainorder.ErrPickupDayLimit
 		}
 	}
-	held, err := u.orders.HoldPickupSlot(txCtx, pickupAt, policy.Settings.SlotLength)
+	held, err := orders.HoldPickupSlot(txCtx, pickupAt, policy.Settings.SlotLength)
 	if err != nil {
 		return pickupBooking{}, err
 	}
@@ -393,10 +405,13 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		if err != nil {
 			return nil, err
 		}
+		if order.PickupAt != nil {
+			items = items.HeldOn(domainstore.DayOf(*order.PickupAt))
+		}
 		fulfillment := mapFulfillmentToDTO(items)
 		resp.Fulfillment = &fulfillment
 	}
-	if order.Status.HasPickupCode() {
+	if order.HasPickupCode() {
 		code := u.pickupCodes.Of(order.ID)
 		resp.PickupCode = &code
 	}

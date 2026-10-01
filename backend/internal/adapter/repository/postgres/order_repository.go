@@ -41,8 +41,15 @@ func (r *OrderRepository) Create(ctx context.Context, params port.CreateOrderPar
 	if err != nil {
 		return nil, err
 	}
+	var guestName, guestPhone *string
+	if params.Guest != nil {
+		guestName, guestPhone = &params.Guest.Name, &params.Guest.Phone
+	}
 	row, err := r.q(ctx).CreateOrder(ctx, sqlcgen.CreateOrderParams{
 		UserID:               params.UserID,
+		Channel:              sqlcgen.OrderChannel(params.Channel),
+		GuestName:            guestName,
+		GuestPhone:           guestPhone,
 		Code:                 params.Code,
 		OrderType:            orderType,
 		Status:               status,
@@ -70,6 +77,15 @@ func (r *OrderRepository) GetByCheckoutKey(ctx context.Context, userID, checkout
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "get order by checkout key")
+	}
+	return mapOrder(row), nil
+}
+
+// GetByStaffCheckoutKey implements port.OrderRepository.
+func (r *OrderRepository) GetByStaffCheckoutKey(ctx context.Context, checkoutKey uuid.UUID) (*domainorder.Order, error) {
+	row, err := r.q(ctx).GetStaffOrderByCheckoutKey(ctx, &checkoutKey)
+	if err != nil {
+		return nil, mapRepoError(err, "get staff order by checkout key")
 	}
 	return mapOrder(row), nil
 }
@@ -597,6 +613,8 @@ func mapOrder(row sqlcgen.Order) *domainorder.Order {
 		Code:                 row.Code,
 		Type:                 domainorder.Type(row.OrderType),
 		UserID:               row.UserID,
+		Guest:                guestFromSQL(row.GuestName, row.GuestPhone),
+		Channel:              domainorder.Channel(row.Channel),
 		Status:               mapOrderStatusFromSQL(row.Status),
 		SubtotalCents:        row.SubtotalCents,
 		DiscountCents:        row.DiscountCents,
@@ -609,6 +627,15 @@ func mapOrder(row sqlcgen.Order) *domainorder.Order {
 		PaymentDueAt:         row.PaymentDueAt,
 		Terms:                mapTermsAcceptance(row.TermsVersion, row.TermsAcceptedAt),
 	}
+}
+
+// guestFromSQL reads the guest a row names; the table's check keeps the name
+// and the phone both set, for a guest's order only, or both empty.
+func guestFromSQL(name, phone *string) *domainorder.Guest {
+	if name == nil || phone == nil {
+		return nil
+	}
+	return &domainorder.Guest{Name: *name, Phone: *phone}
 }
 
 // mapTermsAcceptance reads the version and instant a row recorded together;
@@ -692,6 +719,7 @@ func mapStaffListOrdersRow(row sqlcgen.StaffListOrdersRow) *port.StaffOrderListR
 		row.UpdatedAt,
 		row.Code,
 		row.OrderType,
+		row.Channel,
 		row.CustomerEmail,
 		row.CustomerEmailVerified,
 		row.CustomerDisplayName,
@@ -715,6 +743,7 @@ func mapStaffGetOrderByIDRow(row sqlcgen.StaffGetOrderByIDRow) *port.StaffOrderL
 		row.UpdatedAt,
 		row.Code,
 		row.OrderType,
+		row.Channel,
 		row.CustomerEmail,
 		row.CustomerEmailVerified,
 		row.CustomerDisplayName,
@@ -723,7 +752,8 @@ func mapStaffGetOrderByIDRow(row sqlcgen.StaffGetOrderByIDRow) *port.StaffOrderL
 }
 
 func mapStaffOrderJoined(
-	id, userID uuid.UUID,
+	id uuid.UUID,
+	userID *uuid.UUID,
 	status sqlcgen.OrderStatus,
 	subtotalCents, discountCents, totalCents int64,
 	discountCodeID *uuid.UUID,
@@ -732,7 +762,8 @@ func mapStaffOrderJoined(
 	createdAt, updatedAt time.Time,
 	code string,
 	orderType sqlcgen.OrderType,
-	customerEmail string,
+	channel sqlcgen.OrderChannel,
+	customerEmail *string,
 	customerEmailVerified bool,
 	customerDisplayName *string,
 	customerPhone *string,
@@ -741,6 +772,7 @@ func mapStaffOrderJoined(
 		Order: domainorder.Order{
 			ID:                   id,
 			UserID:               userID,
+			Channel:              domainorder.Channel(channel),
 			Status:               mapOrderStatusFromSQL(status),
 			SubtotalCents:        subtotalCents,
 			DiscountCents:        discountCents,

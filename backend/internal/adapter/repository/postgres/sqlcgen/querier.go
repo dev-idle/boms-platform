@@ -156,6 +156,7 @@ type Querier interface {
 	//      p.description,
 	//      p.price_cents,
 	//      p.is_customizable,
+	//      p.sold_out_on,
 	//      c.name AS category_name,
 	//      c.slug AS category_slug
 	//  FROM products p
@@ -174,6 +175,7 @@ type Querier interface {
 	//      p.description,
 	//      p.price_cents,
 	//      p.is_customizable,
+	//      p.sold_out_on,
 	//      c.name AS category_name,
 	//      c.slug AS category_slug
 	//  FROM products p
@@ -244,6 +246,7 @@ type Querier interface {
 	//      page.description,
 	//      page.price_cents,
 	//      page.is_customizable,
+	//      page.sold_out_on,
 	//      page.category_name,
 	//      page.category_slug,
 	//      COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
@@ -256,6 +259,7 @@ type Querier interface {
 	//          p.description,
 	//          p.price_cents,
 	//          p.is_customizable,
+	//          p.sold_out_on,
 	//          c.name AS category_name,
 	//          c.slug AS category_slug,
 	//          c.sort_order AS category_sort_order
@@ -324,6 +328,16 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	ClearMustChangePassword(ctx context.Context, id uuid.UUID) (int64, error)
+	// The counter took the cash due as it handed the order over.
+	//
+	//  UPDATE payments
+	//  SET status      = 'captured',
+	//      captured_at = now(),
+	//      updated_at  = now()
+	//  WHERE order_id = $1
+	//    AND provider = 'cash'::payment_provider
+	//    AND status = 'created'
+	CollectCashPayment(ctx context.Context, orderID uuid.UUID) (int64, error)
 	//CountAuditLogsByTargetID
 	//
 	//  SELECT COUNT(*)::bigint AS total
@@ -349,7 +363,7 @@ type Querier interface {
 	//
 	//  SELECT count(*)::bigint AS count
 	//  FROM orders
-	//  WHERE user_id = $1
+	//  WHERE user_id = $1::uuid
 	//    AND discount_code_id = $2
 	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 	CountCustomerDiscountUses(ctx context.Context, arg CountCustomerDiscountUsesParams) (int64, error)
@@ -357,7 +371,7 @@ type Querier interface {
 	//
 	//  SELECT count(*)::bigint AS count
 	//  FROM orders
-	//  WHERE user_id = $1
+	//  WHERE user_id = $1::uuid
 	//    AND pickup_at >= $2::timestamptz
 	//    AND pickup_at < $3::timestamptz
 	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
@@ -386,8 +400,9 @@ type Querier interface {
 	//  SELECT count(*)::bigint AS count
 	//  FROM order_tickets t
 	//  INNER JOIN orders o ON o.id = t.order_id
-	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//  WHERE t.station = $1::station
+	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+	//    AND t.station = $1::station
 	//    AND t.status <> 'cancelled'::ticket_status
 	//    AND o.status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
 	//    AND (
@@ -428,6 +443,11 @@ type Querier interface {
 	//  VALUES ($1, $2, $3, $4, $5, $6)
 	//  RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 	CreateCartItem(ctx context.Context, arg CreateCartItemParams) (CartItem, error)
+	// Cash due when the order is collected.
+	//
+	//  INSERT INTO payments (order_id, provider, amount_cents, currency)
+	//  VALUES ($1, 'cash'::payment_provider, $2, $3)
+	CreateCashPayment(ctx context.Context, arg CreateCashPaymentParams) error
 	//CreateCategory
 	//
 	//  INSERT INTO categories (name, slug, sort_order, is_active, station)
@@ -494,7 +514,10 @@ type Querier interface {
 	//    terms_version,
 	//    terms_accepted_at,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	//  )
 	//  VALUES (
 	//    $1,
@@ -512,8 +535,14 @@ type Querier interface {
 	//    -- created_at takes.
 	//    CASE WHEN $11::text IS NULL THEN NULL ELSE now() END,
 	//    $12,
-	//    -- Held unpaid until then, on the database clock.
-	//    now() + make_interval(mins => $13::int)
+	//    -- Held unpaid until then, on the database clock. An order staff take is
+	//    -- paid at the counter and holds nothing.
+	//    CASE WHEN $2::order_status = 'awaiting_payment'::order_status
+	//      THEN now() + make_interval(mins => $13::int)
+	//    END,
+	//    $14,
+	//    $15,
+	//    $16
 	//  )
 	//  RETURNING
 	//    id,
@@ -532,7 +561,10 @@ type Querier interface {
 	//    terms_accepted_at,
 	//    terms_version,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
 	// One round trip for every checkout line: the items arrive as a JSON array and
 	// Postgres casts each field to the column type (constraints still apply per row).
@@ -611,8 +643,8 @@ type Querier interface {
 	//  VALUES (
 	//    $1,
 	//    $2,
-	//    $3,
-	//    $4,
+	//    $3::text,
+	//    $4::text,
 	//    $5,
 	//    $6
 	//  )
@@ -623,7 +655,7 @@ type Querier interface {
 	//
 	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes, is_customizable)
 	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	// The options the manager added, in one statement.
 	//
@@ -757,7 +789,10 @@ type Querier interface {
 	//    terms_accepted_at,
 	//    terms_version,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	ExpireOrder(ctx context.Context, arg ExpireOrderParams) (Order, error)
 	//GetAdminProfileByUserID
 	//
@@ -861,18 +896,21 @@ type Querier interface {
 	//    AND deleted_at IS NULL
 	GetDiscountCodeByID(ctx context.Context, id uuid.UUID) (DiscountCode, error)
 	// What these products and combos ask of the bakery, combos counted by what
-	// they hold: whether any comes from the kitchen, and the longest notice any needs.
+	// they hold: whether any comes from the kitchen, the longest notice any needs,
+	// and whether one ran out today (a mark is only ever made for the day it is
+	// made on, so no other day is ever sold out ahead).
 	//
 	//  WITH line_products AS (
-	//    SELECT unnest($1::uuid[]) AS product_id
+	//    SELECT unnest($2::uuid[]) AS product_id
 	//    UNION
 	//    SELECT ci.product_id
 	//    FROM combo_items ci
-	//    WHERE ci.combo_id = ANY($2::uuid[])
+	//    WHERE ci.combo_id = ANY($3::uuid[])
 	//  )
 	//  SELECT
 	//    COALESCE(bool_or(c.station = 'kitchen'::station), false)::bool AS has_kitchen_items,
-	//    COALESCE(max(p.lead_time_minutes), 0)::int AS lead_minutes
+	//    COALESCE(max(p.lead_time_minutes), 0)::int AS lead_minutes,
+	//    COALESCE(bool_or(p.sold_out_on = $1::date), false)::bool AS sold_out_today
 	//  FROM line_products lp
 	//  INNER JOIN products p ON p.id = lp.product_id AND p.deleted_at IS NULL
 	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -896,9 +934,12 @@ type Querier interface {
 	//    terms_accepted_at,
 	//    terms_version,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	//  FROM orders
-	//  WHERE user_id = $1
+	//  WHERE user_id = $1::uuid
 	//    AND checkout_key = $2
 	GetOrderByCheckoutKey(ctx context.Context, arg GetOrderByCheckoutKeyParams) (Order, error)
 	//GetOrderByIDForUser
@@ -920,9 +961,12 @@ type Querier interface {
 	//    terms_accepted_at,
 	//    terms_version,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	//  FROM orders
-	//  WHERE id = $1 AND user_id = $2
+	//  WHERE id = $1 AND user_id = $2::uuid
 	GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error)
 	//GetOrderTicket
 	//
@@ -941,15 +985,42 @@ type Querier interface {
 	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 	//  FROM payments
 	//  WHERE provider = $1
-	//    AND provider_order_id = $2
+	//    AND provider_order_id = $2::text
 	GetPaymentByProviderOrderID(ctx context.Context, arg GetPaymentByProviderOrderIDParams) (Payment, error)
 	//GetProductByID
 	//
-	//  SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+	//  SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 	//  FROM products
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
+	// The order staff took with that Idempotency-Key, whoever it is for.
+	//
+	//  SELECT
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    pickup_at,
+	//    created_at,
+	//    updated_at,
+	//    code,
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
+	//  FROM orders
+	//  WHERE checkout_key = $1
+	//    AND channel <> 'online'::order_channel
+	GetStaffOrderByCheckoutKey(ctx context.Context, checkoutKey *uuid.UUID) (Order, error)
 	//GetStaffProfileByUserID
 	//
 	//  SELECT user_id, full_name, phone, employee_code, created_at, updated_at
@@ -1013,10 +1084,10 @@ type Querier interface {
 	//  SELECT EXISTS (
 	//    SELECT 1
 	//    FROM orders
-	//    WHERE user_id = $1
+	//    WHERE user_id = $1::uuid
 	//      AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status, 'no_show'::order_status)
 	//  ) AS open
-	HasOpenOrdersForUser(ctx context.Context, userID uuid.UUID) (bool, error)
+	HasOpenOrdersForUser(ctx context.Context, dollar_1 uuid.UUID) (bool, error)
 	//IncrementDiscountCodeUsedCount
 	//
 	//  UPDATE discount_codes
@@ -1119,7 +1190,8 @@ type Querier interface {
 	//      ci.quantity,
 	//      p.name AS product_name,
 	//      p.slug AS product_slug,
-	//      p.price_cents
+	//      p.price_cents,
+	//      p.sold_out_on
 	//  FROM combo_items ci
 	//  INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
 	//  INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
@@ -1292,9 +1364,12 @@ type Querier interface {
 	//    terms_accepted_at,
 	//    terms_version,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	//  FROM orders
-	//  WHERE user_id = $1
+	//  WHERE user_id = $1::uuid
 	//    AND (
 	//      $2::order_status IS NULL
 	//      OR status = $2::order_status
@@ -1331,9 +1406,12 @@ type Querier interface {
 	//    terms_accepted_at,
 	//    terms_version,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	//  FROM orders
-	//  WHERE user_id = $1
+	//  WHERE user_id = $1::uuid
 	//    AND (
 	//      $2::timestamptz IS NULL
 	//      OR (created_at, id) < ($2::timestamptz, $3::uuid)
@@ -1345,7 +1423,7 @@ type Querier interface {
 	//
 	//  SELECT COUNT(*)::bigint AS count
 	//  FROM orders
-	//  WHERE user_id = $1
+	//  WHERE user_id = $1::uuid
 	//    AND (
 	//      $2::order_status IS NULL
 	//      OR status = $2::order_status
@@ -1411,12 +1489,13 @@ type Querier interface {
 	//      o.code AS order_code,
 	//      o.status AS order_status,
 	//      o.pickup_at,
-	//      cp.display_name AS customer_display_name
+	//      COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 	//    FROM order_tickets t
 	//    INNER JOIN orders o ON o.id = t.order_id
-	//    INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//    LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-	//    WHERE t.station = $1::station
+	//    LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//    LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+	//    WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+	//      AND t.station = $1::station
 	//      AND t.status <> 'cancelled'::ticket_status
 	//      AND o.status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
 	//      AND (
@@ -1470,7 +1549,10 @@ type Querier interface {
 	//    terms_accepted_at,
 	//    terms_version,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	//  FROM orders
 	//  WHERE id = $1
 	//  FOR UPDATE
@@ -1865,7 +1947,10 @@ type Querier interface {
 	//    terms_accepted_at,
 	//    terms_version,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	RescheduleOrder(ctx context.Context, arg RescheduleOrderParams) (Order, error)
 	// A reset link reached the account's inbox, so it confirms the address too.
 	//
@@ -1881,8 +1966,8 @@ type Querier interface {
 	// A payment the provider denied starts over with a new provider order.
 	//
 	//  UPDATE payments
-	//  SET provider_order_id = $1,
-	//      approve_url       = $2,
+	//  SET provider_order_id = $1::text,
+	//      approve_url       = $2::text,
 	//      status            = 'created',
 	//      capture_id        = NULL,
 	//      updated_at        = now()
@@ -1934,6 +2019,19 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	SetMustChangePassword(ctx context.Context, id uuid.UUID) (int64, error)
+	// Marks a product sold out on a bakery day, or back with NULL.
+	//
+	//  UPDATE products p
+	//  SET sold_out_on = $1,
+	//      updated_at  = now()
+	//  FROM categories c
+	//  WHERE p.id = $2
+	//    AND p.deleted_at IS NULL
+	//    AND p.is_active = true
+	//    AND c.id = p.category_id
+	//    AND c.deleted_at IS NULL
+	//  RETURNING p.id, p.name, c.name AS category_name, c.station, p.sold_out_on
+	SetProductSoldOut(ctx context.Context, arg SetProductSoldOutParams) (SetProductSoldOutRow, error)
 	// Closing an account ends its sessions for good, even if it is enabled again.
 	//
 	//  UPDATE users
@@ -1988,6 +2086,20 @@ type Querier interface {
 	//  WHERE id = $1 AND deleted_at IS NULL
 	//  RETURNING id, closed_on, reason, created_at
 	SoftDeleteStoreClosedDate(ctx context.Context, id uuid.UUID) (SoftDeleteStoreClosedDateRow, error)
+	// An open customer account by its email, with what staff need to take an
+	// order for it.
+	//
+	//  SELECT
+	//    u.id,
+	//    u.email::text AS email,
+	//    cp.display_name,
+	//    cp.phone
+	//  FROM users u
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+	//  WHERE u.email = $1
+	//    AND u.role = 'customer'::user_role
+	//    AND u.deleted_at IS NULL
+	StaffFindCustomerByEmail(ctx context.Context, email string) (StaffFindCustomerByEmailRow, error)
 	//StaffGetOrderByID
 	//
 	//  SELECT
@@ -2004,15 +2116,18 @@ type Querier interface {
 	//    o.updated_at,
 	//    o.code,
 	//    o.order_type,
+	//    o.channel,
 	//    u.email AS customer_email,
 	//    (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-	//    cp.display_name AS customer_display_name,
-	//    cp.phone AS customer_phone
+	//    COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+	//    COALESCE(cp.phone, o.guest_phone) AS customer_phone
 	//  FROM orders o
-	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 	//  WHERE o.id = $1
+	//    AND (o.user_id IS NULL OR u.id IS NOT NULL)
 	StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGetOrderByIDRow, error)
+	// A guest's order has no account; one whose account was erased is not shown.
 	// An order not paid, now or ever, is not the bakery's to see: one cancelled
 	// is only if it was accepted before (domainorder.SeenByStaff).
 	// What still needs doing comes first, soonest pickup first; then the orders
@@ -2032,13 +2147,15 @@ type Querier interface {
 	//    o.updated_at,
 	//    o.code,
 	//    o.order_type,
+	//    o.channel,
 	//    u.email AS customer_email,
 	//    (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-	//    cp.display_name AS customer_display_name
+	//    COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 	//  FROM orders o
-	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-	//  WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+	//  WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+	//    AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
 	//    AND (o.status <> 'cancelled'::order_status OR EXISTS (
 	//      SELECT 1 FROM order_status_events e
 	//      WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
@@ -2059,8 +2176,9 @@ type Querier interface {
 	//
 	//  SELECT COUNT(*)::bigint AS count
 	//  FROM orders o
-	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//  WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+	//    AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
 	//    AND (o.status <> 'cancelled'::order_status OR EXISTS (
 	//      SELECT 1 FROM order_status_events e
 	//      WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
@@ -2088,13 +2206,15 @@ type Querier interface {
 	//    o.updated_at,
 	//    o.code,
 	//    o.order_type,
+	//    o.channel,
 	//    u.email AS customer_email,
 	//    (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-	//    cp.display_name AS customer_display_name
+	//    COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 	//  FROM orders o
-	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-	//  WHERE o.pickup_at >= $1::timestamptz
+	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+	//  WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+	//    AND o.pickup_at >= $1::timestamptz
 	//    AND o.pickup_at < $2::timestamptz
 	//    AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
 	//                     'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
@@ -2105,12 +2225,45 @@ type Querier interface {
 	//
 	//  SELECT COUNT(*)::bigint AS count
 	//  FROM orders o
-	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-	//  WHERE o.pickup_at >= $1::timestamptz
+	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+	//    AND o.pickup_at >= $1::timestamptz
 	//    AND o.pickup_at < $2::timestamptz
 	//    AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
 	//                     'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
 	StaffListPickupsCount(ctx context.Context, arg StaffListPickupsCountParams) (int64, error)
+	// What the counter can mark sold out, by category and name, with the day
+	// each last ran out; sold_out_on narrows the page to those out that day.
+	//
+	//  SELECT
+	//    p.id,
+	//    p.name,
+	//    c.name AS category_name,
+	//    c.station,
+	//    p.sold_out_on
+	//  FROM products p
+	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+	//  WHERE p.deleted_at IS NULL
+	//    AND p.is_active = true
+	//    AND (
+	//      $1::date IS NULL
+	//      OR p.sold_out_on = $1::date
+	//    )
+	//  ORDER BY c.sort_order ASC, p.name ASC, p.id ASC
+	//  LIMIT $3 OFFSET $2
+	StaffListProducts(ctx context.Context, arg StaffListProductsParams) ([]StaffListProductsRow, error)
+	//StaffListProductsCount
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM products p
+	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+	//  WHERE p.deleted_at IS NULL
+	//    AND p.is_active = true
+	//    AND (
+	//      $1::date IS NULL
+	//      OR p.sold_out_on = $1::date
+	//    )
+	StaffListProductsCount(ctx context.Context, soldOutOn *time.Time) (int64, error)
 	//SumOrderItemQuantitiesByOrderIDs
 	//
 	//  SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count
@@ -2228,7 +2381,10 @@ type Querier interface {
 	//    terms_accepted_at,
 	//    terms_version,
 	//    checkout_key,
-	//    payment_due_at
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error)
 	// A move made at the ticket's own station; a ticket that already moved on, or
 	// sits at another station, is left alone.
@@ -2255,7 +2411,7 @@ type Querier interface {
 	//      updated_at   = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
 	// The manager's edits to options the product already has, in one statement.
 	//

@@ -12,6 +12,8 @@ var (
 	ErrPickupOutsideHours      = errors.New("pickup time is outside opening hours")
 	ErrPickupOffSlot           = errors.New("pickup time is not the start of a pickup slot")
 	ErrPickupSlotFull          = errors.New("that pickup slot is full")
+	ErrPickupSoldOut           = errors.New("an item in the order is sold out on that day")
+	ErrInvalidGuestName        = errors.New("a guest's name needs 1 to 100 plain characters")
 	ErrTicketNotFound          = errors.New("ticket not found")
 	ErrInvalidTicketTransition = errors.New("invalid ticket status transition")
 	ErrTicketOrderNotActive    = errors.New("the order is not being made")

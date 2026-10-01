@@ -35,10 +35,13 @@ func (n Notice) Valid() bool {
 }
 
 // NoticeFor names the notice an order event calls for, and the order it is
-// about. Any other event calls for none.
+// about. Any other event calls for none. An order staff took starts
+// confirmed, so its creation is the "received" notice.
 func NoticeFor(e domainevent.Event) (uuid.UUID, Notice, bool) {
 	var notice Notice
 	switch {
+	case e.Topic == TopicOrderCreated && Status(e.Data["status"]) == StatusConfirmed:
+		notice = NoticePlaced
 	case e.Topic == TopicOrderStatusChanged && Status(e.Data["from"]) == StatusAwaitingPayment &&
 		Status(e.Data["status"]) == StatusConfirmed:
 		notice = NoticePlaced

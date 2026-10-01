@@ -33,8 +33,9 @@ func (f *transitionOrders) UpdateStatus(_ context.Context, params port.UpdateOrd
 		return nil, f.err
 	}
 	pickupAt := time.Date(2026, 7, 10, 3, 0, 0, 0, time.UTC)
+	customer := uuid.New()
 	f.updated = &domainorder.Order{
-		ID: params.OrderID, UserID: uuid.New(), Status: params.ToStatus, PickupAt: &pickupAt, DiscountCodeID: f.discount,
+		ID: params.OrderID, UserID: &customer, Status: params.ToStatus, PickupAt: &pickupAt, DiscountCodeID: f.discount,
 	}
 	return f.updated, nil
 }

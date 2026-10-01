@@ -167,7 +167,13 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
               {formatPriceCents(order.total_cents)}
             </span>
           </div>
-          {order.payment?.captured_at ? (
+          {order.payment?.provider === "cash" ? (
+            order.payment.captured_at ? (
+              <p className="text-caption">Paid in cash on {formatDateTime(order.payment.captured_at)}</p>
+            ) : isWithTheBakery(order.status) ? (
+              <p className="text-caption">You pay in cash when you collect it.</p>
+            ) : null
+          ) : order.payment?.captured_at ? (
             <p className="text-caption">Paid with PayPal on {formatDateTime(order.payment.captured_at)}</p>
           ) : null}
           {order.payment?.refunded_at ? (

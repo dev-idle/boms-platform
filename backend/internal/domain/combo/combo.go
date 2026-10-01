@@ -31,4 +31,7 @@ type Item struct {
 	ProductName string
 	ProductSlug string
 	PriceCents  int64
+	// SoldOutOn is the last bakery day the product ran out, on the catalog's
+	// combos only.
+	SoldOutOn *time.Time
 }

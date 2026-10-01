@@ -18,14 +18,27 @@ import {
 } from "@/lib/schemas/ticket";
 
 import {
+  createStaffOrderInputSchema,
   moveTicketInputSchema,
   patchStaffOrderStatusInputSchema,
+  staffCustomerSchema,
+  staffOrderItemInputSchema,
+  staffOrderQuoteSchema,
+  staffProductSchema,
+  staffProductsFilterSchema,
   staffOrderSchema,
   staffOrderSummarySchema,
   staffOrdersListFilterSchema,
   staffPickupsFilterSchema,
   staffPickupsSchema,
+  type CreateStaffOrderInput,
   type MoveTicketInput,
+  type StaffCustomer,
+  type StaffOrderItemInput,
+  type StaffOrderQuote,
+  type StaffProduct,
+  type StaffProductsFilterInput,
+  type StaffProductsListResult,
   type PatchStaffOrderStatusInput,
   type StaffOrder,
   type StaffOrdersListFilterInput,
@@ -148,5 +161,59 @@ export async function moveTicket(id: string, input: MoveTicketInput): Promise<Ti
     method: "PATCH",
     schema: ticketChangeSchema,
     json: body,
+  });
+}
+
+/** What items cost now and ask of the bakery, for an order about to be taken. */
+export async function quoteStaffOrder(items: StaffOrderItemInput[]): Promise<StaffOrderQuote> {
+  const body = z.array(staffOrderItemInputSchema).min(1).parse(items);
+  return browserRequest<StaffOrderQuote>("/api/v1/staff/orders/quote", {
+    method: "POST",
+    schema: staffOrderQuoteSchema,
+    json: { items: body },
+  });
+}
+
+/** Takes an order at the counter or on the phone; the same key returns the order it took. */
+export async function createStaffOrder(input: CreateStaffOrderInput, idempotencyKey: string): Promise<StaffOrder> {
+  const body = createStaffOrderInputSchema.parse(input);
+  return browserRequest<StaffOrder>("/api/v1/staff/orders", {
+    method: "POST",
+    schema: staffOrderSchema,
+    json: body,
+    headers: { "Idempotency-Key": idempotencyKey },
+  });
+}
+
+/** The customer account with that email, sent in the body so no URL or log holds it. */
+export async function findStaffCustomer(email: string): Promise<StaffCustomer> {
+  return browserRequest<StaffCustomer>("/api/v1/staff/customers/lookup", {
+    method: "POST",
+    schema: staffCustomerSchema,
+    json: { email: z.email().parse(email.trim()) },
+  });
+}
+
+export async function listStaffProducts(input: StaffProductsFilterInput): Promise<StaffProductsListResult> {
+  const filter = staffProductsFilterSchema.parse(input);
+  const params = new URLSearchParams({ page: String(filter.page), page_size: String(filter.page_size) });
+  if (filter.sold_out_today) {
+    params.set("sold_out_today", "true");
+  }
+  const result = await browserRequestWithMeta<StaffProduct[]>(`/api/v1/staff/products?${params.toString()}`, {
+    method: "GET",
+    schema: z.array(staffProductSchema),
+  });
+  const parsed = parsePaginatedList(result.data, result.meta, { page: filter.page, page_size: filter.page_size });
+  return { products: parsed.items, pagination: parsed.pagination };
+}
+
+/** Marks a product sold out for today, or back. */
+export async function patchProductSoldOut(id: string, soldOut: boolean): Promise<StaffProduct> {
+  const parsedId = z.uuid().parse(id);
+  return browserRequest<StaffProduct>(`/api/v1/staff/products/${parsedId}/sold-out`, {
+    method: "PATCH",
+    schema: staffProductSchema,
+    json: { sold_out: soldOut },
   });
 }

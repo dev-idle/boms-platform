@@ -39,6 +39,12 @@ func (m *mockUserRepo) AdminCreate(ctx context.Context, params port.CreateUserPa
 	u, _ := args.Get(0).(*domainuser.User)
 	return u, args.Error(1)
 }
+func (m *mockUserRepo) FindCustomerByEmail(ctx context.Context, email string) (*port.CustomerContact, error) {
+	args := m.Called(ctx, email)
+	c, _ := args.Get(0).(*port.CustomerContact)
+	return c, args.Error(1)
+}
+
 func (m *mockUserRepo) GetByEmail(ctx context.Context, email string) (*domainuser.User, error) {
 	args := m.Called(ctx, email)
 	u, _ := args.Get(0).(*domainuser.User)

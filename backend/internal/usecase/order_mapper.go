@@ -5,6 +5,7 @@ import (
 
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpayment "github.com/boms/backend/internal/domain/payment"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	"github.com/boms/backend/internal/dto"
 )
 
@@ -22,7 +23,12 @@ func mapOrderPaymentToDTO(p *domainpayment.Payment) *dto.OrderPaymentResponse {
 }
 
 func mapFulfillmentToDTO(items domainorder.Fulfillment) dto.FulfillmentResponse {
-	return dto.FulfillmentResponse{HasKitchenItems: items.Kitchen, LeadMinutes: int(items.Lead / time.Minute)}
+	resp := dto.FulfillmentResponse{HasKitchenItems: items.Kitchen, LeadMinutes: int(items.Lead / time.Minute)}
+	if items.SoldOutOn != nil {
+		day := items.SoldOutOn.Format(domainstore.DayLayout)
+		resp.SoldOutOn = &day
+	}
+	return resp
 }
 
 // reasonToDTO is a cancellation's reason, null for any other move.

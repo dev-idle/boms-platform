@@ -11,7 +11,12 @@ import {
   StatusPill,
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
-import { formatOrderTypeLabel, isApplyingOrderStatus, type OrderStatus } from "@/lib/schemas/order";
+import {
+  formatOrderChannelLabel,
+  formatOrderTypeLabel,
+  isApplyingOrderStatus,
+  type OrderStatus,
+} from "@/lib/schemas/order";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -24,6 +29,9 @@ import { StaffCancelOrderDialog } from "./staff-cancel-order-dialog";
 import { StaffHandoffDialog } from "./staff-handoff-dialog";
 import { StaffOrderHistory } from "./staff-order-history";
 import { StaffOrderTickets } from "./staff-order-tickets";
+
+/** An order staff took is paid when collected: its cash is due until then. */
+const CASH_DUE_STATUSES: ReadonlySet<OrderStatus> = new Set(["confirmed", "in_production", "ready"]);
 
 type StaffOrderDetailProps = {
   orderId: string;
@@ -96,6 +104,9 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
               </p>
             ) : null}
             <p className="text-sm text-muted">{formatOrderTypeLabel(order.order_type)}</p>
+            {order.channel === "online" ? null : (
+              <p className="text-sm text-muted">{formatOrderChannelLabel(order.channel)}</p>
+            )}
             <StatusPill
               label={formatOrderStatusLabel(order.status)}
               variant={orderStatusToPillVariant(order.status)}
@@ -155,7 +166,19 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
               <span>Total</span>
               <span className="text-tabular">{formatPriceCents(order.total_cents)}</span>
             </div>
-            {order.payment?.captured_at ? (
+            {order.payment?.provider === "cash" ? (
+              order.payment.captured_at ? (
+                <div className="dashboard-order-totals-row text-muted">
+                  <span>Paid in cash</span>
+                  <span>{formatDateTime(order.payment.captured_at)}</span>
+                </div>
+              ) : CASH_DUE_STATUSES.has(order.status) ? (
+                <div className="dashboard-order-totals-row text-muted">
+                  <span>Cash</span>
+                  <span>Due at pickup</span>
+                </div>
+              ) : null
+            ) : order.payment?.captured_at ? (
               <div className="dashboard-order-totals-row text-muted">
                 <span>Paid with PayPal</span>
                 <span>{formatDateTime(order.payment.captured_at)}</span>
@@ -211,6 +234,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
       />
 
       <StaffHandoffDialog
+        cashDueCents={order.channel === "online" ? null : order.total_cents}
         open={handoffOpen}
         orderCode={order.code}
         orderId={order.id}

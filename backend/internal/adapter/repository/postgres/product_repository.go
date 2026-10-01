@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
 	"github.com/boms/backend/internal/port"
@@ -215,14 +216,66 @@ func (r *ProductRepository) CatalogGetByIDs(ctx context.Context, ids []uuid.UUID
 func (r *ProductRepository) FulfillmentOf(
 	ctx context.Context,
 	productIDs, comboIDs []uuid.UUID,
+	today time.Time,
 ) (domainorder.Fulfillment, error) {
-	row, err := r.q(ctx).GetFulfillmentOf(ctx, sqlcgen.GetFulfillmentOfParams{ProductIds: productIDs, ComboIds: comboIDs})
+	row, err := r.q(ctx).GetFulfillmentOf(ctx, sqlcgen.GetFulfillmentOfParams{ProductIds: productIDs, ComboIds: comboIDs, Today: today})
 	if err != nil {
 		return domainorder.Fulfillment{}, mapRepoError(err, "fulfillment of lines")
 	}
-	return domainorder.Fulfillment{
+	items := domainorder.Fulfillment{
 		Kitchen: row.HasKitchenItems,
 		Lead:    time.Duration(row.LeadMinutes) * time.Minute,
+	}
+	if row.SoldOutToday {
+		items.SoldOutOn = &today
+	}
+	return items, nil
+}
+
+// StaffList implements port.ProductRepository.
+func (r *ProductRepository) StaffList(ctx context.Context, params port.StaffListProductsParams) ([]port.StaffProduct, error) {
+	rows, err := r.q(ctx).StaffListProducts(ctx, sqlcgen.StaffListProductsParams{
+		SoldOutOn: params.SoldOutOn,
+		Limit:     params.Limit,
+		Offset:    params.Offset,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "staff list products")
+	}
+	out := make([]port.StaffProduct, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, port.StaffProduct{
+			ID:           row.ID,
+			Name:         row.Name,
+			CategoryName: row.CategoryName,
+			Station:      domaincategory.Station(row.Station),
+			SoldOutOn:    row.SoldOutOn,
+		})
+	}
+	return out, nil
+}
+
+// StaffListCount implements port.ProductRepository.
+func (r *ProductRepository) StaffListCount(ctx context.Context, soldOutOn *time.Time) (int64, error) {
+	count, err := r.q(ctx).StaffListProductsCount(ctx, soldOutOn)
+	if err != nil {
+		return 0, mapRepoError(err, "staff list products count")
+	}
+	return count, nil
+}
+
+// SetSoldOut implements port.ProductRepository.
+func (r *ProductRepository) SetSoldOut(ctx context.Context, id uuid.UUID, day *time.Time) (*port.StaffProduct, error) {
+	row, err := r.q(ctx).SetProductSoldOut(ctx, sqlcgen.SetProductSoldOutParams{ID: id, SoldOutOn: day})
+	if err != nil {
+		return nil, mapRepoError(err, "set product sold out")
+	}
+	return &port.StaffProduct{
+		ID:           row.ID,
+		Name:         row.Name,
+		CategoryName: row.CategoryName,
+		Station:      domaincategory.Station(row.Station),
+		SoldOutOn:    row.SoldOutOn,
 	}, nil
 }
 
@@ -419,6 +472,7 @@ func mapCatalogListProductsRow(row sqlcgen.CatalogListProductsRow) port.CatalogL
 		row.Description,
 		row.PriceCents,
 		row.IsCustomizable,
+		row.SoldOutOn,
 		row.CategoryName,
 		row.CategorySlug,
 	)
@@ -435,6 +489,7 @@ func mapCatalogGetProductRow(row sqlcgen.CatalogGetProductByIDRow) port.CatalogL
 		row.Description,
 		row.PriceCents,
 		row.IsCustomizable,
+		row.SoldOutOn,
 		row.CategoryName,
 		row.CategorySlug,
 	)
@@ -449,6 +504,7 @@ func mapCatalogGetProductsByIDsRow(row sqlcgen.CatalogGetProductsByIDsRow) port.
 		row.Description,
 		row.PriceCents,
 		row.IsCustomizable,
+		row.SoldOutOn,
 		row.CategoryName,
 		row.CategorySlug,
 	)
@@ -462,6 +518,7 @@ func mapCatalogProductFields(
 	description *string,
 	priceCents int64,
 	isCustomizable bool,
+	soldOutOn *time.Time,
 	categoryName string,
 	categorySlug string,
 ) port.CatalogListProduct {
@@ -472,6 +529,7 @@ func mapCatalogProductFields(
 		Slug:           slug,
 		PriceCents:     priceCents,
 		IsCustomizable: isCustomizable,
+		SoldOutOn:      soldOutOn,
 		CategoryName:   categoryName,
 		CategorySlug:   categorySlug,
 		Description:    description,

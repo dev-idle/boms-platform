@@ -28,7 +28,7 @@ func TestPayment_Integration(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	f := newCheckoutFixture(t, 8)
-	staff := usecase.NewStaffOrderUsecase(f.orders, postgresadapter.NewTicketRepository(f.pool), f.pool, f.outbox, nil, nil,
+	staff := usecase.NewStaffOrderUsecase(f.users, f.orders, postgresadapter.NewTicketRepository(f.pool), f.pool, f.outbox, nil, nil,
 		postgresadapter.NewPaymentRepository(f.pool), postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC,
 		testPickupCodes, newHandoffAttempts(), handoffLimit)
 	discounts := postgresadapter.NewDiscountCodeRepository(f.pool)
@@ -280,7 +280,7 @@ func TestOrderExpiry_Integration(t *testing.T) {
 		"SELECT actor_id IS NULL AND actor_role IS NULL FROM order_status_events WHERE order_id = $1 AND to_status = 'expired'",
 		order.ID).Scan(&bySystem))
 	assert.True(t, bySystem, "no person expired it")
-	staff := usecase.NewStaffOrderUsecase(f.orders, postgresadapter.NewTicketRepository(f.pool), f.pool, f.outbox, nil, nil,
+	staff := usecase.NewStaffOrderUsecase(f.users, f.orders, postgresadapter.NewTicketRepository(f.pool), f.pool, f.outbox, nil, nil,
 		postgresadapter.NewPaymentRepository(f.pool), postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC,
 		testPickupCodes, newHandoffAttempts(), handoffLimit)
 	_, err = staff.Get(ctx, uuid.MustParse(order.ID))

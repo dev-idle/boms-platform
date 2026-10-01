@@ -20,6 +20,8 @@ export const PAGE_TITLES = {
   ticket: "Ticket",
   prepQueue: "Prep Queue",
   pickups: "Pickups",
+  newOrder: "New Order",
+  availability: "Availability",
   account: "Account",
   profile: "Profile",
   changePassword: "Change Password",

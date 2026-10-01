@@ -120,6 +120,7 @@ CREATE TABLE "products" (
   "deleted_at" timestamptz NULL,
   "lead_time_minutes" integer NOT NULL DEFAULT 0,
   "is_customizable" boolean NOT NULL DEFAULT false,
+  "sold_out_on" date NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "products_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories" ("id") ON DELETE RESTRICT,
   CONSTRAINT "products_price_cents_check" CHECK (price_cents >= 0),
@@ -264,9 +265,11 @@ CREATE UNIQUE INDEX "cart_items_cart_plain_product_idx" ON "cart_items" ("cart_i
 CREATE UNIQUE INDEX "cart_items_cart_combo_idx" ON "cart_items" ("cart_id", "combo_id") WHERE ("line_type" = 'combo');
 CREATE INDEX "cart_items_cart_id_idx" ON "cart_items" ("cart_id");
 
+CREATE TYPE "order_channel" AS ENUM ('online', 'counter', 'phone');
+
 CREATE TABLE "orders" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-  "user_id" uuid NOT NULL,
+  "user_id" uuid NULL,
   "status" "order_status" NOT NULL DEFAULT 'pending',
   "subtotal_cents" bigint NOT NULL,
   "discount_cents" bigint NOT NULL DEFAULT 0,
@@ -282,6 +285,9 @@ CREATE TABLE "orders" (
   "terms_version" text NULL,
   "checkout_key" uuid NULL,
   "payment_due_at" timestamptz NULL,
+  "channel" "order_channel" NOT NULL DEFAULT 'online',
+  "guest_name" text NULL,
+  "guest_phone" text NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "orders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "orders_discount_code_id_fkey" FOREIGN KEY ("discount_code_id") REFERENCES "discount_codes" ("id") ON DELETE SET NULL,
@@ -290,10 +296,12 @@ CREATE TABLE "orders" (
   CONSTRAINT "orders_total_cents_check" CHECK (total_cents >= 0),
   CONSTRAINT "orders_total_balance_check" CHECK (total_cents = subtotal_cents - discount_cents),
   CONSTRAINT "orders_code_check" CHECK (code ~ '^CH-[0-9]{6}-[0-9]{3,}$'::text),
-  CONSTRAINT "orders_terms_pair_check" CHECK ((terms_accepted_at IS NULL) = (terms_version IS NULL))
+  CONSTRAINT "orders_terms_pair_check" CHECK ((terms_accepted_at IS NULL) = (terms_version IS NULL)),
+  CONSTRAINT "orders_customer_check" CHECK (((user_id IS NULL) = (guest_name IS NOT NULL)) AND ((guest_name IS NULL) = (guest_phone IS NULL)) AND ((channel <> 'online'::order_channel) OR (user_id IS NOT NULL)))
 );
 CREATE UNIQUE INDEX "orders_code_idx" ON "orders" ("code");
 CREATE UNIQUE INDEX "orders_checkout_key_idx" ON "orders" ("user_id", "checkout_key") WHERE (checkout_key IS NOT NULL);
+CREATE UNIQUE INDEX "orders_staff_checkout_key_idx" ON "orders" ("checkout_key") WHERE ((channel <> 'online'::order_channel) AND (checkout_key IS NOT NULL));
 CREATE INDEX "orders_payment_due_idx" ON "orders" ("payment_due_at") WHERE (status = 'awaiting_payment'::order_status);
 CREATE INDEX "orders_pickup_slot_idx" ON "orders" ("pickup_at") WHERE (status <> 'cancelled'::order_status);
 CREATE INDEX "orders_user_id_created_at_idx" ON "orders" ("user_id", "created_at" DESC);
@@ -447,15 +455,15 @@ CREATE TABLE "user_tokens" (
 CREATE UNIQUE INDEX "user_tokens_token_hash_idx" ON "user_tokens" ("token_hash");
 CREATE UNIQUE INDEX "user_tokens_user_purpose_idx" ON "user_tokens" ("user_id", "purpose");
 
-CREATE TYPE "payment_provider" AS ENUM ('paypal');
+CREATE TYPE "payment_provider" AS ENUM ('paypal', 'cash');
 CREATE TYPE "payment_status" AS ENUM ('created', 'pending', 'captured', 'denied', 'refunded');
 
 CREATE TABLE "payments" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
   "order_id" uuid NOT NULL,
   "provider" "payment_provider" NOT NULL,
-  "provider_order_id" text NOT NULL,
-  "approve_url" text NOT NULL,
+  "provider_order_id" text NULL,
+  "approve_url" text NULL,
   "status" "payment_status" NOT NULL DEFAULT 'created',
   "capture_id" text NULL,
   "amount_cents" bigint NOT NULL,
@@ -469,7 +477,9 @@ CREATE TABLE "payments" (
   PRIMARY KEY ("id"),
   CONSTRAINT "payments_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE RESTRICT,
   CONSTRAINT "payments_amount_cents_check" CHECK (amount_cents > 0),
-  CONSTRAINT "payments_capture_check" CHECK ((status = 'created') = (capture_id IS NULL)),
+  CONSTRAINT "payments_capture_check" CHECK ((provider <> 'paypal'::payment_provider) OR ((status = 'created'::payment_status) = (capture_id IS NULL))),
+  CONSTRAINT "payments_provider_check" CHECK ((provider = 'paypal'::payment_provider) = ((provider_order_id IS NOT NULL) AND (approve_url IS NOT NULL))),
+  CONSTRAINT "payments_cash_check" CHECK ((provider <> 'cash'::payment_provider) OR ((capture_id IS NULL) AND (status = ANY (ARRAY['created'::payment_status, 'captured'::payment_status])) AND (refund_requested_at IS NULL))),
   CONSTRAINT "payments_captured_at_check" CHECK ((status = ANY (ARRAY['captured'::payment_status, 'refunded'::payment_status])) = (captured_at IS NOT NULL)),
   CONSTRAINT "payments_currency_check" CHECK (currency ~ '^[A-Z]{3}$'),
   CONSTRAINT "payments_refund_requested_check" CHECK (((refund_requested_at IS NULL) OR (captured_at IS NOT NULL)) AND ((refunded_at IS NULL) OR (refund_requested_at IS NOT NULL))),

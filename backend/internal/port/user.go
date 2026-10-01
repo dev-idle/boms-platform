@@ -43,8 +43,19 @@ type AdminListUser struct {
 	DisplayName        *string
 }
 
+// CustomerContact is a customer account staff take an order for.
+type CustomerContact struct {
+	ID          uuid.UUID
+	Email       string
+	DisplayName *string
+	Phone       *string
+}
+
 // UserRepository loads and persists users without auth policy.
 type UserRepository interface {
+	// FindCustomerByEmail is the open customer account with that email; any
+	// other is apperrors.ErrNotFound.
+	FindCustomerByEmail(ctx context.Context, email string) (*CustomerContact, error)
 	Create(ctx context.Context, params CreateUserParams) (*domainuser.User, error)
 	AdminCreate(ctx context.Context, params CreateUserParams) (*domainuser.User, error)
 	GetByEmail(ctx context.Context, email string) (*domainuser.User, error)

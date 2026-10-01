@@ -15,6 +15,7 @@ const sampleCombo: CatalogCombo = {
   image_url: null,
   starts_at: "2026-01-01T00:00:00+00:00",
   ends_at: "2026-12-31T23:59:59+00:00",
+  sold_out_today: false,
   items: [
     {
       product_id: "00000000-0000-4000-8000-000000000002",

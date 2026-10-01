@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { PICKUP_COPY } from "@/constants/pickup";
 import { useNow } from "@/lib/hooks/use-now";
+import type { Fulfillment } from "@/lib/schemas/order";
 import { clockToMinutes, formatClockMinutes } from "@/lib/validation/clock";
 import {
   bakeryDayOf,
@@ -25,7 +26,7 @@ import {
   toPickupFulfillment,
   toPickupWindow,
 } from "../lib/pickup-window";
-import type { Fulfillment, PickupSlots } from "../schemas";
+import type { PickupSlots } from "../schemas";
 import { usePickupRules, usePickupSlots } from "./index";
 
 /** How often the suggested pickup and its checks move with the clock. */
@@ -91,6 +92,9 @@ export function usePickupChoice(fulfillment: Fulfillment, pending: boolean) {
     }
     if (closedReason !== undefined) {
       return pickupProblemMessage("closed_day", pickupWindow, items, "pre_order", closedReason);
+    }
+    if (day === items.soldOutOn) {
+      return pickupProblemMessage("sold_out", pickupWindow, items, "pre_order");
     }
     return null;
   }

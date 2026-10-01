@@ -12,8 +12,19 @@ const (
 )
 
 // Fulfillment is what an order's items ask of the bakery: whether any is made
-// in the kitchen, and the longest notice any of them needs.
+// in the kitchen, the longest notice any of them needs, and the bakery day one
+// of them has run out on (today, or nil), when the order cannot be collected.
 type Fulfillment struct {
-	Kitchen bool
-	Lead    time.Duration
+	Kitchen   bool
+	Lead      time.Duration
+	SoldOutOn *time.Time
+}
+
+// HeldOn is what the items of an order collected on day ask of the bakery that
+// day: the order holds them already, so an item sold out since does not stop it.
+func (f Fulfillment) HeldOn(day time.Time) Fulfillment {
+	if f.SoldOutOn != nil && f.SoldOutOn.Equal(day) {
+		f.SoldOutOn = nil
+	}
+	return f
 }

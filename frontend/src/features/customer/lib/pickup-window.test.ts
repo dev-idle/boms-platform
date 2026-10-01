@@ -17,8 +17,8 @@ const pickupWindow = toPickupWindow({
   max_advance_days: 14,
   closed_dates: [{ date: "2026-10-20", reason: "Staff training" }],
 });
-const cake = toPickupFulfillment({ has_kitchen_items: true, lead_minutes: 24 * 60 });
-const pastries = toPickupFulfillment({ has_kitchen_items: false, lead_minutes: 0 });
+const cake = toPickupFulfillment({ has_kitchen_items: true, lead_minutes: 24 * 60, sold_out_on: null });
+const pastries = toPickupFulfillment({ has_kitchen_items: false, lead_minutes: 0, sold_out_on: null });
 
 describe("toPickupWindow", () => {
   it("reads the API rules in minutes and indexes closed days", () => {
@@ -31,7 +31,7 @@ describe("toPickupWindow", () => {
   });
 
   it("reads what the cart's items need", () => {
-    expect(cake).toEqual({ kitchen: true, leadMinutes: 1440 });
+    expect(cake).toEqual({ kitchen: true, leadMinutes: 1440, soldOutOn: null });
   });
 });
 

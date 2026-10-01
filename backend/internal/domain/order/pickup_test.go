@@ -33,6 +33,7 @@ type pickupCases struct {
 			At          string  `json:"at"`
 			Kitchen     bool    `json:"kitchen"`
 			LeadMinutes int     `json:"lead_minutes"`
+			SoldOutOn   *string `json:"sold_out_on"`
 			Problem     *string `json:"problem"`
 			Type        *string `json:"type"`
 		} `json:"cases"`
@@ -71,6 +72,7 @@ func problemCode(err error) *string {
 		ErrPickupClosedDay:    "closed_day",
 		ErrPickupOutsideHours: "outside_hours",
 		ErrPickupOffSlot:      "off_slot",
+		ErrPickupSoldOut:      "sold_out",
 	}
 	for sentinel, code := range codes {
 		if errors.Is(err, sentinel) {
@@ -118,6 +120,11 @@ func TestPickupPolicy_Contract(t *testing.T) {
 
 	for _, tc := range cases.Policy.Cases {
 		items := Fulfillment{Kitchen: tc.Kitchen, Lead: time.Duration(tc.LeadMinutes) * time.Minute}
+		if tc.SoldOutOn != nil {
+			day, err := time.Parse(domainstore.DayLayout, *tc.SoldOutOn)
+			require.NoError(t, err)
+			items.SoldOutOn = &day
+		}
 		orderType, err := policy.Validate(wallClock(t, tc.At), now, items)
 		if tc.Problem == nil {
 			require.NoError(t, err, "at %q", tc.At)

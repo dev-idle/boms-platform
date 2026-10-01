@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"go.uber.org/zap"
+
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -14,11 +17,10 @@ import (
 	"github.com/boms/backend/internal/service/auditlogger"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/utils"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 type StaffOrderUsecase struct {
+	users       port.UserRepository
 	orders      port.OrderRepository
 	tickets     port.TicketRepository
 	payments    port.PaymentRepository
@@ -27,12 +29,15 @@ type StaffOrderUsecase struct {
 	pickupCodes domainorder.PickupCodes
 	attempts    port.Quota
 	attemptsMax port.QuotaLimit
+	tx          port.TxManager
+	events      port.EventOutbox
 	transitions orderTransitions
 	audit       *auditlogger.Service
 	log         *zap.Logger
 }
 
 func NewStaffOrderUsecase(
+	users port.UserRepository,
 	orders port.OrderRepository,
 	tickets port.TicketRepository,
 	tx port.TxManager,
@@ -48,6 +53,7 @@ func NewStaffOrderUsecase(
 	attemptsMax port.QuotaLimit,
 ) *StaffOrderUsecase {
 	return &StaffOrderUsecase{
+		users:       users,
 		orders:      orders,
 		tickets:     tickets,
 		payments:    payments,
@@ -56,6 +62,8 @@ func NewStaffOrderUsecase(
 		pickupCodes: pickupCodes,
 		attempts:    attempts,
 		attemptsMax: attemptsMax,
+		tx:          tx,
+		events:      events,
 		transitions: orderTransitions{
 			tx: tx, orders: orders, tickets: tickets, discounts: discounts, payments: payments, events: events,
 		},
@@ -162,6 +170,7 @@ func (u *StaffOrderUsecase) summaries(ctx context.Context, rows []port.StaffOrde
 			ID:         row.Order.ID.String(),
 			Code:       row.Order.Code,
 			Status:     string(row.Order.Status),
+			Channel:    string(row.Order.Channel),
 			TotalCents: row.Order.TotalCents,
 			ItemCount:  itemCounts[row.Order.ID],
 			Customer:   toStaffOrderCustomer(&row),
@@ -215,8 +224,8 @@ func (u *StaffOrderUsecase) PatchStatus(
 	} else if req.Reason != "" {
 		return nil, apperrors.ErrValidation.WithDetail("reason", "only a cancellation takes a reason")
 	}
-	if (targetStatus == domainorder.StatusFulfilled) != (req.PickupCode != "") {
-		return nil, apperrors.ErrValidation.WithDetail("pickup_code", "a handoff, and only a handoff, takes the customer's pickup code")
+	if targetStatus != domainorder.StatusFulfilled && (req.PickupCode != "" || req.CashCollected) {
+		return nil, apperrors.ErrValidation.WithDetail("status", "only a handover takes a pickup code or cash")
 	}
 
 	beforeRow, err := u.orders.StaffGetByID(ctx, orderID)
@@ -234,17 +243,31 @@ func (u *StaffOrderUsecase) PatchStatus(
 			return nil, err
 		}
 	}
+	cashDue := false
 	if targetStatus == domainorder.StatusFulfilled {
-		if err := u.checkPickupCode(ctx, actorID, orderID, req.PickupCode); err != nil {
+		if cashDue, err = u.checkHandover(ctx, actorID, beforeRow.Order, req); err != nil {
 			return nil, err
 		}
 	}
 
-	updated, err := u.transitions.apply(ctx, &port.OrderActor{ID: actorID, Role: actorRole}, port.UpdateOrderStatusParams{
+	actor := &port.OrderActor{ID: actorID, Role: actorRole}
+	params := port.UpdateOrderStatusParams{
 		OrderID:    orderID,
 		FromStatus: beforeRow.Order.Status,
 		ToStatus:   targetStatus,
-	}, reason)
+	}
+	var updated *domainorder.Order
+	if cashDue {
+		// The cash is taken with the order: both are recorded or neither.
+		err = u.tx.WithTx(ctx, func(txCtx context.Context) error {
+			if updated, err = u.transitions.applyInTx(txCtx, actor, params, reason); err != nil {
+				return err
+			}
+			return u.payments.CollectCash(txCtx, orderID)
+		})
+	} else {
+		updated, err = u.transitions.apply(ctx, actor, params, reason)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -263,6 +286,28 @@ func (u *StaffOrderUsecase) PatchStatus(
 		return nil, err
 	}
 	return toStaffOrderResponse(&afterRow, parts), nil
+}
+
+// checkHandover checks how a ready order is handed over, and reports whether
+// cash is due with it. An order placed online needs the code its customer
+// gives; one staff took is paid at the counter, so the counter confirms it
+// took the cash instead.
+func (u *StaffOrderUsecase) checkHandover(
+	ctx context.Context,
+	actorID uuid.UUID,
+	order domainorder.Order,
+	req dto.PatchStaffOrderStatusRequest,
+) (bool, error) {
+	if !order.Channel.TakenByStaff() {
+		if req.PickupCode == "" || req.CashCollected {
+			return false, apperrors.ErrValidation.WithDetail("pickup_code", "the customer's pickup code hands the order over")
+		}
+		return false, u.checkPickupCode(ctx, actorID, order.ID, req.PickupCode)
+	}
+	if req.PickupCode != "" || !req.CashCollected {
+		return false, apperrors.ErrValidation.WithDetail("cash_collected", "confirm the cash due was taken")
+	}
+	return order.TotalCents > 0, nil
 }
 
 // checkPickupCode checks the code the customer gave at handoff. Each order
@@ -305,17 +350,23 @@ func (u *StaffOrderUsecase) stillInTime(ctx context.Context, order domainorder.O
 	if err != nil {
 		return err
 	}
-	_, err = pickupPolicy(settings, closed).Validate(*order.PickupAt, now, needs)
+	_, err = pickupPolicy(settings, closed).Validate(*order.PickupAt, now, needs.HeldOn(domainstore.DayOf(*order.PickupAt)))
 	return err
 }
 
+// toStaffOrderCustomer is who the order is for: an account, or a guest with no
+// id or email, whose name and phone the row carries as the customer's.
 func toStaffOrderCustomer(row *port.StaffOrderListRow) dto.StaffOrderCustomerResponse {
-	return dto.StaffOrderCustomerResponse{
-		UserID:      row.Order.UserID.String(),
+	resp := dto.StaffOrderCustomerResponse{
 		Email:       row.CustomerEmail,
 		DisplayName: row.CustomerDisplayName,
 		Phone:       row.CustomerPhone,
 	}
+	if row.Order.UserID != nil {
+		id := row.Order.UserID.String()
+		resp.UserID = &id
+	}
+	return resp
 }
 
 func toStaffOrderResponse(row *port.StaffOrderListRow, parts orderDetailParts) *dto.StaffOrderResponse {
@@ -323,6 +374,7 @@ func toStaffOrderResponse(row *port.StaffOrderListRow, parts orderDetailParts) *
 		ID:                   row.Order.ID.String(),
 		Code:                 row.Order.Code,
 		Status:               string(row.Order.Status),
+		Channel:              string(row.Order.Channel),
 		OrderType:            string(row.Order.Type),
 		SubtotalCents:        row.Order.SubtotalCents,
 		DiscountCents:        row.Order.DiscountCents,

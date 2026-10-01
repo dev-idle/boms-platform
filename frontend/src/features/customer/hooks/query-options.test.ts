@@ -3,6 +3,12 @@ import { describe, expect, it } from "vitest";
 import { customerQueryKeys, customerQueryKeysForEvent } from "./query-options";
 
 describe("customerQueryKeysForEvent", () => {
+  it("refreshes the cart when a product runs out or comes back", () => {
+    expect(customerQueryKeysForEvent({ type: "product.sold_out_changed", data: { product_id: "p-1" } })).toEqual([
+      customerQueryKeys.cart,
+    ]);
+  });
+
   it("refreshes the cart and order list for a new order", () => {
     expect(
       customerQueryKeysForEvent({ type: "order.created", data: { order_id: "o-1" } }),

@@ -133,8 +133,9 @@ func main() {
 		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, cartRepo, sessionStore, auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
-	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC,
+	staffOrderUC := usecase.NewStaffOrderUsecase(userRepo, orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC,
 		pickupCodes, quota, port.QuotaLimit{Max: cfg.RateRedis.PickupCodeMax, Window: cfg.RateRedis.PickupCodeWindow})
+	staffProductUC := usecase.NewStaffProductUsecase(productRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -162,6 +163,7 @@ func main() {
 	paymentHandler := v1.NewPaymentHandler(paymentUC)
 	staffOrderHandler := v1.NewStaffOrderHandler(staffOrderUC)
 	staffTicketHandler := v1.NewStaffTicketHandler(staffTicketUC)
+	staffProductHandler := v1.NewStaffProductHandler(staffProductUC)
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
 	storeHandler := v1.NewStoreHandler(storeUC)
@@ -357,12 +359,17 @@ func main() {
 		passwordChanged,
 	)
 	staffOrders.Get("/orders", staffOrderHandler.List)
+	staffOrders.Post("/orders", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.Create)
+	staffOrders.Post("/orders/quote", staffOrderHandler.Quote)
+	staffOrders.Post("/customers/lookup", staffOrderHandler.FindCustomer)
 	staffOrders.Get("/pickups", staffOrderHandler.Pickups)
 	staffOrders.Get("/orders/:id", staffOrderHandler.Get)
 	staffOrders.Patch("/orders/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.PatchStatus)
 	staffOrders.Get("/tickets", staffTicketHandler.List)
 	staffOrders.Patch("/tickets/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.PatchStatus)
 	staffOrders.Patch("/tickets/:id/station", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.Move)
+	staffOrders.Get("/products", staffProductHandler.List)
+	staffOrders.Patch("/products/:id/sold-out", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffProductHandler.PatchSoldOut)
 
 	bakerTickets := apiV1.Group(
 		"/baker",

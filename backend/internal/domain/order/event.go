@@ -27,6 +27,14 @@ const (
 	TopicOrderRefunded domainevent.Topic = "order.refunded"
 )
 
+// customerOf is the account an order's notices go to: none for a guest's order.
+func customerOf(order Order) []uuid.UUID {
+	if order.UserID == nil {
+		return nil
+	}
+	return []uuid.UUID{*order.UserID}
+}
+
 // rolesSeeing is the bakery roles that see an order in any of statuses.
 func rolesSeeing(statuses ...Status) []domainuser.Role {
 	var roles []domainuser.Role
@@ -44,9 +52,9 @@ func rolesSeeing(statuses ...Status) []domainuser.Role {
 // the order's other tickets stand, so the kitchen hears those too, as it hears
 // the order's status changes. orderStatus is the status the kitchen knows the
 // order by: for a cancellation, the status it left.
-func TicketChangedEvent(customerID uuid.UUID, orderStatus Status, ticket Ticket) domainevent.Event {
+func TicketChangedEvent(order Order, orderStatus Status, ticket Ticket) domainevent.Event {
 	return domainevent.New(TopicTicketChanged, domainevent.Audience{
-		UserIDs: []uuid.UUID{customerID},
+		UserIDs: customerOf(order),
 		Roles:   rolesSeeing(orderStatus),
 	}, map[string]string{
 		"ticket_id": ticket.ID.String(),
@@ -66,10 +74,15 @@ func SlotsChangedEvent(day time.Time) domainevent.Event {
 	})
 }
 
-// CreatedEvent announces order to its customer only: it awaits payment, and
-// the bakery hears about it when it is paid.
+// CreatedEvent announces a new order to its customer, and to the bakery roles
+// that see it as it starts: none for an order awaiting payment, which the
+// bakery hears about when it is paid; the counter and the kitchen for one
+// staff took, which starts confirmed.
 func CreatedEvent(order Order) domainevent.Event {
-	return domainevent.New(TopicOrderCreated, domainevent.Audience{UserIDs: []uuid.UUID{order.UserID}}, map[string]string{
+	return domainevent.New(TopicOrderCreated, domainevent.Audience{
+		UserIDs: customerOf(order),
+		Roles:   rolesSeeing(order.Status),
+	}, map[string]string{
 		"order_id": order.ID.String(),
 		"status":   string(order.Status),
 	})
@@ -86,7 +99,7 @@ func StatusChangedEvent(from Status, order Order) domainevent.Event {
 		seen = append(seen, order.Status)
 	}
 	return domainevent.New(TopicOrderStatusChanged, domainevent.Audience{
-		UserIDs: []uuid.UUID{order.UserID},
+		UserIDs: customerOf(order),
 		Roles:   rolesSeeing(seen...),
 	}, map[string]string{
 		"order_id": order.ID.String(),
@@ -99,7 +112,7 @@ func StatusChangedEvent(from Status, order Order) domainevent.Event {
 // the bakery roles that see the order.
 func RescheduledEvent(order Order) domainevent.Event {
 	return domainevent.New(TopicOrderRescheduled, domainevent.Audience{
-		UserIDs: []uuid.UUID{order.UserID},
+		UserIDs: customerOf(order),
 		Roles:   rolesSeeing(order.Status),
 	}, map[string]string{"order_id": order.ID.String()})
 }
@@ -108,7 +121,7 @@ func RescheduledEvent(order Order) domainevent.Event {
 // them and to the bakery roles that see the order.
 func RefundedEvent(order Order) domainevent.Event {
 	return domainevent.New(TopicOrderRefunded, domainevent.Audience{
-		UserIDs: []uuid.UUID{order.UserID},
+		UserIDs: customerOf(order),
 		Roles:   rolesSeeing(order.Status),
 	}, map[string]string{"order_id": order.ID.String()})
 }

@@ -54,6 +54,9 @@ type CartDiscountResponse struct {
 type FulfillmentResponse struct {
 	HasKitchenItems bool `json:"has_kitchen_items"`
 	LeadMinutes     int  `json:"lead_minutes"`
+	// SoldOutOn is the bakery day (YYYY-MM-DD) one of the items ran out on,
+	// when they cannot be collected; null when none has.
+	SoldOutOn *string `json:"sold_out_on"`
 }
 
 type CartResponse struct {

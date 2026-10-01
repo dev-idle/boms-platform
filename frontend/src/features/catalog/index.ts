@@ -17,7 +17,7 @@ export {
   ProductCatalogLoading,
   ProductDetail,
 } from "./components";
-export { useCatalogProducts } from "./hooks";
+export { useCatalogCombos, useCatalogProducts } from "./hooks";
 export {
   buildCatalogBrowseHref,
   CATALOG_SEARCH_MAX_LENGTH,

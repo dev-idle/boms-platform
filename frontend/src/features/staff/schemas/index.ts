@@ -3,6 +3,8 @@ import { z } from "zod";
 import { catalogSlugSchema } from "@/lib/validation/catalog";
 import { USER_ROLE } from "@/constants/roles";
 import {
+  fulfillmentSchema,
+  orderChannelSchema,
   orderCodeSchema,
   orderPaymentSchema,
   customizationSchema,
@@ -16,11 +18,13 @@ import {
   ticketStatusSchema,
 } from "@/lib/schemas/ticket";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
+import { vietnamPhoneZodString } from "@/lib/validation/phone";
 import { reasonSchema } from "@/lib/validation/reason";
 
+/** Who an order is for; a guest's order has no account, so no id or email. */
 const staffOrderCustomerSchema = z.object({
-  user_id: z.uuid(),
-  email: z.string().min(1),
+  user_id: z.uuid().nullable(),
+  email: z.string().min(1).nullable(),
   display_name: z.string().nullable().optional(),
   phone: z.string().optional(),
 });
@@ -56,6 +60,7 @@ export const staffOrderSummarySchema = z.object({
   id: z.uuid(),
   code: orderCodeSchema,
   status: orderStatusSchema,
+  channel: orderChannelSchema,
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
   customer: staffOrderCustomerSchema,
@@ -67,6 +72,7 @@ export const staffOrderSchema = z.object({
   id: z.uuid(),
   code: orderCodeSchema,
   status: orderStatusSchema,
+  channel: orderChannelSchema,
   order_type: orderTypeSchema,
   subtotal_cents: z.number().int().min(0),
   discount_cents: z.number().int().min(0),
@@ -95,12 +101,14 @@ const cancelReasonSchema = reasonSchema("Tell the customer why");
 const pickupCodeSchema = z.string().regex(/^\d{4}$/, "Enter the 4-digit code");
 
 /**
- * A move at the counter: a handover carries the customer's pickup code, a
- * cancellation the reason the customer reads.
+ * A move at the counter: handing an online order over takes the customer's
+ * pickup code, one staff took the cash it is paid with; a cancellation states
+ * the reason the customer reads.
  */
 export const patchStaffOrderStatusInputSchema = z.union([
   z.object({ status: z.literal("confirmed") }),
   z.object({ status: z.literal("fulfilled"), pickup_code: pickupCodeSchema }),
+  z.object({ status: z.literal("fulfilled"), cash_collected: z.literal(true) }),
   z.object({ status: z.literal("cancelled"), reason: cancelReasonSchema }),
 ]);
 
@@ -121,12 +129,68 @@ export const staffPickupsSchema = z.object({
   pickups: z.array(staffOrderSummarySchema.extend({ pickup_at: apiDateTimeSchema })),
 });
 
+/** A product or a combo on an order staff take, with how many. */
+export const staffOrderItemInputSchema = z.union([
+  z.object({ product_id: z.uuid(), quantity: z.number().int().min(1).max(99) }),
+  z.object({ combo_id: z.uuid(), quantity: z.number().int().min(1).max(99) }),
+]);
+
+/** POST /staff/orders/quote — what the items cost now and ask of the bakery. */
+export const staffOrderQuoteSchema = z.object({
+  total_cents: z.number().int().min(0),
+  fulfillment: fulfillmentSchema,
+});
+
+/** The email of the customer account an order is taken for. */
+export const staffCustomerLookupSchema = z.object({
+  email: z.email("Enter an email address").trim(),
+});
+
+/** Who collects a guest's order: a name and a Vietnam mobile number. */
+export const staffGuestFormSchema = z.object({
+  name: z.string().trim().min(1, "Enter the guest's name").max(100, "Use at most 100 characters"),
+  phone: vietnamPhoneZodString().refine((phone) => Boolean(phone), "Enter the guest's phone number"),
+});
+
+/** An order staff take at the counter or on the phone, for an account or a guest. */
+export const createStaffOrderInputSchema = z.object({
+  channel: z.enum(["counter", "phone"]),
+  customer_id: z.uuid().optional(),
+  guest: staffGuestFormSchema.optional(),
+  pickup_at: apiDateTimeSchema,
+  items: z.array(staffOrderItemInputSchema).min(1).max(50),
+});
+
+/** GET /staff/customers?email= — the customer account an order is taken for. */
+export const staffCustomerSchema = z.object({
+  id: z.uuid(),
+  email: z.string().min(1),
+  display_name: z.string().nullable(),
+  phone: z.string().nullable(),
+});
+
+/** A product the counter marks sold out for the day. */
+export const staffProductSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1),
+  category_name: z.string().min(1),
+  station: stationSchema,
+  sold_out_today: z.boolean(),
+});
+
+export const staffProductsFilterSchema = z.object({
+  page: z.number().int().min(1).default(1),
+  page_size: z.number().int().min(1).max(100).default(20),
+  sold_out_today: z.boolean().default(false),
+});
+
 /** Hand a ticket nobody started to the other station. */
 export const moveTicketInputSchema = z.object({
   station: stationSchema,
 });
 
 type StaffOrderSummary = z.infer<typeof staffOrderSummarySchema>;
+export type StaffOrderCustomer = z.infer<typeof staffOrderCustomerSchema>;
 export type StaffOrder = z.infer<typeof staffOrderSchema>;
 export type StaffOrdersListFilterInput = z.infer<typeof staffOrdersListFilterSchema>;
 export type PatchStaffOrderStatusInput = z.infer<typeof patchStaffOrderStatusInputSchema>;
@@ -136,6 +200,18 @@ export type StaffPickupsFilterInput = z.input<typeof staffPickupsFilterSchema>;
 type StaffPickups = z.infer<typeof staffPickupsSchema>;
 export type StaffPickup = StaffPickups["pickups"][number];
 export type StaffOrderTicket = z.infer<typeof staffOrderTicketSchema>;
+export type StaffOrderItemInput = z.infer<typeof staffOrderItemInputSchema>;
+export type StaffOrderQuote = z.infer<typeof staffOrderQuoteSchema>;
+export type StaffGuestForm = z.infer<typeof staffGuestFormSchema>;
+export type StaffCustomerLookup = z.infer<typeof staffCustomerLookupSchema>;
+export type CreateStaffOrderInput = z.input<typeof createStaffOrderInputSchema>;
+export type StaffCustomer = z.infer<typeof staffCustomerSchema>;
+export type StaffProduct = z.infer<typeof staffProductSchema>;
+export type StaffProductsFilterInput = z.input<typeof staffProductsFilterSchema>;
+export type StaffProductsListResult = {
+  products: StaffProduct[];
+  pagination: StaffOrdersListResult["pagination"];
+};
 export type MoveTicketInput = z.infer<typeof moveTicketInputSchema>;
 
 export type StaffPickupsResult = Omit<StaffPickups, "pickups"> & {

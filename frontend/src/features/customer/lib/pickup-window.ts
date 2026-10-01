@@ -1,8 +1,8 @@
-import { formatOrderTypeLabel, type OrderType } from "@/lib/schemas/order";
+import { formatOrderTypeLabel, type Fulfillment, type OrderType } from "@/lib/schemas/order";
 import { clockToMinutes, formatClockMinutes } from "@/lib/validation/clock";
 import type { PickupFulfillment, PickupProblem, PickupWindow } from "@/lib/validation/pickup";
 
-import type { Fulfillment, PickupRules } from "../schemas";
+import type { PickupRules } from "../schemas";
 
 /** The API's pickup rules in the shape the pickup checks read. */
 export function toPickupWindow(rules: PickupRules): PickupWindow {
@@ -19,7 +19,11 @@ export function toPickupWindow(rules: PickupRules): PickupWindow {
 
 /** What items ask of the bakery, in the shape the pickup checks read. */
 export function toPickupFulfillment(fulfillment: Fulfillment): PickupFulfillment {
-  return { kitchen: fulfillment.has_kitchen_items, leadMinutes: fulfillment.lead_minutes };
+  return {
+    kitchen: fulfillment.has_kitchen_items,
+    leadMinutes: fulfillment.lead_minutes,
+    soldOutOn: fulfillment.sold_out_on,
+  };
 }
 
 /** A duration in minutes as people say it, e.g. 90 → "1 hour 30 minutes". */
@@ -85,6 +89,8 @@ export function pickupProblemMessage(
       return closedReason
         ? `The bakery is closed that day (${closedReason}). Choose another day.`
         : "The bakery is closed that day. Choose another day.";
+    case "sold_out":
+      return "An item has sold out for that day. Choose a later day.";
     case "outside_hours":
       return `Pickup must be between ${hoursRange(pickupWindow)} bakery time.`;
     case "off_slot":

@@ -1,10 +1,10 @@
 -- name: CreateProduct :one
 INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes, is_customizable)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable;
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on;
 
 -- name: GetProductByID :one
-SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 FROM products
 WHERE id = $1
   AND deleted_at IS NULL;
@@ -42,7 +42,7 @@ SET category_id  = $2,
     updated_at   = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable;
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on;
 
 -- name: SoftDeleteProduct :execrows
 UPDATE products
@@ -127,6 +127,7 @@ SELECT
     page.description,
     page.price_cents,
     page.is_customizable,
+    page.sold_out_on,
     page.category_name,
     page.category_slug,
     COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
@@ -142,6 +143,7 @@ FROM (
         p.description,
         p.price_cents,
         p.is_customizable,
+        p.sold_out_on,
         c.name AS category_name,
         c.slug AS category_slug,
         c.sort_order AS category_sort_order
@@ -193,6 +195,7 @@ SELECT
     p.description,
     p.price_cents,
     p.is_customizable,
+    p.sold_out_on,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -210,6 +213,7 @@ SELECT
     p.description,
     p.price_cents,
     p.is_customizable,
+    p.sold_out_on,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -220,7 +224,9 @@ WHERE p.id = $1
 
 -- name: GetFulfillmentOf :one
 -- What these products and combos ask of the bakery, combos counted by what
--- they hold: whether any comes from the kitchen, and the longest notice any needs.
+-- they hold: whether any comes from the kitchen, the longest notice any needs,
+-- and whether one ran out today (a mark is only ever made for the day it is
+-- made on, so no other day is ever sold out ahead).
 WITH line_products AS (
   SELECT unnest(sqlc.arg('product_ids')::uuid[]) AS product_id
   UNION
@@ -230,7 +236,52 @@ WITH line_products AS (
 )
 SELECT
   COALESCE(bool_or(c.station = 'kitchen'::station), false)::bool AS has_kitchen_items,
-  COALESCE(max(p.lead_time_minutes), 0)::int AS lead_minutes
+  COALESCE(max(p.lead_time_minutes), 0)::int AS lead_minutes,
+  COALESCE(bool_or(p.sold_out_on = sqlc.arg('today')::date), false)::bool AS sold_out_today
 FROM line_products lp
 INNER JOIN products p ON p.id = lp.product_id AND p.deleted_at IS NULL
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL;
+
+-- name: StaffListProducts :many
+-- What the counter can mark sold out, by category and name, with the day
+-- each last ran out; sold_out_on narrows the page to those out that day.
+SELECT
+  p.id,
+  p.name,
+  c.name AS category_name,
+  c.station,
+  p.sold_out_on
+FROM products p
+INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+  AND p.is_active = true
+  AND (
+    sqlc.narg('sold_out_on')::date IS NULL
+    OR p.sold_out_on = sqlc.narg('sold_out_on')::date
+  )
+ORDER BY c.sort_order ASC, p.name ASC, p.id ASC
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: StaffListProductsCount :one
+SELECT count(*)::bigint AS count
+FROM products p
+INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+  AND p.is_active = true
+  AND (
+    sqlc.narg('sold_out_on')::date IS NULL
+    OR p.sold_out_on = sqlc.narg('sold_out_on')::date
+  );
+
+-- name: SetProductSoldOut :one
+-- Marks a product sold out on a bakery day, or back with NULL.
+UPDATE products p
+SET sold_out_on = sqlc.narg('sold_out_on'),
+    updated_at  = now()
+FROM categories c
+WHERE p.id = sqlc.arg('id')
+  AND p.deleted_at IS NULL
+  AND p.is_active = true
+  AND c.id = p.category_id
+  AND c.deleted_at IS NULL
+RETURNING p.id, p.name, c.name AS category_name, c.station, p.sold_out_on;

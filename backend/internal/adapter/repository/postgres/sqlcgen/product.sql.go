@@ -21,6 +21,7 @@ SELECT
     p.description,
     p.price_cents,
     p.is_customizable,
+    p.sold_out_on,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -31,15 +32,16 @@ WHERE p.id = $1
 `
 
 type CatalogGetProductByIDRow struct {
-	ID             uuid.UUID `json:"id"`
-	CategoryID     uuid.UUID `json:"categoryId"`
-	Name           string    `json:"name"`
-	Slug           string    `json:"slug"`
-	Description    *string   `json:"description"`
-	PriceCents     int64     `json:"priceCents"`
-	IsCustomizable bool      `json:"isCustomizable"`
-	CategoryName   string    `json:"categoryName"`
-	CategorySlug   string    `json:"categorySlug"`
+	ID             uuid.UUID  `json:"id"`
+	CategoryID     uuid.UUID  `json:"categoryId"`
+	Name           string     `json:"name"`
+	Slug           string     `json:"slug"`
+	Description    *string    `json:"description"`
+	PriceCents     int64      `json:"priceCents"`
+	IsCustomizable bool       `json:"isCustomizable"`
+	SoldOutOn      *time.Time `json:"soldOutOn"`
+	CategoryName   string     `json:"categoryName"`
+	CategorySlug   string     `json:"categorySlug"`
 }
 
 // CatalogGetProductByID
@@ -52,6 +54,7 @@ type CatalogGetProductByIDRow struct {
 //	    p.description,
 //	    p.price_cents,
 //	    p.is_customizable,
+//	    p.sold_out_on,
 //	    c.name AS category_name,
 //	    c.slug AS category_slug
 //	FROM products p
@@ -70,6 +73,7 @@ func (q *Queries) CatalogGetProductByID(ctx context.Context, id uuid.UUID) (Cata
 		&i.Description,
 		&i.PriceCents,
 		&i.IsCustomizable,
+		&i.SoldOutOn,
 		&i.CategoryName,
 		&i.CategorySlug,
 	)
@@ -85,6 +89,7 @@ SELECT
     p.description,
     p.price_cents,
     p.is_customizable,
+    p.sold_out_on,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -95,15 +100,16 @@ WHERE p.id = ANY($1::uuid[])
 `
 
 type CatalogGetProductsByIDsRow struct {
-	ID             uuid.UUID `json:"id"`
-	CategoryID     uuid.UUID `json:"categoryId"`
-	Name           string    `json:"name"`
-	Slug           string    `json:"slug"`
-	Description    *string   `json:"description"`
-	PriceCents     int64     `json:"priceCents"`
-	IsCustomizable bool      `json:"isCustomizable"`
-	CategoryName   string    `json:"categoryName"`
-	CategorySlug   string    `json:"categorySlug"`
+	ID             uuid.UUID  `json:"id"`
+	CategoryID     uuid.UUID  `json:"categoryId"`
+	Name           string     `json:"name"`
+	Slug           string     `json:"slug"`
+	Description    *string    `json:"description"`
+	PriceCents     int64      `json:"priceCents"`
+	IsCustomizable bool       `json:"isCustomizable"`
+	SoldOutOn      *time.Time `json:"soldOutOn"`
+	CategoryName   string     `json:"categoryName"`
+	CategorySlug   string     `json:"categorySlug"`
 }
 
 // CatalogGetProductsByIDs
@@ -116,6 +122,7 @@ type CatalogGetProductsByIDsRow struct {
 //	    p.description,
 //	    p.price_cents,
 //	    p.is_customizable,
+//	    p.sold_out_on,
 //	    c.name AS category_name,
 //	    c.slug AS category_slug
 //	FROM products p
@@ -140,6 +147,7 @@ func (q *Queries) CatalogGetProductsByIDs(ctx context.Context, productIds []uuid
 			&i.Description,
 			&i.PriceCents,
 			&i.IsCustomizable,
+			&i.SoldOutOn,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -162,6 +170,7 @@ SELECT
     page.description,
     page.price_cents,
     page.is_customizable,
+    page.sold_out_on,
     page.category_name,
     page.category_slug,
     COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
@@ -174,6 +183,7 @@ FROM (
         p.description,
         p.price_cents,
         p.is_customizable,
+        p.sold_out_on,
         c.name AS category_name,
         c.slug AS category_slug,
         c.sort_order AS category_sort_order
@@ -209,16 +219,17 @@ type CatalogListProductsParams struct {
 }
 
 type CatalogListProductsRow struct {
-	ID             uuid.UUID `json:"id"`
-	CategoryID     uuid.UUID `json:"categoryId"`
-	Name           string    `json:"name"`
-	Slug           string    `json:"slug"`
-	Description    *string   `json:"description"`
-	PriceCents     int64     `json:"priceCents"`
-	IsCustomizable bool      `json:"isCustomizable"`
-	CategoryName   string    `json:"categoryName"`
-	CategorySlug   string    `json:"categorySlug"`
-	ImageUrls      []string  `json:"imageUrls"`
+	ID             uuid.UUID  `json:"id"`
+	CategoryID     uuid.UUID  `json:"categoryId"`
+	Name           string     `json:"name"`
+	Slug           string     `json:"slug"`
+	Description    *string    `json:"description"`
+	PriceCents     int64      `json:"priceCents"`
+	IsCustomizable bool       `json:"isCustomizable"`
+	SoldOutOn      *time.Time `json:"soldOutOn"`
+	CategoryName   string     `json:"categoryName"`
+	CategorySlug   string     `json:"categorySlug"`
+	ImageUrls      []string   `json:"imageUrls"`
 }
 
 // The page is cut first and the gallery gathered after: fetching images
@@ -233,6 +244,7 @@ type CatalogListProductsRow struct {
 //	    page.description,
 //	    page.price_cents,
 //	    page.is_customizable,
+//	    page.sold_out_on,
 //	    page.category_name,
 //	    page.category_slug,
 //	    COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
@@ -245,6 +257,7 @@ type CatalogListProductsRow struct {
 //	        p.description,
 //	        p.price_cents,
 //	        p.is_customizable,
+//	        p.sold_out_on,
 //	        c.name AS category_name,
 //	        c.slug AS category_slug,
 //	        c.sort_order AS category_sort_order
@@ -292,6 +305,7 @@ func (q *Queries) CatalogListProducts(ctx context.Context, arg CatalogListProduc
 			&i.Description,
 			&i.PriceCents,
 			&i.IsCustomizable,
+			&i.SoldOutOn,
 			&i.CategoryName,
 			&i.CategorySlug,
 			&i.ImageUrls,
@@ -354,7 +368,7 @@ func (q *Queries) CatalogListProductsCount(ctx context.Context, arg CatalogListP
 const createProduct = `-- name: CreateProduct :one
 INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes, is_customizable)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 `
 
 type CreateProductParams struct {
@@ -372,7 +386,7 @@ type CreateProductParams struct {
 //
 //	INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes, is_customizable)
 //	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
 	row := q.db.QueryRow(ctx, createProduct,
 		arg.CategoryID,
@@ -398,27 +412,30 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.DeletedAt,
 		&i.LeadTimeMinutes,
 		&i.IsCustomizable,
+		&i.SoldOutOn,
 	)
 	return i, err
 }
 
 const getFulfillmentOf = `-- name: GetFulfillmentOf :one
 WITH line_products AS (
-  SELECT unnest($1::uuid[]) AS product_id
+  SELECT unnest($2::uuid[]) AS product_id
   UNION
   SELECT ci.product_id
   FROM combo_items ci
-  WHERE ci.combo_id = ANY($2::uuid[])
+  WHERE ci.combo_id = ANY($3::uuid[])
 )
 SELECT
   COALESCE(bool_or(c.station = 'kitchen'::station), false)::bool AS has_kitchen_items,
-  COALESCE(max(p.lead_time_minutes), 0)::int AS lead_minutes
+  COALESCE(max(p.lead_time_minutes), 0)::int AS lead_minutes,
+  COALESCE(bool_or(p.sold_out_on = $1::date), false)::bool AS sold_out_today
 FROM line_products lp
 INNER JOIN products p ON p.id = lp.product_id AND p.deleted_at IS NULL
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
 `
 
 type GetFulfillmentOfParams struct {
+	Today      time.Time   `json:"today"`
 	ProductIds []uuid.UUID `json:"productIds"`
 	ComboIds   []uuid.UUID `json:"comboIds"`
 }
@@ -426,33 +443,37 @@ type GetFulfillmentOfParams struct {
 type GetFulfillmentOfRow struct {
 	HasKitchenItems bool  `json:"hasKitchenItems"`
 	LeadMinutes     int32 `json:"leadMinutes"`
+	SoldOutToday    bool  `json:"soldOutToday"`
 }
 
 // What these products and combos ask of the bakery, combos counted by what
-// they hold: whether any comes from the kitchen, and the longest notice any needs.
+// they hold: whether any comes from the kitchen, the longest notice any needs,
+// and whether one ran out today (a mark is only ever made for the day it is
+// made on, so no other day is ever sold out ahead).
 //
 //	WITH line_products AS (
-//	  SELECT unnest($1::uuid[]) AS product_id
+//	  SELECT unnest($2::uuid[]) AS product_id
 //	  UNION
 //	  SELECT ci.product_id
 //	  FROM combo_items ci
-//	  WHERE ci.combo_id = ANY($2::uuid[])
+//	  WHERE ci.combo_id = ANY($3::uuid[])
 //	)
 //	SELECT
 //	  COALESCE(bool_or(c.station = 'kitchen'::station), false)::bool AS has_kitchen_items,
-//	  COALESCE(max(p.lead_time_minutes), 0)::int AS lead_minutes
+//	  COALESCE(max(p.lead_time_minutes), 0)::int AS lead_minutes,
+//	  COALESCE(bool_or(p.sold_out_on = $1::date), false)::bool AS sold_out_today
 //	FROM line_products lp
 //	INNER JOIN products p ON p.id = lp.product_id AND p.deleted_at IS NULL
 //	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
 func (q *Queries) GetFulfillmentOf(ctx context.Context, arg GetFulfillmentOfParams) (GetFulfillmentOfRow, error) {
-	row := q.db.QueryRow(ctx, getFulfillmentOf, arg.ProductIds, arg.ComboIds)
+	row := q.db.QueryRow(ctx, getFulfillmentOf, arg.Today, arg.ProductIds, arg.ComboIds)
 	var i GetFulfillmentOfRow
-	err := row.Scan(&i.HasKitchenItems, &i.LeadMinutes)
+	err := row.Scan(&i.HasKitchenItems, &i.LeadMinutes, &i.SoldOutToday)
 	return i, err
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 FROM products
 WHERE id = $1
   AND deleted_at IS NULL
@@ -460,7 +481,7 @@ WHERE id = $1
 
 // GetProductByID
 //
-//	SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+//	SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 //	FROM products
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -480,6 +501,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.DeletedAt,
 		&i.LeadTimeMinutes,
 		&i.IsCustomizable,
+		&i.SoldOutOn,
 	)
 	return i, err
 }
@@ -774,6 +796,57 @@ func (q *Queries) ManagerListProductsCount(ctx context.Context, arg ManagerListP
 	return count, err
 }
 
+const setProductSoldOut = `-- name: SetProductSoldOut :one
+UPDATE products p
+SET sold_out_on = $1,
+    updated_at  = now()
+FROM categories c
+WHERE p.id = $2
+  AND p.deleted_at IS NULL
+  AND p.is_active = true
+  AND c.id = p.category_id
+  AND c.deleted_at IS NULL
+RETURNING p.id, p.name, c.name AS category_name, c.station, p.sold_out_on
+`
+
+type SetProductSoldOutParams struct {
+	SoldOutOn *time.Time `json:"soldOutOn"`
+	ID        uuid.UUID  `json:"id"`
+}
+
+type SetProductSoldOutRow struct {
+	ID           uuid.UUID  `json:"id"`
+	Name         string     `json:"name"`
+	CategoryName string     `json:"categoryName"`
+	Station      Station    `json:"station"`
+	SoldOutOn    *time.Time `json:"soldOutOn"`
+}
+
+// Marks a product sold out on a bakery day, or back with NULL.
+//
+//	UPDATE products p
+//	SET sold_out_on = $1,
+//	    updated_at  = now()
+//	FROM categories c
+//	WHERE p.id = $2
+//	  AND p.deleted_at IS NULL
+//	  AND p.is_active = true
+//	  AND c.id = p.category_id
+//	  AND c.deleted_at IS NULL
+//	RETURNING p.id, p.name, c.name AS category_name, c.station, p.sold_out_on
+func (q *Queries) SetProductSoldOut(ctx context.Context, arg SetProductSoldOutParams) (SetProductSoldOutRow, error) {
+	row := q.db.QueryRow(ctx, setProductSoldOut, arg.SoldOutOn, arg.ID)
+	var i SetProductSoldOutRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CategoryName,
+		&i.Station,
+		&i.SoldOutOn,
+	)
+	return i, err
+}
+
 const softDeleteProduct = `-- name: SoftDeleteProduct :execrows
 UPDATE products
 SET deleted_at = now(),
@@ -797,6 +870,114 @@ func (q *Queries) SoftDeleteProduct(ctx context.Context, id uuid.UUID) (int64, e
 	return result.RowsAffected(), nil
 }
 
+const staffListProducts = `-- name: StaffListProducts :many
+SELECT
+  p.id,
+  p.name,
+  c.name AS category_name,
+  c.station,
+  p.sold_out_on
+FROM products p
+INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+  AND p.is_active = true
+  AND (
+    $1::date IS NULL
+    OR p.sold_out_on = $1::date
+  )
+ORDER BY c.sort_order ASC, p.name ASC, p.id ASC
+LIMIT $3 OFFSET $2
+`
+
+type StaffListProductsParams struct {
+	SoldOutOn *time.Time `json:"soldOutOn"`
+	Offset    int32      `json:"offset"`
+	Limit     int32      `json:"limit"`
+}
+
+type StaffListProductsRow struct {
+	ID           uuid.UUID  `json:"id"`
+	Name         string     `json:"name"`
+	CategoryName string     `json:"categoryName"`
+	Station      Station    `json:"station"`
+	SoldOutOn    *time.Time `json:"soldOutOn"`
+}
+
+// What the counter can mark sold out, by category and name, with the day
+// each last ran out; sold_out_on narrows the page to those out that day.
+//
+//	SELECT
+//	  p.id,
+//	  p.name,
+//	  c.name AS category_name,
+//	  c.station,
+//	  p.sold_out_on
+//	FROM products p
+//	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+//	WHERE p.deleted_at IS NULL
+//	  AND p.is_active = true
+//	  AND (
+//	    $1::date IS NULL
+//	    OR p.sold_out_on = $1::date
+//	  )
+//	ORDER BY c.sort_order ASC, p.name ASC, p.id ASC
+//	LIMIT $3 OFFSET $2
+func (q *Queries) StaffListProducts(ctx context.Context, arg StaffListProductsParams) ([]StaffListProductsRow, error) {
+	rows, err := q.db.Query(ctx, staffListProducts, arg.SoldOutOn, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []StaffListProductsRow{}
+	for rows.Next() {
+		var i StaffListProductsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CategoryName,
+			&i.Station,
+			&i.SoldOutOn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const staffListProductsCount = `-- name: StaffListProductsCount :one
+SELECT count(*)::bigint AS count
+FROM products p
+INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+  AND p.is_active = true
+  AND (
+    $1::date IS NULL
+    OR p.sold_out_on = $1::date
+  )
+`
+
+// StaffListProductsCount
+//
+//	SELECT count(*)::bigint AS count
+//	FROM products p
+//	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+//	WHERE p.deleted_at IS NULL
+//	  AND p.is_active = true
+//	  AND (
+//	    $1::date IS NULL
+//	    OR p.sold_out_on = $1::date
+//	  )
+func (q *Queries) StaffListProductsCount(ctx context.Context, soldOutOn *time.Time) (int64, error) {
+	row := q.db.QueryRow(ctx, staffListProductsCount, soldOutOn)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const updateProduct = `-- name: UpdateProduct :one
 UPDATE products
 SET category_id  = $2,
@@ -810,7 +991,7 @@ SET category_id  = $2,
     updated_at   = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 `
 
 type UpdateProductParams struct {
@@ -839,7 +1020,7 @@ type UpdateProductParams struct {
 //	    updated_at   = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
-//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
+//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable, sold_out_on
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error) {
 	row := q.db.QueryRow(ctx, updateProduct,
 		arg.ID,
@@ -866,6 +1047,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.DeletedAt,
 		&i.LeadTimeMinutes,
 		&i.IsCustomizable,
+		&i.SoldOutOn,
 	)
 	return i, err
 }

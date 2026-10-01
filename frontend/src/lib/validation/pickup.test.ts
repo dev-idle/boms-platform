@@ -35,6 +35,7 @@ type PickupRulesCases = {
       at: string;
       kitchen: boolean;
       lead_minutes: number;
+      sold_out_on?: string;
       problem: PickupProblem | null;
       type: OrderType | null;
     }[];
@@ -60,8 +61,8 @@ const WINDOW: PickupWindow = {
   closedDates: new Map(rules.closed_dates.map((day) => [day, "Closed"])),
 };
 const NOW = pickupInstantFromLocalInput(cases.policy.now)!;
-const KITCHEN = { kitchen: true, leadMinutes: 0 };
-const COUNTER = { kitchen: false, leadMinutes: 0 };
+const KITCHEN = { kitchen: true, leadMinutes: 0, soldOutOn: null };
+const COUNTER = { kitchen: false, leadMinutes: 0, soldOutOn: null };
 
 describe("formatPickupLocalInputValue", () => {
   it("formats an instant as bakery wall-clock time (UTC+7)", () => {
@@ -94,8 +95,8 @@ describe("pickupInstantFromLocalInput", () => {
 describe("pickupProblem and pickupOrderType", () => {
   it("agree with the backend on every shared case", () => {
     expect(NOW).not.toBeNull();
-    for (const { at, kitchen, lead_minutes, problem, type } of cases.policy.cases) {
-      const items = { kitchen, leadMinutes: lead_minutes };
+    for (const { at, kitchen, lead_minutes, sold_out_on, problem, type } of cases.policy.cases) {
+      const items = { kitchen, leadMinutes: lead_minutes, soldOutOn: sold_out_on ?? null };
       expect(pickupProblem(at, WINDOW, NOW, items), at).toBe(problem);
       if (problem === null) {
         expect(pickupOrderType(at, NOW, items), at).toBe(type);
@@ -137,9 +138,13 @@ describe("earliestPickupLocalValue", () => {
   });
 
   it("waits the longest notice an item needs", () => {
-    expect(earliestPickupLocalValue(WINDOW, NOW, { kitchen: true, leadMinutes: 24 * 60 })).toBe(
+    expect(earliestPickupLocalValue(WINDOW, NOW, { kitchen: true, leadMinutes: 24 * 60, soldOutOn: null })).toBe(
       "2026-07-11T10:00",
     );
+  });
+
+  it("skips the day an item ran out on", () => {
+    expect(earliestPickupLocalValue(WINDOW, NOW, { ...COUNTER, soldOutOn: "2026-07-10" })).toBe("2026-07-11T08:00");
   });
 
   it("moves to the next open day after closing and past closed days", () => {

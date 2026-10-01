@@ -48,7 +48,8 @@ func TestSubscribe(t *testing.T) {
 		return err == nil && n == 1
 	}, 5*time.Second, 10*time.Millisecond, "the subscriber listens on one pattern")
 
-	order := domainorder.Order{ID: uuid.New(), UserID: uuid.New(), Status: domainorder.StatusCancelled}
+	customer := uuid.New()
+	order := domainorder.Order{ID: uuid.New(), UserID: &customer, Status: domainorder.StatusCancelled}
 	event := domainorder.StatusChangedEvent(domainorder.StatusPending, order)
 	require.NoError(t, NewRedisPublisher(rdb).Publish(context.Background(), []domainevent.Event{event}))
 
@@ -61,7 +62,7 @@ func TestSubscribe(t *testing.T) {
 	channels := []string{got[0].channel, got[1].channel}
 	payload := got[0].payload
 	mu.Unlock()
-	assert.ElementsMatch(t, []string{UserChannel(order.UserID), RoleChannel(domainuser.RoleStaff)}, channels)
+	assert.ElementsMatch(t, []string{UserChannel(customer), RoleChannel(domainuser.RoleStaff)}, channels)
 	assert.Contains(t, payload, `"type":"order.status_changed"`)
 
 	cancel()

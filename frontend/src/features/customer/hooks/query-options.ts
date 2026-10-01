@@ -32,6 +32,8 @@ export const customerLiveQueryKeys: readonly QueryKey[] = [
  * taking or freeing a slot refreshes that day's slots. An order moving, its
  * pickup moving or its refund arriving changes the order list and its detail;
  * a ticket moving changes only its order's detail, where the preparation shows.
+ * A product running out today, or coming back, changes the days the cart can
+ * be collected on.
  */
 export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -52,6 +54,8 @@ export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
     }
     case REALTIME_EVENT_TYPE.settingsUpdated:
       return [customerQueryKeys.pickupRules, customerQueryKeys.pickupSlotsRoot];
+    case REALTIME_EVENT_TYPE.productSoldOutChanged:
+      return [customerQueryKeys.cart];
     case REALTIME_EVENT_TYPE.slotsChanged: {
       const date = event.data.date;
       return [date ? customerQueryKeys.pickupSlots(date) : customerQueryKeys.pickupSlotsRoot];

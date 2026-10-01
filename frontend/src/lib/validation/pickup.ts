@@ -31,6 +31,8 @@ export type PickupFulfillment = {
   kitchen: boolean;
   /** The longest notice any item needs. */
   leadMinutes: number;
+  /** The bakery day (YYYY-MM-DD) one of the items ran out on, when none may be collected; null if none has. */
+  soldOutOn: string | null;
 };
 
 /** Why a pickup time cannot be used — the backend's pickup error codes, plus "missing". */
@@ -39,6 +41,7 @@ export type PickupProblem =
   | "too_soon"
   | "too_far"
   | "closed_day"
+  | "sold_out"
   | "outside_hours"
   | "off_slot";
 
@@ -140,8 +143,12 @@ export function pickupProblem(
     return "too_far";
   }
   const wall = toBakeryWallClock(instant);
-  if (pickupWindow.closedDates.has(formatWallClock(wall).slice(0, 10))) {
+  const day = formatWallClock(wall).slice(0, 10);
+  if (pickupWindow.closedDates.has(day)) {
     return "closed_day";
+  }
+  if (day === items.soldOutOn) {
+    return "sold_out";
   }
   const minutes = wallMinutes(wall);
   if (minutes < pickupWindow.opensAtMinutes || minutes >= pickupWindow.closesAtMinutes) {

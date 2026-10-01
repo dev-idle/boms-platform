@@ -8,8 +8,10 @@ export {
   CustomerLiveUpdates,
   OrderDetail,
   OrderList,
+  PickupSlotPicker,
   ProductPurchaseActions,
 } from "./components";
 export {
   useCart,
 } from "./hooks";
+export { usePickupChoice } from "./hooks/use-pickup-choice";

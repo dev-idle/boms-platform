@@ -95,6 +95,40 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 	},
 }
 
+// cashOrderCopies is what changes for an order staff took, at the counter or
+// on the phone: it is paid in cash when collected, so there is no code to give
+// and nothing was paid before.
+var cashOrderCopies = map[domainorder.Notice]orderCopy{
+	domainorder.NoticePlaced: {
+		subject:   "We received your order %s",
+		preheader: "Your order is in. You pay in cash when you collect it.",
+		eyebrow:   "Order received",
+		heading:   "Thank you for your order",
+		lead: []string{
+			"We have your order and will have it ready for your pickup time. You pay in cash when you collect it, and we will email you again when it is ready.",
+		},
+		receipt: true,
+	},
+	domainorder.NoticeReady: {
+		subject:   "Your order %s is ready to collect",
+		preheader: "Come in during your pickup time and pay at the counter.",
+		eyebrow:   "Ready for pickup",
+		heading:   "Your order is ready",
+		lead: []string{
+			"Come in during your pickup time and pay at the counter.",
+		},
+	},
+	domainorder.NoticeNoShow: {
+		subject:   "Your order %s was not collected",
+		preheader: "We kept your order until closing time on its pickup day.",
+		eyebrow:   "Missed pickup",
+		heading:   "Your order was not collected",
+		lead: []string{
+			"Your order was ready, but it was not collected by closing time on its pickup day, so we recorded it as a missed pickup.",
+		},
+	},
+}
+
 // OrderComposer writes order notices in the bakery's style, as HTML with a
 // plain-text alternative.
 type OrderComposer struct {
@@ -136,6 +170,9 @@ func (c *OrderComposer) ComposeOrderEmail(msg port.OrderEmail) (port.Email, erro
 	words, ok := orderCopies[msg.Notice]
 	if !ok {
 		return port.Email{}, fmt.Errorf("no email for order notice %q", msg.Notice)
+	}
+	if cash, ok := cashOrderCopies[msg.Notice]; ok && msg.Order.Channel.TakenByStaff() {
+		words = cash
 	}
 	view := c.view(words, msg)
 	return c.templates.render(view, msg.To, msg.CustomerName, view.Subject)

@@ -404,6 +404,12 @@ table "products" {
     null    = false
     default = false
   }
+  // The bakery day the counter ran out of it: no order collected that day
+  // may hold it. A later day is unaffected, so it lapses by itself.
+  column "sold_out_on" {
+    type = date
+    null = true
+  }
   primary_key {
     columns = [column.id]
   }
@@ -807,6 +813,13 @@ enum "order_status" {
   values = ["pending", "confirmed", "in_production", "ready", "fulfilled", "cancelled", "awaiting_payment", "expired", "no_show"]
 }
 
+// Where an order was taken: placed online by its customer, or by staff at the
+// counter or on the phone.
+enum "order_channel" {
+  schema = schema.public
+  values = ["online", "counter", "phone"]
+}
+
 // How an order is prepared: instant (ready-made, collected the same day) or a pre-order.
 enum "order_type" {
   schema = schema.public
@@ -952,9 +965,10 @@ table "orders" {
     null    = false
     default = sql("gen_random_uuid()")
   }
+  // Empty for a guest without an account, who staff took the order for.
   column "user_id" {
     type = uuid
-    null = false
+    null = true
   }
   column "status" {
     type    = enum.order_status
@@ -1024,6 +1038,20 @@ table "orders" {
     type = timestamptz
     null = true
   }
+  column "channel" {
+    type    = enum.order_channel
+    null    = false
+    default = "online"
+  }
+  // Who collects a guest's order and how to reach them.
+  column "guest_name" {
+    type = text
+    null = true
+  }
+  column "guest_phone" {
+    type = text
+    null = true
+  }
   primary_key {
     columns = [column.id]
   }
@@ -1064,6 +1092,12 @@ table "orders" {
     columns = [column.user_id, column.checkout_key]
     where   = "checkout_key IS NOT NULL"
   }
+  // The Idempotency-Key of an order staff took: the same key returns it.
+  index "orders_staff_checkout_key_idx" {
+    unique  = true
+    columns = [column.checkout_key]
+    where   = "channel <> 'online'::order_channel AND checkout_key IS NOT NULL"
+  }
   // Orders holding a pickup slot, counted when a checkout takes one.
   index "orders_pickup_slot_idx" {
     columns = [column.pickup_at]
@@ -1086,6 +1120,11 @@ table "orders" {
   }
   check "orders_terms_pair_check" {
     expr = "(terms_accepted_at IS NULL) = (terms_version IS NULL)"
+  }
+  // An order belongs to an account or to a guest with a name and a phone,
+  // never both; only staff take a guest's order.
+  check "orders_customer_check" {
+    expr = "(user_id IS NULL) = (guest_name IS NOT NULL) AND (guest_name IS NULL) = (guest_phone IS NULL) AND (channel <> 'online' OR user_id IS NOT NULL)"
   }
 }
 
@@ -1598,7 +1637,7 @@ table "user_tokens" {
 
 enum "payment_provider" {
   schema = schema.public
-  values = ["paypal"]
+  values = ["paypal", "cash"]
 }
 
 // created: the buyer was sent to approve; pending: the provider holds the
@@ -1627,14 +1666,14 @@ table "payments" {
     type = enum.payment_provider
     null = false
   }
+  // PayPal's order, and the page the buyer approves the payment on; cash has neither.
   column "provider_order_id" {
     type = text
-    null = false
+    null = true
   }
-  // The provider page the buyer approves the payment on.
   column "approve_url" {
     type = text
-    null = false
+    null = true
   }
   column "status" {
     type    = enum.payment_status
@@ -1714,7 +1753,15 @@ table "payments" {
     expr = "currency ~ '^[A-Z]{3}$'"
   }
   check "payments_capture_check" {
-    expr = "(status = 'created') = (capture_id IS NULL)"
+    expr = "provider <> 'paypal' OR ((status = 'created') = (capture_id IS NULL))"
+  }
+  check "payments_provider_check" {
+    expr = "(provider = 'paypal') = (provider_order_id IS NOT NULL AND approve_url IS NOT NULL)"
+  }
+  // Cash is due until the counter takes it at handoff: never captured by a
+  // provider, never refunded, since it is taken only with the order.
+  check "payments_cash_check" {
+    expr = "provider <> 'cash' OR (capture_id IS NULL AND status IN ('created', 'captured') AND refund_requested_at IS NULL)"
   }
   check "payments_captured_at_check" {
     expr = "(status IN ('captured', 'refunded')) = (captured_at IS NOT NULL)"

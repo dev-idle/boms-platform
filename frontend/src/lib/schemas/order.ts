@@ -36,9 +36,26 @@ export const customizationSchema = z.object({
 
 export type Customization = z.infer<typeof customizationSchema>;
 
+/** Where an order was taken — mirrors backend `domain/order.Channel`. Staff take counter and phone orders, paid in cash at pickup. */
+export const orderChannelSchema = z.enum(["online", "counter", "phone"]);
+
+export type OrderChannel = z.infer<typeof orderChannelSchema>;
+
+/** Where an order was taken, as the counter reads it. */
+export function formatOrderChannelLabel(channel: OrderChannel): string {
+  switch (channel) {
+    case "online":
+      return "Online order";
+    case "counter":
+      return "Counter order";
+    case "phone":
+      return "Phone order";
+  }
+}
+
 /** Where an order's payment stands — null on the order before the customer starts paying. */
 export const orderPaymentSchema = z.object({
-  provider: z.enum(["paypal"]),
+  provider: z.enum(["paypal", "cash"]),
   status: z.enum(["created", "pending", "captured", "denied", "refunded"]),
   captured_at: apiDateTimeSchema.nullable(),
   /** Set once the order is cancelled; `refunded_at` once the money went back. */
@@ -47,6 +64,16 @@ export const orderPaymentSchema = z.object({
 });
 
 export type OrderPayment = z.infer<typeof orderPaymentSchema>;
+
+/** What items ask of the bakery: whether the kitchen makes any, the longest notice one needs, and the day one ran out on. */
+export const fulfillmentSchema = z.object({
+  has_kitchen_items: z.boolean(),
+  lead_minutes: z.number().int().min(0),
+  /** The bakery day one of the items ran out on, when they cannot be collected; null when none has. */
+  sold_out_on: z.iso.date().nullable(),
+});
+
+export type Fulfillment = z.infer<typeof fulfillmentSchema>;
 
 /** How an order is prepared — mirrors backend `domain/order.Type`. */
 export const orderTypeSchema = z.enum(["instant", "pre_order"]);

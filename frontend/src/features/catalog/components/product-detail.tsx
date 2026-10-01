@@ -148,6 +148,12 @@ export function ProductDetail({
           <p className="catalog-detail__price text-price">
             {formatPriceCents(product.price_cents)}
           </p>
+          {product.sold_out_today ? (
+            <p className="catalog-detail__sold-out">
+              <span className="catalog-sold-out">Sold out today</span>
+              <span className="text-caption">You can still order it for a later day.</span>
+            </p>
+          ) : null}
           {product.description ? (
             <p className="catalog-detail__description">{product.description}</p>
           ) : null}

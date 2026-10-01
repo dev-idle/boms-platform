@@ -38,6 +38,7 @@ export const ApiErrorCode = {
   PickupTooSoon: "pickup_too_soon",
   PickupTooFar: "pickup_too_far",
   PickupClosedDay: "pickup_closed_day",
+  PickupSoldOut: "pickup_sold_out",
   PickupOutsideHours: "pickup_outside_hours",
   PickupOffSlot: "pickup_off_slot",
   PickupSlotFull: "pickup_slot_full",

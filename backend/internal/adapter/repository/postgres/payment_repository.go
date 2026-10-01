@@ -134,8 +134,8 @@ func mapPayment(row sqlcgen.Payment) *domainpayment.Payment {
 		ID:                row.ID,
 		OrderID:           row.OrderID,
 		Provider:          domainpayment.Provider(row.Provider),
-		ProviderOrderID:   row.ProviderOrderID,
-		ApproveURL:        row.ApproveUrl,
+		ProviderOrderID:   textOrEmpty(row.ProviderOrderID),
+		ApproveURL:        textOrEmpty(row.ApproveUrl),
 		Status:            domainpayment.Status(row.Status),
 		CaptureID:         row.CaptureID,
 		AmountCents:       row.AmountCents,
@@ -145,6 +145,40 @@ func mapPayment(row sqlcgen.Payment) *domainpayment.Payment {
 		RefundedAt:        row.RefundedAt,
 		CreatedAt:         row.CreatedAt,
 	}
+}
+
+// CreateCash implements port.PaymentRepository.
+func (r *PaymentRepository) CreateCash(ctx context.Context, orderID uuid.UUID, amountCents int64) error {
+	err := r.q(ctx).CreateCashPayment(ctx, sqlcgen.CreateCashPaymentParams{
+		OrderID:     orderID,
+		AmountCents: amountCents,
+		Currency:    domainpayment.Currency,
+	})
+	if err != nil {
+		return mapRepoError(err, "create cash payment")
+	}
+	return nil
+}
+
+// CollectCash implements port.PaymentRepository.
+func (r *PaymentRepository) CollectCash(ctx context.Context, orderID uuid.UUID) error {
+	n, err := r.q(ctx).CollectCashPayment(ctx, orderID)
+	if err != nil {
+		return mapRepoError(err, "collect cash payment")
+	}
+	if n == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
+// textOrEmpty reads a column only one provider fills; PayPal's order and
+// approve page are empty for cash.
+func textOrEmpty(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }
 
 var _ port.PaymentRepository = (*PaymentRepository)(nil)

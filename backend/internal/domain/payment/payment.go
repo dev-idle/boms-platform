@@ -1,4 +1,5 @@
-// Package payment is how a customer pays for an order online.
+// Package payment is how an order is paid: online through PayPal, or in cash
+// at the counter when staff took the order.
 package payment
 
 import (
@@ -14,7 +15,11 @@ const Currency = "USD"
 // Provider is who takes the payment.
 type Provider string
 
-const ProviderPayPal Provider = "paypal"
+const (
+	ProviderPayPal Provider = "paypal"
+	// ProviderCash is cash due at the counter, taken as the order is handed over.
+	ProviderCash Provider = "cash"
+)
 
 // Status is where a payment stands with its provider.
 type Status string
@@ -34,17 +39,18 @@ const (
 
 // Payment is an order's one payment.
 type Payment struct {
-	ID              uuid.UUID
-	OrderID         uuid.UUID
-	Provider        Provider
+	ID       uuid.UUID
+	OrderID  uuid.UUID
+	Provider Provider
+	// ProviderOrderID and ApproveURL are PayPal's order and the page the buyer
+	// approves the payment on; empty for cash.
 	ProviderOrderID string
-	// ApproveURL is the provider page the buyer approves the payment on.
-	ApproveURL  string
-	Status      Status
-	CaptureID   *string
-	AmountCents int64
-	Currency    string
-	CapturedAt  *time.Time
+	ApproveURL      string
+	Status          Status
+	CaptureID       *string
+	AmountCents     int64
+	Currency        string
+	CapturedAt      *time.Time
 	// RefundRequestedAt is when the order's cancellation asked for the money
 	// back; RefundedAt when the provider took the refund.
 	RefundRequestedAt *time.Time

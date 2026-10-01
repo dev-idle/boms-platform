@@ -20,9 +20,10 @@ func TestOrderCustomerVisibilityByRole(t *testing.T) {
 
 	name := "Mai"
 	phone := "0901234567"
+	customer, email := uuid.New(), "mai@example.com"
 	row := &port.StaffOrderListRow{
-		Order:               domainorder.Order{ID: uuid.New(), UserID: uuid.New()},
-		CustomerEmail:       "mai@example.com",
+		Order:               domainorder.Order{ID: uuid.New(), UserID: &customer},
+		CustomerEmail:       &email,
 		CustomerDisplayName: &name,
 		CustomerPhone:       &phone,
 	}

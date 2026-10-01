@@ -9,7 +9,7 @@ export default function StaffPickupsPage() {
   return (
     <div className="dashboard-page-stack">
       <DashboardPageHeader
-        description="The day's pickups by time. Hand a ready order over with the customer's code."
+        description="The day's pickups by time. Hand a ready order over with the customer's code, or once its cash is paid."
         eyebrow={DASHBOARD_PAGE_EYEBROW.operations}
         leadAside
         title={PAGE_TITLES.pickups}

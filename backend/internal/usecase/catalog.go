@@ -2,14 +2,19 @@ package usecase
 
 import (
 	"context"
+	"slices"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
 
 	domaincategory "github.com/boms/backend/internal/domain/category"
+	domaincombo "github.com/boms/backend/internal/domain/combo"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/utils"
-	"github.com/google/uuid"
 )
 
 type CatalogUsecase struct {
@@ -149,7 +154,14 @@ func toCatalogProductResponse(item port.CatalogListProduct, imageURLs []string) 
 		PriceCents:     item.PriceCents,
 		ImageURLs:      imageURLs,
 		IsCustomizable: item.IsCustomizable,
+		SoldOutToday:   soldOutToday(item.SoldOutOn),
 	}
+}
+
+// soldOutToday reports whether day, the last one something ran out on, is the
+// bakery's today.
+func soldOutToday(day *time.Time) bool {
+	return day != nil && day.Equal(domainstore.DayOf(time.Now()))
 }
 
 func (u *CatalogUsecase) ListCombos(
@@ -199,5 +211,8 @@ func toCatalogComboResponse(item port.CatalogCombo) dto.CatalogComboResponse {
 		StartsAt:   item.StartsAt,
 		EndsAt:     item.EndsAt,
 		Items:      toComboItemResponses(item.Items),
+		SoldOutToday: slices.ContainsFunc(item.Items, func(i domaincombo.Item) bool {
+			return soldOutToday(i.SoldOutOn)
+		}),
 	}
 }

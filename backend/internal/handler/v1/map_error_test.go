@@ -67,6 +67,8 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "pickup_too_soon", err: domainorder.ErrPickupTooSoon, wantStatus: 422, wantCode: "pickup_too_soon"},
 		{name: "pickup_too_far", err: domainorder.ErrPickupTooFar, wantStatus: 422, wantCode: "pickup_too_far"},
 		{name: "pickup_closed_day", err: domainorder.ErrPickupClosedDay, wantStatus: 422, wantCode: "pickup_closed_day"},
+		{name: "pickup_sold_out", err: domainorder.ErrPickupSoldOut, wantStatus: 422, wantCode: "pickup_sold_out"},
+		{name: "invalid_guest_name", err: domainorder.ErrInvalidGuestName, wantStatus: 400, wantCode: "validation_error"},
 		{name: "pickup_outside_hours", err: domainorder.ErrPickupOutsideHours, wantStatus: 422, wantCode: "pickup_outside_hours"},
 		{name: "pickup_off_slot", err: domainorder.ErrPickupOffSlot, wantStatus: 422, wantCode: "pickup_off_slot"},
 		{name: "pickup_slot_full", err: domainorder.ErrPickupSlotFull, wantStatus: 409, wantCode: "pickup_slot_full"},

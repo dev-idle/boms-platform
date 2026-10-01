@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { patchStaffOrderStatusInputSchema, staffOrderSchema, staffPickupsSchema } from "./index";
+import {
+  createStaffOrderInputSchema,
+  patchStaffOrderStatusInputSchema,
+  staffOrderSchema,
+  staffPickupsSchema,
+} from "./index";
 
 const order = {
   id: "00000000-0000-4000-8000-000000000001",
   code: "CH-260928-001",
   status: "confirmed",
+  channel: "online",
   order_type: "pre_order",
   subtotal_cents: 4500,
   discount_cents: 0,
@@ -112,6 +118,7 @@ describe("staff pickups", () => {
     id: order.id,
     code: order.code,
     status: "ready",
+    channel: "online",
     total_cents: 4500,
     item_count: 2,
     customer: order.customer,
@@ -127,5 +134,44 @@ describe("staff pickups", () => {
   it("rejects a pickup without a time", () => {
     const result = staffPickupsSchema.safeParse({ slot_minutes: 30, pickups: [{ ...pickup, pickup_at: null }] });
     expect(result.success).toBe(false);
+  });
+});
+
+// The counter takes orders for guests, who have no account, and hands them
+// over as their cash is paid.
+describe("orders staff take", () => {
+  it("reads a guest's order, with no account behind it", () => {
+    const guest = staffOrderSchema.parse({
+      ...order,
+      channel: "counter",
+      timeline: [],
+      customer: { user_id: null, email: null, display_name: "Lan", phone: "+84901234567" },
+      payment: { provider: "cash", status: "created", captured_at: null, refund_requested_at: null, refunded_at: null },
+    });
+    expect(guest.customer.user_id).toBeNull();
+    expect(guest.payment?.provider).toBe("cash");
+  });
+
+  it("hands an order over with its cash, or its code, never neither", () => {
+    expect(patchStaffOrderStatusInputSchema.safeParse({ status: "fulfilled", cash_collected: true }).success).toBe(true);
+    expect(patchStaffOrderStatusInputSchema.safeParse({ status: "fulfilled", cash_collected: false }).success).toBe(false);
+    expect(patchStaffOrderStatusInputSchema.safeParse({ status: "fulfilled" }).success).toBe(false);
+  });
+
+  it("takes a guest with a name and a Vietnam mobile number", () => {
+    const taken = createStaffOrderInputSchema.parse({
+      channel: "counter",
+      guest: { name: " Lan ", phone: "0901 234 567" },
+      pickup_at: "2026-10-02T09:00:00+07:00",
+      items: [{ product_id: "00000000-0000-4000-8000-000000000003", quantity: 2 }],
+    });
+    expect(taken.guest).toEqual({ name: "Lan", phone: "+84901234567" });
+    const noPhone = createStaffOrderInputSchema.safeParse({
+      channel: "counter",
+      guest: { name: "Lan", phone: "" },
+      pickup_at: "2026-10-02T09:00:00+07:00",
+      items: [{ product_id: "00000000-0000-4000-8000-000000000003", quantity: 2 }],
+    });
+    expect(noPhone.success).toBe(false);
   });
 });

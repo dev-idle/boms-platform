@@ -89,6 +89,25 @@ func TestOrderComposer(t *testing.T) {
 		assert.NotContains(t, requested.Text, "Pickup code", "not while staff review the order")
 	})
 
+	t.Run("an_order_taken_on_the_phone_is_paid_in_cash_at_the_counter", func(t *testing.T) {
+		t.Parallel()
+		phone := func(notice domainorder.Notice) port.OrderEmail {
+			msg := orderEmail(notice)
+			msg.Order.Channel = domainorder.ChannelPhone
+			return msg
+		}
+		placed, err := newComposer(t).ComposeOrderEmail(phone(domainorder.NoticePlaced))
+		require.NoError(t, err)
+		assert.Contains(t, placed.Text, "You pay in cash when you collect it")
+		ready, err := newComposer(t).ComposeOrderEmail(phone(domainorder.NoticeReady))
+		require.NoError(t, err)
+		assert.Contains(t, ready.Text, "pay at the counter")
+		assert.NotContains(t, ready.Text, "pickup code")
+		missed, err := newComposer(t).ComposeOrderEmail(phone(domainorder.NoticeNoShow))
+		require.NoError(t, err)
+		assert.NotContains(t, missed.Text, "refunded", "nothing was paid")
+	})
+
 	t.Run("ready_and_cancelled_say_so_without_the_receipt", func(t *testing.T) {
 		t.Parallel()
 		ready, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeReady))

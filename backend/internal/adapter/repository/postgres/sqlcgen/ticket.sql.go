@@ -61,8 +61,9 @@ const countStationTickets = `-- name: CountStationTickets :one
 SELECT count(*)::bigint AS count
 FROM order_tickets t
 INNER JOIN orders o ON o.id = t.order_id
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-WHERE t.station = $1::station
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+  AND t.station = $1::station
   AND t.status <> 'cancelled'::ticket_status
   AND o.status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
   AND (
@@ -81,8 +82,9 @@ type CountStationTicketsParams struct {
 //	SELECT count(*)::bigint AS count
 //	FROM order_tickets t
 //	INNER JOIN orders o ON o.id = t.order_id
-//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	WHERE t.station = $1::station
+//	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+//	  AND t.station = $1::station
 //	  AND t.status <> 'cancelled'::ticket_status
 //	  AND o.status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
 //	  AND (
@@ -403,12 +405,13 @@ FROM (
     o.code AS order_code,
     o.status AS order_status,
     o.pickup_at,
-    cp.display_name AS customer_display_name
+    COALESCE(cp.display_name, o.guest_name) AS customer_display_name
   FROM order_tickets t
   INNER JOIN orders o ON o.id = t.order_id
-  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-  WHERE t.station = $1::station
+  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+  WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+    AND t.station = $1::station
     AND t.status <> 'cancelled'::ticket_status
     AND o.status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
     AND (
@@ -474,12 +477,13 @@ type ListStationTicketsRow struct {
 //	    o.code AS order_code,
 //	    o.status AS order_status,
 //	    o.pickup_at,
-//	    cp.display_name AS customer_display_name
+//	    COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 //	  FROM order_tickets t
 //	  INNER JOIN orders o ON o.id = t.order_id
-//	  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-//	  WHERE t.station = $1::station
+//	  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+//	  WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+//	    AND t.station = $1::station
 //	    AND t.status <> 'cancelled'::ticket_status
 //	    AND o.status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
 //	    AND (

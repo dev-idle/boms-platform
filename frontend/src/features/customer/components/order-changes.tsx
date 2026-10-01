@@ -4,10 +4,11 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import type { Fulfillment } from "@/lib/schemas/order";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useCancelOrder } from "../hooks";
-import type { Fulfillment, Order } from "../schemas";
+import type { Order } from "../schemas";
 import { OrderReschedule } from "./order-reschedule";
 
 const RESCHEDULE_ID = "order-reschedule";

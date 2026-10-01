@@ -311,7 +311,8 @@ func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment,
 	if err != nil {
 		return err
 	}
-	customer := &port.OrderActor{ID: order.UserID, Role: domainuser.RoleCustomer}
+	// An order paid online is always its customer's.
+	customer := &port.OrderActor{ID: *order.UserID, Role: domainuser.RoleCustomer}
 	_, err = u.transitions.applyInTx(txCtx, customer, port.UpdateOrderStatusParams{
 		OrderID:    order.ID,
 		FromStatus: domainorder.StatusAwaitingPayment,

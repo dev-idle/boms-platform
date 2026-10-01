@@ -41,12 +41,18 @@ export function PrivacyPolicy() {
             accepted with it.
           </li>
           <li>
+            <strong>Orders taken at the counter or by phone:</strong> if you order there without an
+            account, the name and phone number you give us, so we can hand the order over and reach
+            you about it.
+          </li>
+          <li>
             <strong>Custom cakes:</strong> the options and message you choose, and any reference photo
             you upload. Cloudinary stores the photo at an unlisted address that we never publish.
           </li>
           <li>
-            <strong>Payments:</strong> PayPal handles your payment. We receive its reference and
-            the amount, never your card or bank details.
+            <strong>Payments:</strong> PayPal handles an online payment. We receive its reference and
+            the amount, never your card or bank details. An order taken at the counter or by phone is
+            paid in cash when you collect it.
           </li>
           <li>
             <strong>Signing in:</strong> your sign-in sessions with the device and network address
@@ -102,6 +108,10 @@ export function PrivacyPolicy() {
           <li>
             Your orders, as part of our sales records, for as long as accounting law requires — after
             you delete your account, without your name or contact details.
+          </li>
+          <li>
+            The name and phone number given for an order taken without an account, with that order in
+            our sales records.
           </li>
         </ul>
       </PolicySection>

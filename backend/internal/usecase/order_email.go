@@ -53,6 +53,11 @@ func (u *OrderEmailUsecase) Send(ctx context.Context, task port.OrderEmailTask) 
 		u.skip(task, "order_moved_on")
 		return nil
 	}
+	// A guest's order, taken at the counter or on the phone, has no address.
+	if order.CustomerEmail == nil {
+		u.skip(task, "guest_order")
+		return nil
+	}
 	// Checkout needs a confirmed address; this keeps any order placed before
 	// that rule from mailing an address nobody confirmed.
 	if !order.CustomerEmailVerified {
@@ -65,14 +70,14 @@ func (u *OrderEmailUsecase) Send(ctx context.Context, task port.OrderEmailTask) 
 	}
 	msg := port.OrderEmail{
 		Notice: task.Notice,
-		To:     order.CustomerEmail,
+		To:     *order.CustomerEmail,
 		Order:  order.Order,
 		Items:  items,
 	}
 	if order.CustomerDisplayName != nil {
 		msg.CustomerName = *order.CustomerDisplayName
 	}
-	if order.Order.Status.HasPickupCode() {
+	if order.Order.HasPickupCode() {
 		msg.PickupCode = u.codes.Of(order.Order.ID)
 	}
 	if task.Notice == domainorder.NoticeCancelled {

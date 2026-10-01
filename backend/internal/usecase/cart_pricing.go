@@ -6,12 +6,14 @@ import (
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
+
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	"github.com/boms/backend/internal/port"
-	"github.com/google/uuid"
 )
 
 const (
@@ -196,7 +198,7 @@ func (u *CartUsecase) fulfillmentOf(ctx context.Context, lines []pricedCartLine)
 			comboIDs = append(comboIDs, *line.Item.ComboID)
 		}
 	}
-	return u.products.FulfillmentOf(ctx, productIDs, comboIDs)
+	return u.products.FulfillmentOf(ctx, productIDs, comboIDs, domainstore.DayOf(time.Now()))
 }
 
 // orderFulfillment is what an order's items ask of the bakery now, read the
@@ -212,7 +214,7 @@ func (u *CartUsecase) orderFulfillment(ctx context.Context, items []domainorder.
 			comboIDs = append(comboIDs, *item.ComboID)
 		}
 	}
-	return u.products.FulfillmentOf(ctx, productIDs, comboIDs)
+	return u.products.FulfillmentOf(ctx, productIDs, comboIDs, domainstore.DayOf(time.Now()))
 }
 
 func summarizeCart(lines []pricedCartLine, discount *domaindiscount.Code, now time.Time) cartTotals {

@@ -102,7 +102,7 @@ func TestPickupHandoff_Integration(t *testing.T) {
 	t.Run("no_handover_while_tries_cannot_be_counted", func(t *testing.T) {
 		order := f.placeConfirmed(t, []uuid.UUID{f.pastry}, nil, 12)
 		setStatus(order.ID, domainorder.StatusReady)
-		staff := usecase.NewStaffOrderUsecase(f.orders, f.tickets, f.pool, f.outbox, nil, zap.NewNop(),
+		staff := usecase.NewStaffOrderUsecase(f.users, f.orders, f.tickets, f.pool, f.outbox, nil, zap.NewNop(),
 			postgresadapter.NewPaymentRepository(f.pool), postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC,
 			testPickupCodes, brokenQuota{}, handoffLimit)
 

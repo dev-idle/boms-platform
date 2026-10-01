@@ -37,7 +37,7 @@ func TestAccountEmails_Publish(t *testing.T) {
 		t.Parallel()
 		events := []domainevent.Event{
 			domainaccount.VerificationRequestedEvent(userID),
-			domainorder.CreatedEvent(domainorder.Order{ID: uuid.New(), UserID: userID}),
+			domainorder.CreatedEvent(domainorder.Order{ID: uuid.New(), UserID: &userID}),
 			domainaccount.PasswordResetRequestedEvent(userID),
 		}
 		queue := &recordingAccountQueue{}

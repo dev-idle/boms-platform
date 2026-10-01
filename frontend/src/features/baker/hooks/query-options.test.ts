@@ -12,9 +12,9 @@ describe("bakerQueryKeysForEvent", () => {
     expect(bakerQueryKeys.ticket("t-1").slice(0, 2)).toEqual([...bakerQueryKeys.ticketsRoot]);
   });
 
-  it("ignores new orders, which are not production work yet", () => {
+  it("refreshes the queue when the counter takes an order, which starts accepted", () => {
     expect(
       bakerQueryKeysForEvent({ type: "order.created", data: { order_id: "o-1" } }),
-    ).toEqual([]);
+    ).toEqual([bakerQueryKeys.ticketsRoot]);
   });
 });

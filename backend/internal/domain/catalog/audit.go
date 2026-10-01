@@ -17,3 +17,7 @@ const (
 	AuditActionManagerUpdatedDiscountCode domainuser.AuditAction = "manager.updated_discount_code"
 	AuditActionManagerDeletedDiscountCode domainuser.AuditAction = "manager.deleted_discount_code"
 )
+
+// AuditActionStaffMarkedSoldOut records the counter marking a product sold out
+// for the day, or back.
+const AuditActionStaffMarkedSoldOut domainuser.AuditAction = "staff.marked_product_sold_out"

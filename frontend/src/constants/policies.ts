@@ -4,7 +4,7 @@
  * `domain/policy.TermsVersion`, fixture `contracts/terms-version.json`). The
  * API refuses any other version, so change it only together with the pages.
  */
-export const TERMS_VERSION = "2026-10-01.2";
+export const TERMS_VERSION = "2026-10-01.3";
 
 /** The day the current version took effect, as the policy pages state it. */
 export const POLICIES_EFFECTIVE = "1 October 2026";

@@ -16,7 +16,7 @@ import (
 const countCustomerDiscountUses = `-- name: CountCustomerDiscountUses :one
 SELECT count(*)::bigint AS count
 FROM orders
-WHERE user_id = $1
+WHERE user_id = $1::uuid
   AND discount_code_id = $2
   AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 `
@@ -30,7 +30,7 @@ type CountCustomerDiscountUsesParams struct {
 //
 //	SELECT count(*)::bigint AS count
 //	FROM orders
-//	WHERE user_id = $1
+//	WHERE user_id = $1::uuid
 //	  AND discount_code_id = $2
 //	  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 func (q *Queries) CountCustomerDiscountUses(ctx context.Context, arg CountCustomerDiscountUsesParams) (int64, error) {
@@ -43,7 +43,7 @@ func (q *Queries) CountCustomerDiscountUses(ctx context.Context, arg CountCustom
 const countCustomerOrdersBetween = `-- name: CountCustomerOrdersBetween :one
 SELECT count(*)::bigint AS count
 FROM orders
-WHERE user_id = $1
+WHERE user_id = $1::uuid
   AND pickup_at >= $2::timestamptz
   AND pickup_at < $3::timestamptz
   AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
@@ -59,7 +59,7 @@ type CountCustomerOrdersBetweenParams struct {
 //
 //	SELECT count(*)::bigint AS count
 //	FROM orders
-//	WHERE user_id = $1
+//	WHERE user_id = $1::uuid
 //	  AND pickup_at >= $2::timestamptz
 //	  AND pickup_at < $3::timestamptz
 //	  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
@@ -161,7 +161,10 @@ INSERT INTO orders (
   terms_version,
   terms_accepted_at,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 )
 VALUES (
   $1,
@@ -179,8 +182,14 @@ VALUES (
   -- created_at takes.
   CASE WHEN $11::text IS NULL THEN NULL ELSE now() END,
   $12,
-  -- Held unpaid until then, on the database clock.
-  now() + make_interval(mins => $13::int)
+  -- Held unpaid until then, on the database clock. An order staff take is
+  -- paid at the counter and holds nothing.
+  CASE WHEN $2::order_status = 'awaiting_payment'::order_status
+    THEN now() + make_interval(mins => $13::int)
+  END,
+  $14,
+  $15,
+  $16
 )
 RETURNING
   id,
@@ -199,23 +208,29 @@ RETURNING
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 `
 
 type CreateOrderParams struct {
-	UserID               uuid.UUID   `json:"userId"`
-	Status               OrderStatus `json:"status"`
-	SubtotalCents        int64       `json:"subtotalCents"`
-	DiscountCents        int64       `json:"discountCents"`
-	TotalCents           int64       `json:"totalCents"`
-	DiscountCodeID       *uuid.UUID  `json:"discountCodeId"`
-	DiscountCodeSnapshot *string     `json:"discountCodeSnapshot"`
-	PickupAt             *time.Time  `json:"pickupAt"`
-	Code                 string      `json:"code"`
-	OrderType            OrderType   `json:"orderType"`
-	TermsVersion         *string     `json:"termsVersion"`
-	CheckoutKey          *uuid.UUID  `json:"checkoutKey"`
-	PaymentHoldMinutes   int32       `json:"paymentHoldMinutes"`
+	UserID               *uuid.UUID   `json:"userId"`
+	Status               OrderStatus  `json:"status"`
+	SubtotalCents        int64        `json:"subtotalCents"`
+	DiscountCents        int64        `json:"discountCents"`
+	TotalCents           int64        `json:"totalCents"`
+	DiscountCodeID       *uuid.UUID   `json:"discountCodeId"`
+	DiscountCodeSnapshot *string      `json:"discountCodeSnapshot"`
+	PickupAt             *time.Time   `json:"pickupAt"`
+	Code                 string       `json:"code"`
+	OrderType            OrderType    `json:"orderType"`
+	TermsVersion         *string      `json:"termsVersion"`
+	CheckoutKey          *uuid.UUID   `json:"checkoutKey"`
+	PaymentHoldMinutes   int32        `json:"paymentHoldMinutes"`
+	Channel              OrderChannel `json:"channel"`
+	GuestName            *string      `json:"guestName"`
+	GuestPhone           *string      `json:"guestPhone"`
 }
 
 // CreateOrder
@@ -234,7 +249,10 @@ type CreateOrderParams struct {
 //	  terms_version,
 //	  terms_accepted_at,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 //	)
 //	VALUES (
 //	  $1,
@@ -252,8 +270,14 @@ type CreateOrderParams struct {
 //	  -- created_at takes.
 //	  CASE WHEN $11::text IS NULL THEN NULL ELSE now() END,
 //	  $12,
-//	  -- Held unpaid until then, on the database clock.
-//	  now() + make_interval(mins => $13::int)
+//	  -- Held unpaid until then, on the database clock. An order staff take is
+//	  -- paid at the counter and holds nothing.
+//	  CASE WHEN $2::order_status = 'awaiting_payment'::order_status
+//	    THEN now() + make_interval(mins => $13::int)
+//	  END,
+//	  $14,
+//	  $15,
+//	  $16
 //	)
 //	RETURNING
 //	  id,
@@ -272,7 +296,10 @@ type CreateOrderParams struct {
 //	  terms_accepted_at,
 //	  terms_version,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
 	row := q.db.QueryRow(ctx, createOrder,
 		arg.UserID,
@@ -288,6 +315,9 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		arg.TermsVersion,
 		arg.CheckoutKey,
 		arg.PaymentHoldMinutes,
+		arg.Channel,
+		arg.GuestName,
+		arg.GuestPhone,
 	)
 	var i Order
 	err := row.Scan(
@@ -308,6 +338,9 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.TermsVersion,
 		&i.CheckoutKey,
 		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
 	)
 	return i, err
 }
@@ -464,7 +497,10 @@ RETURNING
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 `
 
 type ExpireOrderParams struct {
@@ -498,7 +534,10 @@ type ExpireOrderParams struct {
 //	  terms_accepted_at,
 //	  terms_version,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 func (q *Queries) ExpireOrder(ctx context.Context, arg ExpireOrderParams) (Order, error) {
 	row := q.db.QueryRow(ctx, expireOrder, arg.ID, arg.GraceSeconds)
 	var i Order
@@ -520,6 +559,9 @@ func (q *Queries) ExpireOrder(ctx context.Context, arg ExpireOrderParams) (Order
 		&i.TermsVersion,
 		&i.CheckoutKey,
 		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
 	)
 	return i, err
 }
@@ -542,9 +584,12 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
-WHERE user_id = $1
+WHERE user_id = $1::uuid
   AND checkout_key = $2
 `
 
@@ -572,9 +617,12 @@ type GetOrderByCheckoutKeyParams struct {
 //	  terms_accepted_at,
 //	  terms_version,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 //	FROM orders
-//	WHERE user_id = $1
+//	WHERE user_id = $1::uuid
 //	  AND checkout_key = $2
 func (q *Queries) GetOrderByCheckoutKey(ctx context.Context, arg GetOrderByCheckoutKeyParams) (Order, error) {
 	row := q.db.QueryRow(ctx, getOrderByCheckoutKey, arg.UserID, arg.CheckoutKey)
@@ -597,6 +645,9 @@ func (q *Queries) GetOrderByCheckoutKey(ctx context.Context, arg GetOrderByCheck
 		&i.TermsVersion,
 		&i.CheckoutKey,
 		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
 	)
 	return i, err
 }
@@ -619,9 +670,12 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
-WHERE id = $1 AND user_id = $2
+WHERE id = $1 AND user_id = $2::uuid
 `
 
 type GetOrderByIDForUserParams struct {
@@ -648,9 +702,12 @@ type GetOrderByIDForUserParams struct {
 //	  terms_accepted_at,
 //	  terms_version,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 //	FROM orders
-//	WHERE id = $1 AND user_id = $2
+//	WHERE id = $1 AND user_id = $2::uuid
 func (q *Queries) GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUserParams) (Order, error) {
 	row := q.db.QueryRow(ctx, getOrderByIDForUser, arg.ID, arg.UserID)
 	var i Order
@@ -672,6 +729,90 @@ func (q *Queries) GetOrderByIDForUser(ctx context.Context, arg GetOrderByIDForUs
 		&i.TermsVersion,
 		&i.CheckoutKey,
 		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
+	)
+	return i, err
+}
+
+const getStaffOrderByCheckoutKey = `-- name: GetStaffOrderByCheckoutKey :one
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
+FROM orders
+WHERE checkout_key = $1
+  AND channel <> 'online'::order_channel
+`
+
+// The order staff took with that Idempotency-Key, whoever it is for.
+//
+//	SELECT
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  pickup_at,
+//	  created_at,
+//	  updated_at,
+//	  code,
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
+//	FROM orders
+//	WHERE checkout_key = $1
+//	  AND channel <> 'online'::order_channel
+func (q *Queries) GetStaffOrderByCheckoutKey(ctx context.Context, checkoutKey *uuid.UUID) (Order, error) {
+	row := q.db.QueryRow(ctx, getStaffOrderByCheckoutKey, checkoutKey)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.PickupAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
 	)
 	return i, err
 }
@@ -680,7 +821,7 @@ const hasOpenOrdersForUser = `-- name: HasOpenOrdersForUser :one
 SELECT EXISTS (
   SELECT 1
   FROM orders
-  WHERE user_id = $1
+  WHERE user_id = $1::uuid
     AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status, 'no_show'::order_status)
 ) AS open
 `
@@ -692,11 +833,11 @@ SELECT EXISTS (
 //	SELECT EXISTS (
 //	  SELECT 1
 //	  FROM orders
-//	  WHERE user_id = $1
+//	  WHERE user_id = $1::uuid
 //	    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status, 'no_show'::order_status)
 //	) AS open
-func (q *Queries) HasOpenOrdersForUser(ctx context.Context, userID uuid.UUID) (bool, error) {
-	row := q.db.QueryRow(ctx, hasOpenOrdersForUser, userID)
+func (q *Queries) HasOpenOrdersForUser(ctx context.Context, dollar_1 uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasOpenOrdersForUser, dollar_1)
 	var open bool
 	err := row.Scan(&open)
 	return open, err
@@ -1038,9 +1179,12 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
-WHERE user_id = $1
+WHERE user_id = $1::uuid
   AND (
     $2::order_status IS NULL
     OR status = $2::order_status
@@ -1085,9 +1229,12 @@ type ListOrdersByUserParams struct {
 //	  terms_accepted_at,
 //	  terms_version,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 //	FROM orders
-//	WHERE user_id = $1
+//	WHERE user_id = $1::uuid
 //	  AND (
 //	    $2::order_status IS NULL
 //	    OR status = $2::order_status
@@ -1136,6 +1283,9 @@ func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserPara
 			&i.TermsVersion,
 			&i.CheckoutKey,
 			&i.PaymentDueAt,
+			&i.Channel,
+			&i.GuestName,
+			&i.GuestPhone,
 		); err != nil {
 			return nil, err
 		}
@@ -1165,9 +1315,12 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
-WHERE user_id = $1
+WHERE user_id = $1::uuid
   AND (
     $2::timestamptz IS NULL
     OR (created_at, id) < ($2::timestamptz, $3::uuid)
@@ -1204,9 +1357,12 @@ type ListOrdersByUserBeforeParams struct {
 //	  terms_accepted_at,
 //	  terms_version,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 //	FROM orders
-//	WHERE user_id = $1
+//	WHERE user_id = $1::uuid
 //	  AND (
 //	    $2::timestamptz IS NULL
 //	    OR (created_at, id) < ($2::timestamptz, $3::uuid)
@@ -1245,6 +1401,9 @@ func (q *Queries) ListOrdersByUserBefore(ctx context.Context, arg ListOrdersByUs
 			&i.TermsVersion,
 			&i.CheckoutKey,
 			&i.PaymentDueAt,
+			&i.Channel,
+			&i.GuestName,
+			&i.GuestPhone,
 		); err != nil {
 			return nil, err
 		}
@@ -1259,7 +1418,7 @@ func (q *Queries) ListOrdersByUserBefore(ctx context.Context, arg ListOrdersByUs
 const listOrdersByUserCount = `-- name: ListOrdersByUserCount :one
 SELECT COUNT(*)::bigint AS count
 FROM orders
-WHERE user_id = $1
+WHERE user_id = $1::uuid
   AND (
     $2::order_status IS NULL
     OR status = $2::order_status
@@ -1285,7 +1444,7 @@ type ListOrdersByUserCountParams struct {
 //
 //	SELECT COUNT(*)::bigint AS count
 //	FROM orders
-//	WHERE user_id = $1
+//	WHERE user_id = $1::uuid
 //	  AND (
 //	    $2::order_status IS NULL
 //	    OR status = $2::order_status
@@ -1347,7 +1506,10 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
 WHERE id = $1
 FOR UPDATE
@@ -1374,7 +1536,10 @@ FOR UPDATE
 //	  terms_accepted_at,
 //	  terms_version,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 //	FROM orders
 //	WHERE id = $1
 //	FOR UPDATE
@@ -1399,6 +1564,9 @@ func (q *Queries) LockOrder(ctx context.Context, id uuid.UUID) (Order, error) {
 		&i.TermsVersion,
 		&i.CheckoutKey,
 		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
 	)
 	return i, err
 }
@@ -1498,7 +1666,10 @@ RETURNING
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 `
 
 type RescheduleOrderParams struct {
@@ -1533,7 +1704,10 @@ type RescheduleOrderParams struct {
 //	  terms_accepted_at,
 //	  terms_version,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 func (q *Queries) RescheduleOrder(ctx context.Context, arg RescheduleOrderParams) (Order, error) {
 	row := q.db.QueryRow(ctx, rescheduleOrder, arg.PickupAt, arg.OrderType, arg.ID)
 	var i Order
@@ -1555,6 +1729,9 @@ func (q *Queries) RescheduleOrder(ctx context.Context, arg RescheduleOrderParams
 		&i.TermsVersion,
 		&i.CheckoutKey,
 		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
 	)
 	return i, err
 }
@@ -1574,34 +1751,37 @@ SELECT
   o.updated_at,
   o.code,
   o.order_type,
+  o.channel,
   u.email AS customer_email,
   (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-  cp.display_name AS customer_display_name,
-  cp.phone AS customer_phone
+  COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+  COALESCE(cp.phone, o.guest_phone) AS customer_phone
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 WHERE o.id = $1
+  AND (o.user_id IS NULL OR u.id IS NOT NULL)
 `
 
 type StaffGetOrderByIDRow struct {
-	ID                    uuid.UUID   `json:"id"`
-	UserID                uuid.UUID   `json:"userId"`
-	Status                OrderStatus `json:"status"`
-	SubtotalCents         int64       `json:"subtotalCents"`
-	DiscountCents         int64       `json:"discountCents"`
-	TotalCents            int64       `json:"totalCents"`
-	DiscountCodeID        *uuid.UUID  `json:"discountCodeId"`
-	DiscountCodeSnapshot  *string     `json:"discountCodeSnapshot"`
-	PickupAt              *time.Time  `json:"pickupAt"`
-	CreatedAt             time.Time   `json:"createdAt"`
-	UpdatedAt             time.Time   `json:"updatedAt"`
-	Code                  string      `json:"code"`
-	OrderType             OrderType   `json:"orderType"`
-	CustomerEmail         string      `json:"customerEmail"`
-	CustomerEmailVerified bool        `json:"customerEmailVerified"`
-	CustomerDisplayName   *string     `json:"customerDisplayName"`
-	CustomerPhone         *string     `json:"customerPhone"`
+	ID                    uuid.UUID    `json:"id"`
+	UserID                *uuid.UUID   `json:"userId"`
+	Status                OrderStatus  `json:"status"`
+	SubtotalCents         int64        `json:"subtotalCents"`
+	DiscountCents         int64        `json:"discountCents"`
+	TotalCents            int64        `json:"totalCents"`
+	DiscountCodeID        *uuid.UUID   `json:"discountCodeId"`
+	DiscountCodeSnapshot  *string      `json:"discountCodeSnapshot"`
+	PickupAt              *time.Time   `json:"pickupAt"`
+	CreatedAt             time.Time    `json:"createdAt"`
+	UpdatedAt             time.Time    `json:"updatedAt"`
+	Code                  string       `json:"code"`
+	OrderType             OrderType    `json:"orderType"`
+	Channel               OrderChannel `json:"channel"`
+	CustomerEmail         *string      `json:"customerEmail"`
+	CustomerEmailVerified bool         `json:"customerEmailVerified"`
+	CustomerDisplayName   *string      `json:"customerDisplayName"`
+	CustomerPhone         *string      `json:"customerPhone"`
 }
 
 // StaffGetOrderByID
@@ -1620,14 +1800,16 @@ type StaffGetOrderByIDRow struct {
 //	  o.updated_at,
 //	  o.code,
 //	  o.order_type,
+//	  o.channel,
 //	  u.email AS customer_email,
 //	  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-//	  cp.display_name AS customer_display_name,
-//	  cp.phone AS customer_phone
+//	  COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+//	  COALESCE(cp.phone, o.guest_phone) AS customer_phone
 //	FROM orders o
-//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+//	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 //	WHERE o.id = $1
+//	  AND (o.user_id IS NULL OR u.id IS NOT NULL)
 func (q *Queries) StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGetOrderByIDRow, error) {
 	row := q.db.QueryRow(ctx, staffGetOrderByID, id)
 	var i StaffGetOrderByIDRow
@@ -1645,6 +1827,7 @@ func (q *Queries) StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGet
 		&i.UpdatedAt,
 		&i.Code,
 		&i.OrderType,
+		&i.Channel,
 		&i.CustomerEmail,
 		&i.CustomerEmailVerified,
 		&i.CustomerDisplayName,
@@ -1668,13 +1851,15 @@ SELECT
   o.updated_at,
   o.code,
   o.order_type,
+  o.channel,
   u.email AS customer_email,
   (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-  cp.display_name AS customer_display_name
+  COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+  AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
   AND (o.status <> 'cancelled'::order_status OR EXISTS (
     SELECT 1 FROM order_status_events e
     WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
@@ -1699,24 +1884,26 @@ type StaffListOrdersParams struct {
 }
 
 type StaffListOrdersRow struct {
-	ID                    uuid.UUID   `json:"id"`
-	UserID                uuid.UUID   `json:"userId"`
-	Status                OrderStatus `json:"status"`
-	SubtotalCents         int64       `json:"subtotalCents"`
-	DiscountCents         int64       `json:"discountCents"`
-	TotalCents            int64       `json:"totalCents"`
-	DiscountCodeID        *uuid.UUID  `json:"discountCodeId"`
-	DiscountCodeSnapshot  *string     `json:"discountCodeSnapshot"`
-	PickupAt              *time.Time  `json:"pickupAt"`
-	CreatedAt             time.Time   `json:"createdAt"`
-	UpdatedAt             time.Time   `json:"updatedAt"`
-	Code                  string      `json:"code"`
-	OrderType             OrderType   `json:"orderType"`
-	CustomerEmail         string      `json:"customerEmail"`
-	CustomerEmailVerified bool        `json:"customerEmailVerified"`
-	CustomerDisplayName   *string     `json:"customerDisplayName"`
+	ID                    uuid.UUID    `json:"id"`
+	UserID                *uuid.UUID   `json:"userId"`
+	Status                OrderStatus  `json:"status"`
+	SubtotalCents         int64        `json:"subtotalCents"`
+	DiscountCents         int64        `json:"discountCents"`
+	TotalCents            int64        `json:"totalCents"`
+	DiscountCodeID        *uuid.UUID   `json:"discountCodeId"`
+	DiscountCodeSnapshot  *string      `json:"discountCodeSnapshot"`
+	PickupAt              *time.Time   `json:"pickupAt"`
+	CreatedAt             time.Time    `json:"createdAt"`
+	UpdatedAt             time.Time    `json:"updatedAt"`
+	Code                  string       `json:"code"`
+	OrderType             OrderType    `json:"orderType"`
+	Channel               OrderChannel `json:"channel"`
+	CustomerEmail         *string      `json:"customerEmail"`
+	CustomerEmailVerified bool         `json:"customerEmailVerified"`
+	CustomerDisplayName   *string      `json:"customerDisplayName"`
 }
 
+// A guest's order has no account; one whose account was erased is not shown.
 // An order not paid, now or ever, is not the bakery's to see: one cancelled
 // is only if it was accepted before (domainorder.SeenByStaff).
 // What still needs doing comes first, soonest pickup first; then the orders
@@ -1736,13 +1923,15 @@ type StaffListOrdersRow struct {
 //	  o.updated_at,
 //	  o.code,
 //	  o.order_type,
+//	  o.channel,
 //	  u.email AS customer_email,
 //	  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-//	  cp.display_name AS customer_display_name
+//	  COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 //	FROM orders o
-//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-//	WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+//	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+//	WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+//	  AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
 //	  AND (o.status <> 'cancelled'::order_status OR EXISTS (
 //	    SELECT 1 FROM order_status_events e
 //	    WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
@@ -1781,6 +1970,7 @@ func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams
 			&i.UpdatedAt,
 			&i.Code,
 			&i.OrderType,
+			&i.Channel,
 			&i.CustomerEmail,
 			&i.CustomerEmailVerified,
 			&i.CustomerDisplayName,
@@ -1798,8 +1988,9 @@ func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams
 const staffListOrdersCount = `-- name: StaffListOrdersCount :one
 SELECT COUNT(*)::bigint AS count
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+  AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
   AND (o.status <> 'cancelled'::order_status OR EXISTS (
     SELECT 1 FROM order_status_events e
     WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
@@ -1814,8 +2005,9 @@ WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status
 //
 //	SELECT COUNT(*)::bigint AS count
 //	FROM orders o
-//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+//	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+//	  AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
 //	  AND (o.status <> 'cancelled'::order_status OR EXISTS (
 //	    SELECT 1 FROM order_status_events e
 //	    WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
@@ -1846,13 +2038,15 @@ SELECT
   o.updated_at,
   o.code,
   o.order_type,
+  o.channel,
   u.email AS customer_email,
   (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-  cp.display_name AS customer_display_name
+  COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-WHERE o.pickup_at >= $1::timestamptz
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+  AND o.pickup_at >= $1::timestamptz
   AND o.pickup_at < $2::timestamptz
   AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
                    'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
@@ -1868,22 +2062,23 @@ type StaffListPickupsParams struct {
 }
 
 type StaffListPickupsRow struct {
-	ID                    uuid.UUID   `json:"id"`
-	UserID                uuid.UUID   `json:"userId"`
-	Status                OrderStatus `json:"status"`
-	SubtotalCents         int64       `json:"subtotalCents"`
-	DiscountCents         int64       `json:"discountCents"`
-	TotalCents            int64       `json:"totalCents"`
-	DiscountCodeID        *uuid.UUID  `json:"discountCodeId"`
-	DiscountCodeSnapshot  *string     `json:"discountCodeSnapshot"`
-	PickupAt              *time.Time  `json:"pickupAt"`
-	CreatedAt             time.Time   `json:"createdAt"`
-	UpdatedAt             time.Time   `json:"updatedAt"`
-	Code                  string      `json:"code"`
-	OrderType             OrderType   `json:"orderType"`
-	CustomerEmail         string      `json:"customerEmail"`
-	CustomerEmailVerified bool        `json:"customerEmailVerified"`
-	CustomerDisplayName   *string     `json:"customerDisplayName"`
+	ID                    uuid.UUID    `json:"id"`
+	UserID                *uuid.UUID   `json:"userId"`
+	Status                OrderStatus  `json:"status"`
+	SubtotalCents         int64        `json:"subtotalCents"`
+	DiscountCents         int64        `json:"discountCents"`
+	TotalCents            int64        `json:"totalCents"`
+	DiscountCodeID        *uuid.UUID   `json:"discountCodeId"`
+	DiscountCodeSnapshot  *string      `json:"discountCodeSnapshot"`
+	PickupAt              *time.Time   `json:"pickupAt"`
+	CreatedAt             time.Time    `json:"createdAt"`
+	UpdatedAt             time.Time    `json:"updatedAt"`
+	Code                  string       `json:"code"`
+	OrderType             OrderType    `json:"orderType"`
+	Channel               OrderChannel `json:"channel"`
+	CustomerEmail         *string      `json:"customerEmail"`
+	CustomerEmailVerified bool         `json:"customerEmailVerified"`
+	CustomerDisplayName   *string      `json:"customerDisplayName"`
 }
 
 // The pickups of one bakery day, by time: every order the bakery took with a
@@ -1904,13 +2099,15 @@ type StaffListPickupsRow struct {
 //	  o.updated_at,
 //	  o.code,
 //	  o.order_type,
+//	  o.channel,
 //	  u.email AS customer_email,
 //	  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-//	  cp.display_name AS customer_display_name
+//	  COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 //	FROM orders o
-//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-//	WHERE o.pickup_at >= $1::timestamptz
+//	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+//	WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+//	  AND o.pickup_at >= $1::timestamptz
 //	  AND o.pickup_at < $2::timestamptz
 //	  AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
 //	                   'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
@@ -1944,6 +2141,7 @@ func (q *Queries) StaffListPickups(ctx context.Context, arg StaffListPickupsPara
 			&i.UpdatedAt,
 			&i.Code,
 			&i.OrderType,
+			&i.Channel,
 			&i.CustomerEmail,
 			&i.CustomerEmailVerified,
 			&i.CustomerDisplayName,
@@ -1961,8 +2159,9 @@ func (q *Queries) StaffListPickups(ctx context.Context, arg StaffListPickupsPara
 const staffListPickupsCount = `-- name: StaffListPickupsCount :one
 SELECT COUNT(*)::bigint AS count
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-WHERE o.pickup_at >= $1::timestamptz
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+  AND o.pickup_at >= $1::timestamptz
   AND o.pickup_at < $2::timestamptz
   AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
                    'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
@@ -1977,8 +2176,9 @@ type StaffListPickupsCountParams struct {
 //
 //	SELECT COUNT(*)::bigint AS count
 //	FROM orders o
-//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-//	WHERE o.pickup_at >= $1::timestamptz
+//	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+//	  AND o.pickup_at >= $1::timestamptz
 //	  AND o.pickup_at < $2::timestamptz
 //	  AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
 //	                   'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
@@ -2050,7 +2250,10 @@ RETURNING
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 `
 
 type UpdateOrderStatusParams struct {
@@ -2083,7 +2286,10 @@ type UpdateOrderStatusParams struct {
 //	  terms_accepted_at,
 //	  terms_version,
 //	  checkout_key,
-//	  payment_due_at
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
 func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (Order, error) {
 	row := q.db.QueryRow(ctx, updateOrderStatus, arg.ToStatus, arg.ID, arg.FromStatus)
 	var i Order
@@ -2105,6 +2311,9 @@ func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusPa
 		&i.TermsVersion,
 		&i.CheckoutKey,
 		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
 	)
 	return i, err
 }

@@ -86,13 +86,13 @@ type emailFixture struct {
 }
 
 func newEmailFixture(notice domainorder.Notice, status domainorder.Status) *emailFixture {
-	name := "Mai"
+	name, email := "Mai", "mai@example.com"
 	orderID := uuid.New()
 	return &emailFixture{
 		orders: &emailOrders{
 			row: &port.StaffOrderListRow{
-				Order:                 domainorder.Order{ID: orderID, Code: "CH-260930-007", Status: status},
-				CustomerEmail:         "mai@example.com",
+				Order:                 domainorder.Order{ID: orderID, Code: "CH-260930-007", Status: status, Channel: domainorder.ChannelOnline},
+				CustomerEmail:         &email,
 				CustomerEmailVerified: true,
 				CustomerDisplayName:   &name,
 			},

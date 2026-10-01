@@ -104,6 +104,7 @@ var (
 	ErrPickupOutsideHours           = New(http.StatusUnprocessableEntity, "pickup_outside_hours", "Pickup time is outside opening hours")
 	ErrPickupOffSlot                = New(http.StatusUnprocessableEntity, "pickup_off_slot", "Pickup time is not one of the pickup slots")
 	ErrPickupSlotFull               = New(http.StatusConflict, "pickup_slot_full", "That pickup slot is full")
+	ErrPickupSoldOut                = New(http.StatusUnprocessableEntity, "pickup_sold_out", "An item in the order is sold out that day; choose another day")
 	ErrInvalidTicketTransition      = New(http.StatusUnprocessableEntity, "invalid_ticket_transition", "That ticket cannot move to that status")
 	ErrTicketOrderNotActive         = New(http.StatusUnprocessableEntity, "ticket_order_not_active", "The order is not being made")
 	ErrTicketNotMovable             = New(http.StatusUnprocessableEntity, "ticket_not_movable", "Only a ticket nobody has started can move")

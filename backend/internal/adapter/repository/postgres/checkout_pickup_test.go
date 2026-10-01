@@ -414,7 +414,7 @@ func TestOrderRepository_PickupSlots_Integration(t *testing.T) {
 	customer := f.newCustomer(t, nil, nil)
 	for i, status := range []domainorder.Status{domainorder.StatusPending, domainorder.StatusCancelled} {
 		_, err := f.orders.Create(ctx, port.CreateOrderParams{
-			Code: fmt.Sprintf("CH-260101-%03d", i+1), UserID: customer, Status: status, Type: domainorder.TypePreOrder,
+			Code: fmt.Sprintf("CH-260101-%03d", i+1), UserID: &customer, Channel: domainorder.ChannelOnline, Status: status, Type: domainorder.TypePreOrder,
 			SubtotalCents: 100, TotalCents: 100, PickupAt: &slot,
 		})
 		require.NoError(t, err)
@@ -442,8 +442,9 @@ func TestCheckoutPickup_OffGridOrdersCount_Integration(t *testing.T) {
 	f := newCheckoutFixture(t, 4)
 	f.setSettings(t, func(s *domainstore.Settings) { s.SlotCapacity = 1 })
 	early := tomorrowAt(10, 15)
+	holder := f.newCustomer(t, nil, nil)
 	_, err := f.orders.Create(ctx, port.CreateOrderParams{
-		Code: "CH-260101-001", UserID: f.newCustomer(t, nil, nil), Status: domainorder.StatusConfirmed,
+		Code: "CH-260101-001", UserID: &holder, Channel: domainorder.ChannelOnline, Status: domainorder.StatusConfirmed,
 		Type: domainorder.TypePreOrder, SubtotalCents: 100, TotalCents: 100, PickupAt: &early,
 	})
 	require.NoError(t, err)

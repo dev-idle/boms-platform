@@ -42,6 +42,11 @@ type PaymentRepository interface {
 	// due; refundID is nil when the provider had refunded it already. Any other
 	// is apperrors.ErrNotFound: the refund was recorded already.
 	RecordRefund(ctx context.Context, paymentID uuid.UUID, refundID *string) (*domainpayment.Payment, error)
+	// CreateCash records the cash due for an order staff took.
+	CreateCash(ctx context.Context, orderID uuid.UUID, amountCents int64) error
+	// CollectCash records that the counter took the cash due on the order.
+	// An order with no cash due is apperrors.ErrNotFound.
+	CollectCash(ctx context.Context, orderID uuid.UUID) error
 }
 
 // PaymentOrderRequest asks a provider to take an order's total; the buyer

@@ -22,6 +22,7 @@ import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useStaffOrders } from "../hooks";
+import { StaffCustomerCell } from "./staff-customer-cell";
 import type { OrderStatus } from "@/lib/schemas/order";
 
 const PAGE_SIZE = DASHBOARD_STAFF_ORDERS_PAGE_SIZE;
@@ -105,16 +106,7 @@ export function StaffOrdersTable() {
                       <span className="text-order-code">{order.code}</span>
                     </td>
                     <td>
-                      <div className="db-table-stacked-cell min-w-0">
-                        <span className="db-table-cell-primary truncate">
-                          {order.customer.display_name ?? order.customer.email}
-                        </span>
-                        {order.customer.display_name ? (
-                          <span className="truncate text-caption-dashboard text-muted">
-                            {order.customer.email}
-                          </span>
-                        ) : null}
-                      </div>
+                      <StaffCustomerCell channel={order.channel} customer={order.customer} />
                     </td>
                     <td className="text-muted">
                       {order.pickup_at

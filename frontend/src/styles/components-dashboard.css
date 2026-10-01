@@ -1975,6 +1975,162 @@
     text-transform: uppercase;
   }
 
+  /* Availability: station, status and one action are fixed; the product and
+     its category share the rest, and below that the wrapper scrolls. */
+  .db-table--availability {
+    min-width: calc(
+      var(--db-table-col-station) + var(--db-table-col-status-pill) + var(--db-table-col-actions-pair) + 20rem
+    );
+  }
+
+  .db-table--availability col.db-table-col-station {
+    width: var(--db-table-col-station);
+  }
+
+  .db-table--availability col.db-table-col-status {
+    width: var(--db-table-col-status-pill);
+  }
+
+  .db-table--availability col.db-table-col-actions {
+    width: var(--db-table-col-actions-pair);
+  }
+
+  /* New order: the choices, then the customer's fields, a field apart. */
+  .staff-new-order__customer {
+    display: grid;
+    gap: var(--db-form-gap);
+  }
+
+  .staff-new-order__choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--db-form-gap) var(--db-space-6);
+  }
+
+  .staff-new-order__choice {
+    display: grid;
+    gap: var(--db-field-label-gap);
+    justify-items: start;
+  }
+
+  /* The email and Find share a row; a message under the field takes a row of
+     its own, so Find stays on the field's underline. */
+  .staff-new-order__lookup {
+    align-items: end;
+    column-gap: var(--db-space-3);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: var(--db-field-label-gap);
+  }
+
+  .staff-new-order__lookup > button {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .staff-new-order__lookup > p {
+    grid-column: 1 / -1;
+  }
+
+  .staff-new-order__pickup {
+    display: grid;
+    gap: var(--db-space-3);
+  }
+
+  /* The section's own header already sets the picker off. */
+  .staff-new-order__pickup .storefront-pickup-picker {
+    margin-block-start: 0;
+  }
+
+  /* The primary action leads, as on every dashboard form; a set apart from
+     the last section. */
+  .staff-new-order__submit {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--db-space-4);
+    margin-top: 3rem;
+  }
+
+  /* The items: what the search offers over what is on the order, each a row
+     divided by one hairline. */
+  .staff-order-items {
+    display: grid;
+    gap: var(--db-space-5);
+  }
+
+  .staff-order-items__field {
+    display: grid;
+    gap: var(--db-field-label-gap);
+  }
+
+  .staff-order-items__list {
+    border-top: 1px solid var(--color-line-soft);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .staff-order-items__row {
+    align-items: center;
+    border-bottom: 1px solid var(--color-line-soft);
+    display: grid;
+    gap: var(--db-space-3);
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    min-height: var(--btn-control-min-height);
+    padding: var(--db-space-2) 0;
+  }
+
+  .staff-order-items__list--chosen .staff-order-items__row {
+    grid-template-columns: minmax(0, 1fr) 5rem auto auto;
+  }
+
+  .staff-order-items__row--state {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .staff-order-items__name {
+    display: grid;
+    gap: var(--db-space-1);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .staff-order-items__meta {
+    color: var(--color-muted);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--label-size);
+    font-weight: var(--label-weight);
+    gap: var(--db-space-2);
+    letter-spacing: var(--label-tracking);
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .staff-order-items__meta:empty {
+    display: none;
+  }
+
+  .staff-order-items__price {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Below 40rem a chosen line's name takes its own row, and the quantity,
+     total and Remove sit under it. */
+  @media (max-width: 40rem) {
+    .staff-order-items__list--chosen .staff-order-items__row {
+      grid-template-columns: 5rem minmax(0, 1fr) auto;
+    }
+
+    .staff-order-items__list--chosen .staff-order-items__name {
+      grid-column: 1 / -1;
+    }
+  }
+
   /* Closed days: the day and one action are fixed; the reason takes the rest. */
   .db-table--closed-days col.db-table-col-actions {
     width: var(--db-table-col-number);

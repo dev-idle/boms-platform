@@ -16,7 +16,8 @@ func TestOrderEvents(t *testing.T) {
 	t.Parallel()
 
 	order := func(status Status) Order {
-		return Order{ID: uuid.New(), UserID: uuid.New(), Status: status}
+		customer := uuid.New()
+		return Order{ID: uuid.New(), UserID: &customer, Status: status}
 	}
 
 	t.Run("a_new_order_is_told_to_its_customer_only_until_it_is_paid", func(t *testing.T) {
@@ -26,7 +27,7 @@ func TestOrderEvents(t *testing.T) {
 
 		assert.Equal(t, TopicOrderCreated, e.Topic)
 		assert.NotEqual(t, uuid.Nil, e.ID)
-		assert.Equal(t, []uuid.UUID{o.UserID}, e.Audience.UserIDs)
+		assert.Equal(t, []uuid.UUID{*o.UserID}, e.Audience.UserIDs)
 		assert.Empty(t, e.Audience.Roles)
 		assert.Equal(t, map[string]string{"order_id": o.ID.String(), "status": "awaiting_payment"}, e.Data)
 	})
@@ -52,7 +53,7 @@ func TestOrderEvents(t *testing.T) {
 			e := StatusChangedEvent(tc.from, o)
 
 			assert.Equal(t, TopicOrderStatusChanged, e.Topic)
-			assert.Equal(t, []uuid.UUID{o.UserID}, e.Audience.UserIDs)
+			assert.Equal(t, []uuid.UUID{*o.UserID}, e.Audience.UserIDs)
 			assert.Equal(t, tc.counterSees, slices.Contains(e.Audience.Roles, domainuser.RoleStaff))
 			assert.Equal(t, tc.kitchenSees, slices.Contains(e.Audience.Roles, domainuser.RoleBaker))
 			assert.Equal(t, string(tc.to), e.Data["status"])
@@ -91,7 +92,8 @@ func TestTicketChangedEvent(t *testing.T) {
 	customer := uuid.New()
 	ticket := Ticket{ID: uuid.New(), OrderID: uuid.New(), Station: domaincategory.StationCounter, Status: TicketReady}
 
-	counter := TicketChangedEvent(customer, StatusInProduction, ticket)
+	order := Order{ID: ticket.OrderID, UserID: &customer}
+	counter := TicketChangedEvent(order, StatusInProduction, ticket)
 	assert.Equal(t, TopicTicketChanged, counter.Topic)
 	assert.Equal(t, []uuid.UUID{customer}, counter.Audience.UserIDs)
 	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleBaker}, counter.Audience.Roles,
@@ -100,21 +102,22 @@ func TestTicketChangedEvent(t *testing.T) {
 		"ticket_id": ticket.ID.String(), "order_id": ticket.OrderID.String(), "station": "counter", "status": "ready",
 	}, counter.Data)
 
-	unseen := TicketChangedEvent(customer, StatusPending, Ticket{Station: domaincategory.StationKitchen})
+	unseen := TicketChangedEvent(order, StatusPending, Ticket{Station: domaincategory.StationKitchen})
 	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff}, unseen.Audience.Roles,
 		"the kitchen hears nothing of an order it may not see yet")
 
-	unpaid := TicketChangedEvent(customer, StatusAwaitingPayment, Ticket{Station: domaincategory.StationCounter})
+	unpaid := TicketChangedEvent(order, StatusAwaitingPayment, Ticket{Station: domaincategory.StationCounter})
 	assert.Empty(t, unpaid.Audience.Roles, "an order never paid is the customer's alone")
 }
 
 func TestRescheduledAndRefundedEvents(t *testing.T) {
 	t.Parallel()
-	o := Order{ID: uuid.New(), UserID: uuid.New(), Status: StatusConfirmed}
+	customer := uuid.New()
+	o := Order{ID: uuid.New(), UserID: &customer, Status: StatusConfirmed}
 
 	moved := RescheduledEvent(o)
 	assert.Equal(t, TopicOrderRescheduled, moved.Topic)
-	assert.Equal(t, []uuid.UUID{o.UserID}, moved.Audience.UserIDs)
+	assert.Equal(t, []uuid.UUID{*o.UserID}, moved.Audience.UserIDs)
 	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleBaker}, moved.Audience.Roles,
 		"the kitchen bakes to the pickup time")
 
@@ -146,4 +149,16 @@ func TestStatus_VisibleToStaff(t *testing.T) {
 	for _, status := range []Status{StatusPending, StatusConfirmed, StatusInProduction, StatusReady, StatusFulfilled, StatusCancelled} {
 		assert.True(t, status.VisibleToStaff(), status)
 	}
+}
+
+// An order staff took starts confirmed, so the counter and the kitchen hear of
+// it at once; a guest's has no account to tell.
+func TestCreatedEvent_TakenByStaff(t *testing.T) {
+	t.Parallel()
+	guest := Order{ID: uuid.New(), Guest: &Guest{Name: "Lan", Phone: "+84901234567"}, Channel: ChannelCounter, Status: StatusConfirmed}
+
+	e := CreatedEvent(guest)
+
+	assert.Empty(t, e.Audience.UserIDs)
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleBaker}, e.Audience.Roles)
 }

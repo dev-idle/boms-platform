@@ -15,7 +15,8 @@ import (
 
 func TestFanout(t *testing.T) {
 	t.Parallel()
-	events := []domainevent.Event{domainorder.CreatedEvent(domainorder.Order{ID: uuid.New(), UserID: uuid.New()})}
+	customer := uuid.New()
+	events := []domainevent.Event{domainorder.CreatedEvent(domainorder.Order{ID: uuid.New(), UserID: &customer})}
 
 	t.Run("every_publisher_gets_the_events", func(t *testing.T) {
 		t.Parallel()

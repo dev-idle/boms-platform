@@ -31,7 +31,8 @@ func TestOrderEmails_Publish(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	order := func(status domainorder.Status) domainorder.Order {
-		return domainorder.Order{ID: uuid.New(), UserID: uuid.New(), Status: status}
+		customer := uuid.New()
+		return domainorder.Order{ID: uuid.New(), UserID: &customer, Status: status}
 	}
 
 	t.Run("queues_one_task_per_notice_keyed_by_its_event", func(t *testing.T) {

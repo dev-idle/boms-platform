@@ -42,6 +42,9 @@ func (p PickupPolicy) Validate(at, now time.Time, items Fulfillment) (Type, erro
 	if slices.ContainsFunc(p.ClosedDays, domainstore.DayOf(at).Equal) {
 		return "", ErrPickupClosedDay
 	}
+	if items.SoldOutOn != nil && domainstore.DayOf(at).Equal(*items.SoldOutOn) {
+		return "", ErrPickupSoldOut
+	}
 	local := at.In(domainstore.Location)
 	sinceMidnight := local.Sub(time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, domainstore.Location))
 	if sinceMidnight < p.Settings.OpensAt || sinceMidnight >= p.Settings.ClosesAt {

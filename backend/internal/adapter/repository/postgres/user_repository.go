@@ -85,6 +85,15 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domainu
 	return user, nil
 }
 
+// FindCustomerByEmail implements port.UserRepository.
+func (r *UserRepository) FindCustomerByEmail(ctx context.Context, email string) (*port.CustomerContact, error) {
+	row, err := r.q(ctx).StaffFindCustomerByEmail(ctx, email)
+	if err != nil {
+		return nil, mapRepoError(err, "find customer by email")
+	}
+	return &port.CustomerContact{ID: row.ID, Email: row.Email, DisplayName: row.DisplayName, Phone: row.Phone}, nil
+}
+
 // GetByID implements port.UserRepository.
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainuser.User, error) {
 	row, err := r.q(ctx).GetUserByID(ctx, id)

@@ -308,10 +308,12 @@ func mapComboItemRowsFromBatch(rows []sqlcgen.ListComboItemsByComboIDsRow) []dom
 func mapCatalogComboItemRows(rows []sqlcgen.ListCatalogComboItemsByComboIDsRow) []domaincombo.Item {
 	out := make([]domaincombo.Item, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, mapComboItem(
+		item := mapComboItem(
 			row.ID, row.ComboID, row.ProductID,
 			row.Quantity, row.ProductName, row.ProductSlug, row.PriceCents,
-		))
+		)
+		item.SoldOutOn = row.SoldOutOn
+		out = append(out, item)
 	}
 	return out
 }

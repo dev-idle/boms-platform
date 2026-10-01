@@ -3322,6 +3322,24 @@
     margin: 1.5rem 0 0;
   }
 
+  /* Out today, and still orderable for a later day: a note, not a disabled
+     item, in the neutral of every "not available" state. */
+  .catalog-sold-out {
+    color: var(--color-muted);
+    font-size: var(--label-size);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking);
+    line-height: 1.4;
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .catalog-detail__sold-out {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0.75rem 0 0;
+  }
+
   .catalog-detail__description {
     color: var(--color-ink-2);
     font-size: 1rem;

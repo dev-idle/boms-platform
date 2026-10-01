@@ -9,6 +9,7 @@ import {
   orderStatusSchema,
   orderTimelineEntrySchema,
   orderTypeSchema,
+  fulfillmentSchema,
 } from "@/lib/schemas/order";
 import { ticketSummarySchema } from "@/lib/schemas/ticket";
 import { clockTimeSchema } from "@/lib/validation/clock";
@@ -34,12 +35,6 @@ const cartDiscountSchema = z.object({
   discount_type: z.enum(["percent", "fixed_cents"]),
   value: z.number().int().min(1),
   discount_cents: z.number().int().min(0),
-});
-
-/** What items ask of the bakery: whether the kitchen makes any, and the longest notice one needs. */
-const fulfillmentSchema = z.object({
-  has_kitchen_items: z.boolean(),
-  lead_minutes: z.number().int().min(0),
 });
 
 export const cartSchema = z.object({
@@ -212,7 +207,6 @@ export type UpdateCartItemInput = z.infer<typeof updateCartItemInputSchema>;
 export type ApplyCartDiscountInput = z.infer<typeof applyCartDiscountInputSchema>;
 export type CheckoutInput = z.infer<typeof checkoutInputSchema>;
 export type RescheduleInput = z.infer<typeof rescheduleInputSchema>;
-export type Fulfillment = z.infer<typeof fulfillmentSchema>;
 export type Order = z.infer<typeof orderSchema>;
 export type PaymentStart = z.infer<typeof paymentStartSchema>;
 export type PaymentCapture = z.infer<typeof paymentCaptureSchema>;

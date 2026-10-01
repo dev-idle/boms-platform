@@ -70,7 +70,7 @@ func TestAccountErasure_Integration(t *testing.T) {
 		_, err = customerProfiles.Create(ctx, port.UpsertCustomerProfileParams{UserID: customer, DisplayName: &name, Phone: &phone})
 		require.NoError(t, err)
 		collected, err := f.orders.Create(ctx, port.CreateOrderParams{
-			UserID: customer, Code: "CH-250102-001", Status: domainorder.StatusFulfilled,
+			UserID: &customer, Channel: domainorder.ChannelOnline, Code: "CH-250102-001", Status: domainorder.StatusFulfilled,
 			Type: domainorder.TypeInstant, SubtotalCents: 300, TotalCents: 300,
 		})
 		require.NoError(t, err)
@@ -235,7 +235,7 @@ func TestAccountErasure_Integration(t *testing.T) {
 				close(holding)
 				<-place
 				_, err := f.orders.Create(txCtx, port.CreateOrderParams{
-					UserID: customer, Code: "CH-250103-001", Status: domainorder.StatusPending,
+					UserID: &customer, Channel: domainorder.ChannelOnline, Code: "CH-250103-001", Status: domainorder.StatusPending,
 					Type: domainorder.TypeInstant, SubtotalCents: 300, TotalCents: 300,
 				})
 				return err

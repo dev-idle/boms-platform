@@ -14,7 +14,8 @@ func TestNoticeFor(t *testing.T) {
 	t.Parallel()
 
 	order := func(status Status) Order {
-		return Order{ID: uuid.New(), UserID: uuid.New(), Status: status}
+		customer := uuid.New()
+		return Order{ID: uuid.New(), UserID: &customer, Status: status}
 	}
 
 	cases := []struct {
@@ -24,6 +25,7 @@ func TestNoticeFor(t *testing.T) {
 		want   Notice
 	}{
 		{"a_paid_order_is_received", func(o Order) domainevent.Event { return StatusChangedEvent(StatusAwaitingPayment, o) }, StatusConfirmed, NoticePlaced},
+		{"an_order_staff_took_is_received", CreatedEvent, StatusConfirmed, NoticePlaced},
 		{"a_paid_custom_order_is_received_for_review", func(o Order) domainevent.Event { return StatusChangedEvent(StatusAwaitingPayment, o) }, StatusPending, NoticeRequested},
 		{"a_reviewed_order_is_accepted", func(o Order) domainevent.Event { return StatusChangedEvent(StatusPending, o) }, StatusConfirmed, NoticeAccepted},
 		{"ready_to_collect", func(o Order) domainevent.Event { return StatusChangedEvent(StatusInProduction, o) }, StatusReady, NoticeReady},
@@ -61,7 +63,8 @@ func TestNoticeFor(t *testing.T) {
 	t.Run("other_topics_send_nothing", func(t *testing.T) {
 		t.Parallel()
 		ticket := Ticket{ID: uuid.New(), OrderID: uuid.New(), Status: TicketReady}
-		_, _, ok := NoticeFor(TicketChangedEvent(uuid.New(), StatusReady, ticket))
+		customer := uuid.New()
+		_, _, ok := NoticeFor(TicketChangedEvent(Order{ID: ticket.OrderID, UserID: &customer}, StatusReady, ticket))
 		assert.False(t, ok)
 	})
 

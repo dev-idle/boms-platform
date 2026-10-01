@@ -1,8 +1,10 @@
 export {
+  StaffAvailability,
   StaffLiveUpdates,
+  StaffNewOrder,
   StaffOrderDetail,
   StaffOrdersTable,
   StaffPickupSchedule,
   StaffPrepQueue,
 } from "./components";
-export { staffOrderDetailBreadcrumbItems } from "./lib/staff-breadcrumbs";
+export { staffNewOrderBreadcrumbItems, staffOrderDetailBreadcrumbItems } from "./lib/staff-breadcrumbs";

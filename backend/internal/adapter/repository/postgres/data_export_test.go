@@ -150,7 +150,7 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 		const placed = 101
 		for i := 1; i <= placed; i++ {
 			_, err := f.orders.Create(ctx, port.CreateOrderParams{
-				UserID: customer, Code: fmt.Sprintf("CH-250101-%03d", i), Status: domainorder.StatusFulfilled,
+				UserID: &customer, Channel: domainorder.ChannelOnline, Code: fmt.Sprintf("CH-250101-%03d", i), Status: domainorder.StatusFulfilled,
 				Type: domainorder.TypeInstant, SubtotalCents: 300, TotalCents: 300,
 			})
 			require.NoError(t, err)

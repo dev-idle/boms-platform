@@ -925,6 +925,51 @@ func (q *Queries) SoftDelete(ctx context.Context, id uuid.UUID) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const staffFindCustomerByEmail = `-- name: StaffFindCustomerByEmail :one
+SELECT
+  u.id,
+  u.email::text AS email,
+  cp.display_name,
+  cp.phone
+FROM users u
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+WHERE u.email = $1
+  AND u.role = 'customer'::user_role
+  AND u.deleted_at IS NULL
+`
+
+type StaffFindCustomerByEmailRow struct {
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	DisplayName *string   `json:"displayName"`
+	Phone       *string   `json:"phone"`
+}
+
+// An open customer account by its email, with what staff need to take an
+// order for it.
+//
+//	SELECT
+//	  u.id,
+//	  u.email::text AS email,
+//	  cp.display_name,
+//	  cp.phone
+//	FROM users u
+//	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+//	WHERE u.email = $1
+//	  AND u.role = 'customer'::user_role
+//	  AND u.deleted_at IS NULL
+func (q *Queries) StaffFindCustomerByEmail(ctx context.Context, email string) (StaffFindCustomerByEmailRow, error) {
+	row := q.db.QueryRow(ctx, staffFindCustomerByEmail, email)
+	var i StaffFindCustomerByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.Phone,
+	)
+	return i, err
+}
+
 const updateRole = `-- name: UpdateRole :execrows
 UPDATE users
 SET role = $2,

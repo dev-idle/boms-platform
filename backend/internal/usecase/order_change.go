@@ -83,7 +83,7 @@ func (u *OrderUsecase) Reschedule(
 	policy := pickupPolicy(settings, closed)
 	err = u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		order, err := u.orders.LockForUpdate(txCtx, orderID)
-		if errors.Is(err, apperrors.ErrNotFound) || (err == nil && order.UserID != userID) {
+		if errors.Is(err, apperrors.ErrNotFound) || (err == nil && (order.UserID == nil || *order.UserID != userID)) {
 			return domainorder.ErrNotFound
 		}
 		if err != nil {
@@ -103,7 +103,7 @@ func (u *OrderUsecase) Reschedule(
 		if err != nil {
 			return err
 		}
-		booking, err := u.bookPickup(txCtx, userID, items, req.PickupAt, now, policy, order.PickupAt)
+		booking, err := bookPickup(txCtx, u.orders, &userID, items, req.PickupAt, now, policy, order.PickupAt)
 		if err != nil {
 			return err
 		}

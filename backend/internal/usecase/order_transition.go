@@ -118,7 +118,7 @@ func (t orderTransitions) cancelTickets(txCtx context.Context, order domainorder
 		return err
 	}
 	for _, ticket := range cancelled {
-		if err := t.events.Add(txCtx, domainorder.TicketChangedEvent(order.UserID, from, ticket)); err != nil {
+		if err := t.events.Add(txCtx, domainorder.TicketChangedEvent(order, from, ticket)); err != nil {
 			return err
 		}
 	}

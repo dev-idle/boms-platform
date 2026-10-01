@@ -389,7 +389,8 @@ SELECT
     ci.quantity,
     p.name AS product_name,
     p.slug AS product_slug,
-    p.price_cents
+    p.price_cents,
+    p.sold_out_on
 FROM combo_items ci
 INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
 INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
@@ -398,13 +399,14 @@ ORDER BY ci.combo_id ASC, p.name ASC
 `
 
 type ListCatalogComboItemsByComboIDsRow struct {
-	ID          uuid.UUID `json:"id"`
-	ComboID     uuid.UUID `json:"comboId"`
-	ProductID   uuid.UUID `json:"productId"`
-	Quantity    int32     `json:"quantity"`
-	ProductName string    `json:"productName"`
-	ProductSlug string    `json:"productSlug"`
-	PriceCents  int64     `json:"priceCents"`
+	ID          uuid.UUID  `json:"id"`
+	ComboID     uuid.UUID  `json:"comboId"`
+	ProductID   uuid.UUID  `json:"productId"`
+	Quantity    int32      `json:"quantity"`
+	ProductName string     `json:"productName"`
+	ProductSlug string     `json:"productSlug"`
+	PriceCents  int64      `json:"priceCents"`
+	SoldOutOn   *time.Time `json:"soldOutOn"`
 }
 
 // ListCatalogComboItemsByComboIDs
@@ -416,7 +418,8 @@ type ListCatalogComboItemsByComboIDsRow struct {
 //	    ci.quantity,
 //	    p.name AS product_name,
 //	    p.slug AS product_slug,
-//	    p.price_cents
+//	    p.price_cents,
+//	    p.sold_out_on
 //	FROM combo_items ci
 //	INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
 //	INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
@@ -439,6 +442,7 @@ func (q *Queries) ListCatalogComboItemsByComboIDs(ctx context.Context, comboIds 
 			&i.ProductName,
 			&i.ProductSlug,
 			&i.PriceCents,
+			&i.SoldOutOn,
 		); err != nil {
 			return nil, err
 		}

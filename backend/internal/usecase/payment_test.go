@@ -52,7 +52,7 @@ func (f *paymentOrders) Expire(context.Context, uuid.UUID, time.Duration) (*doma
 }
 
 func (f *paymentOrders) GetByIDForUser(_ context.Context, userID, orderID uuid.UUID) (*domainorder.Order, error) {
-	if userID != f.order.UserID || orderID != f.order.ID {
+	if f.order.UserID == nil || userID != *f.order.UserID || orderID != f.order.ID {
 		return nil, apperrors.ErrNotFound
 	}
 	order := f.order
@@ -99,6 +99,8 @@ func (cancelledTicketsNone) CancelForOrder(context.Context, uuid.UUID) ([]domain
 
 // memoryPayments keeps at most one payment, with the repository's guards.
 type memoryPayments struct {
+	// The cash a counter order takes is not a payment taken online.
+	port.PaymentRepository
 	payment   *domainpayment.Payment
 	createErr error
 	refundID  *string
@@ -221,10 +223,10 @@ type paymentFixture struct {
 }
 
 func newPaymentFixture() *paymentFixture {
-	codeID := uuid.New()
+	codeID, customer := uuid.New(), uuid.New()
 	due := time.Now().Add(15 * time.Minute)
 	order := domainorder.Order{
-		ID: uuid.New(), UserID: uuid.New(), Status: domainorder.StatusAwaitingPayment, TotalCents: 1250, DiscountCodeID: &codeID,
+		ID: uuid.New(), UserID: &customer, Channel: domainorder.ChannelOnline, Status: domainorder.StatusAwaitingPayment, TotalCents: 1250, DiscountCodeID: &codeID,
 		PaymentDueAt: &due,
 	}
 	return &paymentFixture{
@@ -235,7 +237,7 @@ func newPaymentFixture() *paymentFixture {
 			ID: "CAPTURE-1", Status: domainpayment.StatusCaptured, AmountCents: 1250, Currency: domainpayment.Currency,
 		}},
 		outbox:   &recordingOutbox{},
-		customer: order.UserID,
+		customer: customer,
 		orderID:  order.ID,
 	}
 }

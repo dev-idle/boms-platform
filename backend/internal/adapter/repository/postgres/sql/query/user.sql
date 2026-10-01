@@ -4,6 +4,20 @@ FROM users
 WHERE email = $1
   AND deleted_at IS NULL;
 
+-- name: StaffFindCustomerByEmail :one
+-- An open customer account by its email, with what staff need to take an
+-- order for it.
+SELECT
+  u.id,
+  u.email::text AS email,
+  cp.display_name,
+  cp.phone
+FROM users u
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+WHERE u.email = sqlc.arg('email')
+  AND u.role = 'customer'::user_role
+  AND u.deleted_at IS NULL;
+
 -- name: GetUserByID :one
 SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
 FROM users

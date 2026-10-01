@@ -1,10 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import type { Fulfillment } from "@/lib/schemas/order";
 
 import { useRescheduleOrder } from "../hooks";
 import { usePickupChoice } from "../hooks/use-pickup-choice";
-import type { Fulfillment } from "../schemas";
 import { PickupSlotPicker } from "./pickup-slot-picker";
 
 const ERROR_ID = "reschedule-error";

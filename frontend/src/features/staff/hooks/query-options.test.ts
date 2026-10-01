@@ -38,6 +38,16 @@ describe("staffQueryKeysForEvent", () => {
     expect(staffQueryKeys.pickups({ date: "2026-10-01" }).slice(0, 2)).toEqual([...staffQueryKeys.ordersRoot]);
   });
 
+  it("refreshes both queues when the counter takes an order, and the availability list when a product runs out", () => {
+    expect(staffQueryKeysForEvent({ type: "order.created", data: { order_id: "o-1" } })).toEqual([
+      staffQueryKeys.ordersRoot,
+      staffQueryKeys.ticketsRoot,
+    ]);
+    expect(staffQueryKeysForEvent({ type: "product.sold_out_changed", data: { product_id: "p-1" } })).toEqual([
+      staffQueryKeys.productsRoot,
+    ]);
+  });
+
   it("ignores events it does not know", () => {
     expect(staffQueryKeysForEvent({ type: "catalog.updated", data: {} })).toEqual([]);
   });

@@ -99,7 +99,7 @@ func (f ticketFlow) advance(
 			return err
 		}
 		change = ticketChange{before: ticket, after: updated, order: next}
-		return f.events.Add(txCtx, domainorder.TicketChangedEvent(order.UserID, order.Status, updated))
+		return f.events.Add(txCtx, domainorder.TicketChangedEvent(*order, order.Status, updated))
 	})
 	return change, err
 }
@@ -166,7 +166,7 @@ func (f ticketFlow) move(ctx context.Context, ticketID uuid.UUID, to domaincateg
 			return err
 		}
 		change = ticketChange{before: ticket, after: moved, order: *order}
-		return f.events.Add(txCtx, domainorder.TicketChangedEvent(order.UserID, order.Status, moved))
+		return f.events.Add(txCtx, domainorder.TicketChangedEvent(*order, order.Status, moved))
 	})
 	return change, err
 }

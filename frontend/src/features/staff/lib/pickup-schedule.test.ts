@@ -7,6 +7,7 @@ const pickup = (id: number, pickupAt: string, status: StaffPickup["status"] = "c
   id: `00000000-0000-4000-8000-00000000000${id}`,
   code: `CH-261001-00${id}`,
   status,
+  channel: "online",
   total_cents: 4500,
   item_count: 2,
   customer: { user_id: "00000000-0000-4000-8000-000000000009", email: "mai@example.com" },

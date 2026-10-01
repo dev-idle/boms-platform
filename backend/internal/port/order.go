@@ -11,7 +11,10 @@ import (
 )
 
 type CreateOrderParams struct {
-	UserID               uuid.UUID
+	// UserID is the customer's account; nil for a guest, whom Guest names.
+	UserID               *uuid.UUID
+	Guest                *domainorder.Guest
+	Channel              domainorder.Channel
 	Code                 string
 	Status               domainorder.Status
 	Type                 domainorder.Type
@@ -72,9 +75,11 @@ type StaffListPickupsParams struct {
 	Offset int32
 }
 
+// StaffOrderListRow is an order with who it is for: the account's details, or
+// for a guest's order (no account) the name and phone staff wrote down.
 type StaffOrderListRow struct {
 	Order                 domainorder.Order
-	CustomerEmail         string
+	CustomerEmail         *string
 	CustomerEmailVerified bool
 	CustomerDisplayName   *string
 	CustomerPhone         *string
@@ -124,6 +129,8 @@ type OrderRepository interface {
 	// GetByCheckoutKey returns the customer's order placed by the checkout
 	// with that Idempotency-Key.
 	GetByCheckoutKey(ctx context.Context, userID, checkoutKey uuid.UUID) (*domainorder.Order, error)
+	// GetByStaffCheckoutKey returns the order staff took with that Idempotency-Key.
+	GetByStaffCheckoutKey(ctx context.Context, checkoutKey uuid.UUID) (*domainorder.Order, error)
 	// CountCustomerDiscountUses counts the customer's orders not cancelled or
 	// expired that use the discount code.
 	CountCustomerDiscountUses(ctx context.Context, userID, discountCodeID uuid.UUID) (int, error)

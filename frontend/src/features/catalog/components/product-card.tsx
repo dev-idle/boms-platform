@@ -54,6 +54,7 @@ export function ProductCard({
             </p>
           ) : null}
           <h3 className="catalog-product-card__name">{product.name}</h3>
+          {product.sold_out_today ? <p className="catalog-sold-out">Sold out today</p> : null}
           <div className="catalog-product-card__footer">
             <p className="catalog-product-card__price text-price">
               {formatPriceCents(product.price_cents)}

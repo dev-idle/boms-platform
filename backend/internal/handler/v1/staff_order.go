@@ -86,3 +86,64 @@ func (h *StaffOrderHandler) PatchStatus(c fiber.Ctx) error {
 	}
 	return response.OK(c, out)
 }
+
+// Create takes an order at the counter or on the phone. Every request carries
+// an Idempotency-Key: a retry with the same key returns the order it took.
+func (h *StaffOrderHandler) Create(c fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	actorID, actorRole, err := actorFromCtx(c)
+	if err != nil {
+		return err
+	}
+	checkoutKey, err := uuid.Parse(c.Get("Idempotency-Key"))
+	if err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("idempotency_key", "must be a UUID"))
+	}
+	var req dto.CreateStaffOrderRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
+	}
+	if err := sharevalidator.Struct(&req); err != nil {
+		return writeValidationError(c, err)
+	}
+	out, err := h.usecase.CreateOrder(c.Context(), actorID, actorRole, checkoutKey, req)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.Created(c, out)
+}
+
+// Quote prices the items of an order about to be taken.
+func (h *StaffOrderHandler) Quote(c fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	var req dto.StaffOrderQuoteRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
+	}
+	if err := sharevalidator.Struct(&req); err != nil {
+		return writeValidationError(c, err)
+	}
+	out, err := h.usecase.Quote(c.Context(), req)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OK(c, out)
+}
+
+// FindCustomer looks up the customer account with an email, to take an order
+// for it.
+func (h *StaffOrderHandler) FindCustomer(c fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	var req dto.StaffCustomerLookupRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
+	}
+	if err := sharevalidator.Struct(&req); err != nil {
+		return writeValidationError(c, err)
+	}
+	out, err := h.usecase.FindCustomer(c.Context(), req.Email)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OK(c, out)
+}

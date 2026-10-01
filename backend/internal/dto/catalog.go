@@ -115,6 +115,8 @@ type CatalogProductResponse struct {
 	ImageURLs    []string `json:"image_urls,omitempty"`
 	// IsCustomizable products are configured before they go in the cart.
 	IsCustomizable bool `json:"is_customizable"`
+	// SoldOutToday: the counter ran out of it; it may be ordered for a later day.
+	SoldOutToday bool `json:"sold_out_today"`
 	// Options are what a customer chooses from, on a customizable product's detail.
 	Options []CatalogProductOptionResponse `json:"options,omitempty"`
 }
@@ -186,6 +188,8 @@ type CatalogComboResponse struct {
 	StartsAt   time.Time           `json:"starts_at"`
 	EndsAt     time.Time           `json:"ends_at"`
 	Items      []ComboItemResponse `json:"items"`
+	// SoldOutToday: the counter ran out of one of its products today.
+	SoldOutToday bool `json:"sold_out_today"`
 }
 
 type CreateDiscountCodeRequest struct {

@@ -25,6 +25,7 @@ import { bakeryDayOf, formatPickupWallTime } from "@/lib/validation/pickup";
 import { useStaffPickups } from "../hooks";
 import { groupPickupsBySlot, isLatePickup, shiftDay } from "../lib/pickup-schedule";
 import type { StaffPickup } from "../schemas";
+import { StaffCustomerCell } from "./staff-customer-cell";
 import { StaffHandoffDialog } from "./staff-handoff-dialog";
 
 const COLUMN_COUNT = 5;
@@ -157,16 +158,7 @@ export function StaffPickupSchedule() {
                         <span className="text-order-code">{pickup.code}</span>
                       </td>
                       <td>
-                        <div className="db-table-stacked-cell min-w-0">
-                          <span className="db-table-cell-primary truncate">
-                            {pickup.customer.display_name ?? pickup.customer.email}
-                          </span>
-                          {pickup.customer.display_name ? (
-                            <span className="truncate text-caption-dashboard text-muted">
-                              {pickup.customer.email}
-                            </span>
-                          ) : null}
-                        </div>
+                        <StaffCustomerCell channel={pickup.channel} customer={pickup.customer} />
                       </td>
                       <td className="db-table-num">{pickup.item_count}</td>
                       <td className="db-table-status">
@@ -216,6 +208,7 @@ export function StaffPickupSchedule() {
       {/* Stays mounted once opened, so closing it hands focus back to the row. */}
       {handoff ? (
         <StaffHandoffDialog
+          cashDueCents={handoff.channel === "online" ? null : handoff.total_cents}
           open={handoffOpen}
           orderCode={handoff.code}
           orderId={handoff.id}

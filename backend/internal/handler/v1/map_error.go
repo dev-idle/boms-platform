@@ -150,6 +150,10 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrPickupOffSlot)
 	case errors.Is(err, domainorder.ErrPickupSlotFull):
 		return writeAppError(c, apperrors.ErrPickupSlotFull)
+	case errors.Is(err, domainorder.ErrPickupSoldOut):
+		return writeAppError(c, apperrors.ErrPickupSoldOut)
+	case errors.Is(err, domainorder.ErrInvalidGuestName):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("guest.name", "a name of 1 to 100 plain characters"))
 	case errors.Is(err, domainorder.ErrTicketNotFound):
 		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, domainorder.ErrInvalidTicketTransition):

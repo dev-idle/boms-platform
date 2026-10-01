@@ -17,11 +17,13 @@ export const bakerLiveQueryKeys: readonly QueryKey[] = [bakerQueryKeys.ticketsRo
  * Queries an event makes stale in a baker tab: the kitchen queue and its
  * tickets, all under the tickets root. A ticket moves when a station works on
  * it; the queue also changes when the counter accepts, hands over or cancels an
- * order, which reaches the kitchen as the order's status change, and when a
- * customer moves the pickup of an accepted order.
+ * order, which reaches the kitchen as the order's status change, when the
+ * counter takes an order, which starts accepted, and when a customer moves the
+ * pickup of an accepted order.
  */
 export function bakerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
+    case REALTIME_EVENT_TYPE.orderCreated:
     case REALTIME_EVENT_TYPE.orderStatusChanged:
     case REALTIME_EVENT_TYPE.orderRescheduled:
     case REALTIME_EVENT_TYPE.ticketChanged:

@@ -4,9 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
-	"github.com/google/uuid"
 )
 
 type CreateProductParams struct {
@@ -64,9 +66,28 @@ type CatalogListProduct struct {
 	// IsCustomizable products are configured from their options before they
 	// go in the cart.
 	IsCustomizable bool
-	CategoryName   string
-	CategorySlug   string
-	ImageURLs      []string
+	// SoldOutOn is the last bakery day the counter ran out of it; nil if never.
+	SoldOutOn    *time.Time
+	CategoryName string
+	CategorySlug string
+	ImageURLs    []string
+}
+
+// StaffListProductsParams pages what the counter can mark sold out;
+// SoldOutOn narrows the page to the products out on that bakery day.
+type StaffListProductsParams struct {
+	SoldOutOn *time.Time
+	Limit     int32
+	Offset    int32
+}
+
+// StaffProduct is a product as the counter marks it sold out.
+type StaffProduct struct {
+	ID           uuid.UUID
+	Name         string
+	CategoryName string
+	Station      domaincategory.Station
+	SoldOutOn    *time.Time
 }
 
 type ProductRepository interface {
@@ -85,7 +106,12 @@ type ProductRepository interface {
 	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]string, error)
 	// FulfillmentOf is what these products and combos ask of the bakery, combos
 	// counted by the products they hold.
-	FulfillmentOf(ctx context.Context, productIDs, comboIDs []uuid.UUID) (domainorder.Fulfillment, error)
+	FulfillmentOf(ctx context.Context, productIDs, comboIDs []uuid.UUID, today time.Time) (domainorder.Fulfillment, error)
+	StaffList(ctx context.Context, params StaffListProductsParams) ([]StaffProduct, error)
+	StaffListCount(ctx context.Context, soldOutOn *time.Time) (int64, error)
+	// SetSoldOut marks an active product sold out on a bakery day, or back in
+	// with nil. Any other product is apperrors.ErrNotFound.
+	SetSoldOut(ctx context.Context, id uuid.UUID, day *time.Time) (*StaffProduct, error)
 	// ListOptions returns the options these products offer, retired ones left
 	// out, by product in the order a customer chooses them.
 	ListOptions(ctx context.Context, productIDs []uuid.UUID) ([]domainproduct.Option, error)

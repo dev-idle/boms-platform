@@ -19,8 +19,9 @@ import (
 )
 
 func newOrderEvent() domainevent.Event {
+	customer := uuid.New()
 	return domainorder.StatusChangedEvent(domainorder.StatusPending,
-		domainorder.Order{ID: uuid.New(), UserID: uuid.New(), Status: domainorder.StatusConfirmed})
+		domainorder.Order{ID: uuid.New(), UserID: &customer, Status: domainorder.StatusConfirmed})
 }
 
 func eventIDs(events []domainevent.Event) []uuid.UUID {

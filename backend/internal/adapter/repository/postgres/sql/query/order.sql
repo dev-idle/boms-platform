@@ -13,10 +13,13 @@ INSERT INTO orders (
   terms_version,
   terms_accepted_at,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 )
 VALUES (
-  sqlc.arg('user_id'),
+  sqlc.narg('user_id'),
   sqlc.arg('status'),
   sqlc.arg('subtotal_cents'),
   sqlc.arg('discount_cents'),
@@ -31,8 +34,14 @@ VALUES (
   -- created_at takes.
   CASE WHEN sqlc.narg('terms_version')::text IS NULL THEN NULL ELSE now() END,
   sqlc.narg('checkout_key'),
-  -- Held unpaid until then, on the database clock.
-  now() + make_interval(mins => sqlc.arg('payment_hold_minutes')::int)
+  -- Held unpaid until then, on the database clock. An order staff take is
+  -- paid at the counter and holds nothing.
+  CASE WHEN sqlc.arg('status')::order_status = 'awaiting_payment'::order_status
+    THEN now() + make_interval(mins => sqlc.arg('payment_hold_minutes')::int)
+  END,
+  sqlc.arg('channel'),
+  sqlc.narg('guest_name'),
+  sqlc.narg('guest_phone')
 )
 RETURNING
   id,
@@ -51,7 +60,10 @@ RETURNING
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at;
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone;
 
 -- name: GetOrderByIDForUser :one
 SELECT
@@ -71,9 +83,12 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
-WHERE id = $1 AND user_id = $2;
+WHERE id = sqlc.arg('id') AND user_id = sqlc.arg('user_id')::uuid;
 
 -- name: ListOrdersByUser :many
 SELECT
@@ -93,9 +108,12 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
-WHERE user_id = sqlc.arg('user_id')
+WHERE user_id = sqlc.arg('user_id')::uuid
   AND (
     sqlc.narg('status')::order_status IS NULL
     OR status = sqlc.narg('status')::order_status
@@ -132,9 +150,12 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
-WHERE user_id = sqlc.arg('user_id')
+WHERE user_id = sqlc.arg('user_id')::uuid
   AND (
     sqlc.narg('before_at')::timestamptz IS NULL
     OR (created_at, id) < (sqlc.narg('before_at')::timestamptz, sqlc.narg('before_id')::uuid)
@@ -149,14 +170,14 @@ LIMIT sqlc.arg('limit');
 SELECT EXISTS (
   SELECT 1
   FROM orders
-  WHERE user_id = $1
+  WHERE user_id = $1::uuid
     AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status, 'no_show'::order_status)
 ) AS open;
 
 -- name: ListOrdersByUserCount :one
 SELECT COUNT(*)::bigint AS count
 FROM orders
-WHERE user_id = sqlc.arg('user_id')
+WHERE user_id = sqlc.arg('user_id')::uuid
   AND (
     sqlc.narg('status')::order_status IS NULL
     OR status = sqlc.narg('status')::order_status
@@ -275,15 +296,18 @@ SELECT
   o.updated_at,
   o.code,
   o.order_type,
+  o.channel,
   u.email AS customer_email,
   (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-  cp.display_name AS customer_display_name
+  COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+-- A guest's order has no account; one whose account was erased is not shown.
 -- An order not paid, now or ever, is not the bakery's to see: one cancelled
 -- is only if it was accepted before (domainorder.SeenByStaff).
-WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+  AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
   AND (o.status <> 'cancelled'::order_status OR EXISTS (
     SELECT 1 FROM order_status_events e
     WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
@@ -320,13 +344,15 @@ SELECT
   o.updated_at,
   o.code,
   o.order_type,
+  o.channel,
   u.email AS customer_email,
   (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-  cp.display_name AS customer_display_name
+  COALESCE(cp.display_name, o.guest_name) AS customer_display_name
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-WHERE o.pickup_at >= sqlc.arg('pickup_from')::timestamptz
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+  AND o.pickup_at >= sqlc.arg('pickup_from')::timestamptz
   AND o.pickup_at < sqlc.arg('pickup_to')::timestamptz
   AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
                    'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
@@ -336,8 +362,9 @@ LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 -- name: StaffListPickupsCount :one
 SELECT COUNT(*)::bigint AS count
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-WHERE o.pickup_at >= sqlc.arg('pickup_from')::timestamptz
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+  AND o.pickup_at >= sqlc.arg('pickup_from')::timestamptz
   AND o.pickup_at < sqlc.arg('pickup_to')::timestamptz
   AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
                    'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status);
@@ -345,8 +372,9 @@ WHERE o.pickup_at >= sqlc.arg('pickup_from')::timestamptz
 -- name: StaffListOrdersCount :one
 SELECT COUNT(*)::bigint AS count
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
+  AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
   AND (o.status <> 'cancelled'::order_status OR EXISTS (
     SELECT 1 FROM order_status_events e
     WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
@@ -371,14 +399,16 @@ SELECT
   o.updated_at,
   o.code,
   o.order_type,
+  o.channel,
   u.email AS customer_email,
   (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-  cp.display_name AS customer_display_name,
-  cp.phone AS customer_phone
+  COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+  COALESCE(cp.phone, o.guest_phone) AS customer_phone
 FROM orders o
-INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
-LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
-WHERE o.id = $1;
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+WHERE o.id = $1
+  AND (o.user_id IS NULL OR u.id IS NOT NULL);
 
 -- name: UpdateOrderStatus :one
 UPDATE orders
@@ -403,7 +433,10 @@ RETURNING
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at;
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone;
 
 -- name: NextOrderDayNumber :one
 -- The day is read from the transaction's clock, the instant orders.created_at
@@ -469,7 +502,7 @@ SELECT pg_advisory_xact_lock(sqlc.arg('namespace')::int, hashtext(sqlc.arg('user
 -- A customer's orders not cancelled or expired with a pickup in [from_at, to_at).
 SELECT count(*)::bigint AS count
 FROM orders
-WHERE user_id = sqlc.arg('user_id')
+WHERE user_id = sqlc.arg('user_id')::uuid
   AND pickup_at >= sqlc.arg('from_at')::timestamptz
   AND pickup_at < sqlc.arg('to_at')::timestamptz
   AND status NOT IN ('cancelled'::order_status, 'expired'::order_status);
@@ -503,7 +536,10 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
 WHERE id = $1
 FOR UPDATE;
@@ -526,16 +562,46 @@ SELECT
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
 FROM orders
-WHERE user_id = sqlc.arg('user_id')
+WHERE user_id = sqlc.arg('user_id')::uuid
   AND checkout_key = sqlc.arg('checkout_key');
+
+-- name: GetStaffOrderByCheckoutKey :one
+-- The order staff took with that Idempotency-Key, whoever it is for.
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
+FROM orders
+WHERE checkout_key = sqlc.arg('checkout_key')
+  AND channel <> 'online'::order_channel;
 
 -- name: CountCustomerDiscountUses :one
 -- A customer's orders not cancelled or expired that use the discount code.
 SELECT count(*)::bigint AS count
 FROM orders
-WHERE user_id = sqlc.arg('user_id')
+WHERE user_id = sqlc.arg('user_id')::uuid
   AND discount_code_id = sqlc.arg('discount_code_id')
   AND status NOT IN ('cancelled'::order_status, 'expired'::order_status);
 
@@ -575,7 +641,10 @@ RETURNING
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at;
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone;
 
 -- name: RescheduleOrder :one
 -- Moves the pickup of an order not being made yet; its type follows the new
@@ -603,7 +672,10 @@ RETURNING
   terms_accepted_at,
   terms_version,
   checkout_key,
-  payment_due_at;
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone;
 
 -- name: ListMissedPickups :many
 -- Orders ready and not collected whose pickup falls before missed_before, the

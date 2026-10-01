@@ -25,12 +25,13 @@ func TestRedisPublisher_Publish(t *testing.T) {
 	rdb := goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
 
-	order := domainorder.Order{ID: uuid.New(), UserID: uuid.New(), Status: domainorder.StatusReady}
+	customer := uuid.New()
+	order := domainorder.Order{ID: uuid.New(), UserID: &customer, Status: domainorder.StatusReady}
 	event := domainorder.StatusChangedEvent(domainorder.StatusInProduction, order)
 	event.OccurredAt = time.Date(2026, 9, 28, 9, 0, 0, 0, time.UTC)
 
 	sub := rdb.Subscribe(ctx,
-		UserChannel(order.UserID),
+		UserChannel(customer),
 		RoleChannel(domainuser.RoleStaff),
 		RoleChannel(domainuser.RoleBaker),
 		UserChannel(uuid.New()),
@@ -57,7 +58,7 @@ func TestRedisPublisher_Publish(t *testing.T) {
 		Data: map[string]string{"order_id": order.ID.String(), "from": "in_production", "status": "ready"},
 	}
 	assert.Equal(t, map[string]message{
-		UserChannel(order.UserID):         want,
+		UserChannel(*order.UserID):        want,
 		RoleChannel(domainuser.RoleStaff): want,
 		RoleChannel(domainuser.RoleBaker): want,
 	}, got, "only the order's customer and the order roles hear about it")
@@ -71,7 +72,8 @@ func TestRedisPublisher_ReportsAnUnreachableBus(t *testing.T) {
 	t.Cleanup(func() { _ = rdb.Close() })
 	server.Close()
 
-	order := domainorder.Order{ID: uuid.New(), UserID: uuid.New(), Status: domainorder.StatusPending}
+	customer := uuid.New()
+	order := domainorder.Order{ID: uuid.New(), UserID: &customer, Status: domainorder.StatusPending}
 	err := NewRedisPublisher(rdb).Publish(context.Background(), []domainevent.Event{domainorder.CreatedEvent(order)})
 	assert.Error(t, err)
 }

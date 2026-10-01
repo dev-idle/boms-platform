@@ -28,6 +28,7 @@ export function ComboCard({ combo, renderPurchaseActions }: ComboCardProps) {
           </span>
         </div>
         <h3 className="catalog-combo-card__title">{combo.name}</h3>
+        {combo.sold_out_today ? <p className="catalog-sold-out">Sold out today</p> : null}
         <p className="catalog-combo-card__meta">
           {itemCount} {itemCount === 1 ? "item" : "items"} included
         </p>

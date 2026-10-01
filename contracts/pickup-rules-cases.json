@@ -1,5 +1,5 @@
 {
-  "$comment": "One set of cases for both implementations of the pickup rules: backend/internal/domain/store/clock.go + backend/internal/domain/order/pickup.go (PickupPolicy.Validate), and frontend/src/lib/validation/clock.ts + frontend/src/lib/validation/pickup.ts (pickupProblem, pickupOrderType). Both test suites read this file. Times are bakery wall-clock (Asia/Ho_Chi_Minh, YYYY-MM-DDTHH:MM). Each case names the cart it is checked for: whether any item comes from the kitchen, and the longest notice an item needs. A problem is the backend error code without its pickup_ prefix, or null when checkout accepts the time; type is the order type checkout records then (null with a problem). Add cases here, not in either test.",
+  "$comment": "One set of cases for both implementations of the pickup rules: backend/internal/domain/store/clock.go + backend/internal/domain/order/pickup.go (PickupPolicy.Validate), and frontend/src/lib/validation/clock.ts + frontend/src/lib/validation/pickup.ts (pickupProblem, pickupOrderType). Both test suites read this file. Times are bakery wall-clock (Asia/Ho_Chi_Minh, YYYY-MM-DDTHH:MM). Each case names the cart it is checked for: whether any item comes from the kitchen, the longest notice an item needs, and (sold_out_on, when present) the day one of its items ran out on. A problem is the backend error code without its pickup_ prefix, or null when checkout accepts the time; type is the order type checkout records then (null with a problem). Add cases here, not in either test.",
   "clock": {
     "valid": [
       { "text": "00:00", "minutes": 0 },
@@ -47,7 +47,11 @@
       { "at": "2026-07-10T10:30", "kitchen": false, "lead_minutes": 60, "problem": "too_soon", "type": null },
       { "at": "2026-07-10T11:00", "kitchen": false, "lead_minutes": 60, "problem": null, "type": "instant" },
       { "at": "2026-07-11T09:30", "kitchen": true, "lead_minutes": 1440, "problem": "too_soon", "type": null },
-      { "at": "2026-07-11T10:00", "kitchen": true, "lead_minutes": 1440, "problem": null, "type": "pre_order" }
+      { "at": "2026-07-11T10:00", "kitchen": true, "lead_minutes": 1440, "problem": null, "type": "pre_order" },
+
+      { "at": "2026-07-10T12:00", "kitchen": false, "lead_minutes": 0, "sold_out_on": "2026-07-10", "problem": "sold_out", "type": null },
+      { "at": "2026-07-10T18:00", "kitchen": false, "lead_minutes": 0, "sold_out_on": "2026-07-10", "problem": "sold_out", "type": null },
+      { "at": "2026-07-11T08:00", "kitchen": false, "lead_minutes": 0, "sold_out_on": "2026-07-10", "problem": null, "type": "pre_order" }
     ]
   }
 }

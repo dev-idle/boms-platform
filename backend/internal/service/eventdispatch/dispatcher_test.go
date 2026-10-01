@@ -98,8 +98,9 @@ type inlineTx struct{}
 func (inlineTx) WithTx(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 
 func newEvent() domainevent.Event {
+	customer := uuid.New()
 	return domainorder.StatusChangedEvent(domainorder.StatusPending,
-		domainorder.Order{ID: uuid.New(), UserID: uuid.New(), Status: domainorder.StatusConfirmed})
+		domainorder.Order{ID: uuid.New(), UserID: &customer, Status: domainorder.StatusConfirmed})
 }
 
 func newDispatcher(store *fakeStore, publisher *fakePublisher, timeout time.Duration) *Dispatcher {

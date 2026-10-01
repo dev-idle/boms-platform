@@ -133,6 +133,7 @@ const PICKUP_REFUSALS: ReadonlySet<string> = new Set([
   ApiErrorCode.PickupTooSoon,
   ApiErrorCode.PickupTooFar,
   ApiErrorCode.PickupClosedDay,
+  ApiErrorCode.PickupSoldOut,
   ApiErrorCode.PickupOutsideHours,
   ApiErrorCode.PickupOffSlot,
   ApiErrorCode.PickupSlotFull,

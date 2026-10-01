@@ -617,7 +617,8 @@
    separates rows. Unlayered, beside `.field-chrome` — a copy in
    `components-dashboard.css` would sit inside `@layer components` and lose the
    border colour back to it. */
-[data-theme="dashboard"] .combo-form-items__line .field-chrome--integer {
+[data-theme="dashboard"] .combo-form-items__line .field-chrome--integer,
+[data-theme="dashboard"] .staff-order-items__row .field-chrome--integer {
   block-size: var(--db-inline-action-height);
   border-bottom-color: transparent;
   min-block-size: var(--db-inline-action-height);
@@ -635,12 +636,15 @@
 /* Scoped to the quantity, not the row: hovering Remove at the other end of the
    row has nothing to do with this field, and lighting it up from there made the
    row flicker on the way to the action. */
-[data-theme="dashboard"] .combo-form-items__line .combo-form-items__qty:hover .field-chrome--integer {
+[data-theme="dashboard"] .combo-form-items__line .combo-form-items__qty:hover .field-chrome--integer,
+[data-theme="dashboard"] .staff-order-items__row .field-chrome--integer:hover {
   border-bottom-color: var(--field-border);
 }
 
 [data-theme="dashboard"] .combo-form-items__line .field-chrome--integer:focus,
-[data-theme="dashboard"] .combo-form-items__line .field-chrome--integer:focus-visible {
+[data-theme="dashboard"] .combo-form-items__line .field-chrome--integer:focus-visible,
+[data-theme="dashboard"] .staff-order-items__row .field-chrome--integer:focus,
+[data-theme="dashboard"] .staff-order-items__row .field-chrome--integer:focus-visible {
   border-bottom-color: var(--field-border-focus);
 }
 

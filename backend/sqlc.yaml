@@ -38,20 +38,31 @@ sql:
           # A calendar day with no zone; the domain reads it at midnight UTC.
           - db_type: "date"
             go_type: "time.Time"
+          - db_type: "date"
+            nullable: true
+            go_type:
+              type: "time.Time"
+              pointer: true
           - db_type: "jsonb"
             go_type: "encoding/json.RawMessage"
           - db_type: "citext"
             go_type: "string"
           - db_type: "citext"
             nullable: true
-            go_type: "string"
+            go_type:
+              type: "string"
+              pointer: true
           - db_type: "pg_catalog.citext"
             go_type: "string"
           - db_type: "pg_catalog.citext"
             nullable: true
-            go_type: "string"
+            go_type:
+              type: "string"
+              pointer: true
           - db_type: "public.citext"
             go_type: "string"
           - db_type: "public.citext"
             nullable: true
-            go_type: "string"
+            go_type:
+              type: "string"
+              pointer: true

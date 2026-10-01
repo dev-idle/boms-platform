@@ -5,13 +5,28 @@ INSERT INTO payments (order_id, provider, provider_order_id, approve_url, amount
 VALUES (
   sqlc.arg('order_id'),
   sqlc.arg('provider'),
-  sqlc.arg('provider_order_id'),
-  sqlc.arg('approve_url'),
+  sqlc.arg('provider_order_id')::text,
+  sqlc.arg('approve_url')::text,
   sqlc.arg('amount_cents'),
   sqlc.arg('currency')
 )
 ON CONFLICT (order_id) DO NOTHING
 RETURNING *;
+
+-- name: CreateCashPayment :exec
+-- Cash due when the order is collected.
+INSERT INTO payments (order_id, provider, amount_cents, currency)
+VALUES (sqlc.arg('order_id'), 'cash'::payment_provider, sqlc.arg('amount_cents'), sqlc.arg('currency'));
+
+-- name: CollectCashPayment :execrows
+-- The counter took the cash due as it handed the order over.
+UPDATE payments
+SET status      = 'captured',
+    captured_at = now(),
+    updated_at  = now()
+WHERE order_id = sqlc.arg('order_id')
+  AND provider = 'cash'::payment_provider
+  AND status = 'created';
 
 -- name: GetPaymentByOrderID :one
 SELECT *
@@ -21,14 +36,14 @@ WHERE order_id = $1;
 -- name: GetPaymentByProviderOrderID :one
 SELECT *
 FROM payments
-WHERE provider = $1
-  AND provider_order_id = $2;
+WHERE provider = sqlc.arg('provider')
+  AND provider_order_id = sqlc.arg('provider_order_id')::text;
 
 -- name: RestartPayment :one
 -- A payment the provider denied starts over with a new provider order.
 UPDATE payments
-SET provider_order_id = sqlc.arg('provider_order_id'),
-    approve_url       = sqlc.arg('approve_url'),
+SET provider_order_id = sqlc.arg('provider_order_id')::text,
+    approve_url       = sqlc.arg('approve_url')::text,
     status            = 'created',
     capture_id        = NULL,
     updated_at        = now()

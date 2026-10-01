@@ -103,6 +103,17 @@ function PrepIcon({ className }: IconProps) {
   );
 }
 
+/** A tray with a slash — what has run out today. */
+function AvailabilityIcon({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <path d="M3 14h18v5H3z" />
+      <path d="M7 14V9h10v5" />
+      <path d="M4 4l16 16" />
+    </IconBase>
+  );
+}
+
 /** Clock — the day's pickup times. */
 function PickupsIcon({ className }: IconProps) {
   return (
@@ -153,6 +164,7 @@ export function LogOutIcon({ className }: IconProps) {
 }
 
 const DASHBOARD_NAV_ICONS = {
+  availability: AvailabilityIcon,
   categories: CategoriesIcon,
   combos: CombosIcon,
   dashboard: DashboardIcon,

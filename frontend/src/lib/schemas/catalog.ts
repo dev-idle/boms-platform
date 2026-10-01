@@ -53,6 +53,8 @@ export const catalogProductSchema = z.object({
   image_urls: productImageUrlsResponseSchema,
   /** Configured from its options before it goes in the cart. */
   is_customizable: z.boolean(),
+  /** The counter ran out of it today; it may be ordered for a later day. */
+  sold_out_today: z.boolean(),
   /** What a customer chooses from; on a customizable product's detail only. */
   options: z.array(catalogProductOptionSchema).default([]),
 });
@@ -86,6 +88,8 @@ export const catalogComboSchema = z.object({
   starts_at: apiDateTimeSchema,
   ends_at: apiDateTimeSchema,
   items: z.array(comboItemSchema),
+  /** The counter ran out of one of its products today. */
+  sold_out_today: z.boolean(),
 });
 
 export const catalogCombosListFilterSchema = z.object({

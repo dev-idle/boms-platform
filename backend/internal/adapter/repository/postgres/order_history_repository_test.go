@@ -94,14 +94,14 @@ func TestOrderRepository_HistoryAndFilters_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	placed, err := orders.Create(ctx, port.CreateOrderParams{
-		Code: "CH-260928-001", Type: domainorder.TypePreOrder, UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 4500, TotalCents: 4500,
+		Code: "CH-260928-001", Type: domainorder.TypePreOrder, UserID: &customer.ID, Channel: domainorder.ChannelOnline, Status: domainorder.StatusPending, SubtotalCents: 4500, TotalCents: 4500,
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "CH-260928-001", placed.Code)
 
 	t.Run("codes_are_unique", func(t *testing.T) {
 		_, err := orders.Create(ctx, port.CreateOrderParams{
-			Code: "CH-260928-001", Type: domainorder.TypePreOrder, UserID: customer.ID, Status: domainorder.StatusPending, SubtotalCents: 1, TotalCents: 1,
+			Code: "CH-260928-001", Type: domainorder.TypePreOrder, UserID: &customer.ID, Channel: domainorder.ChannelOnline, Status: domainorder.StatusPending, SubtotalCents: 1, TotalCents: 1,
 		})
 		require.ErrorIs(t, err, apperrors.ErrConflict)
 	})
@@ -135,7 +135,7 @@ func TestOrderRepository_HistoryAndFilters_Integration(t *testing.T) {
 
 	t.Run("history_filters_by_status_and_bakery_days", func(t *testing.T) {
 		ready, err := orders.Create(ctx, port.CreateOrderParams{
-			Code: "CH-260928-002", Type: domainorder.TypePreOrder, UserID: customer.ID, Status: domainorder.StatusReady, SubtotalCents: 3200, TotalCents: 3200,
+			Code: "CH-260928-002", Type: domainorder.TypePreOrder, UserID: &customer.ID, Channel: domainorder.ChannelOnline, Status: domainorder.StatusReady, SubtotalCents: 3200, TotalCents: 3200,
 		})
 		require.NoError(t, err)
 
