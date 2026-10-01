@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cartCustomizationInputSchema, ordersListFilterSchema, paymentStartSchema } from "./index";
+import { cartCustomizationInputSchema, orderSchema, ordersListFilterSchema, paymentStartSchema } from "./index";
 
 describe("ordersListFilterSchema", () => {
   it("accepts an open or a closed range of days", () => {
@@ -72,5 +72,37 @@ describe("cartCustomizationInputSchema", () => {
     const photo = { ...cake, reference_image_url: "https://res.cloudinary.com/demo/image/upload/v1/boms/references/u/cake.jpg" };
     expect(cartCustomizationInputSchema.safeParse(photo).success).toBe(false);
     expect(cartCustomizationInputSchema.safeParse({ ...photo, reference_rights_confirmed: true }).success).toBe(true);
+  });
+});
+
+// The customer gives this code at the counter, so it is exactly what the counter types.
+describe("orderSchema pickup code", () => {
+  const order = {
+    id: "00000000-0000-4000-8000-000000000001",
+    code: "CH-261001-001",
+    status: "confirmed",
+    order_type: "pre_order",
+    subtotal_cents: 4500,
+    discount_cents: 0,
+    total_cents: 4500,
+    items: [],
+    timeline: [],
+    tickets: [],
+    payment: null,
+    fulfillment: null,
+    payment_due_at: null,
+    created_at: "2026-10-01T09:00:00+07:00",
+    updated_at: "2026-10-01T09:05:00+07:00",
+  };
+
+  it("reads four digits, or none before the bakery accepts the order", () => {
+    expect(orderSchema.parse({ ...order, pickup_code: "0427" }).pickup_code).toBe("0427");
+    expect(orderSchema.parse({ ...order, pickup_code: null }).pickup_code).toBeNull();
+  });
+
+  it("rejects anything else", () => {
+    for (const pickup_code of [undefined, "427", "04a7"]) {
+      expect(orderSchema.safeParse({ ...order, pickup_code }).success).toBe(false);
+    }
   });
 });

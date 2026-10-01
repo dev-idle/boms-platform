@@ -35,6 +35,21 @@ func (h *StaffOrderHandler) List(c fiber.Ctx) error {
 	return response.OKPaginated(c, items, int(page), int(pageSize), total)
 }
 
+// Pickups pages a bakery day's pickups (?date=YYYY-MM-DD) by time.
+func (h *StaffOrderHandler) Pickups(c fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	page := utils.ParseQueryInt32(c.Query("page", "1"), 1)
+	pageSize := utils.ParseQueryInt32(
+		c.Query("page_size", usecase.OrderListDefaultPageSizeQuery),
+		usecase.OrderListDefaultPageSize,
+	)
+	out, total, page, pageSize, err := h.usecase.Pickups(c.Context(), c.Query("date"), page, pageSize)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OKPaginated(c, out, int(page), int(pageSize), total)
+}
+
 func (h *StaffOrderHandler) Get(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	orderID, err := uuid.Parse(c.Params("id"))

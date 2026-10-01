@@ -77,6 +77,16 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
 
         <OrderProgressStepper status={order.status} timeline={order.timeline} />
 
+        {order.pickup_code ? (
+          <section aria-labelledby="order-pickup-code" className="storefront-order-detail__pickup-code">
+            <h2 className="text-form-label" id="order-pickup-code">
+              Pickup code
+            </h2>
+            <p className="storefront-order-detail__pickup-digits">{order.pickup_code}</p>
+            <p className="text-caption">Give this code at the counter when you collect your order.</p>
+          </section>
+        ) : null}
+
         {order.status === "pending" ? (
           <p className="text-caption">
             We are checking your custom order and will email you once we accept it. If we cannot make it, you are

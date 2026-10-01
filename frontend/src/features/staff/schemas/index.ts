@@ -91,13 +91,35 @@ export const staffOrdersListFilterSchema = z.object({
 /** The reason the customer reads when the bakery cancels their order. */
 const cancelReasonSchema = reasonSchema("Tell the customer why");
 
-/** A move at the counter; a cancellation states the reason the customer reads. */
+/** The 4 digits the customer gives at the counter to collect their order. */
+const pickupCodeSchema = z.string().regex(/^\d{4}$/, "Enter the 4-digit code");
+
+/**
+ * A move at the counter: a handover carries the customer's pickup code, a
+ * cancellation the reason the customer reads.
+ */
 export const patchStaffOrderStatusInputSchema = z.union([
-  z.object({ status: z.enum(["confirmed", "fulfilled"]) }),
+  z.object({ status: z.literal("confirmed") }),
+  z.object({ status: z.literal("fulfilled"), pickup_code: pickupCodeSchema }),
   z.object({ status: z.literal("cancelled"), reason: cancelReasonSchema }),
 ]);
 
 export const cancelOrderFormSchema = z.object({ reason: cancelReasonSchema });
+
+export const handoffFormSchema = z.object({ pickup_code: pickupCodeSchema });
+
+/** A page of one bakery day's pickups, soonest first. */
+export const staffPickupsFilterSchema = z.object({
+  date: z.iso.date(),
+  page: z.number().int().min(1).default(1),
+  page_size: z.number().int().min(1).max(100).default(50),
+});
+
+/** The page, with the slot length lateness is measured by: a pickup is late once its slot has ended. */
+export const staffPickupsSchema = z.object({
+  slot_minutes: z.number().int().min(1),
+  pickups: z.array(staffOrderSummarySchema.extend({ pickup_at: apiDateTimeSchema })),
+});
 
 /** Hand a ticket nobody started to the other station. */
 export const moveTicketInputSchema = z.object({
@@ -109,8 +131,17 @@ export type StaffOrder = z.infer<typeof staffOrderSchema>;
 export type StaffOrdersListFilterInput = z.infer<typeof staffOrdersListFilterSchema>;
 export type PatchStaffOrderStatusInput = z.infer<typeof patchStaffOrderStatusInputSchema>;
 export type CancelOrderFormInput = z.input<typeof cancelOrderFormSchema>;
+export type HandoffFormInput = z.input<typeof handoffFormSchema>;
+export type StaffPickupsFilterInput = z.input<typeof staffPickupsFilterSchema>;
+type StaffPickups = z.infer<typeof staffPickupsSchema>;
+export type StaffPickup = StaffPickups["pickups"][number];
 export type StaffOrderTicket = z.infer<typeof staffOrderTicketSchema>;
 export type MoveTicketInput = z.infer<typeof moveTicketInputSchema>;
+
+export type StaffPickupsResult = Omit<StaffPickups, "pickups"> & {
+  pickups: StaffPickup[];
+  pagination: StaffOrdersListResult["pagination"];
+};
 
 export type StaffOrdersListResult = {
   orders: StaffOrderSummary[];

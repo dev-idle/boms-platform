@@ -36,6 +36,7 @@ type OrderUsecase struct {
 	tickets     port.TicketRepository
 	payments    port.PaymentRepository
 	payment     *PaymentUsecase
+	pickupCodes domainorder.PickupCodes
 	transitions orderTransitions
 }
 
@@ -51,10 +52,12 @@ func NewOrderUsecase(
 	tickets port.TicketRepository,
 	payments port.PaymentRepository,
 	payment *PaymentUsecase,
+	pickupCodes domainorder.PickupCodes,
 ) *OrderUsecase {
 	return &OrderUsecase{
 		users: users, orders: orders, carts: carts, discount: discount, cartUC: cartUC,
 		tx: tx, events: events, store: store, tickets: tickets, payments: payments, payment: payment,
+		pickupCodes: pickupCodes,
 		transitions: orderTransitions{
 			tx: tx, orders: orders, tickets: tickets, discounts: discount, payments: payments, events: events,
 		},
@@ -392,6 +395,10 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		}
 		fulfillment := mapFulfillmentToDTO(items)
 		resp.Fulfillment = &fulfillment
+	}
+	if order.Status.HasPickupCode() {
+		code := u.pickupCodes.Of(order.ID)
+		resp.PickupCode = &code
 	}
 	return resp, nil
 }

@@ -1683,7 +1683,12 @@ WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status
     $1::order_status IS NULL
     OR o.status = $1::order_status
   )
-ORDER BY o.created_at DESC
+ORDER BY
+  o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
+  CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
+    THEN o.pickup_at END ASC NULLS LAST,
+  o.pickup_at DESC NULLS LAST,
+  o.created_at DESC
 LIMIT $3 OFFSET $2
 `
 
@@ -1714,6 +1719,8 @@ type StaffListOrdersRow struct {
 
 // An order not paid, now or ever, is not the bakery's to see: one cancelled
 // is only if it was accepted before (domainorder.SeenByStaff).
+// What still needs doing comes first, soonest pickup first; then the orders
+// already closed, latest pickup first.
 //
 //	SELECT
 //	  o.id,
@@ -1744,7 +1751,12 @@ type StaffListOrdersRow struct {
 //	    $1::order_status IS NULL
 //	    OR o.status = $1::order_status
 //	  )
-//	ORDER BY o.created_at DESC
+//	ORDER BY
+//	  o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
+//	  CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
+//	    THEN o.pickup_at END ASC NULLS LAST,
+//	  o.pickup_at DESC NULLS LAST,
+//	  o.created_at DESC
 //	LIMIT $3 OFFSET $2
 func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error) {
 	rows, err := q.db.Query(ctx, staffListOrders, arg.Status, arg.Offset, arg.Limit)
@@ -1814,6 +1826,164 @@ WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status
 //	  )
 func (q *Queries) StaffListOrdersCount(ctx context.Context, status *OrderStatus) (int64, error) {
 	row := q.db.QueryRow(ctx, staffListOrdersCount, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const staffListPickups = `-- name: StaffListPickups :many
+SELECT
+  o.id,
+  o.user_id,
+  o.status,
+  o.subtotal_cents,
+  o.discount_cents,
+  o.total_cents,
+  o.discount_code_id,
+  o.discount_code_snapshot,
+  o.pickup_at,
+  o.created_at,
+  o.updated_at,
+  o.code,
+  o.order_type,
+  u.email AS customer_email,
+  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
+  cp.display_name AS customer_display_name
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+WHERE o.pickup_at >= $1::timestamptz
+  AND o.pickup_at < $2::timestamptz
+  AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
+                   'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
+ORDER BY o.pickup_at, o.code
+LIMIT $4 OFFSET $3
+`
+
+type StaffListPickupsParams struct {
+	PickupFrom time.Time `json:"pickupFrom"`
+	PickupTo   time.Time `json:"pickupTo"`
+	Offset     int32     `json:"offset"`
+	Limit      int32     `json:"limit"`
+}
+
+type StaffListPickupsRow struct {
+	ID                    uuid.UUID   `json:"id"`
+	UserID                uuid.UUID   `json:"userId"`
+	Status                OrderStatus `json:"status"`
+	SubtotalCents         int64       `json:"subtotalCents"`
+	DiscountCents         int64       `json:"discountCents"`
+	TotalCents            int64       `json:"totalCents"`
+	DiscountCodeID        *uuid.UUID  `json:"discountCodeId"`
+	DiscountCodeSnapshot  *string     `json:"discountCodeSnapshot"`
+	PickupAt              *time.Time  `json:"pickupAt"`
+	CreatedAt             time.Time   `json:"createdAt"`
+	UpdatedAt             time.Time   `json:"updatedAt"`
+	Code                  string      `json:"code"`
+	OrderType             OrderType   `json:"orderType"`
+	CustomerEmail         string      `json:"customerEmail"`
+	CustomerEmailVerified bool        `json:"customerEmailVerified"`
+	CustomerDisplayName   *string     `json:"customerDisplayName"`
+}
+
+// The pickups of one bakery day, by time: every order the bakery took with a
+// pickup in [pickup_from, pickup_to), cancelled ones left out. Same columns as
+// StaffListOrders.
+//
+//	SELECT
+//	  o.id,
+//	  o.user_id,
+//	  o.status,
+//	  o.subtotal_cents,
+//	  o.discount_cents,
+//	  o.total_cents,
+//	  o.discount_code_id,
+//	  o.discount_code_snapshot,
+//	  o.pickup_at,
+//	  o.created_at,
+//	  o.updated_at,
+//	  o.code,
+//	  o.order_type,
+//	  u.email AS customer_email,
+//	  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
+//	  cp.display_name AS customer_display_name
+//	FROM orders o
+//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+//	WHERE o.pickup_at >= $1::timestamptz
+//	  AND o.pickup_at < $2::timestamptz
+//	  AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
+//	                   'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
+//	ORDER BY o.pickup_at, o.code
+//	LIMIT $4 OFFSET $3
+func (q *Queries) StaffListPickups(ctx context.Context, arg StaffListPickupsParams) ([]StaffListPickupsRow, error) {
+	rows, err := q.db.Query(ctx, staffListPickups,
+		arg.PickupFrom,
+		arg.PickupTo,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []StaffListPickupsRow{}
+	for rows.Next() {
+		var i StaffListPickupsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Status,
+			&i.SubtotalCents,
+			&i.DiscountCents,
+			&i.TotalCents,
+			&i.DiscountCodeID,
+			&i.DiscountCodeSnapshot,
+			&i.PickupAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Code,
+			&i.OrderType,
+			&i.CustomerEmail,
+			&i.CustomerEmailVerified,
+			&i.CustomerDisplayName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const staffListPickupsCount = `-- name: StaffListPickupsCount :one
+SELECT COUNT(*)::bigint AS count
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE o.pickup_at >= $1::timestamptz
+  AND o.pickup_at < $2::timestamptz
+  AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
+                   'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
+`
+
+type StaffListPickupsCountParams struct {
+	PickupFrom time.Time `json:"pickupFrom"`
+	PickupTo   time.Time `json:"pickupTo"`
+}
+
+// StaffListPickupsCount
+//
+//	SELECT COUNT(*)::bigint AS count
+//	FROM orders o
+//	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	WHERE o.pickup_at >= $1::timestamptz
+//	  AND o.pickup_at < $2::timestamptz
+//	  AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
+//	                   'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
+func (q *Queries) StaffListPickupsCount(ctx context.Context, arg StaffListPickupsCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, staffListPickupsCount, arg.PickupFrom, arg.PickupTo)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

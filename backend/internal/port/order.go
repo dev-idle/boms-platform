@@ -64,6 +64,14 @@ type StaffListOrdersParams struct {
 	Offset int32
 }
 
+// StaffListPickupsParams pages the orders with a pickup in [From, To).
+type StaffListPickupsParams struct {
+	From   time.Time
+	To     time.Time
+	Limit  int32
+	Offset int32
+}
+
 type StaffOrderListRow struct {
 	Order                 domainorder.Order
 	CustomerEmail         string
@@ -151,6 +159,10 @@ type OrderRepository interface {
 	UpdateStatus(ctx context.Context, params UpdateOrderStatusParams) (*domainorder.Order, error)
 	CreateItems(ctx context.Context, items []CreateOrderItemParams) error
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domainorder.Item, error)
+	// StaffListPickups pages the orders the bakery took with a pickup in
+	// [From, To), by pickup time; cancelled ones are left out.
+	StaffListPickups(ctx context.Context, params StaffListPickupsParams) ([]StaffOrderListRow, error)
+	StaffListPickupsCount(ctx context.Context, from, to time.Time) (int64, error)
 	// HasCustomItems reports whether the order holds an item its customer
 	// configured, which staff review before the bakery makes it.
 	HasCustomItems(ctx context.Context, orderID uuid.UUID) (bool, error)

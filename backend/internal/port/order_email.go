@@ -34,6 +34,9 @@ type OrderEmail struct {
 	// did; RefundCents what goes back to them. Both only for a cancellation.
 	Reason      string
 	RefundCents int64
+	// PickupCode is what the customer gives at the counter, on the notices
+	// sent once the bakery accepted the order.
+	PickupCode string
 }
 
 // OrderEmailComposer writes the email for an order notice.

@@ -75,7 +75,7 @@ func TestOrderEmailDelivery_Integration(t *testing.T) {
 	composer, err := email.NewOrderComposer("https://shop.example")
 	require.NoError(t, err)
 	mailer := &capturingMailer{}
-	handler := queue.OrderEmailHandler(usecase.NewOrderEmailUsecase(f.orders, postgresadapter.NewPaymentRepository(f.pool), composer, mailer, zap.NewNop()))
+	handler := queue.OrderEmailHandler(usecase.NewOrderEmailUsecase(f.orders, postgresadapter.NewPaymentRepository(f.pool), composer, mailer, testPickupCodes, zap.NewNop()))
 	require.NoError(t, handler(ctx, asynq.NewTask(pending[0].Type, pending[0].Payload)))
 
 	require.Len(t, mailer.sent, 1)
@@ -83,6 +83,7 @@ func TestOrderEmailDelivery_Integration(t *testing.T) {
 	assert.Equal(t, account.Email, sent.To)
 	assert.Equal(t, "We received your order "+order.Code, sent.Subject)
 	assert.Contains(t, sent.Text, "1 x Croissant")
+	assert.Contains(t, sent.Text, "Pickup code: "+testPickupCodes.Of(uuid.MustParse(order.ID)))
 	assert.Contains(t, sent.Text, "https://shop.example/orders/"+order.ID)
 
 	// The customer closes their account before a later email goes out.

@@ -292,8 +292,55 @@ WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status
     sqlc.narg('status')::order_status IS NULL
     OR o.status = sqlc.narg('status')::order_status
   )
-ORDER BY o.created_at DESC
+-- What still needs doing comes first, soonest pickup first; then the orders
+-- already closed, latest pickup first.
+ORDER BY
+  o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
+  CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
+    THEN o.pickup_at END ASC NULLS LAST,
+  o.pickup_at DESC NULLS LAST,
+  o.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: StaffListPickups :many
+-- The pickups of one bakery day, by time: every order the bakery took with a
+-- pickup in [pickup_from, pickup_to), cancelled ones left out. Same columns as
+-- StaffListOrders.
+SELECT
+  o.id,
+  o.user_id,
+  o.status,
+  o.subtotal_cents,
+  o.discount_cents,
+  o.total_cents,
+  o.discount_code_id,
+  o.discount_code_snapshot,
+  o.pickup_at,
+  o.created_at,
+  o.updated_at,
+  o.code,
+  o.order_type,
+  u.email AS customer_email,
+  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
+  cp.display_name AS customer_display_name
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+WHERE o.pickup_at >= sqlc.arg('pickup_from')::timestamptz
+  AND o.pickup_at < sqlc.arg('pickup_to')::timestamptz
+  AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
+                   'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
+ORDER BY o.pickup_at, o.code
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: StaffListPickupsCount :one
+SELECT COUNT(*)::bigint AS count
+FROM orders o
+INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+WHERE o.pickup_at >= sqlc.arg('pickup_from')::timestamptz
+  AND o.pickup_at < sqlc.arg('pickup_to')::timestamptz
+  AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
+                   'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status);
 
 -- name: StaffListOrdersCount :one
 SELECT COUNT(*)::bigint AS count

@@ -29,7 +29,8 @@ func TestPayment_Integration(t *testing.T) {
 	ctx := context.Background()
 	f := newCheckoutFixture(t, 8)
 	staff := usecase.NewStaffOrderUsecase(f.orders, postgresadapter.NewTicketRepository(f.pool), f.pool, f.outbox, nil, nil,
-		postgresadapter.NewPaymentRepository(f.pool), postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC)
+		postgresadapter.NewPaymentRepository(f.pool), postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC,
+		testPickupCodes, newHandoffAttempts(), handoffLimit)
 	discounts := postgresadapter.NewDiscountCodeRepository(f.pool)
 	staffSees := func(orderID string) bool {
 		list, _, _, _, err := staff.List(ctx, 1, 100, "")
@@ -280,7 +281,8 @@ func TestOrderExpiry_Integration(t *testing.T) {
 		order.ID).Scan(&bySystem))
 	assert.True(t, bySystem, "no person expired it")
 	staff := usecase.NewStaffOrderUsecase(f.orders, postgresadapter.NewTicketRepository(f.pool), f.pool, f.outbox, nil, nil,
-		postgresadapter.NewPaymentRepository(f.pool), postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC)
+		postgresadapter.NewPaymentRepository(f.pool), postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC,
+		testPickupCodes, newHandoffAttempts(), handoffLimit)
 	_, err = staff.Get(ctx, uuid.MustParse(order.ID))
 	require.ErrorIs(t, err, domainorder.ErrNotFound, "an order never paid is not the bakery's to see")
 

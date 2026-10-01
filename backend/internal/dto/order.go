@@ -59,8 +59,11 @@ type OrderResponse struct {
 	// Fulfillment is what the items ask of the bakery, for choosing another
 	// pickup; null once the order is being made.
 	Fulfillment *FulfillmentResponse `json:"fulfillment"`
-	CreatedAt   time.Time            `json:"created_at"`
-	UpdatedAt   time.Time            `json:"updated_at"`
+	// PickupCode is what the customer gives at the counter to collect the
+	// order, from when the bakery accepts it until it is handed over.
+	PickupCode *string   `json:"pickup_code"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // OrderPaymentResponse is where an order's payment stands; null before the

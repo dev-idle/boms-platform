@@ -34,6 +34,10 @@ describe("staffQueryKeysForEvent", () => {
     ]);
   });
 
+  it("keeps a day's pickups under the orders, so every order event refreshes them", () => {
+    expect(staffQueryKeys.pickups({ date: "2026-10-01" }).slice(0, 2)).toEqual([...staffQueryKeys.ordersRoot]);
+  });
+
   it("ignores events it does not know", () => {
     expect(staffQueryKeysForEvent({ type: "catalog.updated", data: {} })).toEqual([]);
   });

@@ -11,6 +11,15 @@
 <tr>
 <td style="padding:0 0 16px;color:#1b1714;">{{.Pickup}}</td>
 </tr>
+{{end}}{{if .PickupCode}}<tr>
+<td style="padding:0 0 4px;font-size:11px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:#6f675e;">Pickup code</td>
+</tr>
+<tr>
+<td style="padding:0 0 4px;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:28px;letter-spacing:0.3em;color:#1b1714;">{{.PickupCode}}</td>
+</tr>
+<tr>
+<td style="padding:0 0 16px;color:#6f675e;">Give this code at the counter when you collect your order.</td>
+</tr>
 {{end}}</table>
 {{if .Receipt}}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
 {{range .Lines}}<tr>

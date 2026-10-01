@@ -95,6 +95,8 @@ type RateLimitRedisConfig struct {
 	ManagerMediaWindow    time.Duration
 	ReferenceUploadMax    int
 	ReferenceUploadWindow time.Duration
+	PickupCodeMax         int
+	PickupCodeWindow      time.Duration
 	AuthUserMax           int
 	AuthUserWindow        time.Duration
 	DiscountAttemptMax    int
@@ -182,6 +184,18 @@ type OrderConfig struct {
 	// JobInterval is how often the worker expires orders not paid in time,
 	// makes the refunds cancelled orders ask for and records missed pickups.
 	JobInterval time.Duration
+	// PickupCodeSecret signs orders into the codes customers give at pickup;
+	// the API checks them and the worker writes them in emails.
+	PickupCodeSecret string
+}
+
+// validatePickupCodeSecret checks the key both the API and the worker sign
+// pickup codes with.
+func (c OrderConfig) validatePickupCodeSecret() error {
+	if len(c.PickupCodeSecret) < 32 {
+		return errors.New("order.pickup_code_secret must be at least 32 characters")
+	}
+	return nil
 }
 
 // OutboxConfig tunes delivery of committed events. A post-commit delivery spends
@@ -404,6 +418,8 @@ func load() (*Config, error) {
 			ManagerMediaWindow:         v.GetDuration("rate_limit.redis.manager_media_window"),
 			ReferenceUploadMax:         v.GetInt("rate_limit.redis.reference_upload_max"),
 			ReferenceUploadWindow:      v.GetDuration("rate_limit.redis.reference_upload_window"),
+			PickupCodeMax:              v.GetInt("rate_limit.redis.pickup_code_max"),
+			PickupCodeWindow:           v.GetDuration("rate_limit.redis.pickup_code_window"),
 			AuthUserMax:                v.GetInt("rate_limit.redis.auth_user_max"),
 			AuthUserWindow:             v.GetDuration("rate_limit.redis.auth_user_window"),
 			DiscountAttemptMax:         v.GetInt("rate_limit.redis.discount_attempt_max"),
@@ -444,7 +460,8 @@ func load() (*Config, error) {
 			HealthCheckTimeout: v.GetDuration("redis.health_timeout"),
 		},
 		Order: OrderConfig{
-			JobInterval: v.GetDuration("order.job_interval"),
+			JobInterval:      v.GetDuration("order.job_interval"),
+			PickupCodeSecret: strings.TrimSpace(v.GetString("order.pickup_code_secret")),
 		},
 		Outbox: OutboxConfig{
 			DispatchTimeout: v.GetDuration("outbox.dispatch_timeout"),
@@ -577,6 +594,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.redis.manager_media_window", time.Minute)
 	v.SetDefault("rate_limit.redis.reference_upload_max", 10)
 	v.SetDefault("rate_limit.redis.reference_upload_window", 10*time.Minute)
+	v.SetDefault("rate_limit.redis.pickup_code_max", 10)
+	v.SetDefault("rate_limit.redis.pickup_code_window", 24*time.Hour)
 	v.SetDefault("rate_limit.redis.auth_user_max", 60)
 	v.SetDefault("rate_limit.redis.auth_user_window", time.Minute)
 	v.SetDefault("rate_limit.redis.discount_attempt_max", 10)
@@ -633,6 +652,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("outbox.retention", 7*24*time.Hour)
 	v.SetDefault("outbox.prune_interval", time.Hour)
 	v.SetDefault("order.job_interval", time.Minute)
+	v.SetDefault("order.pickup_code_secret", "")
 
 	v.SetDefault("realtime.addr", "127.0.0.1:8081")
 	v.SetDefault("realtime.public_url", "ws://localhost:8081/ws")
@@ -703,6 +723,9 @@ func (c *Config) ValidateWorker() error {
 	}
 	if c.Order.JobInterval <= 0 {
 		return errors.New("order.job_interval must be positive")
+	}
+	if err := c.Order.validatePickupCodeSecret(); err != nil {
+		return err
 	}
 	// Before an overdue order expires, the worker asks PayPal whether it was paid.
 	if err := c.PayPal.validate(c.App.Env); err != nil {
@@ -898,7 +921,7 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	return nil
+	return c.Order.validatePickupCodeSecret()
 }
 
 // Realtime bounds that keep revocation prompt and a ticket short-lived. A
@@ -1042,6 +1065,7 @@ func (c RateLimitRedisConfig) validate() error {
 		{"rate_limit.redis.self_write", c.SelfWriteMax, c.SelfWriteWindow},
 		{"rate_limit.redis.manager_media", c.ManagerMediaMax, c.ManagerMediaWindow},
 		{"rate_limit.redis.reference_upload", c.ReferenceUploadMax, c.ReferenceUploadWindow},
+		{"rate_limit.redis.pickup_code", c.PickupCodeMax, c.PickupCodeWindow},
 		{"rate_limit.redis.auth_user", c.AuthUserMax, c.AuthUserWindow},
 		{"rate_limit.redis.discount_attempt", c.DiscountAttemptMax, c.DiscountAttemptWindow},
 		{"rate_limit.redis.realtime_ticket", c.RealtimeTicketMax, c.RealtimeTicketWindow},

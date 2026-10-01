@@ -76,12 +76,25 @@ func TestOrderComposer(t *testing.T) {
 		}
 	})
 
+	t.Run("the_code_to_collect_the_order_is_given_once_the_bakery_accepts_it", func(t *testing.T) {
+		t.Parallel()
+		msg := orderEmail(domainorder.NoticeReady)
+		msg.PickupCode = "4821"
+		ready, err := newComposer(t).ComposeOrderEmail(msg)
+		require.NoError(t, err)
+		assert.Contains(t, ready.Text, "Pickup code: 4821 (give it at the counter")
+		assert.Contains(t, ready.HTML, "4821")
+		requested, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeRequested))
+		require.NoError(t, err)
+		assert.NotContains(t, requested.Text, "Pickup code", "not while staff review the order")
+	})
+
 	t.Run("ready_and_cancelled_say_so_without_the_receipt", func(t *testing.T) {
 		t.Parallel()
 		ready, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeReady))
 		require.NoError(t, err)
 		assert.Equal(t, "Your order CH-260930-007 is ready to collect", ready.Subject)
-		assert.Contains(t, ready.Text, "give your order code at the counter")
+		assert.Contains(t, ready.Text, "give your pickup code at the counter")
 		assert.NotContains(t, ready.Text, "Subtotal")
 
 		cancelled, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeCancelled))

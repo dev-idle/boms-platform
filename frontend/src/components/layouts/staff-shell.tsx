@@ -7,6 +7,7 @@ import { DashboardShell, type DashboardNavItem } from "./dashboard-shell";
 
 const STAFF_NAV_ITEMS: readonly DashboardNavItem[] = [
   { href: ROUTE.staff.orders, icon: "orders", label: "Orders", match: "prefix" },
+  { href: ROUTE.staff.pickups, icon: "pickups", label: "Pickups", match: "prefix" },
   { href: ROUTE.staff.prep, icon: "prep", label: "Prep Queue", match: "prefix" },
 ] as const;
 

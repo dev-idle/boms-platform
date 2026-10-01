@@ -105,8 +105,11 @@ func newEmailFixture(notice domainorder.Notice, status domainorder.Status) *emai
 	}
 }
 
+// emailCodes signs pickup codes as the worker does, with a test key.
+var emailCodes = domainorder.NewPickupCodes("an-email-test-key-of-thirty-two-chars")
+
 func (f *emailFixture) send() error {
-	uc := usecase.NewOrderEmailUsecase(f.orders, f.payments, f.composer, f.mailer, zap.NewNop())
+	uc := usecase.NewOrderEmailUsecase(f.orders, f.payments, f.composer, f.mailer, emailCodes, zap.NewNop())
 	return uc.Send(context.Background(), f.task)
 }
 
@@ -154,6 +157,7 @@ func TestOrderEmailUsecase_Send(t *testing.T) {
 		assert.Equal(t, "mai@example.com", msg.To)
 		assert.Equal(t, "Mai", msg.CustomerName)
 		assert.Equal(t, "CH-260930-007", msg.Order.Code)
+		assert.Equal(t, emailCodes.Of(f.task.OrderID), msg.PickupCode, "the code to collect it")
 		assert.Len(t, msg.Items, 1)
 		require.Len(t, f.mailer.sent, 1)
 		assert.Equal(t, "subject ready", f.mailer.sent[0].Subject)
@@ -167,6 +171,7 @@ func TestOrderEmailUsecase_Send(t *testing.T) {
 		require.NoError(t, f.send())
 
 		assert.Empty(t, f.composer.got[0].CustomerName)
+		assert.Empty(t, f.composer.got[0].PickupCode, "no code while staff review the order")
 		assert.Len(t, f.mailer.sent, 1)
 	})
 

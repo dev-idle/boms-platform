@@ -220,6 +220,31 @@ func (r *OrderRepository) StaffList(ctx context.Context, params port.StaffListOr
 	return out, nil
 }
 
+func (r *OrderRepository) StaffListPickups(ctx context.Context, params port.StaffListPickupsParams) ([]port.StaffOrderListRow, error) {
+	rows, err := r.q(ctx).StaffListPickups(ctx, sqlcgen.StaffListPickupsParams{
+		PickupFrom: params.From,
+		PickupTo:   params.To,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "staff list pickups")
+	}
+	out := make([]port.StaffOrderListRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, *mapStaffListOrdersRow(sqlcgen.StaffListOrdersRow(row)))
+	}
+	return out, nil
+}
+
+func (r *OrderRepository) StaffListPickupsCount(ctx context.Context, from, to time.Time) (int64, error) {
+	count, err := r.q(ctx).StaffListPickupsCount(ctx, sqlcgen.StaffListPickupsCountParams{PickupFrom: from, PickupTo: to})
+	if err != nil {
+		return 0, mapRepoError(err, "staff list pickups count")
+	}
+	return count, nil
+}
+
 func (r *OrderRepository) StaffListCount(ctx context.Context, status *domainorder.Status) (int64, error) {
 	statusSQL, err := optionalOrderStatus(status)
 	if err != nil {

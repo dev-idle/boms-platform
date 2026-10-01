@@ -21,6 +21,7 @@ type OrderEmailUsecase struct {
 	payments port.PaymentRepository
 	composer port.OrderEmailComposer
 	mailer   port.Mailer
+	codes    domainorder.PickupCodes
 	log      *zap.Logger
 }
 
@@ -29,9 +30,10 @@ func NewOrderEmailUsecase(
 	payments port.PaymentRepository,
 	composer port.OrderEmailComposer,
 	mailer port.Mailer,
+	codes domainorder.PickupCodes,
 	log *zap.Logger,
 ) *OrderEmailUsecase {
-	return &OrderEmailUsecase{orders: orders, payments: payments, composer: composer, mailer: mailer, log: log}
+	return &OrderEmailUsecase{orders: orders, payments: payments, composer: composer, mailer: mailer, codes: codes, log: log}
 }
 
 // Send emails task's notice to the order's customer. It skips the email when
@@ -69,6 +71,9 @@ func (u *OrderEmailUsecase) Send(ctx context.Context, task port.OrderEmailTask) 
 	}
 	if order.CustomerDisplayName != nil {
 		msg.CustomerName = *order.CustomerDisplayName
+	}
+	if order.Order.Status.HasPickupCode() {
+		msg.PickupCode = u.codes.Of(order.Order.ID)
 	}
 	if task.Notice == domainorder.NoticeCancelled {
 		if msg.Reason, msg.RefundCents, err = u.cancellation(ctx, task.OrderID); err != nil {

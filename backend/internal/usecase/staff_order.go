@@ -7,6 +7,7 @@ import (
 	"time"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
@@ -23,6 +24,9 @@ type StaffOrderUsecase struct {
 	payments    port.PaymentRepository
 	store       port.StoreSettingsRepository
 	cartUC      *CartUsecase
+	pickupCodes domainorder.PickupCodes
+	attempts    port.Quota
+	attemptsMax port.QuotaLimit
 	transitions orderTransitions
 	audit       *auditlogger.Service
 	log         *zap.Logger
@@ -39,13 +43,19 @@ func NewStaffOrderUsecase(
 	discounts port.DiscountCodeRepository,
 	store port.StoreSettingsRepository,
 	cartUC *CartUsecase,
+	pickupCodes domainorder.PickupCodes,
+	attempts port.Quota,
+	attemptsMax port.QuotaLimit,
 ) *StaffOrderUsecase {
 	return &StaffOrderUsecase{
-		orders:   orders,
-		tickets:  tickets,
-		payments: payments,
-		store:    store,
-		cartUC:   cartUC,
+		orders:      orders,
+		tickets:     tickets,
+		payments:    payments,
+		store:       store,
+		cartUC:      cartUC,
+		pickupCodes: pickupCodes,
+		attempts:    attempts,
+		attemptsMax: attemptsMax,
 		transitions: orderTransitions{
 			tx: tx, orders: orders, tickets: tickets, discounts: discounts, payments: payments, events: events,
 		},
@@ -86,15 +96,66 @@ func (u *StaffOrderUsecase) List(
 		return nil, 0, page, pageSize, err
 	}
 
+	out, err := u.summaries(ctx, rows)
+	if err != nil {
+		return nil, 0, page, pageSize, err
+	}
+	return out, total, page, pageSize, nil
+}
+
+// Pickups pages a bakery day's pickups by time, for the counter to see what
+// is due, what is ready to hand over and what is late.
+func (u *StaffOrderUsecase) Pickups(
+	ctx context.Context,
+	date string,
+	page, pageSize int32,
+) (*dto.StaffPickupsResponse, int64, int32, int32, error) {
+	page, pageSize = normalizeOrderListPage(page, pageSize)
+	day, err := time.ParseInLocation(domainstore.DayLayout, strings.TrimSpace(date), domainstore.Location)
+	if err != nil {
+		return nil, 0, page, pageSize, apperrors.ErrValidation.WithDetail("date", "use YYYY-MM-DD")
+	}
+	settings, err := u.store.GetSettings(ctx)
+	if err != nil {
+		return nil, 0, page, pageSize, err
+	}
+	params := port.StaffListPickupsParams{
+		From:   day,
+		To:     day.AddDate(0, 0, 1),
+		Limit:  pageSize,
+		Offset: utils.PageOffset(page, pageSize),
+	}
+	rows, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]port.StaffOrderListRow, error) {
+			return u.orders.StaffListPickups(ctx, params)
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.orders.StaffListPickupsCount(ctx, params.From, params.To)
+		},
+	)
+	if err != nil {
+		return nil, 0, page, pageSize, err
+	}
+	pickups, err := u.summaries(ctx, rows)
+	if err != nil {
+		return nil, 0, page, pageSize, err
+	}
+	return &dto.StaffPickupsResponse{
+		SlotMinutes: int(settings.SlotLength / time.Minute),
+		Pickups:     pickups,
+	}, total, page, pageSize, nil
+}
+
+// summaries maps listed orders with how many items each holds.
+func (u *StaffOrderUsecase) summaries(ctx context.Context, rows []port.StaffOrderListRow) ([]dto.StaffOrderSummaryResponse, error) {
 	orderIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
 		orderIDs = append(orderIDs, row.Order.ID)
 	}
 	itemCounts, err := u.orders.SumItemQuantitiesByOrderIDs(ctx, orderIDs)
 	if err != nil {
-		return nil, 0, page, pageSize, err
+		return nil, err
 	}
-
 	out := make([]dto.StaffOrderSummaryResponse, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, dto.StaffOrderSummaryResponse{
@@ -108,7 +169,7 @@ func (u *StaffOrderUsecase) List(
 			CreatedAt:  row.Order.CreatedAt,
 		})
 	}
-	return out, total, page, pageSize, nil
+	return out, nil
 }
 
 func (u *StaffOrderUsecase) Get(ctx context.Context, orderID uuid.UUID) (*dto.StaffOrderResponse, error) {
@@ -154,6 +215,9 @@ func (u *StaffOrderUsecase) PatchStatus(
 	} else if req.Reason != "" {
 		return nil, apperrors.ErrValidation.WithDetail("reason", "only a cancellation takes a reason")
 	}
+	if (targetStatus == domainorder.StatusFulfilled) != (req.PickupCode != "") {
+		return nil, apperrors.ErrValidation.WithDetail("pickup_code", "a handoff, and only a handoff, takes the customer's pickup code")
+	}
 
 	beforeRow, err := u.orders.StaffGetByID(ctx, orderID)
 	if err != nil {
@@ -167,6 +231,11 @@ func (u *StaffOrderUsecase) PatchStatus(
 	}
 	if beforeRow.Order.Status == domainorder.StatusPending && targetStatus == domainorder.StatusConfirmed {
 		if err := u.stillInTime(ctx, beforeRow.Order); err != nil {
+			return nil, err
+		}
+	}
+	if targetStatus == domainorder.StatusFulfilled {
+		if err := u.checkPickupCode(ctx, actorID, orderID, req.PickupCode); err != nil {
 			return nil, err
 		}
 	}
@@ -194,6 +263,25 @@ func (u *StaffOrderUsecase) PatchStatus(
 		return nil, err
 	}
 	return toStaffOrderResponse(&afterRow, parts), nil
+}
+
+// checkPickupCode checks the code the customer gave at handoff. Each order
+// takes a few tries a day, so the counter cannot walk the four digits while an
+// order waits; a correct code counts as a try too. Running out is logged with
+// who tried, since only staff can try a code.
+func (u *StaffOrderUsecase) checkPickupCode(ctx context.Context, actorID, orderID uuid.UUID, code string) error {
+	allowed, err := u.attempts.Take(ctx, "pickup_code:"+orderID.String(), u.attemptsMax)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		u.log.Warn("pickup_code_locked", zap.String("order_id", orderID.String()), zap.String("actor_id", actorID.String()))
+		return domainorder.ErrPickupCodeLocked
+	}
+	if !u.pickupCodes.Matches(orderID, code) {
+		return domainorder.ErrPickupCodeInvalid
+	}
+	return nil
 }
 
 // stillInTime checks, as staff accept an order they reviewed, that its pickup

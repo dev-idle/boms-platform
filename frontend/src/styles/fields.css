@@ -650,6 +650,12 @@
   border-bottom-color: var(--field-border);
 }
 
+/* The pickup day sits in a row with its steps, at its own width. Unlayered, so
+   it outranks `.field-chrome` and the `w-full` utility. */
+.db-table-day .field-chrome {
+  width: auto;
+}
+
 .field-chrome--inline:hover:not(:disabled):not(:focus):not(:focus-visible) {
   border-bottom-color: var(--field-border-hover);
 }

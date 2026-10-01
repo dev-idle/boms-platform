@@ -119,6 +119,8 @@ var (
 	ErrOrderNotPayable              = New(http.StatusUnprocessableEntity, "order_not_payable", "This order can no longer be paid")
 	ErrPaymentNotCompleted          = New(http.StatusUnprocessableEntity, "payment_not_completed", "The payment was not completed")
 	ErrPaymentUnderReview           = New(http.StatusConflict, "payment_under_review", "PayPal is still reviewing your payment; try again once it clears")
+	ErrPickupCodeInvalid            = New(http.StatusUnprocessableEntity, "pickup_code_invalid", "That pickup code does not match this order")
+	ErrPickupCodeLocked             = New(http.StatusTooManyRequests, "pickup_code_locked", "Too many wrong pickup codes for this order; try again later")
 	ErrWebhookInvalid               = New(http.StatusBadRequest, "webhook_invalid", "The notice is not signed by the payment provider")
 )
 

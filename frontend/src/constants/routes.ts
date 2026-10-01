@@ -5,7 +5,7 @@
  *   - Public:   /, /login, /register, /forgot-password, /reset-password, /verify-email,
  *               /products, /products/:id, /terms, /privacy, /refund-policy
  *   - Customer: /cart, /orders, /customer/account/*
- *   - Staff:    /staff/orders, /staff/orders/:id, /staff/prep, /staff/account/*
+ *   - Staff:    /staff/orders, /staff/orders/:id, /staff/pickups, /staff/prep, /staff/account/*
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/account/*
@@ -37,6 +37,7 @@ export const ROUTE = {
   staff: {
     orders: "/staff/orders",
     orderDetail: (id: string) => `/staff/orders/${id}`,
+    pickups: "/staff/pickups",
     prep: "/staff/prep",
     account: {
       root: "/staff/account",

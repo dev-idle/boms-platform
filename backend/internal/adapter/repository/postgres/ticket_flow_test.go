@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
 	domaincategory "github.com/boms/backend/internal/domain/category"
@@ -41,8 +42,8 @@ func newTicketFixture(t *testing.T) *ticketFixture {
 		clerk:           f.newWorker(t, domainuser.RoleStaff),
 		checkoutFixture: f,
 		tickets:         tickets,
-		staff: usecase.NewStaffOrderUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil, postgresadapter.NewPaymentRepository(f.pool),
-			postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC),
+		staff: usecase.NewStaffOrderUsecase(f.orders, tickets, f.pool, f.outbox, nil, zap.NewNop(), postgresadapter.NewPaymentRepository(f.pool),
+			postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC, testPickupCodes, newHandoffAttempts(), handoffLimit),
 		counter: usecase.NewStaffTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
 		kitchen: usecase.NewBakerTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
 	}
@@ -234,7 +235,7 @@ func TestTickets_Integration(t *testing.T) {
 		}, f.orderNotices(t, order.ID), "every ticket move is announced with the order status it derives")
 
 		_, err = f.staff.PatchStatus(ctx, clerk, domainuser.RoleStaff, uuid.MustParse(order.ID),
-			dto.PatchStaffOrderStatusRequest{Status: string(domainorder.StatusFulfilled)})
+			dto.PatchStaffOrderStatusRequest{Status: string(domainorder.StatusFulfilled), PickupCode: testPickupCodes.Of(uuid.MustParse(order.ID))})
 		require.NoError(t, err)
 		_, err = f.counter.Move(ctx, clerk, domainuser.RoleStaff, pastry.ID, domaincategory.StationKitchen)
 		require.ErrorIs(t, err, domainorder.ErrTicketOrderNotActive, "a collected order has nothing left to move")

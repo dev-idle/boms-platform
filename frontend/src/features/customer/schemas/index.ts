@@ -137,6 +137,8 @@ export const orderSchema = z.object({
   fulfillment: fulfillmentSchema.nullable(),
   /** When the order expires if still unpaid; null on an order placed before online payment. */
   payment_due_at: apiDateTimeSchema.nullable(),
+  /** What the customer gives at the counter, from when the bakery accepts the order until it is collected. */
+  pickup_code: z.string().regex(/^\d{4}$/).nullable(),
   created_at: apiDateTimeSchema,
   updated_at: apiDateTimeSchema,
 });

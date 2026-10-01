@@ -3,7 +3,7 @@ import type { QueryKey } from "@tanstack/react-query";
 import { REALTIME_EVENT_TYPE, type RealtimeEvent } from "@/lib/realtime/events";
 import type { StationTicketsListFilterInput } from "@/lib/schemas/ticket";
 
-import type { StaffOrdersListFilterInput } from "../schemas";
+import type { StaffOrdersListFilterInput, StaffPickupsFilterInput } from "../schemas";
 
 export const staffQueryKeys = {
   root: ["staff"] as const,
@@ -11,6 +11,8 @@ export const staffQueryKeys = {
   orders: (filter: StaffOrdersListFilterInput) =>
     [...staffQueryKeys.ordersRoot, filter] as const,
   order: (id: string) => [...staffQueryKeys.ordersRoot, id] as const,
+  pickups: (filter: StaffPickupsFilterInput) =>
+    [...staffQueryKeys.ordersRoot, "pickups", filter] as const,
   ticketsRoot: ["staff", "tickets"] as const,
   tickets: (filter: StationTicketsListFilterInput) =>
     [...staffQueryKeys.ticketsRoot, filter] as const,

@@ -21,15 +21,18 @@ import {
   getStaffOrder,
   listCounterTickets,
   listStaffOrders,
+  listStaffPickups,
   moveTicket,
   patchCounterTicketStatus,
   patchStaffOrderStatus,
 } from "../api";
 import {
   staffOrdersListFilterSchema,
+  staffPickupsFilterSchema,
   type MoveTicketInput,
   type PatchStaffOrderStatusInput,
   type StaffOrdersListFilterInput,
+  type StaffPickupsFilterInput,
 } from "../schemas";
 import { staffQueryKeys } from "./query-options";
 
@@ -52,6 +55,16 @@ export function useStaffOrders(
   return useQuery({
     queryKey: staffQueryKeys.orders(filter),
     queryFn: () => listStaffOrders(filter),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** A page of one bakery day's pickups; the last page stays shown while the next loads. */
+export function useStaffPickups(input: StaffPickupsFilterInput) {
+  const filter = staffPickupsFilterSchema.parse(input);
+  return useQuery({
+    queryKey: staffQueryKeys.pickups(filter),
+    queryFn: () => listStaffPickups(filter),
     placeholderData: keepPreviousData,
   });
 }
@@ -80,6 +93,23 @@ export function usePatchStaffOrderStatus(orderId: string) {
       toast.error(
         staffMutationErrorMessage(error, "Failed to update order status"),
       );
+    },
+  });
+}
+
+/**
+ * Hands a ready order over with the customer's pickup code. The dialog shows
+ * a failure, beside the field when the code is wrong or locked.
+ */
+export function useHandOverOrder(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (pickupCode: string) =>
+      patchStaffOrderStatus(orderId, { status: "fulfilled", pickup_code: pickupCode }),
+    onSuccess: (order) => {
+      queryClient.setQueryData(staffQueryKeys.order(orderId), order);
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.ordersRoot });
+      toast.success(`${order.code} handed over`);
     },
   });
 }

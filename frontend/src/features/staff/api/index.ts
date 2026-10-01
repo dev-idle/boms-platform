@@ -23,11 +23,15 @@ import {
   staffOrderSchema,
   staffOrderSummarySchema,
   staffOrdersListFilterSchema,
+  staffPickupsFilterSchema,
+  staffPickupsSchema,
   type MoveTicketInput,
   type PatchStaffOrderStatusInput,
   type StaffOrder,
   type StaffOrdersListFilterInput,
   type StaffOrdersListResult,
+  type StaffPickupsFilterInput,
+  type StaffPickupsResult,
 } from "../schemas";
 
 export async function listStaffOrders(
@@ -52,6 +56,29 @@ export async function listStaffOrders(
     orders: parsed.items,
     pagination: parsed.pagination,
     request_id: parsed.request_id,
+  };
+}
+
+/** A page of one bakery day's pickups. */
+export async function listStaffPickups(input: StaffPickupsFilterInput): Promise<StaffPickupsResult> {
+  const filter = staffPickupsFilterSchema.parse(input);
+  const params = new URLSearchParams({
+    date: filter.date,
+    page: String(filter.page),
+    page_size: String(filter.page_size),
+  });
+  const result = await browserRequestWithMeta<z.infer<typeof staffPickupsSchema>>(
+    `/api/v1/staff/pickups?${params.toString()}`,
+    { method: "GET", schema: staffPickupsSchema },
+  );
+  const parsed = parsePaginatedList(result.data.pickups, result.meta, {
+    page: filter.page,
+    page_size: filter.page_size,
+  });
+  return {
+    slot_minutes: result.data.slot_minutes,
+    pickups: parsed.items,
+    pagination: parsed.pagination,
   };
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { patchStaffOrderStatusInputSchema, staffOrderSchema } from "./index";
+import { patchStaffOrderStatusInputSchema, staffOrderSchema, staffPickupsSchema } from "./index";
 
 const order = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -80,7 +80,7 @@ describe("staff order tickets", () => {
   });
 });
 
-// A cancellation at the counter tells the customer why; no other move carries a reason.
+// A cancellation at the counter tells the customer why; a handover carries the customer's pickup code.
 describe("staff order status move", () => {
   it("cancels only with a reason", () => {
     expect(patchStaffOrderStatusInputSchema.parse({ status: "cancelled", reason: " Out of matcha " })).toEqual({
@@ -93,5 +93,39 @@ describe("staff order status move", () => {
 
   it("moves forward without a reason", () => {
     expect(patchStaffOrderStatusInputSchema.parse({ status: "confirmed", reason: "x" })).toEqual({ status: "confirmed" });
+  });
+
+  it("hands over only with a 4-digit pickup code", () => {
+    expect(patchStaffOrderStatusInputSchema.parse({ status: "fulfilled", pickup_code: "0427" })).toEqual({
+      status: "fulfilled",
+      pickup_code: "0427",
+    });
+    for (const pickup_code of [undefined, "427", "04270", "04a7"]) {
+      expect(patchStaffOrderStatusInputSchema.safeParse({ status: "fulfilled", pickup_code }).success).toBe(false);
+    }
+  });
+});
+
+// The day's schedule names each pickup's time; one without a time is not a pickup.
+describe("staff pickups", () => {
+  const pickup = {
+    id: order.id,
+    code: order.code,
+    status: "ready",
+    total_cents: 4500,
+    item_count: 2,
+    customer: order.customer,
+    pickup_at: "2026-10-01T09:00:00+07:00",
+    created_at: order.created_at,
+  };
+
+  it("reads a page of a day's pickups and the slot length", () => {
+    const result = staffPickupsSchema.parse({ slot_minutes: 30, pickups: [pickup] });
+    expect(result.pickups[0]?.pickup_at).toBe("2026-10-01T09:00:00+07:00");
+  });
+
+  it("rejects a pickup without a time", () => {
+    const result = staffPickupsSchema.safeParse({ slot_minutes: 30, pickups: [{ ...pickup, pickup_at: null }] });
+    expect(result.success).toBe(false);
   });
 });

@@ -59,11 +59,11 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 	},
 	domainorder.NoticeReady: {
 		subject:   "Your order %s is ready to collect",
-		preheader: "Come in during your pickup time and give your order code at the counter.",
+		preheader: "Come in during your pickup time and give your pickup code at the counter.",
 		eyebrow:   "Ready for pickup",
 		heading:   "Your order is ready",
 		lead: []string{
-			"Come in during your pickup time and give your order code at the counter.",
+			"Come in during your pickup time and give your pickup code at the counter.",
 		},
 	},
 	// The lead says who cancelled and why, and what comes back (cancelledLead).
@@ -122,6 +122,7 @@ type orderView struct {
 	frame
 	Code         string
 	Pickup       string
+	PickupCode   string
 	Receipt      bool
 	Lines        []orderLine
 	Subtotal     string
@@ -155,10 +156,11 @@ func (c *OrderComposer) view(words orderCopy, msg port.OrderEmail) orderView {
 			ActionURL:   c.siteURL + domainorder.PagePath(order.ID),
 			FooterNote:  orderFooterNote,
 		},
-		Code:     order.Code,
-		Receipt:  words.receipt,
-		Subtotal: money(order.SubtotalCents),
-		Total:    money(order.TotalCents),
+		Code:       order.Code,
+		PickupCode: msg.PickupCode,
+		Receipt:    words.receipt,
+		Subtotal:   money(order.SubtotalCents),
+		Total:      money(order.TotalCents),
 	}
 	if msg.CustomerName != "" {
 		view.Greeting = "Hi " + msg.CustomerName + ","

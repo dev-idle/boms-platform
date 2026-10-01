@@ -154,6 +154,7 @@ func defaultRateRedis() config.RateLimitRedisConfig {
 		SelfWriteMax: 10, SelfWriteWindow: time.Minute,
 		ManagerMediaMax: 20, ManagerMediaWindow: time.Minute,
 		ReferenceUploadMax: 10, ReferenceUploadWindow: 10 * time.Minute,
+		PickupCodeMax: 10, PickupCodeWindow: 24 * time.Hour,
 		AuthUserMax: 60, AuthUserWindow: time.Minute,
 		DiscountAttemptMax: 10, DiscountAttemptWindow: 15 * time.Minute,
 		RealtimeTicketMax: 60, RealtimeTicketWindow: time.Minute,
@@ -205,7 +206,7 @@ func minimalDevConfig() *config.Config {
 		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		RateRedis: defaultRateRedis(),
 		Outbox:    defaultOutbox(),
-		Order:     config.OrderConfig{JobInterval: time.Minute},
+		Order:     config.OrderConfig{JobInterval: time.Minute, PickupCodeSecret: strings.Repeat("k", 32)},
 		Mail:      defaultMail(),
 		Realtime:  defaultRealtime(),
 		Postgres: config.PostgresConfig{
@@ -346,6 +347,17 @@ func TestValidateWorker_OrderJobs(t *testing.T) {
 	cfg.Order.JobInterval = 0
 	if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), "order.job_interval") {
 		t.Fatalf("expected order.job_interval error, got: %v", err)
+	}
+}
+
+func TestValidate_PickupCodeSecret(t *testing.T) {
+	t.Parallel()
+	cfg := minimalDevConfig()
+	cfg.Order.PickupCodeSecret = "short"
+	for name, validate := range map[string]func() error{"api": cfg.Validate, "worker": cfg.ValidateWorker} {
+		if err := validate(); err == nil || !strings.Contains(err.Error(), "order.pickup_code_secret") {
+			t.Fatalf("%s: expected order.pickup_code_secret error, got: %v", name, err)
+		}
 	}
 }
 

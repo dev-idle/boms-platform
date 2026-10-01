@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -45,6 +46,30 @@ type checkoutFixture struct {
 	customer  int
 }
 
+// testPickupCodes signs pickup codes as the API does, with a test key.
+var testPickupCodes = domainorder.NewPickupCodes(strings.Repeat("k", 32))
+
+// handoffLimit is how many pickup code tries an order takes in the tests.
+var handoffLimit = port.QuotaLimit{Max: 3, Window: 15 * time.Minute}
+
+// handoffAttempts counts pickup code tries per order in memory, as the Redis
+// quota does in a window.
+type handoffAttempts struct {
+	mu    sync.Mutex
+	taken map[string]int
+}
+
+func newHandoffAttempts() *handoffAttempts {
+	return &handoffAttempts{taken: map[string]int{}}
+}
+
+func (q *handoffAttempts) Take(_ context.Context, key string, limit port.QuotaLimit) (bool, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.taken[key]++
+	return q.taken[key] <= limit.Max, nil
+}
+
 // testCloudinary lets reference photos be attached: a customer's own folder
 // is boms/references/<their id> on the demo cloud.
 var testCloudinary = config.CloudinaryConfig{CloudName: "demo", APIKey: "key", APISecret: "secret"}
@@ -72,7 +97,7 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	f.paypal = &paidPayPal{amounts: map[string]int64{}, taken: map[string]domainpayment.Status{}}
 	f.paymentUC = usecase.NewPaymentUsecase(pool, f.orders, discounts, tickets, payments, f.paypal,
 		f.outbox, "https://shop.example", zap.NewNop())
-	f.orderUC = usecase.NewOrderUsecase(f.users, f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, tickets, payments, f.paymentUC)
+	f.orderUC = usecase.NewOrderUsecase(f.users, f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, tickets, payments, f.paymentUC, testPickupCodes)
 
 	kitchen, err := categories.Create(ctx, port.CreateCategoryParams{Name: "Cakes", Slug: "cakes", IsActive: true, Station: domaincategory.StationKitchen})
 	require.NoError(t, err)

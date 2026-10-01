@@ -21,6 +21,7 @@ import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-
 import { usePatchStaffOrderStatus, useStaffOrder } from "../hooks";
 import type { PatchStaffOrderStatusInput } from "../schemas";
 import { StaffCancelOrderDialog } from "./staff-cancel-order-dialog";
+import { StaffHandoffDialog } from "./staff-handoff-dialog";
 import { StaffOrderHistory } from "./staff-order-history";
 import { StaffOrderTickets } from "./staff-order-tickets";
 
@@ -43,7 +44,7 @@ function nextStatusActions(
       return [{ label: "Cancel order", status: "cancelled" }];
     case "ready":
       return [
-        { label: "Mark fulfilled", status: "fulfilled" },
+        { label: "Hand over", status: "fulfilled" },
         { label: "Cancel order", status: "cancelled" },
       ];
     default:
@@ -56,6 +57,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
   const orderQuery = useStaffOrder(orderId);
   const patchStatus = usePatchStaffOrderStatus(orderId);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [handoffOpen, setHandoffOpen] = useState(false);
 
   if (!isValidId) {
     return <p className="text-sm text-muted">Invalid order link.</p>;
@@ -180,6 +182,10 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
                       setCancelOpen(true);
                       return;
                     }
+                    if (action.status === "fulfilled") {
+                      setHandoffOpen(true);
+                      return;
+                    }
                     patchStatus.mutate({ status: action.status });
                   }}
                 >
@@ -202,6 +208,13 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
         orderId={order.id}
         refundCents={order.payment?.captured_at ? order.total_cents : null}
         onClose={() => setCancelOpen(false)}
+      />
+
+      <StaffHandoffDialog
+        open={handoffOpen}
+        orderCode={order.code}
+        orderId={order.id}
+        onClose={() => setHandoffOpen(false)}
       />
     </div>
   );

@@ -1903,6 +1903,78 @@
     flex-wrap: nowrap;
   }
 
+  /* Pickups: the day picker and its steps sit together on the toolbar's left. */
+  .db-table-day {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--db-space-2);
+  }
+
+  /* Pickups: code, items, status and two actions are fixed; the customer takes
+     the rest, and below that the wrapper scrolls. */
+  .db-table--pickups {
+    min-width: calc(
+      var(--db-table-col-code) + var(--db-table-col-number) + var(--db-table-col-status-pill) +
+        var(--db-table-col-actions-group) + 14rem
+    );
+  }
+
+  .db-table--pickups col.db-table-col-status {
+    width: var(--db-table-col-status-pill);
+  }
+
+  .db-table--pickups col.db-table-col-actions {
+    width: var(--db-table-col-actions-group);
+  }
+
+  .db-table--pickups .db-table-row-actions {
+    flex-wrap: nowrap;
+  }
+
+  /* A slot's time heads its orders: the mono time and one hairline between
+     slots mark the structure, and the first slot sits on the header rule
+     instead. It stays on the surface, so a hovered row never merges into it. */
+  .db-table-slot th {
+    border-bottom: 1px solid var(--color-line-soft);
+    font-size: 0.75rem;
+    font-weight: 400;
+    padding: var(--db-space-3) var(--db-table-cell-padding-inline);
+    text-align: left;
+  }
+
+  tbody + tbody > .db-table-slot th {
+    border-top: 1px solid var(--color-line-soft);
+  }
+
+  .db-table-slot__head {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--db-space-3);
+  }
+
+  .db-table-slot__time {
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+
+  .db-table-slot__meta {
+    color: var(--color-muted);
+  }
+
+  .db-table-slot__late {
+    color: var(--color-warning);
+    font-size: var(--label-size);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking);
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
   /* Closed days: the day and one action are fixed; the reason takes the rest. */
   .db-table--closed-days col.db-table-col-actions {
     width: var(--db-table-col-number);

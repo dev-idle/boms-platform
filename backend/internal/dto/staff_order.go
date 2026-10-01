@@ -11,6 +11,14 @@ type StaffOrderCustomerResponse struct {
 	Phone       *string `json:"phone,omitempty"`
 }
 
+// StaffPickupsResponse is a page of a bakery day's pickups, by time, with the
+// slot length the counter measures lateness by: a pickup is late once its slot
+// has ended.
+type StaffPickupsResponse struct {
+	SlotMinutes int                         `json:"slot_minutes"`
+	Pickups     []StaffOrderSummaryResponse `json:"pickups"`
+}
+
 type StaffOrderSummaryResponse struct {
 	ID         string                     `json:"id"`
 	Code       string                     `json:"code"`
@@ -56,4 +64,6 @@ type PatchStaffOrderStatusRequest struct {
 	Status string `json:"status" validate:"required,oneof=confirmed fulfilled cancelled"`
 	// Reason is required to cancel, and shown to the customer.
 	Reason string `json:"reason" validate:"max=200"`
+	// PickupCode is required to hand the order over: the customer gives it.
+	PickupCode string `json:"pickup_code" validate:"omitempty,len=4,number"`
 }

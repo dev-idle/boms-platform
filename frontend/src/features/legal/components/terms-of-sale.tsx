@@ -90,8 +90,9 @@ export function TermsOfSale() {
 
       <PolicySection id="terms-collection" title="6. Collecting your order">
         <p>
-          Come in during your slot and give your order code at the counter. An order that is ready
-          but not collected by closing time on its pickup day is a missed pickup; the{" "}
+          Come in during your slot and give the 4-digit pickup code from your order page or our
+          email at the counter: we hand an order over only for its code. An order that is ready but
+          not collected by closing time on its pickup day is a missed pickup; the{" "}
           <Link href={ROUTE.refundPolicy}>{PAGE_TITLES.refundPolicy}</Link> explains what happens
           then.
         </p>

@@ -28,6 +28,7 @@ import (
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
 	"github.com/boms/backend/internal/bootstrap"
 	"github.com/boms/backend/internal/config"
+	domainorder "github.com/boms/backend/internal/domain/order"
 	"github.com/boms/backend/internal/infrastructure/logger"
 	"github.com/boms/backend/internal/service/eventdispatch"
 	"github.com/boms/backend/internal/usecase"
@@ -74,12 +75,13 @@ func main() {
 	// The order jobs write events: deliver them at once, as the API does.
 	pgPool.OnCommit(dispatcher.AfterCommit)
 
-	stopEmails, err := startEmails(cfg.Mail, cfg.App.SiteURL, redisClient.RDB(), pgPool, zlog)
+	pickupCodes := domainorder.NewPickupCodes(cfg.Order.PickupCodeSecret)
+	stopEmails, err := startEmails(cfg.Mail, cfg.App.SiteURL, pickupCodes, redisClient.RDB(), pgPool, zlog)
 	if err != nil {
 		zlog.Fatal("email_init", zap.Error(err))
 	}
 
-	orderJobs := newOrderJobs(cfg, pgPool, zlog)
+	orderJobs := newOrderJobs(cfg, pgPool, pickupCodes, zlog)
 
 	zlog.Info("worker_started",
 		zap.Duration("sweep_interval", cfg.Outbox.SweepInterval),
@@ -99,7 +101,14 @@ func main() {
 
 // startEmails sends queued emails through the configured SMTP server, a few at
 // a time, until the returned stop is called.
-func startEmails(cfg config.MailConfig, siteURL string, rdb *redis.Client, pool *postgresrepo.Pool, log *zap.Logger) (func(), error) {
+func startEmails(
+	cfg config.MailConfig,
+	siteURL string,
+	codes domainorder.PickupCodes,
+	rdb *redis.Client,
+	pool *postgresrepo.Pool,
+	log *zap.Logger,
+) (func(), error) {
 	orderComposer, err := email.NewOrderComposer(siteURL)
 	if err != nil {
 		return nil, err
@@ -111,7 +120,7 @@ func startEmails(cfg config.MailConfig, siteURL string, rdb *redis.Client, pool 
 	mailer := email.NewSMTPMailer(cfg)
 	users := postgresrepo.NewUserRepository(pool)
 	orderEmails := usecase.NewOrderEmailUsecase(postgresrepo.NewOrderRepository(pool), postgresrepo.NewPaymentRepository(pool),
-		orderComposer, mailer, log)
+		orderComposer, mailer, codes, log)
 	accountEmails := usecase.NewAccountEmailUsecase(users, postgresrepo.NewUserTokenRepository(pool), accountComposer, mailer, log)
 	server := asynq.NewServerFromRedisClient(rdb, asynq.Config{
 		Concurrency: cfg.Concurrency,
@@ -162,7 +171,7 @@ type orderJob struct {
 }
 
 // newOrderJobs is the order work, in the order a tick runs it.
-func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, log *zap.Logger) []orderJob {
+func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, codes domainorder.PickupCodes, log *zap.Logger) []orderJob {
 	orders := postgresrepo.NewOrderRepository(pool)
 	carts := postgresrepo.NewCartRepository(pool)
 	discounts := postgresrepo.NewDiscountCodeRepository(pool)
@@ -173,7 +182,7 @@ func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, log *zap.Logger) 
 		cfg.App.SiteURL, log)
 	cartUC := usecase.NewCartUsecase(carts, postgresrepo.NewProductRepository(pool), postgresrepo.NewComboRepository(pool), discounts, cfg.Cloudinary)
 	pickups := usecase.NewOrderUsecase(postgresrepo.NewUserRepository(pool), orders, carts, discounts, cartUC, pool, outbox,
-		postgresrepo.NewStoreSettingsRepository(pool), tickets, paymentRepo, payments)
+		postgresrepo.NewStoreSettingsRepository(pool), tickets, paymentRepo, payments, codes)
 	return []orderJob{
 		{name: "expire_unpaid", run: payments.ExpireOverdue},
 		{name: "make_refunds", run: payments.RefundDue},

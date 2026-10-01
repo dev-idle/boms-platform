@@ -18,6 +18,7 @@ import (
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
 	"github.com/boms/backend/internal/bootstrap"
 	"github.com/boms/backend/internal/config"
+	domainorder "github.com/boms/backend/internal/domain/order"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	v1 "github.com/boms/backend/internal/handler/v1"
 	"github.com/boms/backend/internal/infrastructure/crypto"
@@ -115,14 +116,16 @@ func main() {
 	ticketRepo := postgresrepo.NewTicketRepository(pgPool)
 	paymentRepo := postgresrepo.NewPaymentRepository(pgPool)
 	paymentUC := usecase.NewPaymentUsecase(pgPool, orderRepo, discountCodeRepo, ticketRepo, paymentRepo, paypal.New(cfg.PayPal), outboxRepo, cfg.App.SiteURL, zlog)
-	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC)
+	pickupCodes := domainorder.NewPickupCodes(cfg.Order.PickupCodeSecret)
+	quota := redisrepo.NewQuota(redisClient)
+	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC, pickupCodes)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	accountErasureUC := usecase.NewAccountErasureUsecase(
 		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
 	)
 	emailVerificationUC := usecase.NewEmailVerificationUsecase(pgPool, userRepo, userTokenRepo, outboxRepo, auditLogger)
 	passwordResetUC := usecase.NewPasswordResetUsecase(
-		pgPool, userRepo, userTokenRepo, outboxRepo, sessionStore, hasher, redisrepo.NewQuota(redisClient),
+		pgPool, userRepo, userTokenRepo, outboxRepo, sessionStore, hasher, quota,
 		port.QuotaLimit{Max: cfg.RateRedis.PasswordResetAccountMax, Window: cfg.RateRedis.PasswordResetAccountWindow},
 		auditLogger, zlog,
 	)
@@ -130,7 +133,8 @@ func main() {
 		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, cartRepo, sessionStore, auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
-	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC)
+	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC,
+		pickupCodes, quota, port.QuotaLimit{Max: cfg.RateRedis.PickupCodeMax, Window: cfg.RateRedis.PickupCodeWindow})
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -353,6 +357,7 @@ func main() {
 		passwordChanged,
 	)
 	staffOrders.Get("/orders", staffOrderHandler.List)
+	staffOrders.Get("/pickups", staffOrderHandler.Pickups)
 	staffOrders.Get("/orders/:id", staffOrderHandler.Get)
 	staffOrders.Patch("/orders/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.PatchStatus)
 	staffOrders.Get("/tickets", staffTicketHandler.List)

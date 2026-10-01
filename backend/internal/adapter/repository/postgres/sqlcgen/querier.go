@@ -2015,6 +2015,8 @@ type Querier interface {
 	StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGetOrderByIDRow, error)
 	// An order not paid, now or ever, is not the bakery's to see: one cancelled
 	// is only if it was accepted before (domainorder.SeenByStaff).
+	// What still needs doing comes first, soonest pickup first; then the orders
+	// already closed, latest pickup first.
 	//
 	//  SELECT
 	//    o.id,
@@ -2045,7 +2047,12 @@ type Querier interface {
 	//      $1::order_status IS NULL
 	//      OR o.status = $1::order_status
 	//    )
-	//  ORDER BY o.created_at DESC
+	//  ORDER BY
+	//    o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
+	//    CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
+	//      THEN o.pickup_at END ASC NULLS LAST,
+	//    o.pickup_at DESC NULLS LAST,
+	//    o.created_at DESC
 	//  LIMIT $3 OFFSET $2
 	StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error)
 	//StaffListOrdersCount
@@ -2063,6 +2070,47 @@ type Querier interface {
 	//      OR o.status = $1::order_status
 	//    )
 	StaffListOrdersCount(ctx context.Context, status *OrderStatus) (int64, error)
+	// The pickups of one bakery day, by time: every order the bakery took with a
+	// pickup in [pickup_from, pickup_to), cancelled ones left out. Same columns as
+	// StaffListOrders.
+	//
+	//  SELECT
+	//    o.id,
+	//    o.user_id,
+	//    o.status,
+	//    o.subtotal_cents,
+	//    o.discount_cents,
+	//    o.total_cents,
+	//    o.discount_code_id,
+	//    o.discount_code_snapshot,
+	//    o.pickup_at,
+	//    o.created_at,
+	//    o.updated_at,
+	//    o.code,
+	//    o.order_type,
+	//    u.email AS customer_email,
+	//    (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
+	//    cp.display_name AS customer_display_name
+	//  FROM orders o
+	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
+	//  WHERE o.pickup_at >= $1::timestamptz
+	//    AND o.pickup_at < $2::timestamptz
+	//    AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
+	//                     'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
+	//  ORDER BY o.pickup_at, o.code
+	//  LIMIT $4 OFFSET $3
+	StaffListPickups(ctx context.Context, arg StaffListPickupsParams) ([]StaffListPickupsRow, error)
+	//StaffListPickupsCount
+	//
+	//  SELECT COUNT(*)::bigint AS count
+	//  FROM orders o
+	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  WHERE o.pickup_at >= $1::timestamptz
+	//    AND o.pickup_at < $2::timestamptz
+	//    AND o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status,
+	//                     'ready'::order_status, 'fulfilled'::order_status, 'no_show'::order_status)
+	StaffListPickupsCount(ctx context.Context, arg StaffListPickupsCountParams) (int64, error)
 	//SumOrderItemQuantitiesByOrderIDs
 	//
 	//  SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count
