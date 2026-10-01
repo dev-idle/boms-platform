@@ -11,7 +11,7 @@ function cartItemCount(items: { quantity: number }[]): number {
   return items.reduce((total, item) => total + item.quantity, 0);
 }
 
-/** Cart affordance with matcha count badge. */
+/** Cart affordance with matcha count badge; the label shows from 40rem. */
 export function StorefrontHeaderCartLink() {
   const isAuthenticated = useAuthStore((state) => state.status === "authenticated");
   const cartQuery = useCart({ enabled: isAuthenticated });
@@ -27,7 +27,7 @@ export function StorefrontHeaderCartLink() {
       href={ROUTE.cart}
     >
       <CartIcon />
-      Cart
+      <span className="sr-only sm:not-sr-only">Cart</span>
       {itemCount > 0 ? (
         <span className="storefront-header-cart__badge">{itemCount}</span>
       ) : null}

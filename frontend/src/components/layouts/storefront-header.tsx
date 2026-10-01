@@ -135,7 +135,7 @@ export function StorefrontHeader({ categories }: StorefrontHeaderProps) {
     >
       <div className="storefront-container">
         <div className="storefront-header-toolbar">
-          <BrandLogo className="min-w-0" size="header" />
+          <BrandLogo size="header" />
 
           {/* Nav and search share one slot: opening search swaps the row in place. */}
           <div className="storefront-header-center">

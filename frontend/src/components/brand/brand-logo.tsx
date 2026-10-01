@@ -16,7 +16,11 @@ const brandLogoVariants = cva(
       size: {
         sm: "gap-2.5 text-[1.75rem]",
         md: "gap-3 text-[2.125rem]",
-        header: "gap-2.5 text-[1.9rem] sm:gap-3 sm:text-[2.1rem] lg:text-[2.3rem]",
+        // Below 40rem the toolbar also holds three 44px icons: the lockup steps down to the
+        // display face's 28px floor, and below 360px to the mark alone (the name stays
+        // readable to assistive technology). The link is a 44px target at every width.
+        header:
+          "min-h-11 min-w-11 gap-2.5 text-[1.75rem] max-[22.5rem]:[&_.brand-wordmark]:sr-only sm:gap-3 sm:text-[2.1rem] sm:[&_.brand-mark]:size-10 lg:text-[2.3rem]",
         nav: "gap-3 text-[2.25rem] sm:text-[2.5rem] lg:text-[2.65rem]",
         lg: "gap-3.5 text-[2.75rem] sm:text-3xl",
       },
@@ -33,7 +37,7 @@ const markSizeForLogo: Record<
 > = {
   sm: "md",
   md: "lg",
-  header: "lg",
+  header: "md",
   nav: "xl",
   lg: "2xl",
 };
