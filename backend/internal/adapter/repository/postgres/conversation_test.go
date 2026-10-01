@@ -252,7 +252,7 @@ func TestConversations_Integration(t *testing.T) {
 		customerProfiles := postgresadapter.NewCustomerProfileRepository(f.pool)
 		audit := postgresadapter.NewAuditLogRepository(f.pool)
 		export, err := usecase.NewDataExportUsecase(f.users, customerProfiles, postgresadapter.NewStaffProfileRepository(f.pool),
-			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, f.carts, fixedSessions{}, audit,
+			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, postgresadapter.NewSavedProductRepository(f.pool), f.carts, fixedSessions{}, audit,
 		).Export(ctx, customer)
 		require.NoError(t, err)
 		require.Len(t, export.Orders, 1)
@@ -261,7 +261,8 @@ func TestConversations_Integration(t *testing.T) {
 		assert.Equal(t, string(domainuser.RoleStaff), messages[1].From)
 		assert.Nil(t, messages[1].AuthorName, "the staff member's name is theirs, not the customer's")
 
-		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, audit,
+		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations,
+			postgresadapter.NewSavedProductRepository(f.pool), audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})
 		require.NoError(t, erasure.Erase(ctx, customer, fixturePassword))
 

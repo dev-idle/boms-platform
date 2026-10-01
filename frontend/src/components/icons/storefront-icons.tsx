@@ -142,3 +142,43 @@ export function SignOutIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+/** A product kept among favorites; filled while it is on the list. */
+export function HeartIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={cn("storefront-icon", className)}
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.65"
+      viewBox={STOREFRONT_ICON_VIEWBOX}
+      width="24"
+    >
+      <path d="M12 20s-7.5-4.6-7.5-10.1A4.15 4.15 0 0 1 12 7.4a4.15 4.15 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z" />
+    </svg>
+  );
+}
+
+/** A product kept on the wishlist; filled while it is on the list. */
+export function BookmarkIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={cn("storefront-icon", className)}
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.65"
+      viewBox={STOREFRONT_ICON_VIEWBOX}
+      width="24"
+    >
+      <path d="M6.5 4h11v16.5L12 16.75 6.5 20.5V4Z" />
+    </svg>
+  );
+}

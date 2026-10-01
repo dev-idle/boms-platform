@@ -16,6 +16,7 @@ export const customerQueryKeys = {
   order: (id: string) => [...customerQueryKeys.orderRoot, id] as const,
   messagesRoot: ["customer", "messages"] as const,
   messages: (orderId: string) => [...customerQueryKeys.messagesRoot, orderId] as const,
+  saved: ["customer", "saved"] as const,
 };
 
 /** Everything pushed events can change in a customer tab, refetched after a gap. */

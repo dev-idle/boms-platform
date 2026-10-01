@@ -123,6 +123,7 @@ var (
 	ErrPickupCodeInvalid            = New(http.StatusUnprocessableEntity, "pickup_code_invalid", "That pickup code does not match this order")
 	ErrPickupCodeLocked             = New(http.StatusTooManyRequests, "pickup_code_locked", "Too many wrong pickup codes for this order; try again later")
 	ErrMessagingUnavailable         = New(http.StatusUnprocessableEntity, "messaging_unavailable", "Messages are not available for this order")
+	ErrSavedListFull                = New(http.StatusUnprocessableEntity, "saved_list_full", "A list holds up to 100 products; remove one to save another")
 	ErrWebhookInvalid               = New(http.StatusBadRequest, "webhook_invalid", "The notice is not signed by the payment provider")
 )
 

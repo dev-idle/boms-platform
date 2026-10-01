@@ -19,7 +19,7 @@ func TestDataExportUsecase_Export(t *testing.T) {
 	t.Run("refuses_to_run_inside_a_transaction", func(t *testing.T) {
 		t.Parallel()
 		users := new(mockUserRepo)
-		exports := usecase.NewDataExportUsecase(users, nil, nil, nil, nil, nil, nil, nil, nil)
+		exports := usecase.NewDataExportUsecase(users, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 		_, err := exports.Export(ctxmeta.WithinTransaction(context.Background()), uuid.New())
 
@@ -31,7 +31,7 @@ func TestDataExportUsecase_Export(t *testing.T) {
 		t.Parallel()
 		users := new(mockUserRepo)
 		users.On("GetByID", mock.Anything, mock.Anything).Return(nil, apperrors.ErrNotFound)
-		exports := usecase.NewDataExportUsecase(users, nil, nil, nil, nil, nil, nil, nil, nil)
+		exports := usecase.NewDataExportUsecase(users, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 		_, err := exports.Export(context.Background(), uuid.New())
 

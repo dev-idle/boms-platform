@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { ROUTE } from "@/constants/routes";
 import { catalogProductFallbackImageUrl } from "@/constants/storefront-imagery";
@@ -8,9 +9,11 @@ import { ProductCard } from "./product-card";
 
 type HomeFeaturedProductGridProps = {
   products: CatalogProduct[];
+  /** What each product's card offers a visitor, from the slice that owns it. */
+  renderProductActions?: (product: CatalogProduct) => ReactNode;
 };
 
-export function HomeFeaturedProductGrid({ products }: HomeFeaturedProductGridProps) {
+export function HomeFeaturedProductGrid({ products, renderProductActions }: HomeFeaturedProductGridProps) {
   if (products.length === 0) {
     return (
       <p className="mt-8 text-sm text-muted">
@@ -28,6 +31,7 @@ export function HomeFeaturedProductGrid({ products }: HomeFeaturedProductGridPro
       {products.map((product, index) => (
         <ProductCard
           key={product.id}
+          actions={renderProductActions?.(product)}
           fallbackImageUrl={catalogProductFallbackImageUrl(index)}
           product={product}
         />

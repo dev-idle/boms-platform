@@ -525,3 +525,21 @@ CREATE TABLE "messages" (
   CONSTRAINT "messages_body_check" CHECK (CASE WHEN (deleted_at IS NULL) THEN ((char_length(body) >= 1) AND (char_length(body) <= 2000)) ELSE (body = ''::text) END)
 );
 CREATE INDEX "messages_conversation_created_idx" ON "messages" ("conversation_id", "created_at", "id");
+
+CREATE TYPE "saved_list" AS ENUM ('favorite', 'wishlist');
+
+CREATE TABLE "saved_products" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "user_id" uuid NOT NULL,
+  "product_id" uuid NOT NULL,
+  "list" "saved_list" NOT NULL,
+  "saved_at" timestamptz NOT NULL DEFAULT now(),
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "deleted_at" timestamptz NULL,
+  PRIMARY KEY ("id"),
+  CONSTRAINT "saved_products_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products" ("id") ON DELETE RESTRICT,
+  CONSTRAINT "saved_products_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT
+);
+CREATE INDEX "saved_products_user_list_saved_idx" ON "saved_products" ("user_id", "list", "saved_at") WHERE (deleted_at IS NULL);
+CREATE UNIQUE INDEX "saved_products_user_product_list_idx" ON "saved_products" ("user_id", "product_id", "list");

@@ -3382,8 +3382,64 @@
     max-width: 65ch;
   }
 
+  /* The purchase action, then the save toggles, a gap apart; a button keeps its
+     own width, the custom cake form takes the column. */
   .catalog-detail__actions {
+    display: grid;
+    gap: 1rem;
     margin-block-start: 2rem;
+  }
+
+  .catalog-detail__actions > button {
+    justify-self: start;
+  }
+
+  /* The heart (favorites) and the bookmark (wishlist): square 44px controls on
+     the surface, a hairline around them, the glyph filled while it is on the
+     list. */
+  .saved-toggles {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .saved-toggle {
+    align-items: center;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    color: var(--color-ink);
+    cursor: pointer;
+    display: inline-flex;
+    height: 2.75rem;
+    justify-content: center;
+    transition:
+      background-color var(--duration-micro) var(--ease-luxury),
+      border-color var(--duration-micro) var(--ease-luxury),
+      color var(--duration-micro) var(--ease-luxury);
+    width: 2.75rem;
+  }
+
+  .saved-toggle:hover:not(:disabled) {
+    background-color: var(--color-paper-4);
+  }
+
+  .saved-toggle[aria-pressed="true"] {
+    border-color: var(--color-matcha-500);
+    color: var(--color-matcha-500);
+  }
+
+  .saved-toggle[aria-pressed="true"] .storefront-icon {
+    fill: currentColor;
+  }
+
+  /* Over a photo an outward ring can vanish into the bake behind it; inside,
+     it sits on the toggle's own white. */
+  .saved-toggle:focus-visible {
+    outline-offset: -4px;
+  }
+
+  .saved-toggle:disabled {
+    color: var(--color-disabled);
+    cursor: default;
   }
 
   .catalog-page__results-panel {
@@ -3563,6 +3619,18 @@
   }
 
   /* Product card — 4/5 portrait crop; the grid skeleton mirrors it. */
+  .catalog-product-card {
+    position: relative;
+  }
+
+  /* The card's controls sit over the photo's corner, beside the link that
+     fills the card rather than inside it. */
+  .catalog-product-card__actions {
+    inset-block-start: 0.75rem;
+    inset-inline-end: 0.75rem;
+    position: absolute;
+  }
+
   .catalog-product-card__link {
     color: inherit;
     display: flex;
@@ -3585,7 +3653,7 @@
     width: 100%;
   }
 
-  .catalog-product-card:hover .catalog-product-card__image {
+  .catalog-product-card__link:hover .catalog-product-card__image {
     opacity: 0.92;
   }
 
@@ -3632,7 +3700,7 @@
     transition: color var(--duration-micro) var(--ease-luxury);
   }
 
-  .catalog-product-card:hover .catalog-product-card__name {
+  .catalog-product-card__link:hover .catalog-product-card__name {
     color: var(--color-matcha-500);
   }
 

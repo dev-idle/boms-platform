@@ -23,6 +23,7 @@ import {
   pickupRulesSchema,
   pickupSlotsSchema,
   rescheduleInputSchema,
+  savedProductSchema,
   updateCartItemInputSchema,
   type AddCartItemInput,
   type ApplyCartDiscountInput,
@@ -37,6 +38,8 @@ import {
   type PickupRules,
   type PickupSlots,
   type RescheduleInput,
+  type SavedList,
+  type SavedProduct,
   type UpdateCartItemInput,
 } from "../schemas";
 
@@ -228,4 +231,24 @@ export async function postOrderMessage(orderId: string, input: MessageInput): Pr
 export async function markOrderMessagesRead(orderId: string): Promise<void> {
   const id = z.uuid().parse(orderId);
   await browserRequestVoid(`/api/v1/orders/${id}/messages/read`, { method: "POST" });
+}
+
+/** Both of the customer's lists, latest first. */
+export async function listSavedProducts(): Promise<SavedProduct[]> {
+  return browserRequest<SavedProduct[]>("/api/v1/saved-products", {
+    method: "GET",
+    schema: z.array(savedProductSchema),
+  });
+}
+
+/** Puts a product on one of the customer's lists; one already on it stays where it is. */
+export async function saveProduct(list: SavedList, productId: string): Promise<void> {
+  const id = z.uuid().parse(productId);
+  await browserRequestVoid(`/api/v1/saved-products/${list}/${id}`, { method: "PUT" });
+}
+
+/** Takes a product off one of the customer's lists. */
+export async function removeSavedProduct(list: SavedList, productId: string): Promise<void> {
+  const id = z.uuid().parse(productId);
+  await browserRequestVoid(`/api/v1/saved-products/${list}/${id}`, { method: "DELETE" });
 }

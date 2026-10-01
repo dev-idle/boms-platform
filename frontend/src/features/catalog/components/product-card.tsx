@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { ROUTE } from "@/constants/routes";
 import { primaryCatalogProductImageUrl } from "@/lib/cloudinary/config";
@@ -12,12 +13,15 @@ type ProductCardProps = {
   fallbackImageUrl?: string;
   /** Hide category label when the browse view already filters by category. */
   showCategory?: boolean;
+  /** Controls laid over the photo, beside the card's link rather than in it. */
+  actions?: ReactNode;
 };
 
 export function ProductCard({
   product,
   fallbackImageUrl,
   showCategory = true,
+  actions,
 }: ProductCardProps) {
   const imageSources =
     product.image_urls.length > 0
@@ -66,6 +70,7 @@ export function ProductCard({
           </div>
         </div>
       </Link>
+      {actions ? <div className="catalog-product-card__actions">{actions}</div> : null}
     </article>
   );
 }

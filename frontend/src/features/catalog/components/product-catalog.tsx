@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AsyncPanel } from "@/components/ui/async-panel";
@@ -12,6 +12,7 @@ import {
 } from "@/constants/catalog";
 import { catalogProductFallbackImageUrl } from "@/constants/storefront-imagery";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
+import type { CatalogProduct } from "@/lib/schemas/catalog";
 
 import { toCatalogProductsFilter } from "../lib/catalog-browse-params";
 import {
@@ -28,7 +29,12 @@ import { ProductCatalogLoading } from "./product-catalog-loading";
 const CATALOG_PAGE_LEAD =
   "Everything we bake today, in one place. Availability updates through the morning as each batch leaves the oven.";
 
-export function ProductCatalog() {
+type ProductCatalogProps = {
+  /** What each product's card offers a visitor, from the slice that owns it. */
+  renderProductActions?: (product: CatalogProduct) => ReactNode;
+};
+
+export function ProductCatalog({ renderProductActions }: ProductCatalogProps) {
   const {
     params,
     setCategory,
@@ -144,6 +150,7 @@ export function ProductCatalog() {
                   {products.map((product, index) => (
                     <ProductCard
                       key={product.id}
+                      actions={renderProductActions?.(product)}
                       fallbackImageUrl={catalogProductFallbackImageUrl(index)}
                       product={product}
                       showCategory={params.category === undefined}

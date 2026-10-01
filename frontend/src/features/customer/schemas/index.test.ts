@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { cartCustomizationInputSchema, orderSchema, ordersListFilterSchema, paymentStartSchema } from "./index";
+import {
+  cartCustomizationInputSchema,
+  orderSchema,
+  ordersListFilterSchema,
+  paymentStartSchema,
+  savedProductSchema,
+} from "./index";
 
 describe("ordersListFilterSchema", () => {
   it("accepts an open or a closed range of days", () => {
@@ -105,5 +111,32 @@ describe("orderSchema pickup code", () => {
     for (const pickup_code of [undefined, "427", "04a7"]) {
       expect(orderSchema.safeParse({ ...order, pickup_code }).success).toBe(false);
     }
+  });
+});
+
+describe("savedProductSchema", () => {
+  const saved = {
+    list: "wishlist",
+    saved_at: "2026-10-02T09:00:00+07:00",
+    product: {
+      id: "0b6c8f5e-3c1d-4a8e-9f0a-2d7e6c5b4a39",
+      category_id: "6f1e2d3c-4b5a-4987-8a6b-5c4d3e2f1a0b",
+      category_name: "Pastries",
+      category_slug: "pastries",
+      name: "Croissant",
+      slug: "croissant",
+      price_cents: 380,
+      image_urls: [],
+      is_customizable: false,
+      sold_out_today: false,
+    },
+  };
+
+  it("reads a product on a list as the catalog shows it", () => {
+    expect(savedProductSchema.parse(saved).product.name).toBe("Croissant");
+  });
+
+  it("knows only the favorites and the wishlist", () => {
+    expect(savedProductSchema.safeParse({ ...saved, list: "basket" }).success).toBe(false);
   });
 });

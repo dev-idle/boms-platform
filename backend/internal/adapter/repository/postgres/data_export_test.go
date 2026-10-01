@@ -48,6 +48,7 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 		postgresadapter.NewAdminProfileRepository(f.pool),
 		f.orders,
 		postgresadapter.NewConversationRepository(f.pool),
+		postgresadapter.NewSavedProductRepository(f.pool),
 		f.carts,
 		sessions,
 		audit,

@@ -403,6 +403,48 @@ func (ns NullProductOptionGroup) Value() (driver.Value, error) {
 	return string(ns.ProductOptionGroup), nil
 }
 
+type SavedList string
+
+const (
+	SavedListFavorite SavedList = "favorite"
+	SavedListWishlist SavedList = "wishlist"
+)
+
+func (e *SavedList) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SavedList(s)
+	case string:
+		*e = SavedList(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SavedList: %T", src)
+	}
+	return nil
+}
+
+type NullSavedList struct {
+	SavedList SavedList `json:"savedList"`
+	Valid     bool      `json:"valid"` // Valid is true if SavedList is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSavedList) Scan(value interface{}) error {
+	if value == nil {
+		ns.SavedList, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SavedList.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSavedList) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SavedList), nil
+}
+
 type Station string
 
 const (

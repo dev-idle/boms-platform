@@ -58,7 +58,8 @@ func TestAccountErasure_Integration(t *testing.T) {
 	sessions := &endedSessions{}
 	tokens := postgresadapter.NewUserTokenRepository(f.pool)
 	erasure := usecase.NewAccountErasureUsecase(
-		f.pool, f.users, customerProfiles, f.carts, f.orders, postgresadapter.NewConversationRepository(f.pool), audit, tokens, sessions,
+		f.pool, f.users, customerProfiles, f.carts, f.orders, postgresadapter.NewConversationRepository(f.pool),
+		postgresadapter.NewSavedProductRepository(f.pool), audit, tokens, sessions,
 		auditlogger.NewService(audit), fixtureHasher{},
 	)
 

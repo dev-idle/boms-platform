@@ -36,6 +36,9 @@ export function PrivacyPolicy() {
             <strong>Your cart:</strong> the items you added and have not ordered yet.
           </li>
           <li>
+            <strong>Your favorites and wishlist:</strong> the products you keep on them, and when.
+          </li>
+          <li>
             <strong>Your orders:</strong> what you ordered, the prices and any discount code, your
             pickup time, each step the order went through, and the version of our policies you
             accepted with it.
@@ -103,10 +106,10 @@ export function PrivacyPolicy() {
       <PolicySection id="privacy-how-long" title="5. How long we keep it">
         <ul>
           <li>
-            Your account, profile, cart and the messages about your orders, until you delete your
-            account. Deleting it erases your name, phone number and email, empties your cart, erases
-            those messages and removes your personal details from the record of changes; you are signed
-            out everywhere and the account cannot be restored.
+            Your account, profile, cart, favorites, wishlist and the messages about your orders, until
+            you delete your account. Deleting it erases your name, phone number and email, empties your
+            cart and your lists, erases those messages and removes your personal details from the
+            record of changes; you are signed out everywhere and the account cannot be restored.
           </li>
           <li>Your sign-in sessions, until you sign out or they expire.</li>
           <li>

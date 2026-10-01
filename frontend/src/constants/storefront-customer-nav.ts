@@ -1,5 +1,6 @@
 import {
   CartIcon,
+  HeartIcon,
   OrdersIcon,
   UserIcon,
 } from "@/components/icons/storefront-icons";
@@ -8,6 +9,7 @@ import { ROUTE } from "@/constants/routes";
 export const STOREFRONT_CUSTOMER_NAV = [
   { href: ROUTE.cart, label: "Cart", Icon: CartIcon },
   { href: ROUTE.orders, label: "Orders", Icon: OrdersIcon },
+  { href: ROUTE.customer.saved, label: "Saved", Icon: HeartIcon },
   { href: ROUTE.customer.account.profile, label: "Account", Icon: UserIcon },
 ] as const;
 

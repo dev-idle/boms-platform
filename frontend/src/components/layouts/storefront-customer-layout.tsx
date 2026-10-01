@@ -31,7 +31,7 @@ function customerBackNavForPath(pathname: string): {
   return { href: ROUTE.products, label: STOREFRONT_NAV_COPY.returnToShop };
 }
 
-/** Customer area shell — contextual nav for cart, orders, and account. */
+/** Customer area shell — contextual nav for cart, orders, saved lists, and account. */
 export function StorefrontCustomerLayout({
   children,
 }: StorefrontCustomerLayoutProps) {

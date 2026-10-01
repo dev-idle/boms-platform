@@ -60,6 +60,17 @@ func (m *erasureMessages) EraseForCustomer(_ context.Context, userID uuid.UUID) 
 	return nil
 }
 
+// erasureSaved records whose saved lists were emptied.
+type erasureSaved struct {
+	port.SavedProductRepository
+	emptied []uuid.UUID
+}
+
+func (s *erasureSaved) RemoveAll(_ context.Context, userID uuid.UUID) error {
+	s.emptied = append(s.emptied, userID)
+	return nil
+}
+
 type erasureFixture struct {
 	customer  *domainuser.User
 	users     *mockUserRepo
@@ -67,6 +78,7 @@ type erasureFixture struct {
 	carts     *erasureCarts
 	orders    *erasureOrders
 	messages  *erasureMessages
+	saved     *erasureSaved
 	audit     *recordingAuditLogs
 	tokens    *fakeTokens
 	sessions  *mockSessionStore
@@ -84,6 +96,7 @@ func newErasureFixture() *erasureFixture {
 		carts:     &erasureCarts{cart: &domaincart.Cart{ID: uuid.New(), UserID: customer.ID}},
 		orders:    &erasureOrders{},
 		messages:  &erasureMessages{},
+		saved:     &erasureSaved{},
 		audit:     &recordingAuditLogs{},
 		tokens:    &fakeTokens{},
 		sessions:  new(mockSessionStore),
@@ -98,7 +111,7 @@ func newErasureFixture() *erasureFixture {
 
 func (f *erasureFixture) usecase() *usecase.AccountErasureUsecase {
 	return usecase.NewAccountErasureUsecase(
-		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.messages, f.audit, f.tokens, f.sessions,
+		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.messages, f.saved, f.audit, f.tokens, f.sessions,
 		auditlogger.NewService(f.audit), f.hasher,
 	)
 }
@@ -115,6 +128,7 @@ func (f *erasureFixture) nothingErased(t *testing.T) {
 	t.Helper()
 	assert.False(t, f.carts.emptied, "the cart is kept")
 	assert.Empty(t, f.messages.erased, "the messages are kept")
+	assert.Empty(t, f.saved.emptied, "the saved lists are kept")
 	f.customers.AssertNotCalled(t, "Erase", mock.Anything, mock.Anything)
 	f.users.AssertNotCalled(t, "Erase", mock.Anything, mock.Anything)
 	f.sessions.AssertNotCalled(t, "DeleteAllForUser", mock.Anything, mock.Anything)
@@ -134,6 +148,7 @@ func TestAccountErasureUsecase_Erase(t *testing.T) {
 
 		assert.True(t, f.carts.emptied, "the cart is emptied")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.messages.erased, "the messages about their orders go")
+		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.saved.emptied, "their favorites and wishlist go")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.tokens.deleted, "no emailed link outlives the account")
 		assert.Equal(t, []domainuser.AuditAction{domainuser.AuditActionMeErasedAccount}, f.audit.actions)
 		assert.True(t, f.audit.scrubbed, "the audit trail loses the personal data")

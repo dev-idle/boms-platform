@@ -407,6 +407,17 @@ type Querier interface {
 	//    AND pickup_at < $2::timestamptz
 	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 	CountOrdersInSlot(ctx context.Context, arg CountOrdersInSlotParams) (int64, error)
+	// How many products on sale the customer's list shows besides the one given.
+	//
+	//  SELECT count(*)::bigint
+	//  FROM saved_products s
+	//  JOIN products p ON p.id = s.product_id AND p.deleted_at IS NULL AND p.is_active = true
+	//  JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+	//  WHERE s.user_id = $1
+	//    AND s.list = $2
+	//    AND s.product_id <> $3
+	//    AND s.deleted_at IS NULL
+	CountOtherSavedProducts(ctx context.Context, arg CountOtherSavedProductsParams) (int64, error)
 	//CountStationTickets
 	//
 	//  SELECT count(*)::bigint AS count
@@ -1551,6 +1562,44 @@ type Querier interface {
 	//  ORDER BY refund_requested_at
 	//  LIMIT $1::int
 	ListRefundsDue(ctx context.Context, maxRows int32) ([]Payment, error)
+	// Both of the customer's lists, latest first, with each product as the
+	// catalog shows it. A product the bakery stopped selling is kept but not
+	// shown, as the catalog does not show it; it is back on the list when it is
+	// back on sale.
+	//
+	//  SELECT
+	//    s.list,
+	//    s.saved_at,
+	//    p.id,
+	//    p.category_id,
+	//    p.name,
+	//    p.slug,
+	//    p.price_cents,
+	//    p.is_customizable,
+	//    p.sold_out_on,
+	//    c.name AS category_name,
+	//    c.slug AS category_slug
+	//  FROM saved_products s
+	//  JOIN products p ON p.id = s.product_id AND p.deleted_at IS NULL AND p.is_active = true
+	//  JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+	//  WHERE s.user_id = $1
+	//    AND s.deleted_at IS NULL
+	//  ORDER BY s.list, s.saved_at DESC, s.id DESC
+	ListSavedProducts(ctx context.Context, userID uuid.UUID) ([]ListSavedProductsRow, error)
+	// Every product on the customer's lists, shown or not, for a personal data
+	// export: what is held about them, whatever the bakery does with the product.
+	//
+	//  SELECT
+	//    s.list,
+	//    s.saved_at,
+	//    p.id,
+	//    p.name
+	//  FROM saved_products s
+	//  JOIN products p ON p.id = s.product_id
+	//  WHERE s.user_id = $1
+	//    AND s.deleted_at IS NULL
+	//  ORDER BY s.list, s.saved_at DESC, s.id DESC
+	ListSavedProductsForExport(ctx context.Context, userID uuid.UUID) ([]ListSavedProductsForExportRow, error)
 	// A station's queue: its tickets of orders accepted and not yet collected,
 	// soonest pickup first, each with what it makes. The page is cut first and
 	// the items gathered after, as in CatalogListProducts.
@@ -2036,6 +2085,24 @@ type Querier interface {
 	//  )
 	//  UPDATE admin_profiles SET phone = NULL, updated_at = now() WHERE user_id = $1::uuid
 	ReleasePhone(ctx context.Context, userID uuid.UUID) error
+	// Empties the customer's lists as their account is erased.
+	//
+	//  UPDATE saved_products
+	//  SET deleted_at = now(),
+	//      updated_at = now()
+	//  WHERE user_id = $1
+	//    AND deleted_at IS NULL
+	RemoveAllSavedProducts(ctx context.Context, userID uuid.UUID) error
+	//RemoveSavedProduct
+	//
+	//  UPDATE saved_products
+	//  SET deleted_at = now(),
+	//      updated_at = now()
+	//  WHERE user_id = $1
+	//    AND product_id = $2
+	//    AND list = $3
+	//    AND deleted_at IS NULL
+	RemoveSavedProduct(ctx context.Context, arg RemoveSavedProductParams) error
 	// Issuing a token replaces the user's last one of that purpose, so only the
 	// newest link works. Expiry is set on the database clock, which redemption
 	// checks against.
@@ -2126,6 +2193,22 @@ type Querier interface {
 	//    AND deleted_at IS NULL
 	//    AND NOT (id = ANY($2::uuid[]))
 	RetireProductOptions(ctx context.Context, arg RetireProductOptionsParams) error
+	// Puts a product on sale on one of the customer's lists, or brings back the
+	// row they removed. Saving it again leaves it where it is on the list. No row
+	// is written for a product that is not on sale.
+	//
+	//  INSERT INTO saved_products (user_id, product_id, list)
+	//  SELECT $1, p.id, $2
+	//  FROM products p
+	//  JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+	//  WHERE p.id = $3
+	//    AND p.deleted_at IS NULL
+	//    AND p.is_active = true
+	//  ON CONFLICT (user_id, product_id, list) DO UPDATE
+	//  SET saved_at = CASE WHEN saved_products.deleted_at IS NULL THEN saved_products.saved_at ELSE now() END,
+	//      deleted_at = NULL,
+	//      updated_at = now()
+	SaveProduct(ctx context.Context, arg SaveProductParams) (int64, error)
 	// Removes an erased account's personal data from the audit trail and keeps
 	// the trail: changes to the account and its profile lose their before and
 	// after values (a profile change holds a name or phone number), and the

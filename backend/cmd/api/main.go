@@ -119,11 +119,12 @@ func main() {
 	pickupCodes := domainorder.NewPickupCodes(cfg.Order.PickupCodeSecret)
 	quota := redisrepo.NewQuota(redisClient)
 	conversationRepo := postgresrepo.NewConversationRepository(pgPool)
+	savedProductRepo := postgresrepo.NewSavedProductRepository(pgPool)
 	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC, pickupCodes,
 		conversationRepo)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	accountErasureUC := usecase.NewAccountErasureUsecase(
-		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, conversationRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
+		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, conversationRepo, savedProductRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
 	)
 	emailVerificationUC := usecase.NewEmailVerificationUsecase(pgPool, userRepo, userTokenRepo, outboxRepo, auditLogger)
 	passwordResetUC := usecase.NewPasswordResetUsecase(
@@ -132,7 +133,7 @@ func main() {
 		auditLogger, zlog,
 	)
 	dataExportUC := usecase.NewDataExportUsecase(
-		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, conversationRepo, cartRepo, sessionStore, auditLogRepo,
+		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, conversationRepo, savedProductRepo, cartRepo, sessionStore, auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffOrderUC := usecase.NewStaffOrderUsecase(userRepo, orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC,
@@ -140,6 +141,7 @@ func main() {
 	staffProductUC := usecase.NewStaffProductUsecase(productRepo, pgPool, outboxRepo, auditLogger, zlog)
 	conversationUC := usecase.NewConversationUsecase(userRepo, orderRepo, conversationRepo, pgPool, outboxRepo)
 	staffConversationUC := usecase.NewStaffConversationUsecase(userRepo, orderRepo, conversationRepo, pgPool, outboxRepo)
+	savedProductUC := usecase.NewSavedProductUsecase(userRepo, savedProductRepo, pgPool)
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -170,6 +172,7 @@ func main() {
 	staffProductHandler := v1.NewStaffProductHandler(staffProductUC)
 	conversationHandler := v1.NewConversationHandler(conversationUC)
 	staffConversationHandler := v1.NewStaffConversationHandler(staffConversationUC)
+	savedProductHandler := v1.NewSavedProductHandler(savedProductUC)
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
 	storeHandler := v1.NewStoreHandler(storeUC)
@@ -318,6 +321,11 @@ func main() {
 	customerOrders.Get("/:id/messages", conversationHandler.Thread)
 	customerOrders.Post("/:id/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), conversationHandler.Post)
 	customerOrders.Post("/:id/messages/read", conversationHandler.MarkRead)
+
+	customerSaved := customerSessionGroup(apiV1, "/saved-products", tokenSigner, sessionStore, passwordChanged)
+	customerSaved.Get("", savedProductHandler.List)
+	customerSaved.Put("/:list/:product_id", savedProductHandler.Save)
+	customerSaved.Delete("/:list/:product_id", savedProductHandler.Remove)
 	// PayPal's notices: no session, each one signed and checked with PayPal.
 	apiV1.Post("/payments/paypal/webhook", middleware.PaymentWebhookRateLimit(rdb, cfg.RateRedis), paymentHandler.Webhook)
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
-import { CAKE_MESSAGE_MAX } from "@/lib/schemas/catalog";
+import { CAKE_MESSAGE_MAX, catalogProductSchema } from "@/lib/schemas/catalog";
 import { messageSchema } from "@/lib/schemas/message";
 import {
   customizationSchema,
@@ -163,6 +163,16 @@ export const orderSummarySchema = z.object({
   created_at: apiDateTimeSchema,
 });
 
+/** One of a customer's lists — mirrors backend `saved.List`: favorites they order again, a wishlist to try. */
+export const savedListSchema = z.enum(["favorite", "wishlist"]);
+
+/** GET /saved-products — a product on one of the lists, as the catalog shows it. */
+export const savedProductSchema = z.object({
+  list: savedListSchema,
+  saved_at: apiDateTimeSchema,
+  product: catalogProductSchema,
+});
+
 /** GET /orders/:id/messages — a page of the order's messages, oldest first. */
 export const orderThreadSchema = z.object({
   unread: z.number().int().min(0),
@@ -227,6 +237,14 @@ export type OrdersListFilterInput = z.infer<typeof ordersListFilterSchema>;
 export type PickupRules = z.infer<typeof pickupRulesSchema>;
 export type PickupSlots = z.infer<typeof pickupSlotsSchema>;
 export type OrderThread = z.infer<typeof orderThreadSchema>;
+export type SavedList = z.infer<typeof savedListSchema>;
+
+/** How a list is named in a sentence: "your favorites", "your wishlist". */
+export const SAVED_LIST_NOUN: Record<SavedList, string> = {
+  favorite: "favorites",
+  wishlist: "wishlist",
+};
+export type SavedProduct = z.infer<typeof savedProductSchema>;
 
 export type OrdersListResult = {
   orders: OrderSummary[];

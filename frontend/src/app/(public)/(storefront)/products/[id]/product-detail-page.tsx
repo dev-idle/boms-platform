@@ -1,7 +1,7 @@
 "use client";
 
 import { ProductDetail } from "@/features/catalog";
-import { ProductPurchaseActions } from "@/features/customer";
+import { ProductPurchaseActions, ProductSaveButtons } from "@/features/customer";
 import type { CatalogProduct } from "@/lib/schemas/catalog";
 
 type ProductDetailPageProps = {
@@ -9,7 +9,7 @@ type ProductDetailPageProps = {
   initialProduct: CatalogProduct;
 };
 
-/** Composes catalog display with customer purchase actions (FSD boundary at app layer). */
+/** Composes catalog display with customer purchase actions and lists (FSD boundary at app layer). */
 export function ProductDetailPage({
   productId,
   initialProduct,
@@ -19,7 +19,10 @@ export function ProductDetailPage({
       initialProduct={initialProduct}
       productId={productId}
       purchaseActions={
-        <ProductPurchaseActions product={initialProduct} />
+        <>
+          <ProductPurchaseActions product={initialProduct} />
+          <ProductSaveButtons product={initialProduct} />
+        </>
       }
     />
   );

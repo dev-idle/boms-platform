@@ -13,6 +13,7 @@ import (
 	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
+	domainsaved "github.com/boms/backend/internal/domain/saved"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -195,6 +196,10 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrMessagingUnavailable)
 	case errors.Is(err, domainconversation.ErrNotFound):
 		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domainsaved.ErrInvalidList):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("list", "must be favorite or wishlist"))
+	case errors.Is(err, domainsaved.ErrListFull):
+		return writeAppError(c, apperrors.ErrSavedListFull)
 	case errors.Is(err, domainorder.ErrInvalidCancelReason):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 plain characters"))
 	case errors.Is(err, domainstore.ErrInvalidClosedDateReason):

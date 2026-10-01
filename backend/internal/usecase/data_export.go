@@ -27,13 +27,14 @@ const dataExportPage int32 = 100
 // DataExportUsecase gathers what the bakery holds about one person for them to
 // download (the right of access): their account and profile, the policies they
 // accepted, their sign-in sessions, the changes recorded to their account and,
-// for a customer, their cart and every order with its lines, history and
-// messages.
+// for a customer, their cart, their favorites and wishlist, and every order
+// with its lines, history and messages.
 type DataExportUsecase struct {
 	users         port.UserRepository
 	profiles      *profilesvc.Service
 	orders        port.OrderRepository
 	conversations port.ConversationRepository
+	saved         port.SavedProductRepository
 	carts         port.CartRepository
 	sessions      port.SessionLister
 	activity      port.AccountActivityReader
@@ -46,6 +47,7 @@ func NewDataExportUsecase(
 	admins port.AdminProfileRepository,
 	orders port.OrderRepository,
 	conversations port.ConversationRepository,
+	saved port.SavedProductRepository,
 	carts port.CartRepository,
 	sessions port.SessionLister,
 	activity port.AccountActivityReader,
@@ -55,6 +57,7 @@ func NewDataExportUsecase(
 		profiles:      profilesvc.NewService(customers, staff, admins),
 		orders:        orders,
 		conversations: conversations,
+		saved:         saved,
 		carts:         carts,
 		sessions:      sessions,
 		activity:      activity,
@@ -70,6 +73,7 @@ type DataExport struct {
 	Sessions []dto.DataExportSessionResponse
 	Activity []dto.AccountActivityResponse
 	Cart     []dto.DataExportCartItemResponse
+	Saved    []dto.DataExportSavedProductResponse
 	Orders   []dto.DataExportOrderResponse
 }
 
@@ -90,6 +94,7 @@ func (u *DataExportUsecase) Export(ctx context.Context, userID uuid.UUID) (*Data
 	out := &DataExport{
 		User:   user,
 		Cart:   []dto.DataExportCartItemResponse{},
+		Saved:  []dto.DataExportSavedProductResponse{},
 		Orders: []dto.DataExportOrderResponse{},
 	}
 	group, groupCtx := errgroup.WithContext(ctx)
@@ -120,6 +125,11 @@ func (u *DataExportUsecase) Export(ctx context.Context, userID uuid.UUID) (*Data
 		group.Go(func() error {
 			cart, err := u.exportCart(groupCtx, user.ID)
 			out.Cart = cart
+			return err
+		})
+		group.Go(func() error {
+			saved, err := u.saved.ListForExport(groupCtx, user.ID)
+			out.Saved = mapExportSavedProducts(saved)
 			return err
 		})
 		group.Go(func() error {
@@ -291,6 +301,19 @@ func mapExportCartItems(items []domaincart.Item) []dto.DataExportCartItemRespons
 			Quantity:      item.Quantity,
 			Configuration: item.Configuration,
 			AddedAt:       item.CreatedAt,
+		})
+	}
+	return out
+}
+
+func mapExportSavedProducts(saved []port.SavedProductEntry) []dto.DataExportSavedProductResponse {
+	out := make([]dto.DataExportSavedProductResponse, 0, len(saved))
+	for _, item := range saved {
+		out = append(out, dto.DataExportSavedProductResponse{
+			List:        string(item.List),
+			ProductID:   item.ProductID.String(),
+			ProductName: item.ProductName,
+			SavedAt:     item.SavedAt,
 		})
 	}
 	return out

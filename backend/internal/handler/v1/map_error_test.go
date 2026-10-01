@@ -18,6 +18,7 @@ import (
 	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
+	domainsaved "github.com/boms/backend/internal/domain/saved"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/middleware"
@@ -104,6 +105,8 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "message_body", err: domainconversation.ErrInvalidBody, wantStatus: 400, wantCode: "validation_error"},
 		{name: "messaging_unavailable", err: domainconversation.ErrUnavailable, wantStatus: 422, wantCode: "messaging_unavailable"},
 		{name: "conversation_not_found", err: domainconversation.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
+		{name: "saved_list_invalid", err: domainsaved.ErrInvalidList, wantStatus: 400, wantCode: "validation_error"},
+		{name: "saved_list_full", err: domainsaved.ErrListFull, wantStatus: 422, wantCode: "saved_list_full"},
 		{name: "closed_date_exists", err: domainstore.ErrClosedDateExists, wantStatus: 409, wantCode: "closed_date_exists"},
 		{name: "closed_date_not_found", err: domainstore.ErrClosedDateNotFound, wantStatus: 404, wantCode: "not_found"},
 	}

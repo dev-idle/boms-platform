@@ -9,13 +9,14 @@ import (
 // download it from their account: the account and profile, the policies they
 // accepted at sign-up, and every order they placed.
 type DataExportResponse struct {
-	ExportedAt      time.Time                    `json:"exported_at"`
-	Account         MeResponse                   `json:"account"`
-	TermsAcceptance *TermsAcceptanceResponse     `json:"terms_acceptance"`
-	Sessions        []DataExportSessionResponse  `json:"sessions"`
-	AccountActivity []AccountActivityResponse    `json:"account_activity"`
-	Cart            []DataExportCartItemResponse `json:"cart"`
-	Orders          []DataExportOrderResponse    `json:"orders"`
+	ExportedAt      time.Time                        `json:"exported_at"`
+	Account         MeResponse                       `json:"account"`
+	TermsAcceptance *TermsAcceptanceResponse         `json:"terms_acceptance"`
+	Sessions        []DataExportSessionResponse      `json:"sessions"`
+	AccountActivity []AccountActivityResponse        `json:"account_activity"`
+	Cart            []DataExportCartItemResponse     `json:"cart"`
+	SavedProducts   []DataExportSavedProductResponse `json:"saved_products"`
+	Orders          []DataExportOrderResponse        `json:"orders"`
 }
 
 // DataExportSessionResponse is one place the person is signed in: since when,
@@ -52,6 +53,15 @@ type DataExportCartItemResponse struct {
 	Quantity      int32           `json:"quantity"`
 	Configuration json.RawMessage `json:"configuration,omitempty"`
 	AddedAt       time.Time       `json:"added_at"`
+}
+
+// DataExportSavedProductResponse is a product on the customer's favorites or
+// wishlist.
+type DataExportSavedProductResponse struct {
+	List        string    `json:"list"`
+	ProductID   string    `json:"product_id"`
+	ProductName string    `json:"product_name"`
+	SavedAt     time.Time `json:"saved_at"`
 }
 
 // TermsAcceptanceResponse is the policy version someone accepted and when.

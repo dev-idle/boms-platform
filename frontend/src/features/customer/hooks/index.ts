@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
 import { ApiErrorCode, isApiError } from "@/lib/errors";
+import type { CatalogProduct } from "@/lib/schemas/catalog";
 import { MESSAGE_REFUSED_TEXT, type MessageInput } from "@/lib/schemas/message";
 
 import {
@@ -28,11 +29,14 @@ import {
   getPickupRules,
   getPickupSlots,
   listOrders,
+  listSavedProducts,
   markOrderMessagesRead,
   postOrderMessage,
   removeCartDiscount,
   removeCartItem,
+  removeSavedProduct,
   rescheduleOrder,
+  saveProduct,
   startPayment,
   updateCartItem,
 } from "../api";
@@ -43,6 +47,8 @@ import {
   type CheckoutInput,
   type OrdersListFilterInput,
   type RescheduleInput,
+  type SavedList,
+  type SavedProduct,
   type UpdateCartItemInput,
 } from "../schemas";
 import { customerQueryKeys } from "./query-options";
@@ -397,5 +403,89 @@ export function useMarkOrderMessagesRead(orderId: string) {
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.messages(orderId) });
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
     },
+  });
+}
+
+type UseSavedProductsOptions = {
+  /** Skip the fetch when false — a guest has no lists to read. */
+  enabled?: boolean;
+};
+
+/** Both of the customer's lists. */
+export function useSavedProducts(options: UseSavedProductsOptions = {}) {
+  const { enabled = true } = options;
+  return useQuery({
+    queryKey: customerQueryKeys.saved,
+    queryFn: listSavedProducts,
+    enabled,
+  });
+}
+
+type ToggleSavedInput = {
+  list: SavedList;
+  product: CatalogProduct;
+  /** Whether the product is on the list now, so the toggle takes it off. */
+  onList: boolean;
+};
+
+/**
+ * Puts a product on a list or takes it off. The list shows the change at once,
+ * and only that change is undone if the API refuses it.
+ */
+export function useToggleSaved() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ list, product, onList }: ToggleSavedInput) =>
+      onList ? removeSavedProduct(list, product.id) : saveProduct(list, product.id),
+    onMutate: async ({ list, product, onList }) => {
+      await queryClient.cancelQueries({ queryKey: customerQueryKeys.saved });
+      const removed = queryClient
+        .getQueryData<SavedProduct[]>(customerQueryKeys.saved)
+        ?.find((item) => item.list === list && item.product.id === product.id);
+      queryClient.setQueryData<SavedProduct[]>(customerQueryKeys.saved, (items = []) =>
+        onList
+          ? items.filter((item) => item.list !== list || item.product.id !== product.id)
+          : [{ list, saved_at: new Date().toISOString(), product }, ...items],
+      );
+      return { removed };
+    },
+    onError: (error, { list, product, onList }, context) => {
+      queryClient.setQueryData<SavedProduct[]>(customerQueryKeys.saved, (items = []) =>
+        onList
+          ? context?.removed
+            ? [context.removed, ...items]
+            : items
+          : items.filter((item) => item.list !== list || item.product.id !== product.id),
+      );
+      toast.error(
+        isApiError(error) && error.code === ApiErrorCode.SavedListFull
+          ? "A list holds up to 100 products. Remove one to save another."
+          : cartMutationErrorMessage(error, "We could not update your list. Please try again."),
+      );
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: customerQueryKeys.saved }),
+  });
+}
+
+/** Puts a wishlist product in the cart and takes it off the wishlist. */
+export function useMoveToCart() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (productId: string) => {
+      const cart = await addCartItem({ product_id: productId, quantity: 1 });
+      await removeSavedProduct("wishlist", productId);
+      return cart;
+    },
+    onSuccess: (cart) => {
+      queryClient.setQueryData(customerQueryKeys.cart, cart);
+      toast.success("Moved to your cart");
+    },
+    onError: (error) => {
+      // The product may be in the cart already, and only taking it off the wishlist failed.
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.cart });
+      toast.error(cartMutationErrorMessage(error, "We could not move it to your cart. Please try again."));
+    },
+    // Pending until the list is fresh, so a moved product cannot be moved twice.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: customerQueryKeys.saved }),
   });
 }

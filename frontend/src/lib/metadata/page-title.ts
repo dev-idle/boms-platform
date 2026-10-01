@@ -15,6 +15,7 @@ export const PAGE_TITLES = {
   verifyEmail: "Confirm your email",
   cart: "Cart",
   orders: "Orders",
+  saved: "Saved",
   production: "Production",
   orderDetail: "Order Detail",
   ticket: "Ticket",
