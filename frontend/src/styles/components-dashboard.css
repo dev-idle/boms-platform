@@ -121,6 +121,15 @@
     width: var(--db-sidebar-nav-icon);
   }
 
+  /* What waits behind an item: type, not a pill. */
+  .dashboard-nav-count {
+    color: var(--color-brass);
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    margin-left: auto;
+  }
+
   .dashboard-nav-text {
     flex: 1 1 auto;
     font-family: var(--font-body);
@@ -2759,5 +2768,423 @@
 
   .baker-production-empty--error {
     color: var(--color-danger-text);
+  }
+
+  /* Messages (02 §13): the inbox, the open conversation and the order it is
+     about fill the work area edge to edge, each pane scrolling on its own. One
+     pane on a narrow screen, two from 64rem, the order beside them from 90rem. */
+  .dashboard-main:has(.staff-chat) {
+    padding: 0;
+  }
+
+  .dashboard-page:has(> .staff-chat) {
+    max-width: none;
+  }
+
+  .staff-chat {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    height: 100dvh;
+  }
+
+  .staff-chat--open .staff-chat__list,
+  .staff-chat:not(.staff-chat--open) .staff-chat__thread {
+    display: none;
+  }
+
+  .staff-chat__list {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .staff-chat__list-header {
+    padding: 1.75rem 1.5rem 1.25rem;
+  }
+
+  .staff-chat__list-header .text-page-title {
+    font-size: 2rem;
+  }
+
+  .staff-chat__tabs {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+
+  .staff-chat__tab {
+    align-items: center;
+    background: none;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: var(--label-size);
+    font-weight: var(--label-weight);
+    gap: 0.375rem;
+    letter-spacing: var(--label-tracking);
+    min-height: 1.75rem;
+    padding: 0 0 0.5rem;
+    text-transform: uppercase;
+  }
+
+  .staff-chat__tab:hover,
+  .staff-chat__tab[aria-pressed="true"] {
+    color: var(--color-ink);
+  }
+
+  .staff-chat__tab[aria-pressed="true"] {
+    border-bottom-color: var(--color-matcha-500);
+  }
+
+  .staff-chat__tab-count {
+    color: var(--color-brass);
+    font-family: var(--font-mono);
+  }
+
+  .staff-chat__conversations {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .staff-chat__rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .staff-chat__row {
+    color: inherit;
+    display: grid;
+    gap: 0.875rem;
+    grid-template-columns: 2.125rem minmax(0, 1fr);
+    padding: 1.125rem 1.5rem;
+    text-decoration: none;
+  }
+
+  a.staff-chat__row:not([aria-current]):hover {
+    background-color: var(--color-paper-4);
+  }
+
+  /* The selected conversation reads as the active nav item does. */
+  .staff-chat__row[aria-current="true"] {
+    background-color: var(--color-matcha-100);
+    box-shadow: inset 1px 0 0 var(--color-matcha-500);
+  }
+
+  /* The list scrolls, which would clip a ring drawn outside a full-width row. */
+  .staff-chat__row:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .staff-chat__avatar {
+    align-items: center;
+    border: 1px solid var(--color-line);
+    color: var(--color-matcha-500);
+    display: inline-flex;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    height: 2.125rem;
+    justify-content: center;
+    width: 2.125rem;
+  }
+
+  /* The subject of the open conversation takes the one larger size. */
+  .staff-chat__avatar--subject {
+    font-size: 0.75rem;
+    height: 2.5rem;
+    width: 2.5rem;
+  }
+
+  .staff-chat__row-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .staff-chat__row-top {
+    align-items: baseline;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+  }
+
+  .staff-chat__name {
+    color: var(--color-ink);
+    font-size: 0.875rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .staff-chat__time {
+    color: var(--color-muted);
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+  }
+
+  .staff-chat__preview {
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    margin-top: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .staff-chat__row--unread .staff-chat__name {
+    font-weight: 600;
+  }
+
+  .staff-chat__row--unread .staff-chat__preview {
+    color: var(--color-ink-2);
+  }
+
+  .staff-chat__row-meta {
+    align-items: center;
+    display: flex;
+    gap: 0.625rem;
+    margin-top: 0.5rem;
+  }
+
+  .staff-chat__row-meta .text-order-code {
+    font-size: 0.6875rem;
+  }
+
+  /* A count, not a dot: triage needs to know how many wait. */
+  .staff-chat__unread {
+    align-items: center;
+    background-color: var(--color-matcha-500);
+    color: var(--theme-on-primary);
+    display: inline-flex;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    height: 1.125rem;
+    justify-content: center;
+    min-width: 1.125rem;
+    padding-inline: 0.375rem;
+  }
+
+  .staff-chat__placeholder-line {
+    display: block;
+    height: 0.75rem;
+    margin-top: 0.375rem;
+    width: 70%;
+  }
+
+  .staff-chat__placeholder-line--short {
+    width: 40%;
+  }
+
+  .staff-chat__state {
+    align-content: start;
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
+    padding: 1.5rem 2rem;
+  }
+
+  .staff-chat__list .staff-chat__state {
+    padding-inline: 1.5rem;
+  }
+
+  /* A conversation still loading, or that cannot open, holds the pane. */
+  .staff-chat__thread > .staff-chat__state {
+    flex: 1;
+  }
+
+  .staff-chat__thread {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .staff-chat__thread-header {
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+  }
+
+  .staff-chat__back {
+    flex-basis: 100%;
+  }
+
+  .staff-chat__who {
+    align-items: center;
+    display: flex;
+    gap: 0.875rem;
+    min-width: 0;
+  }
+
+  .staff-chat__who-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .staff-chat__thread-name {
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  .staff-chat__handled {
+    color: var(--color-ink-2);
+    font-size: 0.75rem;
+  }
+
+  .staff-chat__thread-actions {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    gap: 1.25rem;
+  }
+
+  .staff-chat__thread .message-thread {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .staff-chat__composer {
+    border-top: 1px solid var(--color-border);
+    padding: 1.25rem 2rem 1.5rem;
+  }
+
+  .staff-chat__rail {
+    border-left: 1px solid var(--color-border);
+    display: none;
+    overflow-y: auto;
+    padding: 1.75rem 1.5rem;
+  }
+
+  .staff-chat__rail-label {
+    color: var(--color-brass);
+    font-size: var(--label-size-sm);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking-sm);
+    text-transform: uppercase;
+  }
+
+  .staff-chat__rail-label--section {
+    border-top: 1px solid var(--color-paper-3);
+    margin-top: 2.25rem;
+    padding-top: 1.25rem;
+  }
+
+  .staff-chat__rail-code {
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    margin: 0.875rem 0 0.5rem;
+  }
+
+  .staff-chat__facts {
+    border-top: 1px solid var(--color-paper-3);
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8125rem;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    padding-top: 1.25rem;
+  }
+
+  .staff-chat__facts dt {
+    color: var(--color-muted);
+    font-size: var(--label-size-sm);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking);
+    text-transform: uppercase;
+  }
+
+  .staff-chat__facts dd {
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+    margin: 0.4375rem 0 0;
+  }
+
+  .staff-chat__fact-line {
+    display: block;
+    line-height: 1.6;
+  }
+
+  .staff-chat__fact-money {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .staff-chat__rail-name {
+    color: var(--color-ink);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-top: 0.875rem;
+  }
+
+  .staff-chat__rail-contact {
+    color: var(--color-ink-2);
+    font-size: 0.8125rem;
+    margin-top: 0.375rem;
+    overflow-wrap: anywhere;
+  }
+
+  .staff-chat__rail-contact--phone {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (min-width: 64rem) {
+    .staff-chat {
+      grid-template-columns: 19.75rem minmax(0, 1fr);
+    }
+
+    .staff-chat--open .staff-chat__list,
+    .staff-chat:not(.staff-chat--open) .staff-chat__thread {
+      display: flex;
+    }
+
+    .staff-chat__list {
+      border-right: 1px solid var(--color-border);
+    }
+
+    .staff-chat__back {
+      display: none;
+    }
+
+    .staff-chat__thread-header {
+      padding-block: 1.375rem;
+    }
+  }
+
+  /* With the order beside the conversation, the header needs no link to it.
+     The sidebar stays, so the rail waits for the thread to keep the specimen's
+     width beside it. */
+  @media (min-width: 90rem) {
+    .staff-chat {
+      grid-template-columns: 19.75rem minmax(0, 1fr) 18.5rem;
+    }
+
+    .staff-chat__rail {
+      display: block;
+    }
+
+    .staff-chat__order-link {
+      display: none;
+    }
   }
 }

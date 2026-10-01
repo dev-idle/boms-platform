@@ -118,10 +118,12 @@ func main() {
 	paymentUC := usecase.NewPaymentUsecase(pgPool, orderRepo, discountCodeRepo, ticketRepo, paymentRepo, paypal.New(cfg.PayPal), outboxRepo, cfg.App.SiteURL, zlog)
 	pickupCodes := domainorder.NewPickupCodes(cfg.Order.PickupCodeSecret)
 	quota := redisrepo.NewQuota(redisClient)
-	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC, pickupCodes)
+	conversationRepo := postgresrepo.NewConversationRepository(pgPool)
+	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC, pickupCodes,
+		conversationRepo)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	accountErasureUC := usecase.NewAccountErasureUsecase(
-		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
+		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, conversationRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
 	)
 	emailVerificationUC := usecase.NewEmailVerificationUsecase(pgPool, userRepo, userTokenRepo, outboxRepo, auditLogger)
 	passwordResetUC := usecase.NewPasswordResetUsecase(
@@ -130,12 +132,14 @@ func main() {
 		auditLogger, zlog,
 	)
 	dataExportUC := usecase.NewDataExportUsecase(
-		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, cartRepo, sessionStore, auditLogRepo,
+		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, conversationRepo, cartRepo, sessionStore, auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffOrderUC := usecase.NewStaffOrderUsecase(userRepo, orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC,
 		pickupCodes, quota, port.QuotaLimit{Max: cfg.RateRedis.PickupCodeMax, Window: cfg.RateRedis.PickupCodeWindow})
 	staffProductUC := usecase.NewStaffProductUsecase(productRepo, pgPool, outboxRepo, auditLogger, zlog)
+	conversationUC := usecase.NewConversationUsecase(userRepo, orderRepo, conversationRepo, pgPool, outboxRepo)
+	staffConversationUC := usecase.NewStaffConversationUsecase(userRepo, orderRepo, conversationRepo, pgPool, outboxRepo)
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -164,6 +168,8 @@ func main() {
 	staffOrderHandler := v1.NewStaffOrderHandler(staffOrderUC)
 	staffTicketHandler := v1.NewStaffTicketHandler(staffTicketUC)
 	staffProductHandler := v1.NewStaffProductHandler(staffProductUC)
+	conversationHandler := v1.NewConversationHandler(conversationUC)
+	staffConversationHandler := v1.NewStaffConversationHandler(staffConversationUC)
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
 	storeHandler := v1.NewStoreHandler(storeUC)
@@ -309,6 +315,9 @@ func main() {
 	customerOrders.Post("/:id/payment/capture", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), paymentHandler.Capture)
 	customerOrders.Post("/:id/cancel", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), orderHandler.Cancel)
 	customerOrders.Patch("/:id/pickup", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), orderHandler.Reschedule)
+	customerOrders.Get("/:id/messages", conversationHandler.Thread)
+	customerOrders.Post("/:id/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), conversationHandler.Post)
+	customerOrders.Post("/:id/messages/read", conversationHandler.MarkRead)
 	// PayPal's notices: no session, each one signed and checked with PayPal.
 	apiV1.Post("/payments/paypal/webhook", middleware.PaymentWebhookRateLimit(rdb, cfg.RateRedis), paymentHandler.Webhook)
 
@@ -370,6 +379,12 @@ func main() {
 	staffOrders.Patch("/tickets/:id/station", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.Move)
 	staffOrders.Get("/products", staffProductHandler.List)
 	staffOrders.Patch("/products/:id/sold-out", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffProductHandler.PatchSoldOut)
+	staffOrders.Get("/conversations", staffConversationHandler.List)
+	staffOrders.Get("/conversations/counts", staffConversationHandler.Counts)
+	staffOrders.Get("/orders/:id/messages", staffConversationHandler.Thread)
+	staffOrders.Post("/orders/:id/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), staffConversationHandler.Post)
+	staffOrders.Post("/orders/:id/messages/read", staffConversationHandler.MarkRead)
+	staffOrders.Patch("/orders/:id/conversation", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffConversationHandler.PatchStatus)
 
 	bakerTickets := apiV1.Group(
 		"/baker",

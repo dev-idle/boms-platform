@@ -46,6 +46,10 @@ export function PrivacyPolicy() {
             you about it.
           </li>
           <li>
+            <strong>Messages:</strong> what you and our counter staff write to each other about one of
+            your orders.
+          </li>
+          <li>
             <strong>Custom cakes:</strong> the options and message you choose, and any reference photo
             you upload. Cloudinary stores the photo at an unlisted address that we never publish.
           </li>
@@ -76,7 +80,10 @@ export function PrivacyPolicy() {
 
       <PolicySection id="privacy-who-sees" title="4. Who sees it">
         <ul>
-          <li>Counter staff see your name, email and phone, to arrange and hand over your pickup.</li>
+          <li>
+            Counter staff see your name, email and phone, to arrange and hand over your pickup, and the
+            messages about your orders, to answer them.
+          </li>
           <li>
             The kitchen sees what to make, when, your display name, and how you asked a custom cake to
             look, reference photo included — never how to contact you.
@@ -96,9 +103,10 @@ export function PrivacyPolicy() {
       <PolicySection id="privacy-how-long" title="5. How long we keep it">
         <ul>
           <li>
-            Your account, profile and cart, until you delete your account. Deleting it erases your
-            name, phone number and email, empties your cart and removes your personal details from the
-            record of changes; you are signed out everywhere and the account cannot be restored.
+            Your account, profile, cart and the messages about your orders, until you delete your
+            account. Deleting it erases your name, phone number and email, empties your cart, erases
+            those messages and removes your personal details from the record of changes; you are signed
+            out everywhere and the account cannot be restored.
           </li>
           <li>Your sign-in sessions, until you sign out or they expire.</li>
           <li>

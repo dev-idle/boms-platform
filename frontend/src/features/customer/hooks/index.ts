@@ -2,6 +2,7 @@
 
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
 import { ApiErrorCode, isApiError } from "@/lib/errors";
+import { MESSAGE_REFUSED_TEXT, type MessageInput } from "@/lib/schemas/message";
 
 import {
   addCartItem,
@@ -22,9 +24,12 @@ import {
   checkoutCart,
   getCart,
   getOrder,
+  getOrderMessages,
   getPickupRules,
   getPickupSlots,
   listOrders,
+  markOrderMessagesRead,
+  postOrderMessage,
   removeCartDiscount,
   removeCartItem,
   rescheduleOrder,
@@ -343,6 +348,54 @@ export function useRescheduleOrder(orderId: string) {
         void queryClient.invalidateQueries({ queryKey: customerQueryKeys.pickupSlotsRoot });
       }
       toast.error(cartMutationErrorMessage(error, "We could not change the pickup time."));
+    },
+  });
+}
+
+/**
+ * The messages on the customer's order, the latest page first; each older
+ * page starts before the oldest message loaded.
+ */
+export function useOrderMessages(orderId: string) {
+  return useInfiniteQuery({
+    queryKey: customerQueryKeys.messages(orderId),
+    queryFn: ({ pageParam }) => getOrderMessages(orderId, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => (page.has_more ? page.messages[0]?.id : undefined),
+    retry: false,
+  });
+}
+
+/** Writes the customer's message to the counter about their order. */
+export function usePostOrderMessage(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MessageInput) => postOrderMessage(orderId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.messages(orderId) });
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.isRateLimited()) {
+        toast.error("You are sending messages quickly. Wait a moment, then try again.");
+        return;
+      }
+      if (isApiError(error) && error.hasValidationDetails()) {
+        toast.error(MESSAGE_REFUSED_TEXT);
+        return;
+      }
+      toast.error(cartMutationErrorMessage(error, "We could not send your message. Please try again."));
+    },
+  });
+}
+
+/** Records that the customer read the counter's messages on their order. */
+export function useMarkOrderMessagesRead(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => markOrderMessagesRead(orderId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.messages(orderId) });
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
     },
   });
 }

@@ -1773,3 +1773,143 @@ table "payments" {
     expr = "(refund_requested_at IS NULL OR captured_at IS NOT NULL) AND (refunded_at IS NULL OR refund_requested_at IS NOT NULL)"
   }
 }
+
+enum "conversation_status" {
+  schema = schema.public
+  values = ["open", "closed"]
+}
+
+// A customer and the counter writing to each other about one order. What each
+// side has not read yet is counted on the row, so the inbox and the order list
+// read it without counting messages. The counter shares one inbox: a message
+// one staff member reads is read for all of them.
+table "conversations" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "order_id" {
+    type = uuid
+    null = false
+  }
+  // Closed once the counter has resolved it; the next message opens it again.
+  column "status" {
+    type    = enum.conversation_status
+    null    = false
+    default = "open"
+  }
+  // The staff member who replied last; none until the counter answers.
+  column "assigned_staff_id" {
+    type = uuid
+    null = true
+  }
+  column "unread_by_customer" {
+    type    = integer
+    null    = false
+    default = 0
+  }
+  column "unread_by_staff" {
+    type    = integer
+    null    = false
+    default = 0
+  }
+  column "last_message_at" {
+    type = timestamptz
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "conversations_order_id_fkey" {
+    columns     = [column.order_id]
+    ref_columns = [table.orders.column.id]
+    on_delete   = RESTRICT
+  }
+  foreign_key "conversations_assigned_staff_id_fkey" {
+    columns     = [column.assigned_staff_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  index "conversations_order_id_idx" {
+    unique  = true
+    columns = [column.order_id]
+  }
+  // The inbox: latest message first, within a status.
+  index "conversations_status_last_message_idx" {
+    columns = [column.status, column.last_message_at]
+  }
+  check "conversations_unread_check" {
+    expr = "unread_by_customer >= 0 AND unread_by_staff >= 0"
+  }
+}
+
+// One message of a conversation, written by its customer or by staff. Erasing
+// the customer's account erases every message: the row stays, its text goes.
+table "messages" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "conversation_id" {
+    type = uuid
+    null = false
+  }
+  column "author_id" {
+    type = uuid
+    null = false
+  }
+  column "author_role" {
+    type = enum.user_role
+    null = false
+  }
+  column "body" {
+    type = text
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "deleted_at" {
+    type = timestamptz
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "messages_conversation_id_fkey" {
+    columns     = [column.conversation_id]
+    ref_columns = [table.conversations.column.id]
+    on_delete   = RESTRICT
+  }
+  foreign_key "messages_author_id_fkey" {
+    columns     = [column.author_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  // A thread reads newest first, a page at a time.
+  index "messages_conversation_created_idx" {
+    columns = [column.conversation_id, column.created_at, column.id]
+  }
+  check "messages_author_role_check" {
+    expr = "author_role IN ('customer'::user_role, 'staff'::user_role)"
+  }
+  check "messages_body_check" {
+    expr = "CASE WHEN deleted_at IS NULL THEN char_length(body) BETWEEN 1 AND 2000 ELSE body = '' END"
+  }
+}

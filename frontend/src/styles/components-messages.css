@@ -1,0 +1,158 @@
+/* A conversation about an order — the thread and its composer, shared by the
+   order page and the counter's inbox (02-COMPONENTS §13). */
+
+@layer components {
+  .message-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 1.625rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2rem;
+  }
+
+  /* A scrolling log is reached and scrolled from the keyboard; the ring sits
+     inside it, where nothing clips it. */
+  .message-thread:focus-visible,
+  .message-thread__more:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .message-thread__more {
+    align-self: center;
+  }
+
+  .message-thread__empty {
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    margin-block: auto;
+    text-align: center;
+  }
+
+  .message-thread__entry {
+    display: flex;
+    flex-direction: column;
+    gap: 1.625rem;
+  }
+
+  .message-thread__day {
+    align-items: center;
+    color: var(--color-muted);
+    display: flex;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    gap: 1rem;
+    letter-spacing: 0.08em;
+  }
+
+  .message-thread__day::before,
+  .message-thread__day::after {
+    background-color: var(--color-paper-3);
+    content: "";
+    flex: 1;
+    height: 1px;
+  }
+
+  /* Both sides are light and ink: ground and side tell them apart, so a long
+     thread never becomes a striped wall of brand color. */
+  .message {
+    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 85%;
+  }
+
+  .message--own {
+    align-items: flex-end;
+    align-self: flex-end;
+  }
+
+  .message__bubble {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-ink);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+    padding: 1rem 1.25rem;
+    white-space: pre-wrap;
+  }
+
+  /* The tint needs no edge on the page ground; a transparent one keeps both
+     sides the same size. */
+  .message--own .message__bubble {
+    background-color: var(--color-matcha-100);
+    border-color: transparent;
+  }
+
+  .message__meta {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+  }
+
+  .message-composer {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+  }
+
+  /* Grows from two lines with what is written, then scrolls. */
+  .message-composer__input {
+    background: transparent;
+    border: none;
+    color: var(--color-ink);
+    display: block;
+    field-sizing: content;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    max-block-size: 7.5rem;
+    min-block-size: calc(2lh + 2rem);
+    padding: 1rem 1.125rem;
+    resize: none;
+    width: 100%;
+  }
+
+  .message-composer__input:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .message-composer__error {
+    padding-block-end: 0.5rem;
+    padding-inline: 1.125rem;
+  }
+
+  .message-composer__toolbar {
+    align-items: center;
+    border-top: 1px solid var(--color-paper-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    justify-content: flex-end;
+    padding: 0.625rem 0.75rem 0.625rem 0.875rem;
+  }
+
+  .message-composer__hint {
+    color: var(--color-muted);
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+
+  .message-composer__hint span {
+    color: var(--color-ink);
+  }
+
+  /* A touch keyboard has no Shift + Enter: Enter breaks the line there, and the
+     button sends. */
+  @media (pointer: coarse) {
+    .message-composer__hint {
+      display: none;
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .message {
+      max-width: 70%;
+    }
+  }
+}

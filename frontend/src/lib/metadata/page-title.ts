@@ -22,6 +22,7 @@ export const PAGE_TITLES = {
   pickups: "Pickups",
   newOrder: "New Order",
   availability: "Availability",
+  messages: "Messages",
   account: "Account",
   profile: "Profile",
   changePassword: "Change Password",

@@ -109,6 +109,11 @@ export function OrderList() {
                         ? ` · Pickup ${formatPickupDateTime(order.pickup_at)}`
                         : ""}
                     </p>
+                    {order.unread_messages > 0 ? (
+                      <p className="storefront-order-card__unread">
+                        {order.unread_messages} new {order.unread_messages === 1 ? "message" : "messages"}
+                      </p>
+                    ) : null}
                   </div>
                   <span className="storefront-order-card__cta" aria-hidden="true">
                     →

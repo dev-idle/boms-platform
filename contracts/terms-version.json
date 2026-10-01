@@ -1,4 +1,4 @@
 {
   "$comment": "The version of the customer policies (terms of sale, privacy policy, refund policy) that registration and checkout accept today. backend/internal/domain/policy/policy.go (TermsVersion) and frontend/src/constants/policies.ts (TERMS_VERSION) must both equal it: the backend refuses any other version, so a mismatch would refuse every sign-up and order. Change it here, in both constants and on the published pages together.",
-  "version": "2026-10-01.3"
+  "version": "2026-10-02"
 }

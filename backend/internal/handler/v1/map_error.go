@@ -7,6 +7,7 @@ import (
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
+	domainconversation "github.com/boms/backend/internal/domain/conversation"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpayment "github.com/boms/backend/internal/domain/payment"
@@ -188,6 +189,12 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrPickupCodeInvalid)
 	case errors.Is(err, domainorder.ErrPickupCodeLocked):
 		return writeAppError(c, apperrors.ErrPickupCodeLocked)
+	case errors.Is(err, domainconversation.ErrInvalidBody):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "a message of 1 to 2000 plain characters"))
+	case errors.Is(err, domainconversation.ErrUnavailable):
+		return writeAppError(c, apperrors.ErrMessagingUnavailable)
+	case errors.Is(err, domainconversation.ErrNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, domainorder.ErrInvalidCancelReason):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 plain characters"))
 	case errors.Is(err, domainstore.ErrInvalidClosedDateReason):

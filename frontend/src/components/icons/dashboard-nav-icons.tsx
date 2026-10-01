@@ -114,6 +114,15 @@ function AvailabilityIcon({ className }: IconProps) {
   );
 }
 
+/** A speech bubble — customers writing about their orders. */
+function MessagesIcon({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z" />
+    </IconBase>
+  );
+}
+
 /** Clock — the day's pickup times. */
 function PickupsIcon({ className }: IconProps) {
   return (
@@ -169,6 +178,7 @@ const DASHBOARD_NAV_ICONS = {
   combos: CombosIcon,
   dashboard: DashboardIcon,
   discounts: DiscountsIcon,
+  messages: MessagesIcon,
   orders: OrdersIcon,
   password: PasswordIcon,
   pickups: PickupsIcon,

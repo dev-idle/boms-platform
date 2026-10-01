@@ -12,6 +12,7 @@ import (
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
+	domainconversation "github.com/boms/backend/internal/domain/conversation"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpayment "github.com/boms/backend/internal/domain/payment"
@@ -100,6 +101,9 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "cancel_reason", err: domainorder.ErrInvalidCancelReason, wantStatus: 400, wantCode: "validation_error"},
 		{name: "pickup_code_invalid", err: domainorder.ErrPickupCodeInvalid, wantStatus: 422, wantCode: "pickup_code_invalid"},
 		{name: "pickup_code_locked", err: domainorder.ErrPickupCodeLocked, wantStatus: 429, wantCode: "pickup_code_locked"},
+		{name: "message_body", err: domainconversation.ErrInvalidBody, wantStatus: 400, wantCode: "validation_error"},
+		{name: "messaging_unavailable", err: domainconversation.ErrUnavailable, wantStatus: 422, wantCode: "messaging_unavailable"},
+		{name: "conversation_not_found", err: domainconversation.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
 		{name: "closed_date_exists", err: domainstore.ErrClosedDateExists, wantStatus: 409, wantCode: "closed_date_exists"},
 		{name: "closed_date_not_found", err: domainstore.ErrClosedDateNotFound, wantStatus: 404, wantCode: "not_found"},
 	}

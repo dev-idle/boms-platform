@@ -91,6 +91,7 @@ describe("orderSchema pickup code", () => {
     payment: null,
     fulfillment: null,
     payment_due_at: null,
+    can_message: true,
     created_at: "2026-10-01T09:00:00+07:00",
     updated_at: "2026-10-01T09:05:00+07:00",
   };

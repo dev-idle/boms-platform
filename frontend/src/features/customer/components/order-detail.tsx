@@ -20,6 +20,7 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 import { useOrder, usePayPalReturn } from "../hooks";
 import { isWithTheBakery } from "../lib/order-progress";
 import { OrderChanges } from "./order-changes";
+import { OrderMessages } from "./order-messages";
 import { OrderPayment } from "./order-payment";
 import { OrderProgressStepper } from "./order-progress-stepper";
 
@@ -183,6 +184,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
           ) : null}
         </div>
       </div>
+      {order.can_message ? <OrderMessages orderId={order.id} /> : null}
     </div>
   );
 }

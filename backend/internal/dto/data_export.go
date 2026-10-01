@@ -61,7 +61,7 @@ type TermsAcceptanceResponse struct {
 }
 
 // DataExportOrderResponse is one order as its customer sees it, with the
-// policies accepted when it was placed.
+// policies accepted when it was placed and the messages written about it.
 type DataExportOrderResponse struct {
 	ID                   string                       `json:"id"`
 	Code                 string                       `json:"code"`
@@ -75,6 +75,7 @@ type DataExportOrderResponse struct {
 	TermsAcceptance      *TermsAcceptanceResponse     `json:"terms_acceptance"`
 	Items                []OrderItemResponse          `json:"items"`
 	Timeline             []OrderTimelineEntryResponse `json:"timeline"`
+	Messages             []MessageResponse            `json:"messages"`
 	CreatedAt            time.Time                    `json:"created_at"`
 	UpdatedAt            time.Time                    `json:"updated_at"`
 }

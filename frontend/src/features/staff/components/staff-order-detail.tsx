@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { CustomizationSummary } from "@/components/ui/customization-summary";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import {
@@ -10,6 +11,7 @@ import {
   orderStatusToPillVariant,
   StatusPill,
 } from "@/components/ui/status-pill";
+import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import {
   formatOrderChannelLabel,
@@ -113,16 +115,27 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
             />
           </div>
           <p className="text-order-code">{order.code}</p>
-          <p className="text-sm text-muted">
-            Customer:{" "}
-            {[
-              order.customer.display_name,
-              order.customer.email,
-              formatVietnamPhone(order.customer.phone),
-            ]
-              .filter(Boolean)
-              .join(" | ")}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p className="text-sm text-muted">
+              Customer:{" "}
+              {[
+                order.customer.display_name,
+                order.customer.email,
+                formatVietnamPhone(order.customer.phone),
+              ]
+                .filter(Boolean)
+                .join(" | ")}
+            </p>
+            {/* A guest has no account to write to. */}
+            {order.customer.email ? (
+              <DashboardTableActionLink
+                href={ROUTE.staff.chatThread(order.id)}
+                label={`Message customer about ${order.code}`}
+                showArrow
+                text="Message customer"
+              />
+            ) : null}
+          </div>
           {order.discount_code_snapshot ? (
             <p className="text-sm text-muted">
               Discount code: {order.discount_code_snapshot}

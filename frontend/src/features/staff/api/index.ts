@@ -2,9 +2,11 @@ import { z } from "zod";
 
 import {
   browserRequest,
+  browserRequestVoid,
   browserRequestWithMeta,
 } from "@/lib/browser-api-client";
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
+import { messageInputSchema, messageSchema, type Message, type MessageInput } from "@/lib/schemas/message";
 import {
   patchTicketStatusInputSchema,
   stationTicketSchema,
@@ -18,6 +20,7 @@ import {
 } from "@/lib/schemas/ticket";
 
 import {
+  conversationStatusSchema,
   createStaffOrderInputSchema,
   moveTicketInputSchema,
   patchStaffOrderStatusInputSchema,
@@ -31,6 +34,12 @@ import {
   staffOrdersListFilterSchema,
   staffPickupsFilterSchema,
   staffPickupsSchema,
+  staffConversationCountsSchema,
+  staffConversationSchema,
+  staffInboxConversationSchema,
+  staffInboxFilterSchema,
+  staffThreadSchema,
+  type ConversationStatus,
   type CreateStaffOrderInput,
   type MoveTicketInput,
   type StaffCustomer,
@@ -45,6 +54,11 @@ import {
   type StaffOrdersListResult,
   type StaffPickupsFilterInput,
   type StaffPickupsResult,
+  type StaffConversation,
+  type StaffConversationCounts,
+  type StaffInboxFilterInput,
+  type StaffInboxResult,
+  type StaffThread,
 } from "../schemas";
 
 export async function listStaffOrders(
@@ -215,5 +229,65 @@ export async function patchProductSoldOut(id: string, soldOut: boolean): Promise
     method: "PATCH",
     schema: staffProductSchema,
     json: { sold_out: soldOut },
+  });
+}
+
+/** A page of the counter's inbox, latest message first. */
+export async function listStaffConversations(input: StaffInboxFilterInput): Promise<StaffInboxResult> {
+  const filter = staffInboxFilterSchema.parse(input);
+  const params = new URLSearchParams({ page: String(filter.page), page_size: String(filter.page_size) });
+  if (filter.status) {
+    params.set("status", filter.status);
+  }
+  const result = await browserRequestWithMeta<z.infer<typeof staffInboxConversationSchema>[]>(
+    `/api/v1/staff/conversations?${params.toString()}`,
+    { method: "GET", schema: z.array(staffInboxConversationSchema) },
+  );
+  const parsed = parsePaginatedList(result.data, result.meta, { page: filter.page, page_size: filter.page_size });
+  return { conversations: parsed.items, pagination: parsed.pagination };
+}
+
+/** How many conversations are open, and how many hold messages nobody at the counter read. */
+export async function getStaffConversationCounts(): Promise<StaffConversationCounts> {
+  return browserRequest<StaffConversationCounts>("/api/v1/staff/conversations/counts", {
+    method: "GET",
+    schema: staffConversationCountsSchema,
+  });
+}
+
+/** A page of the messages on an order: the latest, or those before a message. */
+export async function getStaffOrderMessages(orderId: string, before?: string): Promise<StaffThread> {
+  const id = z.uuid().parse(orderId);
+  const query = before ? `?before=${z.uuid().parse(before)}` : "";
+  return browserRequest<StaffThread>(`/api/v1/staff/orders/${id}/messages${query}`, {
+    method: "GET",
+    schema: staffThreadSchema,
+  });
+}
+
+/** Writes a staff member's message to the order's customer. */
+export async function postStaffOrderMessage(orderId: string, input: MessageInput): Promise<Message> {
+  const id = z.uuid().parse(orderId);
+  const body = messageInputSchema.parse(input);
+  return browserRequest<Message>(`/api/v1/staff/orders/${id}/messages`, {
+    method: "POST",
+    schema: messageSchema,
+    json: body,
+  });
+}
+
+/** Records that the counter read the messages on an order. */
+export async function markStaffOrderMessagesRead(orderId: string): Promise<void> {
+  const id = z.uuid().parse(orderId);
+  await browserRequestVoid(`/api/v1/staff/orders/${id}/messages/read`, { method: "POST" });
+}
+
+/** Resolves an order's conversation, or opens it again. */
+export async function patchStaffConversation(orderId: string, status: ConversationStatus): Promise<StaffConversation> {
+  const id = z.uuid().parse(orderId);
+  return browserRequest<StaffConversation>(`/api/v1/staff/orders/${id}/conversation`, {
+    method: "PATCH",
+    schema: staffConversationSchema,
+    json: { status: conversationStatusSchema.parse(status) },
   });
 }

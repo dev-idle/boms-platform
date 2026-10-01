@@ -2,6 +2,7 @@
 
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
+import { MESSAGE_REFUSED_TEXT, type MessageInput } from "@/lib/schemas/message";
 import {
   stationTicketsListFilterSchema,
   ticketChangeMessage,
@@ -23,21 +25,29 @@ import {
 import {
   createStaffOrder,
   findStaffCustomer,
+  getStaffConversationCounts,
   getStaffOrder,
+  getStaffOrderMessages,
   listCounterTickets,
   listStaffOrders,
   listStaffPickups,
+  listStaffConversations,
   listStaffProducts,
+  markStaffOrderMessagesRead,
   moveTicket,
   patchProductSoldOut,
   quoteStaffOrder,
   patchCounterTicketStatus,
+  patchStaffConversation,
   patchStaffOrderStatus,
+  postStaffOrderMessage,
 } from "../api";
 import {
+  staffInboxFilterSchema,
   staffOrdersListFilterSchema,
   staffPickupsFilterSchema,
   staffProductsFilterSchema,
+  type ConversationStatus,
   type CreateStaffOrderInput,
   type MoveTicketInput,
   type StaffOrderItemInput,
@@ -45,6 +55,7 @@ import {
   type PatchStaffOrderStatusInput,
   type StaffOrdersListFilterInput,
   type StaffPickupsFilterInput,
+  type StaffInboxFilterInput,
 } from "../schemas";
 import { staffQueryKeys } from "./query-options";
 
@@ -239,6 +250,82 @@ export function useSetProductSoldOut() {
     },
     onError: (error) => {
       toast.error(staffMutationErrorMessage(error, "Failed to update the product"));
+    },
+  });
+}
+
+/** A page of the counter's inbox; refreshed live as messages arrive. */
+export function useStaffConversations(input: StaffInboxFilterInput) {
+  const filter = staffInboxFilterSchema.parse(input);
+  return useQuery({
+    queryKey: staffQueryKeys.conversations(filter),
+    queryFn: () => listStaffConversations(filter),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** What waits on the counter: open conversations and those holding unread messages. */
+export function useStaffConversationCounts() {
+  return useQuery({
+    queryKey: staffQueryKeys.conversationCounts,
+    queryFn: getStaffConversationCounts,
+  });
+}
+
+/** The messages on an order, the latest page first; each older page starts before the oldest loaded. */
+export function useStaffOrderMessages(orderId: string) {
+  return useInfiniteQuery({
+    queryKey: staffQueryKeys.messages(orderId),
+    queryFn: ({ pageParam }) => getStaffOrderMessages(orderId, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => (page.has_more ? page.messages[0]?.id : undefined),
+    retry: false,
+  });
+}
+
+/** Writes a staff member's message to the order's customer. */
+export function usePostStaffMessage(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MessageInput) => postStaffOrderMessage(orderId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.messages(orderId) });
+      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.conversationsRoot });
+    },
+    onError: (error) => {
+      toast.error(
+        isApiError(error) && error.hasValidationDetails()
+          ? MESSAGE_REFUSED_TEXT
+          : staffMutationErrorMessage(error, "Failed to send the message"),
+      );
+    },
+  });
+}
+
+/** Records that the counter read the messages on an order. */
+export function useMarkStaffMessagesRead(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => markStaffOrderMessagesRead(orderId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.messages(orderId) });
+      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.conversationsRoot });
+    },
+  });
+}
+
+/** Resolves an order's conversation, or opens it again. */
+export function useSetConversationStatus(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (status: ConversationStatus) => patchStaffConversation(orderId, status),
+    onSuccess: (conversation) => {
+      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.messages(orderId) });
+      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.conversationsRoot });
+      toast.success(conversation.status === "closed" ? "Conversation resolved" : "Conversation opened again");
+    },
+    onError: (error) => {
+      toast.error(staffMutationErrorMessage(error, "Failed to update the conversation"));
     },
   });
 }

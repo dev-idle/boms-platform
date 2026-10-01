@@ -11,14 +11,8 @@ export function userInitials(user: Me | null | undefined): string {
     if (name) {
       return name.slice(0, 1).toUpperCase();
     }
-  } else {
-    const parts = user.profile.full_name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      return `${parts[0]!.slice(0, 1)}${parts[1]!.slice(0, 1)}`.toUpperCase();
-    }
-    if (parts.length === 1) {
-      return parts[0]!.slice(0, 2).toUpperCase();
-    }
+  } else if (user.profile.full_name.trim()) {
+    return initialsOf(user.profile.full_name, user.email);
   }
 
   return user.email.slice(0, 1).toUpperCase();
@@ -35,4 +29,16 @@ export function userDisplayName(user: Me | null | undefined): string {
   }
 
   return user.profile.full_name.trim() || user.email;
+}
+
+/** Up to two letters for an avatar: a name's first two words, else the start of the email. */
+export function initialsOf(name: string | null | undefined, email: string): string {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (parts.length >= 2) {
+    return `${parts[0]!.slice(0, 1)}${parts[1]!.slice(0, 1)}`.toUpperCase();
+  }
+  if (parts.length === 1) {
+    return parts[0]!.slice(0, 2).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
 }

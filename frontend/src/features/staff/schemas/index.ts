@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
 import { USER_ROLE } from "@/constants/roles";
+import { messageSchema } from "@/lib/schemas/message";
 import {
   fulfillmentSchema,
   orderChannelSchema,
@@ -184,6 +185,48 @@ export const staffProductsFilterSchema = z.object({
   sold_out_today: z.boolean().default(false),
 });
 
+/** Whether a conversation still waits on the counter — mirrors backend `conversation.Status`. */
+export const conversationStatusSchema = z.enum(["open", "closed"]);
+
+/** One conversation in the counter's inbox, with the start of its last message. */
+export const staffInboxConversationSchema = z.object({
+  order_id: z.uuid(),
+  order_code: orderCodeSchema,
+  status: conversationStatusSchema,
+  unread: z.number().int().min(0),
+  last_message_at: apiDateTimeSchema,
+  customer_name: z.string().nullable(),
+  customer_email: z.string().min(1),
+  preview: z.string(),
+});
+
+/** The inbox: a page of open or resolved conversations, or of every one. */
+export const staffInboxFilterSchema = z.object({
+  page: z.number().int().min(1).default(1),
+  page_size: z.number().int().min(1).max(100).default(20),
+  status: conversationStatusSchema.optional(),
+});
+
+/** GET /staff/conversations/counts — what waits on the counter. */
+export const staffConversationCountsSchema = z.object({
+  open: z.number().int().min(0),
+  unread: z.number().int().min(0),
+});
+
+/** Where an order's conversation stands at the counter. */
+export const staffConversationSchema = z.object({
+  status: conversationStatusSchema,
+  unread: z.number().int().min(0),
+  assigned_staff_name: z.string().nullable(),
+});
+
+/** GET /staff/orders/:id/messages — a page of the order's messages; no conversation before the first. */
+export const staffThreadSchema = z.object({
+  conversation: staffConversationSchema.nullable(),
+  messages: z.array(messageSchema),
+  has_more: z.boolean(),
+});
+
 /** Hand a ticket nobody started to the other station. */
 export const moveTicketInputSchema = z.object({
   station: stationSchema,
@@ -213,6 +256,16 @@ export type StaffProductsListResult = {
   pagination: StaffOrdersListResult["pagination"];
 };
 export type MoveTicketInput = z.infer<typeof moveTicketInputSchema>;
+export type ConversationStatus = z.infer<typeof conversationStatusSchema>;
+type StaffInboxConversation = z.infer<typeof staffInboxConversationSchema>;
+export type StaffInboxFilterInput = z.input<typeof staffInboxFilterSchema>;
+export type StaffInboxResult = {
+  conversations: StaffInboxConversation[];
+  pagination: StaffOrdersListResult["pagination"];
+};
+export type StaffConversationCounts = z.infer<typeof staffConversationCountsSchema>;
+export type StaffThread = z.infer<typeof staffThreadSchema>;
+export type StaffConversation = z.infer<typeof staffConversationSchema>;
 
 export type StaffPickupsResult = Omit<StaffPickups, "pickups"> & {
   pickups: StaffPickup[];

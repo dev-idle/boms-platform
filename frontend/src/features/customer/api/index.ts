@@ -3,9 +3,11 @@ import { z } from "zod";
 import { TERMS_VERSION } from "@/constants/policies";
 import {
   browserRequest,
+  browserRequestVoid,
   browserRequestWithMeta,
 } from "@/lib/browser-api-client";
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
+import { messageInputSchema, messageSchema, type Message, type MessageInput } from "@/lib/schemas/message";
 
 import {
   addCartItemInputSchema,
@@ -14,6 +16,7 @@ import {
   checkoutInputSchema,
   orderSchema,
   orderSummarySchema,
+  orderThreadSchema,
   ordersListFilterSchema,
   paymentCaptureSchema,
   paymentStartSchema,
@@ -26,6 +29,7 @@ import {
   type Cart,
   type CheckoutInput,
   type Order,
+  type OrderThread,
   type OrdersListFilterInput,
   type OrdersListResult,
   type PaymentCapture,
@@ -197,4 +201,31 @@ export async function rescheduleOrder(orderId: string, input: RescheduleInput): 
     schema: orderSchema,
     json: body,
   });
+}
+
+/** A page of the messages on the customer's order: the latest, or those before a message. */
+export async function getOrderMessages(orderId: string, before?: string): Promise<OrderThread> {
+  const id = z.uuid().parse(orderId);
+  const query = before ? `?before=${z.uuid().parse(before)}` : "";
+  return browserRequest<OrderThread>(`/api/v1/orders/${id}/messages${query}`, {
+    method: "GET",
+    schema: orderThreadSchema,
+  });
+}
+
+/** Writes the customer's message to the counter about their order. */
+export async function postOrderMessage(orderId: string, input: MessageInput): Promise<Message> {
+  const id = z.uuid().parse(orderId);
+  const body = messageInputSchema.parse(input);
+  return browserRequest<Message>(`/api/v1/orders/${id}/messages`, {
+    method: "POST",
+    schema: messageSchema,
+    json: body,
+  });
+}
+
+/** Records that the customer read the messages on their order. */
+export async function markOrderMessagesRead(orderId: string): Promise<void> {
+  const id = z.uuid().parse(orderId);
+  await browserRequestVoid(`/api/v1/orders/${id}/messages/read`, { method: "POST" });
 }

@@ -13,6 +13,48 @@ import (
 	"github.com/google/uuid"
 )
 
+type ConversationStatus string
+
+const (
+	ConversationStatusOpen   ConversationStatus = "open"
+	ConversationStatusClosed ConversationStatus = "closed"
+)
+
+func (e *ConversationStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ConversationStatus(s)
+	case string:
+		*e = ConversationStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ConversationStatus: %T", src)
+	}
+	return nil
+}
+
+type NullConversationStatus struct {
+	ConversationStatus ConversationStatus `json:"conversationStatus"`
+	Valid              bool               `json:"valid"` // Valid is true if ConversationStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullConversationStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ConversationStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ConversationStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullConversationStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ConversationStatus), nil
+}
+
 type DiscountType string
 
 const (

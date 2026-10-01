@@ -97,7 +97,8 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	f.paypal = &paidPayPal{amounts: map[string]int64{}, taken: map[string]domainpayment.Status{}}
 	f.paymentUC = usecase.NewPaymentUsecase(pool, f.orders, discounts, tickets, payments, f.paypal,
 		f.outbox, "https://shop.example", zap.NewNop())
-	f.orderUC = usecase.NewOrderUsecase(f.users, f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, tickets, payments, f.paymentUC, testPickupCodes)
+	f.orderUC = usecase.NewOrderUsecase(f.users, f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, tickets, payments, f.paymentUC, testPickupCodes,
+		postgresadapter.NewConversationRepository(pool))
 
 	kitchen, err := categories.Create(ctx, port.CreateCategoryParams{Name: "Cakes", Slug: "cakes", IsActive: true, Station: domaincategory.StationKitchen})
 	require.NoError(t, err)

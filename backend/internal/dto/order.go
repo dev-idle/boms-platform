@@ -61,7 +61,10 @@ type OrderResponse struct {
 	Fulfillment *FulfillmentResponse `json:"fulfillment"`
 	// PickupCode is what the customer gives at the counter to collect the
 	// order, from when the bakery accepts it until it is handed over.
-	PickupCode *string   `json:"pickup_code"`
+	PickupCode *string `json:"pickup_code"`
+	// CanMessage says whether the customer can write to the counter about the
+	// order: once the bakery has taken it.
+	CanMessage bool      `json:"can_message"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
@@ -90,13 +93,16 @@ type PaymentCaptureResponse struct {
 }
 
 type OrderSummaryResponse struct {
-	ID         string     `json:"id"`
-	Code       string     `json:"code"`
-	Status     string     `json:"status"`
-	TotalCents int64      `json:"total_cents"`
-	ItemCount  int32      `json:"item_count"`
-	PickupAt   *time.Time `json:"pickup_at,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
+	ID         string `json:"id"`
+	Code       string `json:"code"`
+	Status     string `json:"status"`
+	TotalCents int64  `json:"total_cents"`
+	ItemCount  int32  `json:"item_count"`
+	// UnreadMessages is how many of the counter's messages the customer has
+	// not read.
+	UnreadMessages int32      `json:"unread_messages"`
+	PickupAt       *time.Time `json:"pickup_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
 }
 
 // OrderHistoryQuery is a customer's order-history filter as sent: a status and

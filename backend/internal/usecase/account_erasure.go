@@ -16,20 +16,21 @@ import (
 // AccountErasureUsecase erases a customer's account at their request — the
 // right to erasure. Once nothing they ordered is still to be made or handed
 // over, their personal details go for good: the account is closed, its email
-// and profile cleared, the cart emptied and the personal data taken out of the
-// audit trail. Their orders stay as the bakery's anonymous sales records, which
+// and profile cleared, the cart emptied, the messages about their orders erased
+// and the personal data taken out of the audit trail. Their orders stay as the bakery's anonymous sales records, which
 // accounting law requires it to keep.
 type AccountErasureUsecase struct {
-	tx        port.TxManager
-	users     port.UserRepository
-	customers port.CustomerProfileRepository
-	carts     port.CartRepository
-	orders    port.OrderRepository
-	scrubber  port.AuditScrubber
-	tokens    port.UserTokenRepository
-	sessions  port.SessionStore
-	audit     *auditlogger.Service
-	hasher    port.PasswordHasher
+	tx            port.TxManager
+	users         port.UserRepository
+	customers     port.CustomerProfileRepository
+	carts         port.CartRepository
+	orders        port.OrderRepository
+	conversations port.ConversationRepository
+	scrubber      port.AuditScrubber
+	tokens        port.UserTokenRepository
+	sessions      port.SessionStore
+	audit         *auditlogger.Service
+	hasher        port.PasswordHasher
 }
 
 func NewAccountErasureUsecase(
@@ -38,6 +39,7 @@ func NewAccountErasureUsecase(
 	customers port.CustomerProfileRepository,
 	carts port.CartRepository,
 	orders port.OrderRepository,
+	conversations port.ConversationRepository,
 	scrubber port.AuditScrubber,
 	tokens port.UserTokenRepository,
 	sessions port.SessionStore,
@@ -45,16 +47,17 @@ func NewAccountErasureUsecase(
 	hasher port.PasswordHasher,
 ) *AccountErasureUsecase {
 	return &AccountErasureUsecase{
-		tx:        tx,
-		users:     users,
-		customers: customers,
-		carts:     carts,
-		orders:    orders,
-		scrubber:  scrubber,
-		tokens:    tokens,
-		sessions:  sessions,
-		audit:     audit,
-		hasher:    hasher,
+		tx:            tx,
+		users:         users,
+		customers:     customers,
+		carts:         carts,
+		orders:        orders,
+		conversations: conversations,
+		scrubber:      scrubber,
+		tokens:        tokens,
+		sessions:      sessions,
+		audit:         audit,
+		hasher:        hasher,
 	}
 }
 
@@ -130,6 +133,9 @@ func (u *AccountErasureUsecase) erase(txCtx context.Context, user *domainuser.Us
 		return domainuser.ErrAccountHasOpenOrders
 	}
 	if err := u.emptyCart(txCtx, cart); err != nil {
+		return err
+	}
+	if err := u.conversations.EraseForCustomer(txCtx, user.ID); err != nil {
 		return err
 	}
 	if err := u.customers.Erase(txCtx, user.ID); err != nil {

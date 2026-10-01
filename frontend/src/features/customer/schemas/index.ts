@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
 import { CAKE_MESSAGE_MAX } from "@/lib/schemas/catalog";
+import { messageSchema } from "@/lib/schemas/message";
 import {
   customizationSchema,
   orderCodeSchema,
@@ -134,6 +135,8 @@ export const orderSchema = z.object({
   payment_due_at: apiDateTimeSchema.nullable(),
   /** What the customer gives at the counter, from when the bakery accepts the order until it is collected. */
   pickup_code: z.string().regex(/^\d{4}$/).nullable(),
+  /** Whether the customer can write to the counter about it: once the bakery has taken it. */
+  can_message: z.boolean(),
   created_at: apiDateTimeSchema,
   updated_at: apiDateTimeSchema,
 });
@@ -154,8 +157,17 @@ export const orderSummarySchema = z.object({
   status: orderStatusSchema,
   total_cents: z.number().int().min(0),
   item_count: z.number().int().min(0),
+  /** How many of the counter's messages the customer has not read. */
+  unread_messages: z.number().int().min(0),
   pickup_at: apiDateTimeSchema.nullable().optional(),
   created_at: apiDateTimeSchema,
+});
+
+/** GET /orders/:id/messages — a page of the order's messages, oldest first. */
+export const orderThreadSchema = z.object({
+  unread: z.number().int().min(0),
+  messages: z.array(messageSchema),
+  has_more: z.boolean(),
 });
 
 /** GET /api/v1/store/pickup-rules — the window checkout holds a pickup to. */
@@ -214,6 +226,7 @@ type OrderSummary = z.infer<typeof orderSummarySchema>;
 export type OrdersListFilterInput = z.infer<typeof ordersListFilterSchema>;
 export type PickupRules = z.infer<typeof pickupRulesSchema>;
 export type PickupSlots = z.infer<typeof pickupSlotsSchema>;
+export type OrderThread = z.infer<typeof orderThreadSchema>;
 
 export type OrdersListResult = {
   orders: OrderSummary[];

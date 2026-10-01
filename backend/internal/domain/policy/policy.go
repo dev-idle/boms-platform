@@ -8,7 +8,7 @@ import "time"
 // with the published pages whenever what a customer agrees to changes; every
 // acceptance records the version it was given, so a later change never
 // rewrites what someone agreed to.
-const TermsVersion = "2026-10-01.3"
+const TermsVersion = "2026-10-02"
 
 // Acceptance is someone's agreement to one version of the policies.
 type Acceptance struct {

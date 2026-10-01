@@ -14,6 +14,8 @@ export const customerQueryKeys = {
     [...customerQueryKeys.ordersRoot, filter] as const,
   orderRoot: ["customer", "order"] as const,
   order: (id: string) => [...customerQueryKeys.orderRoot, id] as const,
+  messagesRoot: ["customer", "messages"] as const,
+  messages: (orderId: string) => [...customerQueryKeys.messagesRoot, orderId] as const,
 };
 
 /** Everything pushed events can change in a customer tab, refetched after a gap. */
@@ -23,6 +25,7 @@ export const customerLiveQueryKeys: readonly QueryKey[] = [
   customerQueryKeys.pickupSlotsRoot,
   customerQueryKeys.ordersRoot,
   customerQueryKeys.orderRoot,
+  customerQueryKeys.messagesRoot,
 ];
 
 /**
@@ -33,7 +36,8 @@ export const customerLiveQueryKeys: readonly QueryKey[] = [
  * pickup moving or its refund arriving changes the order list and its detail;
  * a ticket moving changes only its order's detail, where the preparation shows.
  * A product running out today, or coming back, changes the days the cart can
- * be collected on.
+ * be collected on. A message arriving, or read in another tab, changes the
+ * order's thread and the unread marks on the order list.
  */
 export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -56,6 +60,14 @@ export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
       return [customerQueryKeys.pickupRules, customerQueryKeys.pickupSlotsRoot];
     case REALTIME_EVENT_TYPE.productSoldOutChanged:
       return [customerQueryKeys.cart];
+    case REALTIME_EVENT_TYPE.messageCreated:
+    case REALTIME_EVENT_TYPE.conversationChanged: {
+      const orderId = event.data.order_id;
+      return [
+        customerQueryKeys.ordersRoot,
+        orderId ? customerQueryKeys.messages(orderId) : customerQueryKeys.messagesRoot,
+      ];
+    }
     case REALTIME_EVENT_TYPE.slotsChanged: {
       const date = event.data.date;
       return [date ? customerQueryKeys.pickupSlots(date) : customerQueryKeys.pickupSlotsRoot];

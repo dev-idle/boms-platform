@@ -16,6 +16,7 @@ import (
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/utils"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -25,19 +26,20 @@ const (
 )
 
 type OrderUsecase struct {
-	users       port.UserRepository
-	orders      port.OrderRepository
-	carts       port.CartRepository
-	discount    port.DiscountCodeRepository
-	cartUC      *CartUsecase
-	tx          port.TxManager
-	events      port.EventOutbox
-	store       port.StoreSettingsRepository
-	tickets     port.TicketRepository
-	payments    port.PaymentRepository
-	payment     *PaymentUsecase
-	pickupCodes domainorder.PickupCodes
-	transitions orderTransitions
+	users         port.UserRepository
+	orders        port.OrderRepository
+	carts         port.CartRepository
+	discount      port.DiscountCodeRepository
+	cartUC        *CartUsecase
+	tx            port.TxManager
+	events        port.EventOutbox
+	store         port.StoreSettingsRepository
+	tickets       port.TicketRepository
+	payments      port.PaymentRepository
+	payment       *PaymentUsecase
+	pickupCodes   domainorder.PickupCodes
+	conversations port.ConversationRepository
+	transitions   orderTransitions
 }
 
 func NewOrderUsecase(
@@ -53,11 +55,12 @@ func NewOrderUsecase(
 	payments port.PaymentRepository,
 	payment *PaymentUsecase,
 	pickupCodes domainorder.PickupCodes,
+	conversations port.ConversationRepository,
 ) *OrderUsecase {
 	return &OrderUsecase{
 		users: users, orders: orders, carts: carts, discount: discount, cartUC: cartUC,
 		tx: tx, events: events, store: store, tickets: tickets, payments: payments, payment: payment,
-		pickupCodes: pickupCodes,
+		pickupCodes: pickupCodes, conversations: conversations,
 		transitions: orderTransitions{
 			tx: tx, orders: orders, tickets: tickets, discounts: discount, payments: payments, events: events,
 		},
@@ -345,20 +348,30 @@ func (u *OrderUsecase) List(
 	for _, order := range orders {
 		orderIDs = append(orderIDs, order.ID)
 	}
-	itemCounts, err := u.orders.SumItemQuantitiesByOrderIDs(ctx, orderIDs)
-	if err != nil {
+	var itemCounts, unread map[uuid.UUID]int32
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.Go(func() (err error) {
+		itemCounts, err = u.orders.SumItemQuantitiesByOrderIDs(groupCtx, orderIDs)
+		return err
+	})
+	group.Go(func() (err error) {
+		unread, err = u.conversations.UnreadByCustomer(groupCtx, orderIDs)
+		return err
+	})
+	if err := group.Wait(); err != nil {
 		return nil, 0, page, pageSize, err
 	}
 	out := make([]dto.OrderSummaryResponse, 0, len(orders))
 	for _, order := range orders {
 		out = append(out, dto.OrderSummaryResponse{
-			ID:         order.ID.String(),
-			Code:       order.Code,
-			Status:     string(order.Status),
-			TotalCents: order.TotalCents,
-			ItemCount:  itemCounts[order.ID],
-			PickupAt:   order.PickupAt,
-			CreatedAt:  order.CreatedAt,
+			ID:             order.ID.String(),
+			Code:           order.Code,
+			Status:         string(order.Status),
+			TotalCents:     order.TotalCents,
+			ItemCount:      itemCounts[order.ID],
+			UnreadMessages: unread[order.ID],
+			PickupAt:       order.PickupAt,
+			CreatedAt:      order.CreatedAt,
 		})
 	}
 	return out, total, page, pageSize, nil
@@ -395,6 +408,7 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		Tickets:              mapTicketSummariesToDTO(parts.tickets),
 		Payment:              mapOrderPaymentToDTO(parts.payment),
 		PaymentDueAt:         order.PaymentDueAt,
+		CanMessage:           domainorder.SeenByStaff(order.Status, parts.timeline),
 		CreatedAt:            order.CreatedAt,
 		UpdatedAt:            order.UpdatedAt,
 	}

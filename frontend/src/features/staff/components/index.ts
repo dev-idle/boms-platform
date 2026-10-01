@@ -1,4 +1,6 @@
 export { StaffAvailability } from "./staff-availability";
+export { StaffChat } from "./staff-chat";
+export { StaffChatConversation } from "./staff-chat-conversation";
 export { StaffLiveUpdates } from "./staff-live-updates";
 export { StaffNewOrder } from "./staff-new-order";
 export { StaffOrderDetail } from "./staff-order-detail";

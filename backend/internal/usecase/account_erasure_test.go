@@ -49,12 +49,24 @@ type erasureOrders struct {
 
 func (o *erasureOrders) HasOpen(context.Context, uuid.UUID) (bool, error) { return o.open, nil }
 
+// erasureMessages records whose messages were erased.
+type erasureMessages struct {
+	port.ConversationRepository
+	erased []uuid.UUID
+}
+
+func (m *erasureMessages) EraseForCustomer(_ context.Context, userID uuid.UUID) error {
+	m.erased = append(m.erased, userID)
+	return nil
+}
+
 type erasureFixture struct {
 	customer  *domainuser.User
 	users     *mockUserRepo
 	customers *mockCustomerProfileRepo
 	carts     *erasureCarts
 	orders    *erasureOrders
+	messages  *erasureMessages
 	audit     *recordingAuditLogs
 	tokens    *fakeTokens
 	sessions  *mockSessionStore
@@ -71,6 +83,7 @@ func newErasureFixture() *erasureFixture {
 		customers: new(mockCustomerProfileRepo),
 		carts:     &erasureCarts{cart: &domaincart.Cart{ID: uuid.New(), UserID: customer.ID}},
 		orders:    &erasureOrders{},
+		messages:  &erasureMessages{},
 		audit:     &recordingAuditLogs{},
 		tokens:    &fakeTokens{},
 		sessions:  new(mockSessionStore),
@@ -85,7 +98,7 @@ func newErasureFixture() *erasureFixture {
 
 func (f *erasureFixture) usecase() *usecase.AccountErasureUsecase {
 	return usecase.NewAccountErasureUsecase(
-		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.audit, f.tokens, f.sessions,
+		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.messages, f.audit, f.tokens, f.sessions,
 		auditlogger.NewService(f.audit), f.hasher,
 	)
 }
@@ -101,6 +114,7 @@ func (f *erasureFixture) expectErased() {
 func (f *erasureFixture) nothingErased(t *testing.T) {
 	t.Helper()
 	assert.False(t, f.carts.emptied, "the cart is kept")
+	assert.Empty(t, f.messages.erased, "the messages are kept")
 	f.customers.AssertNotCalled(t, "Erase", mock.Anything, mock.Anything)
 	f.users.AssertNotCalled(t, "Erase", mock.Anything, mock.Anything)
 	f.sessions.AssertNotCalled(t, "DeleteAllForUser", mock.Anything, mock.Anything)
@@ -119,6 +133,7 @@ func TestAccountErasureUsecase_Erase(t *testing.T) {
 		require.NoError(t, f.usecase().Erase(ctx, f.customer.ID, erasurePassword))
 
 		assert.True(t, f.carts.emptied, "the cart is emptied")
+		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.messages.erased, "the messages about their orders go")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.tokens.deleted, "no emailed link outlives the account")
 		assert.Equal(t, []domainuser.AuditAction{domainuser.AuditActionMeErasedAccount}, f.audit.actions)
 		assert.True(t, f.audit.scrubbed, "the audit trail loses the personal data")

@@ -18,6 +18,8 @@ export type DashboardNavItem = {
   icon: DashboardNavIconId;
   label: string;
   match: "exact" | "prefix";
+  /** What waits there, e.g. unread conversations; none shows no number. */
+  count?: number;
 };
 
 type DashboardShellProps = {
@@ -63,7 +65,7 @@ export function DashboardShell({
         </div>
         {/* No visible "Menu" heading — the named landmark serves assistive tech. */}
         <nav aria-label="Dashboard" className="dashboard-nav">
-          {navItems.map(({ href, icon, label, match }) => {
+          {navItems.map(({ href, icon, label, match, count }) => {
             const active = isNavItemActive(pathname, href, match);
             return (
               <Link
@@ -76,6 +78,7 @@ export function DashboardShell({
                   <DashboardNavIcon icon={icon} />
                 </span>
                 <span className="dashboard-nav-text">{label}</span>
+                {count ? <span className="dashboard-nav-count">{count}</span> : null}
               </Link>
             );
           })}

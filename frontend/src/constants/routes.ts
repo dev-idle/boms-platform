@@ -5,7 +5,7 @@
  *   - Public:   /, /login, /register, /forgot-password, /reset-password, /verify-email,
  *               /products, /products/:id, /terms, /privacy, /refund-policy
  *   - Customer: /cart, /orders, /customer/account/*
- *   - Staff:    /staff/orders, /staff/orders/new, /staff/orders/:id, /staff/pickups, /staff/prep, /staff/availability, /staff/account/*
+ *   - Staff:    /staff/orders, /staff/orders/new, /staff/orders/:id, /staff/pickups, /staff/prep, /staff/availability, /staff/chat, /staff/chat/:orderId, /staff/account/*
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/account/*
@@ -41,6 +41,8 @@ export const ROUTE = {
     pickups: "/staff/pickups",
     prep: "/staff/prep",
     availability: "/staff/availability",
+    chat: "/staff/chat",
+    chatThread: (orderId: string) => `/staff/chat/${orderId}`,
     account: {
       root: "/staff/account",
       profile: "/staff/account/profile",

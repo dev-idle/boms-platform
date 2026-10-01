@@ -4,6 +4,7 @@ import { REALTIME_EVENT_TYPE, type RealtimeEvent } from "@/lib/realtime/events";
 import type { StationTicketsListFilterInput } from "@/lib/schemas/ticket";
 
 import type {
+  StaffInboxFilterInput,
   StaffOrderItemInput,
   StaffOrdersListFilterInput,
   StaffPickupsFilterInput,
@@ -25,6 +26,11 @@ export const staffQueryKeys = {
   products: (filter: StaffProductsFilterInput) => [...staffQueryKeys.productsRoot, filter] as const,
   quote: (items: StaffOrderItemInput[]) => ["staff", "quote", items] as const,
   customer: (email: string) => ["staff", "customer", email] as const,
+  conversationsRoot: ["staff", "conversations"] as const,
+  conversations: (filter: StaffInboxFilterInput) => [...staffQueryKeys.conversationsRoot, filter] as const,
+  conversationCounts: ["staff", "conversations", "counts"] as const,
+  messagesRoot: ["staff", "messages"] as const,
+  messages: (orderId: string) => [...staffQueryKeys.messagesRoot, orderId] as const,
 };
 
 /** Everything pushed events can change in a staff tab, refetched after a gap. */
@@ -32,6 +38,8 @@ export const staffLiveQueryKeys: readonly QueryKey[] = [
   staffQueryKeys.ordersRoot,
   staffQueryKeys.ticketsRoot,
   staffQueryKeys.productsRoot,
+  staffQueryKeys.conversationsRoot,
+  staffQueryKeys.messagesRoot,
 ];
 
 /**
@@ -42,7 +50,8 @@ export const staffLiveQueryKeys: readonly QueryKey[] = [
  * queue changes when an order is accepted, handed over or cancelled, and when
  * a ticket moves. A ticket also changes its order's detail. An order taken at
  * the counter arrives confirmed, as one paid does. A product running out, or
- * coming back, changes the availability list.
+ * coming back, changes the availability list. A message arriving, or a
+ * conversation read or resolved, changes the inbox, its counts and the thread.
  */
 export function staffQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -52,6 +61,14 @@ export function staffQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
       return [staffQueryKeys.ordersRoot, staffQueryKeys.ticketsRoot];
     case REALTIME_EVENT_TYPE.productSoldOutChanged:
       return [staffQueryKeys.productsRoot];
+    case REALTIME_EVENT_TYPE.messageCreated:
+    case REALTIME_EVENT_TYPE.conversationChanged: {
+      const orderId = event.data.order_id;
+      return [
+        staffQueryKeys.conversationsRoot,
+        orderId ? staffQueryKeys.messages(orderId) : staffQueryKeys.messagesRoot,
+      ];
+    }
     case REALTIME_EVENT_TYPE.orderRefunded:
       return [staffQueryKeys.ordersRoot];
     case REALTIME_EVENT_TYPE.ticketChanged: {

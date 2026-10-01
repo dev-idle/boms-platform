@@ -182,7 +182,7 @@ func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, codes domainorder
 		cfg.App.SiteURL, log)
 	cartUC := usecase.NewCartUsecase(carts, postgresrepo.NewProductRepository(pool), postgresrepo.NewComboRepository(pool), discounts, cfg.Cloudinary)
 	pickups := usecase.NewOrderUsecase(postgresrepo.NewUserRepository(pool), orders, carts, discounts, cartUC, pool, outbox,
-		postgresrepo.NewStoreSettingsRepository(pool), tickets, paymentRepo, payments, codes)
+		postgresrepo.NewStoreSettingsRepository(pool), tickets, paymentRepo, payments, codes, postgresrepo.NewConversationRepository(pool))
 	return []orderJob{
 		{name: "expire_unpaid", run: payments.ExpireOverdue},
 		{name: "make_refunds", run: payments.RefundDue},

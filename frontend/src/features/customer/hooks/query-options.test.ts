@@ -48,6 +48,19 @@ describe("customerQueryKeysForEvent", () => {
     ]);
   });
 
+  it("refreshes the order's thread and the unread marks when a message arrives or is read", () => {
+    for (const type of ["message.created", "conversation.changed"]) {
+      expect(customerQueryKeysForEvent({ type, data: { order_id: "o-1" } })).toEqual([
+        customerQueryKeys.ordersRoot,
+        customerQueryKeys.messages("o-1"),
+      ]);
+    }
+    expect(customerQueryKeysForEvent({ type: "message.created", data: {} })).toEqual([
+      customerQueryKeys.ordersRoot,
+      customerQueryKeys.messagesRoot,
+    ]);
+  });
+
   it("ignores events it does not know", () => {
     expect(customerQueryKeysForEvent({ type: "catalog.updated", data: {} })).toEqual([]);
   });

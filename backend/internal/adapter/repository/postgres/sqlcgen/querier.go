@@ -328,6 +328,18 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	ClearMustChangePassword(ctx context.Context, id uuid.UUID) (int64, error)
+	// Closes the customer's conversations as their account is erased: nothing in
+	// them is left to read.
+	//
+	//  UPDATE conversations c
+	//  SET status = 'closed',
+	//      unread_by_customer = 0,
+	//      unread_by_staff = 0,
+	//      updated_at = now()
+	//  FROM orders o
+	//  WHERE o.id = c.order_id
+	//    AND o.user_id = $1::uuid
+	CloseCustomerConversations(ctx context.Context, userID uuid.UUID) error
 	// The counter took the cash due as it handed the order over.
 	//
 	//  UPDATE payments
@@ -498,6 +510,22 @@ type Querier interface {
 	//      updated_at,
 	//      deleted_at
 	CreateDiscountCode(ctx context.Context, arg CreateDiscountCodeParams) (DiscountCode, error)
+	// Writes a message and returns it as a thread lists it.
+	//
+	//  WITH created AS (
+	//    INSERT INTO messages (conversation_id, author_id, author_role, body)
+	//    VALUES ($1, $2, $3, $4)
+	//    RETURNING id, author_id, author_role, body, created_at
+	//  )
+	//  SELECT
+	//    created.id,
+	//    created.author_role,
+	//    created.body,
+	//    created.created_at,
+	//    sp.full_name AS author_name
+	//  FROM created
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = created.author_id AND created.author_role = 'staff'::user_role
+	CreateMessage(ctx context.Context, arg CreateMessageParams) (CreateMessageRow, error)
 	//CreateOrder
 	//
 	//  INSERT INTO orders (
@@ -739,6 +767,18 @@ type Querier interface {
 	//  DELETE FROM user_tokens
 	//  WHERE user_id = $1
 	DeleteUserTokens(ctx context.Context, userID uuid.UUID) error
+	// Erases the text of every message on the customer's orders, theirs and the
+	// counter's: what was said is about them.
+	//
+	//  UPDATE messages m
+	//  SET body = '',
+	//      deleted_at = now()
+	//  FROM conversations c
+	//  JOIN orders o ON o.id = c.order_id
+	//  WHERE m.conversation_id = c.id
+	//    AND o.user_id = $1::uuid
+	//    AND m.deleted_at IS NULL
+	EraseCustomerMessages(ctx context.Context, userID uuid.UUID) error
 	// Clears what a customer told us about themselves; the row stays, empty.
 	//
 	//  UPDATE customer_profiles
@@ -845,6 +885,17 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	GetComboByID(ctx context.Context, id uuid.UUID) (Combo, error)
+	//GetConversationByOrderID
+	//
+	//  SELECT
+	//    c.status,
+	//    c.unread_by_customer,
+	//    c.unread_by_staff,
+	//    sp.full_name AS assigned_staff_name
+	//  FROM conversations c
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = c.assigned_staff_id
+	//  WHERE c.order_id = $1
+	GetConversationByOrderID(ctx context.Context, orderID uuid.UUID) (GetConversationByOrderIDRow, error)
 	//GetCustomerProfileByUserID
 	//
 	//  SELECT user_id, display_name, phone, created_at, updated_at
@@ -1238,6 +1289,44 @@ type Querier interface {
 	//  ORDER BY payment_due_at
 	//  LIMIT $2::int
 	ListDueUnpaidOrders(ctx context.Context, arg ListDueUnpaidOrdersParams) ([]uuid.UUID, error)
+	// A page of an order's messages, newest first: the latest, or those before
+	// the message before_id names. A staff message carries its writer's name.
+	//
+	//  SELECT
+	//    m.id,
+	//    m.author_role,
+	//    m.body,
+	//    m.created_at,
+	//    sp.full_name AS author_name
+	//  FROM messages m
+	//  JOIN conversations c ON c.id = m.conversation_id
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = m.author_id AND m.author_role = 'staff'::user_role
+	//  WHERE c.order_id = $1
+	//    AND m.deleted_at IS NULL
+	//    AND (
+	//      $2::uuid IS NULL
+	//      OR (m.created_at, m.id) < (
+	//        SELECT b.created_at, b.id FROM messages b
+	//        WHERE b.id = $2::uuid AND b.conversation_id = c.id
+	//      )
+	//    )
+	//  ORDER BY m.created_at DESC, m.id DESC
+	//  LIMIT $3
+	ListMessagesByOrderID(ctx context.Context, arg ListMessagesByOrderIDParams) ([]ListMessagesByOrderIDRow, error)
+	// Every message on the orders given, oldest first, for a personal data export.
+	//
+	//  SELECT
+	//    c.order_id,
+	//    m.id,
+	//    m.author_role,
+	//    m.body,
+	//    m.created_at
+	//  FROM messages m
+	//  JOIN conversations c ON c.id = m.conversation_id
+	//  WHERE c.order_id = ANY($1::uuid[])
+	//    AND m.deleted_at IS NULL
+	//  ORDER BY c.order_id, m.created_at, m.id
+	ListMessagesByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]ListMessagesByOrderIDsRow, error)
 	// Orders ready and not collected whose pickup falls before missed_before, the
 	// longest waiting first.
 	//
@@ -1522,6 +1611,13 @@ type Querier interface {
 	//  ORDER BY closed_on
 	//  LIMIT $3::int
 	ListStoreClosedDates(ctx context.Context, arg ListStoreClosedDatesParams) ([]ListStoreClosedDatesRow, error)
+	// What the customer has not read yet on each of the orders given.
+	//
+	//  SELECT order_id, unread_by_customer
+	//  FROM conversations
+	//  WHERE order_id = ANY($1::uuid[])
+	//    AND unread_by_customer > 0
+	ListUnreadByCustomer(ctx context.Context, orderIds []uuid.UUID) ([]ListUnreadByCustomerRow, error)
 	// Holds the customer's bookings until the transaction ends, so two of their
 	// checkouts or pickup moves cannot both take a day's last place. The key is the
 	// customer, under a namespace of its own.
@@ -1747,6 +1843,22 @@ type Querier interface {
 	//      OR p.slug ILIKE '%' || $2::text || '%'
 	//    )
 	ManagerListProductsCount(ctx context.Context, arg ManagerListProductsCountParams) (int64, error)
+	//MarkConversationReadByCustomer
+	//
+	//  UPDATE conversations
+	//  SET unread_by_customer = 0,
+	//      updated_at = now()
+	//  WHERE order_id = $1
+	//    AND unread_by_customer > 0
+	MarkConversationReadByCustomer(ctx context.Context, orderID uuid.UUID) (int64, error)
+	//MarkConversationReadByStaff
+	//
+	//  UPDATE conversations
+	//  SET unread_by_staff = 0,
+	//      updated_at = now()
+	//  WHERE order_id = $1
+	//    AND unread_by_staff > 0
+	MarkConversationReadByStaff(ctx context.Context, orderID uuid.UUID) (int64, error)
 	//MarkEmailVerified
 	//
 	//  UPDATE users
@@ -1807,6 +1919,35 @@ type Querier interface {
 	//  SET last_number = order_day_counters.last_number + 1
 	//  RETURNING day, last_number
 	NextOrderDayNumber(ctx context.Context, zone string) (OrderDayCounter, error)
+	// Records that the customer wrote about the order: the conversation starts,
+	// or opens again, the counter has one more message to read, and the customer
+	// has read everything before their own.
+	//
+	//  INSERT INTO conversations (order_id, unread_by_staff, last_message_at)
+	//  VALUES ($1, 1, now())
+	//  ON CONFLICT (order_id) DO UPDATE
+	//  SET status = 'open',
+	//      unread_by_staff = conversations.unread_by_staff + 1,
+	//      unread_by_customer = 0,
+	//      last_message_at = GREATEST(conversations.last_message_at, now()),
+	//      updated_at = now()
+	//  RETURNING id
+	OpenConversationForCustomerMessage(ctx context.Context, orderID uuid.UUID) (uuid.UUID, error)
+	// Records that staff wrote about the order: the conversation starts, or opens
+	// again, and passes to the writer; the customer has one more message to read,
+	// and the counter has read everything before it.
+	//
+	//  INSERT INTO conversations (order_id, assigned_staff_id, unread_by_customer, last_message_at)
+	//  VALUES ($1, $2, 1, now())
+	//  ON CONFLICT (order_id) DO UPDATE
+	//  SET status = 'open',
+	//      assigned_staff_id = EXCLUDED.assigned_staff_id,
+	//      unread_by_customer = conversations.unread_by_customer + 1,
+	//      unread_by_staff = 0,
+	//      last_message_at = GREATEST(conversations.last_message_at, now()),
+	//      updated_at = now()
+	//  RETURNING id
+	OpenConversationForStaffMessage(ctx context.Context, arg OpenConversationForStaffMessageParams) (uuid.UUID, error)
 	// Whether the order holds an item its customer configured, which staff review
 	// before the bakery makes it.
 	//
@@ -2011,6 +2152,15 @@ type Querier interface {
 	//  SET discount_code_id = $2, updated_at = now()
 	//  WHERE id = $1
 	SetCartDiscountCodeID(ctx context.Context, arg SetCartDiscountCodeIDParams) error
+	// Resolving a conversation reads it for the counter: nothing in it waits on them.
+	//
+	//  UPDATE conversations
+	//  SET status = $1,
+	//      unread_by_staff = CASE WHEN $1 = 'closed'::conversation_status THEN 0 ELSE unread_by_staff END,
+	//      updated_at = now()
+	//  WHERE order_id = $2
+	//    AND status <> $1
+	SetConversationStatus(ctx context.Context, arg SetConversationStatusParams) (int64, error)
 	//SetMustChangePassword
 	//
 	//  UPDATE users
@@ -2086,6 +2236,16 @@ type Querier interface {
 	//  WHERE id = $1 AND deleted_at IS NULL
 	//  RETURNING id, closed_on, reason, created_at
 	SoftDeleteStoreClosedDate(ctx context.Context, id uuid.UUID) (SoftDeleteStoreClosedDateRow, error)
+	// How many conversations wait on the counter: open ones, and those holding
+	// messages nobody at the counter has read.
+	//
+	//  SELECT
+	//    count(*) FILTER (WHERE c.status = 'open'::conversation_status)::bigint AS open_count,
+	//    count(*) FILTER (WHERE c.unread_by_staff > 0)::bigint AS unread_count
+	//  FROM conversations c
+	//  JOIN orders o ON o.id = c.order_id
+	//  JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	StaffConversationCounts(ctx context.Context) (StaffConversationCountsRow, error)
 	// An open customer account by its email, with what staff need to take an
 	// order for it.
 	//
@@ -2127,6 +2287,48 @@ type Querier interface {
 	//  WHERE o.id = $1
 	//    AND (o.user_id IS NULL OR u.id IS NOT NULL)
 	StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGetOrderByIDRow, error)
+	// The counter's inbox, latest message first: each conversation with its
+	// order, its customer and a preview of its last message. A customer whose
+	// account is closed is not shown.
+	//
+	//  SELECT
+	//    c.order_id,
+	//    o.code AS order_code,
+	//    c.status,
+	//    c.unread_by_staff,
+	//    c.last_message_at,
+	//    cp.display_name AS customer_name,
+	//    u.email AS customer_email,
+	//    left(last.body, 200)::text AS last_body
+	//  FROM conversations c
+	//  JOIN orders o ON o.id = c.order_id
+	//  JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+	//  JOIN LATERAL (
+	//    SELECT m.body
+	//    FROM messages m
+	//    WHERE m.conversation_id = c.id AND m.deleted_at IS NULL
+	//    ORDER BY m.created_at DESC, m.id DESC
+	//    LIMIT 1
+	//  ) last ON true
+	//  WHERE (
+	//      $1::conversation_status IS NULL
+	//      OR c.status = $1::conversation_status
+	//    )
+	//  ORDER BY c.last_message_at DESC, c.id DESC
+	//  LIMIT $3 OFFSET $2
+	StaffListConversations(ctx context.Context, arg StaffListConversationsParams) ([]StaffListConversationsRow, error)
+	//StaffListConversationsCount
+	//
+	//  SELECT count(*)::bigint
+	//  FROM conversations c
+	//  JOIN orders o ON o.id = c.order_id
+	//  JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  WHERE (
+	//      $1::conversation_status IS NULL
+	//      OR c.status = $1::conversation_status
+	//    )
+	StaffListConversationsCount(ctx context.Context, status *ConversationStatus) (int64, error)
 	// A guest's order has no account; one whose account was erased is not shown.
 	// An order not paid, now or ever, is not the bakery's to see: one cancelled
 	// is only if it was accepted before (domainorder.SeenByStaff).
