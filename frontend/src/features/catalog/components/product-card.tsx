@@ -59,7 +59,9 @@ export function ProductCard({
               {formatPriceCents(product.price_cents)}
             </p>
             {/* The whole card links to the detail page — there is no add-to-cart here. */}
-            <span className="catalog-product-card__action">Add</span>
+            <span className="catalog-product-card__action">
+              {product.is_customizable ? "Customize" : "Add"}
+            </span>
           </div>
         </div>
       </Link>

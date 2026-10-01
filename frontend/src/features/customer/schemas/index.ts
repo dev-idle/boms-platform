@@ -1,7 +1,9 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
+import { CAKE_MESSAGE_MAX } from "@/lib/schemas/catalog";
 import {
+  customizationSchema,
   orderCodeSchema,
   orderPaymentSchema,
   orderStatusSchema,
@@ -23,6 +25,8 @@ const cartItemSchema = z.object({
   unit_price_cents: z.number().int().min(0),
   line_total_cents: z.number().int().min(0),
   is_available: z.boolean(),
+  /** How the line is configured, null for a plain line. */
+  customization: customizationSchema.nullable(),
 });
 
 const cartDiscountSchema = z.object({
@@ -50,11 +54,33 @@ export const cartSchema = z.object({
   fulfillment: fulfillmentSchema,
 });
 
+/**
+ * How a customer configures a customizable product: one option from each
+ * group it offers, a message for the cake, and a photo they uploaded with their
+ * word that they may share it.
+ */
+export const cartCustomizationInputSchema = z
+  .object({
+    option_ids: z.array(z.uuid("Choose an option")).max(3),
+    message: z
+      .string()
+      .trim()
+      .max(CAKE_MESSAGE_MAX, `At most ${CAKE_MESSAGE_MAX} characters`)
+      .refine((value) => !/[\p{Cc}\p{Cf}]/u.test(value), "Use plain text only"),
+    reference_image_url: z.union([z.url({ protocol: /^https$/ }), z.literal("")]),
+    reference_rights_confirmed: z.boolean(),
+  })
+  .refine((value) => value.reference_image_url === "" || value.reference_rights_confirmed, {
+    error: "Confirm you may share this photo",
+    path: ["reference_rights_confirmed"],
+  });
+
 export const addCartItemInputSchema = z
   .object({
     product_id: z.uuid().optional(),
     combo_id: z.uuid().optional(),
     quantity: z.number().int().min(1).max(99).default(1),
+    customization: cartCustomizationInputSchema.optional(),
   })
   .refine(
     (value) =>
@@ -89,6 +115,8 @@ const orderItemSchema = z.object({
   quantity: z.number().int().min(1),
   unit_price_cents: z.number().int().min(0),
   line_total_cents: z.number().int().min(0),
+  /** How the customer configured it, null for a plain item. */
+  customization: customizationSchema.nullable(),
 });
 
 export const orderSchema = z.object({
@@ -177,6 +205,7 @@ export const ordersListFilterSchema = z
 export type Cart = z.infer<typeof cartSchema>;
 export type CartItem = z.infer<typeof cartItemSchema>;
 export type AddCartItemInput = z.infer<typeof addCartItemInputSchema>;
+export type CartCustomizationInput = z.input<typeof cartCustomizationInputSchema>;
 export type UpdateCartItemInput = z.infer<typeof updateCartItemInputSchema>;
 export type ApplyCartDiscountInput = z.infer<typeof applyCartDiscountInputSchema>;
 export type CheckoutInput = z.infer<typeof checkoutInputSchema>;

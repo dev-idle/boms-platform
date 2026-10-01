@@ -119,6 +119,16 @@ func ManagerMediaRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig)
 	}, cfg.ManagerMediaMax, cfg.ManagerMediaWindow, true)
 }
 
+// ReferenceUploadRateLimit limits reference photo upload signatures per customer.
+func ReferenceUploadRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":reference_upload"
+		}
+		return "rl:ip:" + ClientIP(c) + ":reference_upload"
+	}, cfg.ReferenceUploadMax, cfg.ReferenceUploadWindow, true)
+}
+
 // ManagerWriteRateLimit limits manager catalog write operations per user.
 func ManagerWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
 	return RedisRateLimit(rdb, func(c fiber.Ctx) string {

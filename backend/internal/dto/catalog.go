@@ -39,6 +39,20 @@ type CreateProductRequest struct {
 	// LeadTimeMinutes is the notice the product needs before pickup, up to a week.
 	LeadTimeMinutes int32    `json:"lead_time_minutes" validate:"min=0,max=10080"`
 	ImageURLs       []string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
+	IsCustomizable  bool     `json:"is_customizable"`
+	// Options are what a customer chooses from on a customizable product.
+	Options []ProductOptionInput `json:"options,omitempty" validate:"omitempty,max=30,dive"`
+}
+
+// ProductOptionInput is one option a manager offers on a customizable product.
+// Its place within its group is its place in the list; one without an id is
+// new, and an option left out of the list is retired.
+type ProductOptionInput struct {
+	ID              *string `json:"id,omitempty" validate:"omitempty,uuid"`
+	Group           string  `json:"group" validate:"required,oneof=size flavor decoration"`
+	Label           string  `json:"label" validate:"required,max=60"`
+	PriceDeltaCents int64   `json:"price_delta_cents" validate:"min=0,max=100000"`
+	IsActive        bool    `json:"is_active"`
 }
 
 type UpdateProductRequest struct {
@@ -51,21 +65,35 @@ type UpdateProductRequest struct {
 	// LeadTimeMinutes is the notice the product needs before pickup, up to a week.
 	LeadTimeMinutes int32     `json:"lead_time_minutes" validate:"min=0,max=10080"`
 	ImageURLs       *[]string `json:"image_urls,omitempty" validate:"omitempty,max=5,dive,url,max=2048"`
+	IsCustomizable  bool      `json:"is_customizable"`
+	// Options, when sent, become the product's full list of options.
+	Options *[]ProductOptionInput `json:"options,omitempty" validate:"omitempty,max=30,dive"`
 }
 
 type ProductResponse struct {
-	ID              string    `json:"id"`
-	CategoryID      string    `json:"category_id"`
-	CategoryName    string    `json:"category_name,omitempty"`
-	Name            string    `json:"name"`
-	Slug            string    `json:"slug"`
-	Description     *string   `json:"description,omitempty"`
-	PriceCents      int64     `json:"price_cents"`
-	IsActive        bool      `json:"is_active"`
-	LeadTimeMinutes int32     `json:"lead_time_minutes"`
-	ImageURLs       []string  `json:"image_urls,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID              string   `json:"id"`
+	CategoryID      string   `json:"category_id"`
+	CategoryName    string   `json:"category_name,omitempty"`
+	Name            string   `json:"name"`
+	Slug            string   `json:"slug"`
+	Description     *string  `json:"description,omitempty"`
+	PriceCents      int64    `json:"price_cents"`
+	IsActive        bool     `json:"is_active"`
+	LeadTimeMinutes int32    `json:"lead_time_minutes"`
+	ImageURLs       []string `json:"image_urls,omitempty"`
+	IsCustomizable  bool     `json:"is_customizable"`
+	// Options are the product's options, retired ones left out; on its detail only.
+	Options   []ProductOptionResponse `json:"options,omitempty"`
+	CreatedAt time.Time               `json:"created_at"`
+	UpdatedAt time.Time               `json:"updated_at"`
+}
+
+type ProductOptionResponse struct {
+	ID              string `json:"id"`
+	Group           string `json:"group"`
+	Label           string `json:"label"`
+	PriceDeltaCents int64  `json:"price_delta_cents"`
+	IsActive        bool   `json:"is_active"`
 }
 
 type CatalogCategoryResponse struct {
@@ -85,6 +113,19 @@ type CatalogProductResponse struct {
 	Description  *string  `json:"description,omitempty"`
 	PriceCents   int64    `json:"price_cents"`
 	ImageURLs    []string `json:"image_urls,omitempty"`
+	// IsCustomizable products are configured before they go in the cart.
+	IsCustomizable bool `json:"is_customizable"`
+	// Options are what a customer chooses from, on a customizable product's detail.
+	Options []CatalogProductOptionResponse `json:"options,omitempty"`
+}
+
+// CatalogProductOptionResponse is one option a customer may choose, with what
+// it adds to the price.
+type CatalogProductOptionResponse struct {
+	ID              string `json:"id"`
+	Group           string `json:"group"`
+	Label           string `json:"label"`
+	PriceDeltaCents int64  `json:"price_delta_cents"`
 }
 
 type ComboItemInput struct {

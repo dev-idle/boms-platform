@@ -2,10 +2,12 @@ package dto
 
 import "time"
 
-// TicketItemResponse is one product a ticket makes.
+// TicketItemResponse is one product a ticket makes, with how its customer
+// configured it: null for a plain one, and in a station's list.
 type TicketItemResponse struct {
-	Name     string `json:"name"`
-	Quantity int32  `json:"quantity"`
+	Name          string                 `json:"name"`
+	Quantity      int32                  `json:"quantity"`
+	Customization *CustomizationResponse `json:"customization"`
 }
 
 // TicketSummaryResponse is where one station's part of an order stands.

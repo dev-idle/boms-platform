@@ -17,6 +17,8 @@ type CreateProductParams struct {
 	PriceCents  int64
 	IsActive    bool
 	LeadTime    time.Duration
+	// IsCustomizable products are configured from their options.
+	IsCustomizable bool
 }
 
 type UpdateProductParams struct {
@@ -28,6 +30,8 @@ type UpdateProductParams struct {
 	PriceCents  int64
 	IsActive    bool
 	LeadTime    time.Duration
+	// IsCustomizable products are configured from their options.
+	IsCustomizable bool
 }
 
 type ManagerListProductsParams struct {
@@ -51,15 +55,18 @@ type ManagerListProduct struct {
 }
 
 type CatalogListProduct struct {
-	ID           uuid.UUID
-	CategoryID   uuid.UUID
-	Name         string
-	Slug         string
-	Description  *string
-	PriceCents   int64
-	CategoryName string
-	CategorySlug string
-	ImageURLs    []string
+	ID          uuid.UUID
+	CategoryID  uuid.UUID
+	Name        string
+	Slug        string
+	Description *string
+	PriceCents  int64
+	// IsCustomizable products are configured from their options before they
+	// go in the cart.
+	IsCustomizable bool
+	CategoryName   string
+	CategorySlug   string
+	ImageURLs      []string
 }
 
 type ProductRepository interface {
@@ -79,4 +86,12 @@ type ProductRepository interface {
 	// FulfillmentOf is what these products and combos ask of the bakery, combos
 	// counted by the products they hold.
 	FulfillmentOf(ctx context.Context, productIDs, comboIDs []uuid.UUID) (domainorder.Fulfillment, error)
+	// ListOptions returns the options these products offer, retired ones left
+	// out, by product in the order a customer chooses them.
+	ListOptions(ctx context.Context, productIDs []uuid.UUID) ([]domainproduct.Option, error)
+	// ReplaceOptions makes options the product's full list: one with an id
+	// already the product's is updated, one without is added, and any other is
+	// retired. It must run in a transaction; an id the product does not have
+	// is ErrInvalidOption.
+	ReplaceOptions(ctx context.Context, productID uuid.UUID, options []domainproduct.Option) error
 }

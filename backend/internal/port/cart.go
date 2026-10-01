@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"encoding/json"
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	"github.com/google/uuid"
@@ -13,6 +14,8 @@ type CreateCartItemParams struct {
 	ProductID *uuid.UUID
 	ComboID   *uuid.UUID
 	Quantity  int32
+	// Configuration is the line's customization, empty for a plain line.
+	Configuration json.RawMessage
 }
 
 type UpdateCartItemQuantityParams struct {
@@ -30,6 +33,7 @@ type CartRepository interface {
 	ClearDiscountCode(ctx context.Context, cartID uuid.UUID) error
 	ListItemsByCartID(ctx context.Context, cartID uuid.UUID) ([]domaincart.Item, error)
 	GetItemByID(ctx context.Context, cartID, itemID uuid.UUID) (*domaincart.Item, error)
+	// GetItemByProduct finds the cart's plain line of the product.
 	GetItemByProduct(ctx context.Context, cartID, productID uuid.UUID) (*domaincart.Item, error)
 	GetItemByCombo(ctx context.Context, cartID, comboID uuid.UUID) (*domaincart.Item, error)
 	CreateItem(ctx context.Context, params CreateCartItemParams) (*domaincart.Item, error)

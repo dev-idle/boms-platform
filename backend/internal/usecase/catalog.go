@@ -117,20 +117,38 @@ func (u *CatalogUsecase) GetProduct(ctx context.Context, id uuid.UUID) (*dto.Cat
 		return nil, err
 	}
 	resp := toCatalogProductResponse(*item, imageURLs)
+	if item.IsCustomizable {
+		options, err := u.products.ListOptions(ctx, []uuid.UUID{id})
+		if err != nil {
+			return nil, err
+		}
+		resp.Options = make([]dto.CatalogProductOptionResponse, 0, len(options))
+		for _, option := range options {
+			if option.IsActive {
+				resp.Options = append(resp.Options, dto.CatalogProductOptionResponse{
+					ID:              option.ID.String(),
+					Group:           string(option.Group),
+					Label:           option.Label,
+					PriceDeltaCents: option.PriceDeltaCents,
+				})
+			}
+		}
+	}
 	return &resp, nil
 }
 
 func toCatalogProductResponse(item port.CatalogListProduct, imageURLs []string) dto.CatalogProductResponse {
 	return dto.CatalogProductResponse{
-		ID:           item.ID.String(),
-		CategoryID:   item.CategoryID.String(),
-		CategoryName: item.CategoryName,
-		CategorySlug: item.CategorySlug,
-		Name:         item.Name,
-		Slug:         item.Slug,
-		Description:  item.Description,
-		PriceCents:   item.PriceCents,
-		ImageURLs:    imageURLs,
+		ID:             item.ID.String(),
+		CategoryID:     item.CategoryID.String(),
+		CategoryName:   item.CategoryName,
+		CategorySlug:   item.CategorySlug,
+		Name:           item.Name,
+		Slug:           item.Slug,
+		Description:    item.Description,
+		PriceCents:     item.PriceCents,
+		ImageURLs:      imageURLs,
+		IsCustomizable: item.IsCustomizable,
 	}
 }
 

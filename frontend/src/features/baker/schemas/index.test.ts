@@ -10,7 +10,7 @@ const ticket = {
   station: "kitchen",
   status: "in_progress",
   customer: { display_name: "Mai" },
-  items: [{ name: "Matcha cake", quantity: 1 }],
+  items: [{ name: "Matcha cake", quantity: 1, customization: null }],
   created_at: "2026-09-28T09:00:00+07:00",
 };
 

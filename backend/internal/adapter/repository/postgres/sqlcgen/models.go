@@ -274,6 +274,49 @@ func (ns NullPaymentStatus) Value() (driver.Value, error) {
 	return string(ns.PaymentStatus), nil
 }
 
+type ProductOptionGroup string
+
+const (
+	ProductOptionGroupSize       ProductOptionGroup = "size"
+	ProductOptionGroupFlavor     ProductOptionGroup = "flavor"
+	ProductOptionGroupDecoration ProductOptionGroup = "decoration"
+)
+
+func (e *ProductOptionGroup) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ProductOptionGroup(s)
+	case string:
+		*e = ProductOptionGroup(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ProductOptionGroup: %T", src)
+	}
+	return nil
+}
+
+type NullProductOptionGroup struct {
+	ProductOptionGroup ProductOptionGroup `json:"productOptionGroup"`
+	Valid              bool               `json:"valid"` // Valid is true if ProductOptionGroup is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullProductOptionGroup) Scan(value interface{}) error {
+	if value == nil {
+		ns.ProductOptionGroup, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ProductOptionGroup.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullProductOptionGroup) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ProductOptionGroup), nil
+}
+
 type Station string
 
 const (
@@ -606,6 +649,7 @@ type Product struct {
 	UpdatedAt       time.Time  `json:"updatedAt"`
 	DeletedAt       *time.Time `json:"deletedAt"`
 	LeadTimeMinutes int32      `json:"leadTimeMinutes"`
+	IsCustomizable  bool       `json:"isCustomizable"`
 }
 
 type ProductImage struct {

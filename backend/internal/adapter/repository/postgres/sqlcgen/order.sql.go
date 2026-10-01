@@ -1453,6 +1453,27 @@ func (q *Queries) NextOrderDayNumber(ctx context.Context, zone string) (OrderDay
 	return i, err
 }
 
+const orderHasCustomItems = `-- name: OrderHasCustomItems :one
+SELECT EXISTS (
+  SELECT 1 FROM order_items
+  WHERE order_id = $1 AND configuration <> '{}'::jsonb
+)::bool AS has_custom_items
+`
+
+// Whether the order holds an item its customer configured, which staff review
+// before the bakery makes it.
+//
+//	SELECT EXISTS (
+//	  SELECT 1 FROM order_items
+//	  WHERE order_id = $1 AND configuration <> '{}'::jsonb
+//	)::bool AS has_custom_items
+func (q *Queries) OrderHasCustomItems(ctx context.Context, orderID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, orderHasCustomItems, orderID)
+	var has_custom_items bool
+	err := row.Scan(&has_custom_items)
+	return has_custom_items, err
+}
+
 const rescheduleOrder = `-- name: RescheduleOrder :one
 UPDATE orders
 SET pickup_at  = $1,

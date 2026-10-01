@@ -84,6 +84,14 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, domainproduct.ErrSlugExists):
 		return writeAppError(c, apperrors.ErrSlugExists)
+	case errors.Is(err, domainproduct.ErrInvalidOption):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("options", "group, a label of 1-60 characters of plain text, and an added price of $0-$1,000"))
+	case errors.Is(err, domainproduct.ErrInvalidChoice):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("option_ids", "choose one option from each group"))
+	case errors.Is(err, domainproduct.ErrInvalidMessage):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("message", "at most 60 characters of plain text"))
+	case errors.Is(err, domainproduct.ErrCustomization):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("customization", "configure a customizable product, and only that"))
 	case errors.Is(err, domaincombo.ErrNotFound):
 		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, domaincombo.ErrSlugExists):

@@ -15,6 +15,7 @@ import (
 
 	"github.com/boms/backend/internal/adapter/eventbus"
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
+	"github.com/boms/backend/internal/config"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainstore "github.com/boms/backend/internal/domain/store"
@@ -93,7 +94,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	outbox := postgresadapter.NewOutboxRepository(pool)
 	store := postgresadapter.NewStoreSettingsRepository(pool)
 
-	cartUC := usecase.NewCartUsecase(carts, products, combos, discounts)
+	cartUC := usecase.NewCartUsecase(carts, products, combos, discounts, config.CloudinaryConfig{})
 	orderUC := usecase.NewOrderUsecase(users, orders, carts, discounts, cartUC, pool, outbox, store, postgresadapter.NewTicketRepository(pool), postgresadapter.NewPaymentRepository(pool), nil)
 
 	customer, err := users.Create(ctx, port.CreateUserParams{

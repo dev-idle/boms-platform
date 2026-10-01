@@ -2,7 +2,6 @@ package port
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
@@ -36,7 +35,7 @@ type CreateOrderItemParams struct {
 	LineType       domaincart.LineType
 	ProductID      *uuid.UUID
 	ComboID        *uuid.UUID
-	Configuration  json.RawMessage
+	Customization  *domainorder.Customization
 	Name           string
 	Slug           string
 	Quantity       int32
@@ -152,6 +151,9 @@ type OrderRepository interface {
 	UpdateStatus(ctx context.Context, params UpdateOrderStatusParams) (*domainorder.Order, error)
 	CreateItems(ctx context.Context, items []CreateOrderItemParams) error
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domainorder.Item, error)
+	// HasCustomItems reports whether the order holds an item its customer
+	// configured, which staff review before the bakery makes it.
+	HasCustomItems(ctx context.Context, orderID uuid.UUID) (bool, error)
 	SumItemQuantitiesByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID]int32, error)
 	// ListItemsByOrderIDs and ListStatusEventsByOrderIDs read many orders' lines
 	// and histories in one round trip each, keyed by order.

@@ -30,6 +30,11 @@ type paymentOrders struct {
 	actors  []*port.OrderActor
 }
 
+// HasCustomItems holds no custom items: these orders go straight to the bakery.
+func (f *paymentOrders) HasCustomItems(context.Context, uuid.UUID) (bool, error) {
+	return false, nil
+}
+
 func (f *paymentOrders) ListDueUnpaid(context.Context, time.Duration, int32) ([]uuid.UUID, error) {
 	if f.order.Status != domainorder.StatusAwaitingPayment || !f.overdue {
 		return nil, nil

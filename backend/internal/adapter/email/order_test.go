@@ -113,6 +113,17 @@ func TestOrderComposer(t *testing.T) {
 		assert.Contains(t, bakery.Text, "We are returning $39.40 to your PayPal account")
 	})
 
+	t.Run("a_custom_order_is_received_for_review_then_accepted", func(t *testing.T) {
+		t.Parallel()
+		requested, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeRequested))
+		require.NoError(t, err)
+		assert.Equal(t, "We received your request CH-260930-007", requested.Subject)
+		assert.Contains(t, requested.Text, "refund you in full")
+		accepted, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeAccepted))
+		require.NoError(t, err)
+		assert.Equal(t, "We accepted your order CH-260930-007", accepted.Subject)
+	})
+
 	t.Run("a_missed_pickup_is_not_refunded", func(t *testing.T) {
 		t.Parallel()
 		missed, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeNoShow))

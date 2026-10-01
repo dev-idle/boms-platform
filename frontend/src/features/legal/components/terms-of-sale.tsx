@@ -60,7 +60,22 @@ export function TermsOfSale() {
         </ul>
       </PolicySection>
 
-      <PolicySection id="terms-prices" title="4. Prices and payment">
+      <PolicySection id="terms-custom" title="4. Custom cakes">
+        <ul>
+          <li>
+            A custom cake is made in the size, flavor and decoration you choose, with the message you
+            ask for. We check every custom order before we start and may decline one we cannot make as
+            asked; you are then refunded in full.
+          </li>
+          <li>
+            A reference photo you upload must be one you took or may share. By uploading it you allow us
+            to use it to make your cake; we do not publish it.
+          </li>
+          <li>We follow the photo as a guide: a cake made by hand will not match it exactly.</li>
+        </ul>
+      </PolicySection>
+
+      <PolicySection id="terms-prices" title="5. Prices and payment">
         <ul>
           <li>Prices are in US dollars and are the ones shown in your cart when you order.</li>
           <li>
@@ -73,7 +88,7 @@ export function TermsOfSale() {
         </ul>
       </PolicySection>
 
-      <PolicySection id="terms-collection" title="5. Collecting your order">
+      <PolicySection id="terms-collection" title="6. Collecting your order">
         <p>
           Come in during your slot and give your order code at the counter. An order that is ready
           but not collected by closing time on its pickup day is a missed pickup; the{" "}
@@ -82,7 +97,7 @@ export function TermsOfSale() {
         </p>
       </PolicySection>
 
-      <PolicySection id="terms-allergens" title="6. Ingredients and allergens">
+      <PolicySection id="terms-allergens" title="7. Ingredients and allergens">
         <p>
           Our kitchen handles gluten, milk, eggs, nuts and soy. Product pages describe what goes
           into each item, but we cannot guarantee any item is free of traces. Ask us before ordering
@@ -90,7 +105,7 @@ export function TermsOfSale() {
         </p>
       </PolicySection>
 
-      <PolicySection id="terms-changes" title="7. Changes to these terms">
+      <PolicySection id="terms-changes" title="8. Changes to these terms">
         <p>
           When we change these terms, the version and date at the top of this page change too, and
           you accept the new version with your next order. An order you already placed stays under
@@ -98,7 +113,7 @@ export function TermsOfSale() {
         </p>
       </PolicySection>
 
-      <PolicySection id="terms-contact" title="8. Contact">
+      <PolicySection id="terms-contact" title="9. Contact">
         <p>
           Write to <a href={`mailto:${BRAND.contactEmail}`}>{BRAND.contactEmail}</a> or call{" "}
           {BRAND.contactPhone}.

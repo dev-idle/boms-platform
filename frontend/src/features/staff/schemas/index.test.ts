@@ -68,11 +68,11 @@ describe("staff order tickets", () => {
           id: "00000000-0000-4000-8000-000000000003",
           station: "counter",
           status: "queued",
-          items: [{ name: "Croissant", quantity: 2 }],
+          items: [{ name: "Croissant", quantity: 2, customization: null }],
         },
       ],
     });
-    expect(result.tickets[0]?.items).toEqual([{ name: "Croissant", quantity: 2 }]);
+    expect(result.tickets[0]?.items).toEqual([{ name: "Croissant", quantity: 2, customization: null }]);
   });
 
   it("rejects an order without its tickets", () => {

@@ -101,14 +101,14 @@ func main() {
 	comboRepo := postgresrepo.NewComboRepository(pgPool)
 	discountCodeRepo := postgresrepo.NewDiscountCodeRepository(pgPool)
 	managerCategoryUC := usecase.NewManagerCategoryUsecase(categoryRepo, auditLogger, zlog)
-	managerMediaUC := usecase.NewManagerMediaUsecase(cfg.Cloudinary)
+	mediaUC := usecase.NewMediaUsecase(cfg.Cloudinary, userRepo)
 	managerProductUC := usecase.NewManagerProductUsecase(productRepo, categoryRepo, pgPool, auditLogger, cfg.Cloudinary, zlog)
 	managerComboUC := usecase.NewManagerComboUsecase(comboRepo, pgPool, auditLogger, cfg.Cloudinary, zlog)
 	managerDiscountCodeUC := usecase.NewManagerDiscountCodeUsecase(discountCodeRepo, auditLogger, zlog)
 	catalogUC := usecase.NewCatalogUsecase(categoryRepo, productRepo, comboRepo)
 	cartRepo := postgresrepo.NewCartRepository(pgPool)
 	orderRepo := postgresrepo.NewOrderRepository(pgPool)
-	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo)
+	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo, cfg.Cloudinary)
 	storeSettingsRepo := postgresrepo.NewStoreSettingsRepository(pgPool)
 	eventDispatcher := eventdispatch.New(outboxRepo, bootstrap.EventPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
 	pgPool.OnCommit(eventDispatcher.AfterCommit)
@@ -130,7 +130,7 @@ func main() {
 		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, cartRepo, sessionStore, auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
-	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo)
+	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC)
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -151,7 +151,7 @@ func main() {
 	managerProductHandler := v1.NewManagerProductHandler(managerProductUC)
 	managerComboHandler := v1.NewManagerComboHandler(managerComboUC)
 	managerDiscountCodeHandler := v1.NewManagerDiscountCodeHandler(managerDiscountCodeUC)
-	managerMediaHandler := v1.NewManagerMediaHandler(managerMediaUC)
+	mediaHandler := v1.NewMediaHandler(mediaUC)
 	catalogHandler := v1.NewCatalogHandler(catalogUC)
 	cartHandler := v1.NewCartHandler(cartUC)
 	orderHandler := v1.NewOrderHandler(orderUC)
@@ -293,6 +293,7 @@ func main() {
 	customerCart.Delete("/items/:id", cartHandler.RemoveItem)
 	customerCart.Put("/discount", middleware.DiscountAttemptRateLimit(rdb, cfg.RateRedis), cartHandler.ApplyDiscount)
 	customerCart.Delete("/discount", cartHandler.RemoveDiscount)
+	customerCart.Get("/reference-upload", middleware.ReferenceUploadRateLimit(rdb, cfg.RateRedis), mediaHandler.ReferenceImageSignature)
 
 	customerOrders := customerSessionGroup(apiV1, "/orders", tokenSigner, sessionStore, passwordChanged)
 	customerOrders.Post("/checkout", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), orderHandler.Checkout)
@@ -322,7 +323,7 @@ func main() {
 	managerRead.Get(
 		"/media/cloudinary-signature",
 		middleware.ManagerMediaRateLimit(rdb, cfg.RateRedis),
-		managerMediaHandler.GetCloudinaryUploadSignature,
+		mediaHandler.ProductImageSignature,
 	)
 
 	managerWrite := apiV1.Group(

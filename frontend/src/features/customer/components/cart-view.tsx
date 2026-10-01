@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { CustomizationSummary } from "@/components/ui/customization-summary";
 import { Input } from "@/components/ui/input";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import { ROUTE } from "@/constants/routes";
@@ -34,6 +35,7 @@ function CartLineItem({ item }: { item: CartItem }) {
             {item.line_type === "combo" ? "Combo" : "Product"} ·{" "}
             {formatPriceCents(item.unit_price_cents)} each
           </p>
+          {item.customization ? <CustomizationSummary customization={item.customization} /> : null}
           {!item.is_available ? (
             <p className="storefront-cart-line__warning text-caption">
               No longer available — remove to continue checkout.

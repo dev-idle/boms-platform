@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import type { CatalogProduct } from "@/lib/schemas/catalog";
 import {
   loginHrefPreservingNext,
   registerHrefPreservingNext,
@@ -11,15 +12,16 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 
 import { AddToCartButton } from "./add-to-cart-button";
+import { CustomCakeForm } from "./custom-cake-form";
 
 type ProductPurchaseActionsProps = {
-  productId?: string;
+  product?: CatalogProduct;
   comboId?: string;
   label?: string;
 };
 
 export function ProductPurchaseActions({
-  productId,
+  product,
   comboId,
   label = "Add to cart",
 }: ProductPurchaseActionsProps) {
@@ -31,11 +33,14 @@ export function ProductPurchaseActions({
     : "";
 
   if (status === "authenticated") {
+    if (product?.is_customizable) {
+      return <CustomCakeForm product={product} />;
+    }
     return (
       <AddToCartButton
         comboId={comboId}
         label={label}
-        productId={productId}
+        productId={product?.id}
       />
     );
   }

@@ -122,12 +122,18 @@ func (r *CartRepository) CreateItem(ctx context.Context, params port.CreateCartI
 	if err != nil {
 		return nil, err
 	}
+	// A plain line stores the empty object the plain-line index looks for.
+	configuration := params.Configuration
+	if len(configuration) == 0 {
+		configuration = domaincart.EmptyConfiguration
+	}
 	row, err := r.q(ctx).CreateCartItem(ctx, sqlcgen.CreateCartItemParams{
-		CartID:    params.CartID,
-		LineType:  lineType,
-		ProductID: params.ProductID,
-		ComboID:   params.ComboID,
-		Quantity:  params.Quantity,
+		CartID:        params.CartID,
+		LineType:      lineType,
+		ProductID:     params.ProductID,
+		ComboID:       params.ComboID,
+		Quantity:      params.Quantity,
+		Configuration: configuration,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create cart item")

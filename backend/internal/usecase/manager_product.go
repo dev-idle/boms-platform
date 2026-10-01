@@ -77,17 +77,22 @@ func (u *ManagerProductUsecase) Create(
 	if err != nil {
 		return nil, err
 	}
+	options, err := productOptions(req.Options)
+	if err != nil {
+		return nil, err
+	}
 
 	var createdID uuid.UUID
 	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		created, createErr := u.products.Create(txCtx, port.CreateProductParams{
-			CategoryID:  categoryID,
-			Name:        name,
-			Slug:        slug,
-			Description: req.Description,
-			PriceCents:  req.PriceCents,
-			IsActive:    req.IsActive,
-			LeadTime:    leadTime,
+			CategoryID:     categoryID,
+			Name:           name,
+			Slug:           slug,
+			Description:    req.Description,
+			PriceCents:     req.PriceCents,
+			IsActive:       req.IsActive,
+			LeadTime:       leadTime,
+			IsCustomizable: req.IsCustomizable,
 		})
 		if createErr != nil {
 			if errors.Is(createErr, apperrors.ErrConflict) {
@@ -96,6 +101,11 @@ func (u *ManagerProductUsecase) Create(
 			return createErr
 		}
 		createdID = created.ID
+		if len(options) > 0 {
+			if err := u.products.ReplaceOptions(txCtx, created.ID, options); err != nil {
+				return err
+			}
+		}
 		return u.products.ReplaceProductImages(txCtx, created.ID, imageURLs)
 	}); err != nil {
 		return nil, err
@@ -169,6 +179,10 @@ func (u *ManagerProductUsecase) Update(
 	if err != nil {
 		return nil, err
 	}
+	beforeOptions, err := u.products.ListOptions(ctx, []uuid.UUID{id})
+	if err != nil {
+		return nil, err
+	}
 	before, err := u.products.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
@@ -205,17 +219,24 @@ func (u *ManagerProductUsecase) Update(
 			return nil, err
 		}
 	}
+	var options []domainproduct.Option
+	if req.Options != nil {
+		if options, err = productOptions(*req.Options); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		_, updateErr := u.products.Update(txCtx, port.UpdateProductParams{
-			ID:          id,
-			CategoryID:  categoryID,
-			Name:        name,
-			Slug:        slug,
-			Description: req.Description,
-			PriceCents:  req.PriceCents,
-			IsActive:    req.IsActive,
-			LeadTime:    leadTime,
+			ID:             id,
+			CategoryID:     categoryID,
+			Name:           name,
+			Slug:           slug,
+			Description:    req.Description,
+			PriceCents:     req.PriceCents,
+			IsActive:       req.IsActive,
+			LeadTime:       leadTime,
+			IsCustomizable: req.IsCustomizable,
 		})
 		if updateErr != nil {
 			if errors.Is(updateErr, apperrors.ErrConflict) {
@@ -225,6 +246,11 @@ func (u *ManagerProductUsecase) Update(
 				return domainproduct.ErrNotFound
 			}
 			return updateErr
+		}
+		if req.Options != nil {
+			if err := u.products.ReplaceOptions(txCtx, id, options); err != nil {
+				return err
+			}
 		}
 		if !replaceImages {
 			return nil
@@ -246,7 +272,7 @@ func (u *ManagerProductUsecase) Update(
 		actorRole,
 		&id,
 		"product",
-		toProductAudit(before, beforeImages),
+		toProductAudit(before, beforeImages, mapProductOptionsToDTO(beforeOptions)),
 		toProductAuditFromResponse(resp),
 	)
 	return resp, nil
@@ -277,7 +303,7 @@ func (u *ManagerProductUsecase) Delete(
 		return err
 	}
 
-	u.logAudit(ctx, domaincatalog.AuditActionManagerDeletedProduct, actorID, actorRole, &id, "product", toProductAudit(before, beforeImages), nil)
+	u.logAudit(ctx, domaincatalog.AuditActionManagerDeletedProduct, actorID, actorRole, &id, "product", toProductAudit(before, beforeImages, nil), nil)
 	return nil
 }
 
@@ -307,7 +333,53 @@ func (u *ManagerProductUsecase) managerProductResponse(ctx context.Context, id u
 	if err != nil {
 		return nil, err
 	}
-	return toProductResponse(&item.Product, item.CategoryName, imageURLs), nil
+	options, err := u.products.ListOptions(ctx, []uuid.UUID{id})
+	if err != nil {
+		return nil, err
+	}
+	resp := toProductResponse(&item.Product, item.CategoryName, imageURLs)
+	resp.Options = mapProductOptionsToDTO(options)
+	return resp, nil
+}
+
+// productOptions reads the options a manager offers, each placed by its order
+// within its group.
+func productOptions(inputs []dto.ProductOptionInput) ([]domainproduct.Option, error) {
+	if len(inputs) > domainproduct.MaxOptions {
+		return nil, domainproduct.ErrInvalidOption
+	}
+	out := make([]domainproduct.Option, 0, len(inputs))
+	for _, input := range inputs {
+		var id uuid.UUID
+		if input.ID != nil {
+			parsed, err := uuid.Parse(*input.ID)
+			if err != nil {
+				return nil, apperrors.ErrValidation.WithDetail("options", "invalid uuid")
+			}
+			id = parsed
+		}
+		option, err := domainproduct.NewOption(id, domainproduct.OptionGroup(input.Group), input.Label, input.PriceDeltaCents, input.IsActive)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, option)
+	}
+	domainproduct.Place(out)
+	return out, nil
+}
+
+func mapProductOptionsToDTO(options []domainproduct.Option) []dto.ProductOptionResponse {
+	out := make([]dto.ProductOptionResponse, 0, len(options))
+	for _, option := range options {
+		out = append(out, dto.ProductOptionResponse{
+			ID:              option.ID.String(),
+			Group:           string(option.Group),
+			Label:           option.Label,
+			PriceDeltaCents: option.PriceDeltaCents,
+			IsActive:        option.IsActive,
+		})
+	}
+	return out
 }
 
 // productLeadTime reads the notice a product needs, in minutes. The request
@@ -332,6 +404,7 @@ func toProductResponse(product *domainproduct.Product, categoryName string, imag
 		IsActive:        product.IsActive,
 		LeadTimeMinutes: utils.Int32FromInt64(int64(product.LeadTime / time.Minute)),
 		ImageURLs:       imageURLs,
+		IsCustomizable:  product.IsCustomizable,
 		CreatedAt:       product.CreatedAt,
 		UpdatedAt:       product.UpdatedAt,
 	}
@@ -346,12 +419,15 @@ func toProductAuditFromResponse(resp *dto.ProductResponse) map[string]any {
 		"is_active":         resp.IsActive,
 		"lead_time_minutes": resp.LeadTimeMinutes,
 		"image_urls":        resp.ImageURLs,
+		"is_customizable":   resp.IsCustomizable,
+		"options":           resp.Options,
 	}
 }
 
-func toProductAudit(product *domainproduct.Product, imageURLs []string) map[string]any {
+func toProductAudit(product *domainproduct.Product, imageURLs []string, options []dto.ProductOptionResponse) map[string]any {
 	out := map[string]any{
 		"image_urls": imageURLs,
+		"options":    options,
 	}
 	if product != nil {
 		out["category_id"] = product.CategoryID.String()
@@ -359,6 +435,7 @@ func toProductAudit(product *domainproduct.Product, imageURLs []string) map[stri
 		out["slug"] = product.Slug
 		out["price_cents"] = product.PriceCents
 		out["is_active"] = product.IsActive
+		out["is_customizable"] = product.IsCustomizable
 	}
 	return out
 }

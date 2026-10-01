@@ -1,4 +1,4 @@
-h1:rtIlMom70nn+ESzf0quKwZRbj0jSKdNED/izN/MnFRY=
+h1:puGWgd75z9elQRDOy3sucsrsiqPZiH8owIqHhp9Ek2s=
 20260601120000_initial_schema.sql h1:hWLNRIrLbMJTc/CLUGjWNH0Fb09J/y8XzuQEt/QGGrk=
 20260922102739_normalize_vietnam_phones.sql h1:4oExt+YB+B+QSWpmLCr5iOkIt9eXN1vbQEOgeop4cP0=
 20260923183657_add_combo_image_url.sql h1:NpmnOxO237rYpbOISIYiKx+e7OcCxw3JcWrpBlmMW9c=
@@ -19,3 +19,6 @@ h1:rtIlMom70nn+ESzf0quKwZRbj0jSKdNED/izN/MnFRY=
 20261001100709_add_no_show_and_refunded.sql h1:jnzuf3OxP23e5AX1O5g4q/3Ep/ZALbu4YXD7Pm4SOg4=
 20261001100728_add_cancellations_and_refunds.sql h1:CSGL2Bjnisz15AJwUS4UHj/Ob9agvwtDGpxVdU69plk=
 20261001100739_index_payments_refund_due.sql h1:ZMC1gkbprzCQvSKsmF7S3RR2RCaxt0BDYdbQKOCewGk=
+20261001114517_add_product_options.sql h1:1jv8h2j40RKifi1PtP/nxp00emj9abNrGCAZzl7GITw=
+20261001114527_index_cart_plain_product_lines.sql h1:jqBnl5lz8cgQcwrnc+0/HqqG6moQoB/j/rHgDuF9dUo=
+20261001114528_drop_cart_product_index.sql h1:xI3yd8qqw4c30fPjIRpgopUS1lTzSUCajzNdtaH6+JQ=

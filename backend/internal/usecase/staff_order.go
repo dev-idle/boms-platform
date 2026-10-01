@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -20,6 +21,8 @@ type StaffOrderUsecase struct {
 	orders      port.OrderRepository
 	tickets     port.TicketRepository
 	payments    port.PaymentRepository
+	store       port.StoreSettingsRepository
+	cartUC      *CartUsecase
 	transitions orderTransitions
 	audit       *auditlogger.Service
 	log         *zap.Logger
@@ -34,11 +37,15 @@ func NewStaffOrderUsecase(
 	log *zap.Logger,
 	payments port.PaymentRepository,
 	discounts port.DiscountCodeRepository,
+	store port.StoreSettingsRepository,
+	cartUC *CartUsecase,
 ) *StaffOrderUsecase {
 	return &StaffOrderUsecase{
 		orders:   orders,
 		tickets:  tickets,
 		payments: payments,
+		store:    store,
+		cartUC:   cartUC,
 		transitions: orderTransitions{
 			tx: tx, orders: orders, tickets: tickets, discounts: discounts, payments: payments, events: events,
 		},
@@ -158,6 +165,11 @@ func (u *StaffOrderUsecase) PatchStatus(
 	if !domainorder.CanStaffTransition(beforeRow.Order.Status, targetStatus) {
 		return nil, domainorder.ErrInvalidStatusTransition
 	}
+	if beforeRow.Order.Status == domainorder.StatusPending && targetStatus == domainorder.StatusConfirmed {
+		if err := u.stillInTime(ctx, beforeRow.Order); err != nil {
+			return nil, err
+		}
+	}
 
 	updated, err := u.transitions.apply(ctx, &port.OrderActor{ID: actorID, Role: actorRole}, port.UpdateOrderStatusParams{
 		OrderID:    orderID,
@@ -182,6 +194,31 @@ func (u *StaffOrderUsecase) PatchStatus(
 		return nil, err
 	}
 	return toStaffOrderResponse(&afterRow, parts), nil
+}
+
+// stillInTime checks, as staff accept an order they reviewed, that its pickup
+// still follows the rules it was booked under — above all, that the bakery
+// still has the notice its items need: a request left waiting too long is
+// refused rather than made late, and staff reject it or the customer moves it.
+func (u *StaffOrderUsecase) stillInTime(ctx context.Context, order domainorder.Order) error {
+	if order.PickupAt == nil {
+		return nil
+	}
+	now := time.Now()
+	settings, closed, err := readPickupRules(ctx, u.store, now)
+	if err != nil {
+		return err
+	}
+	items, err := u.orders.ListItemsByOrderID(ctx, order.ID)
+	if err != nil {
+		return err
+	}
+	needs, err := u.cartUC.orderFulfillment(ctx, items)
+	if err != nil {
+		return err
+	}
+	_, err = pickupPolicy(settings, closed).Validate(*order.PickupAt, now, needs)
+	return err
 }
 
 func toStaffOrderCustomer(row *port.StaffOrderListRow) dto.StaffOrderCustomerResponse {

@@ -2,11 +2,16 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
+	"github.com/boms/backend/internal/config"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
+	domainmedia "github.com/boms/backend/internal/domain/media"
+	domainproduct "github.com/boms/backend/internal/domain/product"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
@@ -14,11 +19,12 @@ import (
 )
 
 type CartUsecase struct {
-	carts    port.CartRepository
-	products port.ProductRepository
-	combos   port.ComboRepository
-	discount port.DiscountCodeRepository
-	pricer   *cartPricer
+	carts      port.CartRepository
+	products   port.ProductRepository
+	combos     port.ComboRepository
+	discount   port.DiscountCodeRepository
+	pricer     *cartPricer
+	cloudinary config.CloudinaryConfig
 }
 
 func NewCartUsecase(
@@ -26,13 +32,15 @@ func NewCartUsecase(
 	products port.ProductRepository,
 	combos port.ComboRepository,
 	discount port.DiscountCodeRepository,
+	cloudinary config.CloudinaryConfig,
 ) *CartUsecase {
 	return &CartUsecase{
-		carts:    carts,
-		products: products,
-		combos:   combos,
-		discount: discount,
-		pricer:   newCartPricer(products, combos),
+		carts:      carts,
+		products:   products,
+		combos:     combos,
+		discount:   discount,
+		pricer:     newCartPricer(products, combos),
+		cloudinary: cloudinary,
 	}
 }
 
@@ -49,7 +57,8 @@ func (u *CartUsecase) AddItem(ctx context.Context, userID uuid.UUID, req dto.Add
 	if err != nil {
 		return nil, err
 	}
-	if err := u.ensureLinePurchasable(ctx, productID, comboID); err != nil {
+	configuration, err := u.lineConfiguration(ctx, userID, productID, comboID, req.Customization)
+	if err != nil {
 		return nil, err
 	}
 
@@ -58,7 +67,8 @@ func (u *CartUsecase) AddItem(ctx context.Context, userID uuid.UUID, req dto.Add
 		return nil, err
 	}
 
-	if productID != nil {
+	// A configured product gets a line of its own; a plain one joins its line.
+	if productID != nil && configuration == nil {
 		if resp, ok, err := u.mergeCartLine(ctx, cart, func() (*domaincart.Item, error) {
 			return u.carts.GetItemByProduct(ctx, cart.ID, *productID)
 		}, req.Quantity); err != nil {
@@ -86,8 +96,9 @@ func (u *CartUsecase) AddItem(ctx context.Context, userID uuid.UUID, req dto.Add
 	}
 
 	params := port.CreateCartItemParams{
-		CartID:   cart.ID,
-		Quantity: req.Quantity,
+		CartID:        cart.ID,
+		Quantity:      req.Quantity,
+		Configuration: configuration,
 	}
 	if productID != nil {
 		params.LineType = domaincart.LineTypeProduct
@@ -238,26 +249,96 @@ func (u *CartUsecase) mergeCartLine(
 	return resp, true, err
 }
 
-func (u *CartUsecase) ensureLinePurchasable(ctx context.Context, productID, comboID *uuid.UUID) error {
-	if productID != nil {
-		if _, err := u.products.CatalogGetByID(ctx, *productID); err != nil {
-			if errors.Is(err, apperrors.ErrNotFound) {
-				return domaincart.ErrProductUnavailable
-			}
-			return err
-		}
-		return nil
-	}
+// lineConfiguration checks the line can be bought and returns how it is
+// configured: the customization of a customizable product, which must have
+// one, and nil for any other line, which must not.
+func (u *CartUsecase) lineConfiguration(
+	ctx context.Context,
+	userID uuid.UUID,
+	productID, comboID *uuid.UUID,
+	req *dto.CartCustomizationRequest,
+) (json.RawMessage, error) {
 	if comboID != nil {
+		if req != nil {
+			return nil, domainproduct.ErrCustomization
+		}
 		if _, err := u.combos.CatalogGetByID(ctx, *comboID); err != nil {
 			if errors.Is(err, apperrors.ErrNotFound) {
-				return domaincart.ErrComboUnavailable
+				return nil, domaincart.ErrComboUnavailable
 			}
-			return err
+			return nil, err
 		}
-		return nil
+		return nil, nil
 	}
-	return domaincart.ErrInvalidLine
+	product, err := u.products.CatalogGetByID(ctx, *productID)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, domaincart.ErrProductUnavailable
+		}
+		return nil, err
+	}
+	if product.IsCustomizable != (req != nil) {
+		return nil, domainproduct.ErrCustomization
+	}
+	if req == nil {
+		return nil, nil
+	}
+	return u.customization(ctx, userID, product.ID, *req)
+}
+
+// customization checks how a customer configured a customizable product and
+// returns it as the line stores it.
+func (u *CartUsecase) customization(
+	ctx context.Context,
+	userID, productID uuid.UUID,
+	req dto.CartCustomizationRequest,
+) (json.RawMessage, error) {
+	ids := make([]uuid.UUID, 0, len(req.OptionIDs))
+	for _, raw := range req.OptionIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return nil, apperrors.ErrValidation.WithDetail("option_ids", "invalid uuid")
+		}
+		ids = append(ids, id)
+	}
+	offered, err := u.products.ListOptions(ctx, []uuid.UUID{productID})
+	if err != nil {
+		return nil, err
+	}
+	if _, err := domainproduct.Choose(offered, ids); err != nil {
+		return nil, err
+	}
+	message, err := domainproduct.NewMessage(req.Message)
+	if err != nil {
+		return nil, err
+	}
+	imageURL, err := u.referenceImage(userID, req.ReferenceImageURL, req.ReferenceRightsConfirmed)
+	if err != nil {
+		return nil, err
+	}
+	configuration, err := json.Marshal(domaincart.Customization{OptionIDs: ids, Message: message, ReferenceImageURL: imageURL})
+	if err != nil {
+		return nil, apperrors.Errorf("encode cart line customization: %w", err)
+	}
+	return configuration, nil
+}
+
+// referenceImage checks the reference photo attached to a custom line: one the
+// customer uploaded to their own folder, with their word that they may share
+// it. Empty attaches none.
+func (u *CartUsecase) referenceImage(userID uuid.UUID, raw string, rightsConfirmed bool) (string, error) {
+	url := strings.TrimSpace(raw)
+	if url == "" {
+		return "", nil
+	}
+	if !rightsConfirmed {
+		return "", apperrors.ErrValidation.WithDetail("reference_rights_confirmed", "confirm you may share this photo")
+	}
+	if !u.cloudinary.Enabled() ||
+		!domainmedia.IsCloudinaryDeliveryURLInFolder(u.cloudinary.CloudName, u.cloudinary.CustomerReferenceFolder(userID), url) {
+		return "", apperrors.ErrValidation.WithDetail("reference_image_url", "upload the photo here")
+	}
+	return url, nil
 }
 
 func (u *CartUsecase) buildCartResponse(ctx context.Context, cart *domaincart.Cart) (*dto.CartResponse, error) {
@@ -335,6 +416,7 @@ func (u *CartUsecase) buildCartResponseFromLines(
 			UnitPriceCents: line.UnitPriceCents,
 			LineTotalCents: line.LineTotalCents,
 			IsAvailable:    line.IsAvailable,
+			Customization:  mapCustomizationToDTO(line.Customization),
 		}
 		if line.Item.ProductID != nil {
 			id := line.Item.ProductID.String()

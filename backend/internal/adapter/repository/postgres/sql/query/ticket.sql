@@ -57,10 +57,11 @@ WHERE order_id = $1
 ORDER BY station;
 
 -- name: ListOrderTicketItems :many
--- The items of every ticket of an order.
-SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity
+-- The items of every ticket of an order, with what the customer configured.
+SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity, oi.configuration
 FROM order_ticket_items i
 INNER JOIN order_tickets t ON t.id = i.ticket_id
+INNER JOIN order_items oi ON oi.id = i.order_item_id
 WHERE t.order_id = $1
 ORDER BY i.created_at, i.name;
 

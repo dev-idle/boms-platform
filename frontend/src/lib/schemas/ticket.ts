@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { orderCodeSchema, orderStatusSchema } from "@/lib/schemas/order";
+import { customizationSchema, orderCodeSchema, orderStatusSchema } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 /** Where a category's products are made — backend `category.Station`. */
@@ -34,6 +34,8 @@ export const ticketSummarySchema = z.object({
 export const ticketItemSchema = z.object({
   name: z.string().min(1),
   quantity: z.number().int().min(1),
+  /** How the customer configured it; null for a plain item and in a station's list. */
+  customization: customizationSchema.nullable(),
 });
 
 export type TicketItem = z.infer<typeof ticketItemSchema>;

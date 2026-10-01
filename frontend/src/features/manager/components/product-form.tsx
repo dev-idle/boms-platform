@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePathname } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { CatalogImageListField } from "@/components/ui/catalog-image-list-field";
@@ -38,6 +38,7 @@ import {
   type ProductFormInput,
   type ProductFormValues,
 } from "../schemas";
+import { ProductOptionsSection } from "./product-options-section";
 
 const CREATE_PRODUCT_EMPTY_VALUES: ProductFormValues = {
   category_id: "",
@@ -47,6 +48,8 @@ const CREATE_PRODUCT_EMPTY_VALUES: ProductFormValues = {
   is_active: true,
   lead_time_minutes: 0,
   image_urls: [],
+  is_customizable: false,
+  options: [],
 };
 
 type ProductFormProps = {
@@ -64,6 +67,8 @@ const PRODUCT_FORM_FIELDS = [
   "lead_time_minutes",
   "is_active",
   "image_urls",
+  "is_customizable",
+  "options",
 ] as const;
 
 export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
@@ -81,6 +86,8 @@ export function ProductForm({ mode, product, onSuccess }: ProductFormProps) {
           is_active: product?.is_active ?? true,
           lead_time_minutes: product?.lead_time_minutes ?? 0,
           image_urls: product?.image_urls ?? [],
+          is_customizable: product?.is_customizable ?? false,
+          options: product?.options ?? [],
         };
 
   return (
@@ -120,6 +127,7 @@ function ProductFormFields({
     resolver: zodResolver(productFormSchema),
     defaultValues,
   });
+  const customizable = useWatch({ control: form.control, name: "is_customizable" });
 
   function onSubmit(values: ProductFormInput): void {
     const payload: ProductFormInput = {
@@ -272,6 +280,24 @@ function ProductFormFields({
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="is_customizable"
+          render={({ field }) => (
+            <FormItem>
+              <FieldControl
+                hint={FORM_SWITCH_HINT.customizable}
+                hintId="product-customizable-hint"
+                label={FORM_SWITCH_LABEL.customizable}
+                variant="switch"
+              >
+                <FormPublishSwitch checked={field.value} onCheckedChange={field.onChange} />
+              </FieldControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {customizable ? <ProductOptionsSection control={form.control} disabled={isPending} /> : null}
         <FormField
           control={form.control}
           name="is_active"

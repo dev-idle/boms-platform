@@ -287,8 +287,8 @@ func (u *PaymentUsecase) settle(ctx context.Context, orderID uuid.UUID) (domainp
 }
 
 // record keeps the provider's answer to a capture and, when the money is
-// taken, confirms the order in the same transaction: the two exist together
-// or not at all.
+// taken, moves the order on in the same transaction — to the bakery, or to
+// staff review for a custom order: the two exist together or not at all.
 func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment, capture domainpayment.Capture) error {
 	if capture.Currency != p.Currency || capture.AmountCents != p.AmountCents {
 		return apperrors.Errorf("payment %s: captured %d %s for an order of %d %s: %w",
@@ -307,11 +307,15 @@ func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment,
 	if err != nil {
 		return err
 	}
+	custom, err := u.orders.HasCustomItems(txCtx, order.ID)
+	if err != nil {
+		return err
+	}
 	customer := &port.OrderActor{ID: order.UserID, Role: domainuser.RoleCustomer}
 	_, err = u.transitions.applyInTx(txCtx, customer, port.UpdateOrderStatusParams{
 		OrderID:    order.ID,
 		FromStatus: domainorder.StatusAwaitingPayment,
-		ToStatus:   domainorder.StatusConfirmed,
+		ToStatus:   domainorder.PaidStatus(custom),
 	}, "")
 	if errors.Is(err, domainorder.ErrInvalidStatusTransition) {
 		// The order closed while the buyer paid: the money goes back.

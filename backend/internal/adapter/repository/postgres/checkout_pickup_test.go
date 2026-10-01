@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
+	"github.com/boms/backend/internal/config"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpayment "github.com/boms/backend/internal/domain/payment"
@@ -44,6 +45,10 @@ type checkoutFixture struct {
 	customer  int
 }
 
+// testCloudinary lets reference photos be attached: a customer's own folder
+// is boms/references/<their id> on the demo cloud.
+var testCloudinary = config.CloudinaryConfig{CloudName: "demo", APIKey: "key", APISecret: "secret"}
+
 func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	t.Helper()
 	ctx := context.Background()
@@ -63,7 +68,7 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	discounts := postgresadapter.NewDiscountCodeRepository(pool)
 	tickets := postgresadapter.NewTicketRepository(pool)
 	payments := postgresadapter.NewPaymentRepository(pool)
-	f.cartUC = usecase.NewCartUsecase(f.carts, products, combos, discounts)
+	f.cartUC = usecase.NewCartUsecase(f.carts, products, combos, discounts, testCloudinary)
 	f.paypal = &paidPayPal{amounts: map[string]int64{}, taken: map[string]domainpayment.Status{}}
 	f.paymentUC = usecase.NewPaymentUsecase(pool, f.orders, discounts, tickets, payments, f.paypal,
 		f.outbox, "https://shop.example", zap.NewNop())

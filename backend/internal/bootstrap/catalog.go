@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/boms/backend/internal/config"
+	domainproduct "github.com/boms/backend/internal/domain/product"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/google/uuid"
@@ -17,6 +18,7 @@ const seedListLimit int32 = 500
 
 // CatalogSeedDeps are the repositories the catalog seed writes through.
 type CatalogSeedDeps struct {
+	Tx         port.TxManager
 	Categories port.CategoryRepository
 	Products   port.ProductRepository
 	Combos     port.ComboRepository
@@ -51,7 +53,7 @@ func SeedCatalog(
 	}
 	report.Categories = created
 
-	products, created, err := seedProductsInto(ctx, deps.Products, categoryIDs)
+	products, created, err := seedProductsInto(ctx, deps.Tx, deps.Products, categoryIDs)
 	if err != nil {
 		return report, err
 	}
@@ -108,6 +110,7 @@ type seededProduct struct {
 
 func seedProductsInto(
 	ctx context.Context,
+	tx port.TxManager,
 	repo port.ProductRepository,
 	categoryIDs map[string]uuid.UUID,
 ) (map[string]seededProduct, int, error) {
@@ -133,22 +136,49 @@ func seedProductsInto(
 			return nil, created, errors.New("catalog seed: unknown category " + seed.CategorySlug)
 		}
 		description := seed.Description
-		product, err := repo.Create(ctx, port.CreateProductParams{
-			CategoryID:  categoryID,
-			Name:        seed.Name,
-			Slug:        seed.Slug,
-			Description: &description,
-			PriceCents:  seed.PriceCents,
-			IsActive:    seed.IsActive,
-			LeadTime:    time.Duration(seed.LeadTimeMinutes) * time.Minute,
-		})
-		if err != nil {
+		var product *domainproduct.Product
+		if err := tx.WithTx(ctx, func(txCtx context.Context) error {
+			var err error
+			product, err = repo.Create(txCtx, port.CreateProductParams{
+				CategoryID:     categoryID,
+				Name:           seed.Name,
+				Slug:           seed.Slug,
+				Description:    &description,
+				PriceCents:     seed.PriceCents,
+				IsActive:       seed.IsActive,
+				LeadTime:       time.Duration(seed.LeadTimeMinutes) * time.Minute,
+				IsCustomizable: len(seed.Options) > 0,
+			})
+			if err != nil || len(seed.Options) == 0 {
+				return err
+			}
+			options, err := seedOptions(seed.Options)
+			if err != nil {
+				return err
+			}
+			return repo.ReplaceOptions(txCtx, product.ID, options)
+		}); err != nil {
 			return nil, created, err
 		}
 		products[seed.Slug] = seededProduct{ID: product.ID, PriceCents: product.PriceCents}
 		created++
 	}
 	return products, created, nil
+}
+
+// seedOptions checks a product's options as a manager's are, each placed by
+// its order within its group.
+func seedOptions(seeds []seedOption) ([]domainproduct.Option, error) {
+	out := make([]domainproduct.Option, 0, len(seeds))
+	for _, seed := range seeds {
+		option, err := domainproduct.NewOption(uuid.Nil, seed.Group, seed.Label, seed.PriceDeltaCents, true)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, option)
+	}
+	domainproduct.Place(out)
+	return out, nil
 }
 
 func seedCombosInto(

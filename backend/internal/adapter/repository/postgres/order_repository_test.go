@@ -2,7 +2,6 @@ package postgres_test
 
 import (
 	"context"
-	"encoding/json"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -15,6 +14,7 @@ import (
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
 )
@@ -62,8 +62,11 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 			},
 			{
 				OrderID: order.ID, LineType: domaincart.LineTypeProduct, ProductID: &tart.ID,
-				Configuration: json.RawMessage(`{"message":"Happy birthday"}`),
-				Name:          tart.Name, Slug: tart.Slug, Quantity: 1, UnitPriceCents: 3200, LineTotalCents: 3200,
+				Customization: &domainorder.Customization{
+					Options: []domainorder.ChosenOption{{Group: domainproduct.OptionSize, Label: "20 cm", PriceDeltaCents: 800}},
+					Message: "Happy birthday",
+				},
+				Name: tart.Name, Slug: tart.Slug, Quantity: 1, UnitPriceCents: 3200, LineTotalCents: 3200,
 			},
 		}))
 
@@ -74,8 +77,10 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 		assert.Equal(t, int32(2), byName[cake.Name].Quantity)
 		assert.Equal(t, int64(9000), byName[cake.Name].LineTotalCents)
 		assert.Nil(t, byName[cake.Name].ComboID)
-		assert.JSONEq(t, `{}`, string(byName[cake.Name].Configuration))
-		assert.JSONEq(t, `{"message":"Happy birthday"}`, string(byName[tart.Name].Configuration))
+		assert.Nil(t, byName[cake.Name].Customization)
+		require.NotNil(t, byName[tart.Name].Customization)
+		assert.Equal(t, "Happy birthday", byName[tart.Name].Customization.Message)
+		assert.Equal(t, "20 cm", byName[tart.Name].Customization.Options[0].Label)
 	})
 
 	t.Run("create_items_is_atomic_when_a_line_violates_a_constraint", func(t *testing.T) {

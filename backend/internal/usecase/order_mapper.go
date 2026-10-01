@@ -44,6 +44,7 @@ func mapOrderItemsToDTO(items []domainorder.Item) []dto.OrderItemResponse {
 			Quantity:       item.Quantity,
 			UnitPriceCents: item.UnitPriceCents,
 			LineTotalCents: item.LineTotalCents,
+			Customization:  mapCustomizationToDTO(item.Customization),
 		}
 		if item.ProductID != nil {
 			id := item.ProductID.String()
@@ -56,6 +57,21 @@ func mapOrderItemsToDTO(items []domainorder.Item) []dto.OrderItemResponse {
 		out = append(out, row)
 	}
 	return out
+}
+
+func mapCustomizationToDTO(c *domainorder.Customization) *dto.CustomizationResponse {
+	if c == nil {
+		return nil
+	}
+	options := make([]dto.ChosenOptionResponse, 0, len(c.Options))
+	for _, option := range c.Options {
+		options = append(options, dto.ChosenOptionResponse{
+			Group:           string(option.Group),
+			Label:           option.Label,
+			PriceDeltaCents: option.PriceDeltaCents,
+		})
+	}
+	return &dto.CustomizationResponse{Options: options, Message: c.Message, ReferenceImageURL: c.ReferenceImageURL}
 }
 
 func mapOrderTimelineToDTO(events []domainorder.StatusEvent) []dto.OrderTimelineEntryResponse {

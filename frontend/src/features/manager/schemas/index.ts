@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { productOptionGroupSchema } from "@/lib/schemas/catalog";
 import { stationSchema } from "@/lib/schemas/ticket";
 import { CATALOG_INTEGER_MAX, catalogSlugSchema } from "@/lib/validation/catalog";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
@@ -43,6 +44,37 @@ const priceAmount = requiredAmount(
 /** A product's notice is bounded like backend `product.MaxLeadTime`: a week. */
 export const MAX_PRODUCT_LEAD_MINUTES = 7 * 24 * 60;
 
+/** How many options one product offers, as backend `product.MaxOptions`. */
+export const MAX_PRODUCT_OPTIONS = 30;
+
+/** The most an option adds to the price, as backend `product.MaxPriceDeltaCents`. */
+const MAX_OPTION_PRICE_DELTA_CENTS = 100_000;
+
+const managerProductOptionSchema = z.object({
+  id: z.uuid(),
+  group: productOptionGroupSchema,
+  label: z.string().min(1),
+  price_delta_cents: z.number().int().min(0),
+  is_active: z.boolean(),
+});
+
+/** One option a manager offers; one without an id is new, and one left out is retired. */
+const productOptionFormSchema = z.object({
+  id: z.uuid().optional(),
+  group: productOptionGroupSchema,
+  label: z
+    .string()
+    .trim()
+    .min(1, "Name the option")
+    .max(60, "At most 60 characters")
+    .refine((value) => !/[\p{Cc}\p{Cf}]/u.test(value), "Use plain text only"),
+  price_delta_cents: requiredAmount("Enter the added price", 0, "The added price is zero or more").refine(
+    (value) => value <= MAX_OPTION_PRICE_DELTA_CENTS,
+    "At most $1,000.00",
+  ),
+  is_active: z.boolean(),
+});
+
 export const managerCategorySchema = z.object({
   id: z.uuid(),
   name: z.string().min(1),
@@ -83,6 +115,9 @@ export const managerProductSchema = z.object({
   is_active: z.boolean(),
   lead_time_minutes: z.number().int().min(0),
   image_urls: productImageUrlsResponseSchema,
+  is_customizable: z.boolean(),
+  /** On the product's detail only; retired options left out. */
+  options: z.array(managerProductOptionSchema).default([]),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -105,6 +140,8 @@ export const productFormSchema = z.object({
     .min(0)
     .max(MAX_PRODUCT_LEAD_MINUTES, `At most ${MAX_PRODUCT_LEAD_MINUTES} minutes (7 days)`),
   image_urls: productImageUrlsSchema,
+  is_customizable: z.boolean(),
+  options: z.array(productOptionFormSchema).max(MAX_PRODUCT_OPTIONS, `At most ${MAX_PRODUCT_OPTIONS} options`),
 });
 
 export const productListFilterSchema = z.object({

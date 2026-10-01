@@ -155,6 +155,7 @@ type Querier interface {
 	//      p.slug,
 	//      p.description,
 	//      p.price_cents,
+	//      p.is_customizable,
 	//      c.name AS category_name,
 	//      c.slug AS category_slug
 	//  FROM products p
@@ -172,6 +173,7 @@ type Querier interface {
 	//      p.slug,
 	//      p.description,
 	//      p.price_cents,
+	//      p.is_customizable,
 	//      c.name AS category_name,
 	//      c.slug AS category_slug
 	//  FROM products p
@@ -241,6 +243,7 @@ type Querier interface {
 	//      page.slug,
 	//      page.description,
 	//      page.price_cents,
+	//      page.is_customizable,
 	//      page.category_name,
 	//      page.category_slug,
 	//      COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
@@ -252,6 +255,7 @@ type Querier interface {
 	//          p.slug,
 	//          p.description,
 	//          p.price_cents,
+	//          p.is_customizable,
 	//          c.name AS category_name,
 	//          c.slug AS category_slug,
 	//          c.sort_order AS category_sort_order
@@ -420,8 +424,8 @@ type Querier interface {
 	CreateCart(ctx context.Context, userID uuid.UUID) (Cart, error)
 	//CreateCartItem
 	//
-	//  INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity)
-	//  VALUES ($1, $2, $3, $4, $5)
+	//  INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity, configuration)
+	//  VALUES ($1, $2, $3, $4, $5, $6)
 	//  RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 	CreateCartItem(ctx context.Context, arg CreateCartItemParams) (CartItem, error)
 	//CreateCategory
@@ -617,10 +621,22 @@ type Querier interface {
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error)
 	//CreateProduct
 	//
-	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes)
-	//  VALUES ($1, $2, $3, $4, $5, $6, $7)
-	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+	//  INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes, is_customizable)
+	//  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
+	// The options the manager added, in one statement.
+	//
+	//  INSERT INTO product_options (product_id, option_group, label, price_delta_cents, sort_order, is_active)
+	//  SELECT $1, r.option_group, r.label, r.price_delta_cents, r.sort_order, r.is_active
+	//  FROM jsonb_to_recordset($2::jsonb) AS r (
+	//    option_group product_option_group,
+	//    label text,
+	//    price_delta_cents bigint,
+	//    sort_order smallint,
+	//    is_active boolean
+	//  )
+	CreateProductOptions(ctx context.Context, arg CreateProductOptionsParams) (int64, error)
 	//CreateStaffProfile
 	//
 	//  INSERT INTO staff_profiles (user_id, full_name, phone, employee_code)
@@ -774,11 +790,11 @@ type Querier interface {
 	//  FROM cart_items
 	//  WHERE cart_id = $1 AND id = $2
 	GetCartItemByID(ctx context.Context, arg GetCartItemByIDParams) (CartItem, error)
-	//GetCartItemByProduct
+	// A plain line only: a configured product gets a line of its own each time.
 	//
 	//  SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 	//  FROM cart_items
-	//  WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2
+	//  WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2 AND configuration = '{}'::jsonb
 	GetCartItemByProduct(ctx context.Context, arg GetCartItemByProductParams) (CartItem, error)
 	//GetCategoryByID
 	//
@@ -929,7 +945,7 @@ type Querier interface {
 	GetPaymentByProviderOrderID(ctx context.Context, arg GetPaymentByProviderOrderIDParams) (Payment, error)
 	//GetProductByID
 	//
-	//  SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+	//  SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 	//  FROM products
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
@@ -1212,11 +1228,12 @@ type Querier interface {
 	//  WHERE order_id = ANY($1::uuid[])
 	//  ORDER BY order_id, created_at ASC, id ASC
 	ListOrderStatusEventsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]ListOrderStatusEventsByOrderIDsRow, error)
-	// The items of every ticket of an order.
+	// The items of every ticket of an order, with what the customer configured.
 	//
-	//  SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity
+	//  SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity, oi.configuration
 	//  FROM order_ticket_items i
 	//  INNER JOIN order_tickets t ON t.id = i.ticket_id
+	//  INNER JOIN order_items oi ON oi.id = i.order_item_id
 	//  WHERE t.order_id = $1
 	//  ORDER BY i.created_at, i.name
 	ListOrderTicketItems(ctx context.Context, orderID uuid.UUID) ([]ListOrderTicketItemsRow, error)
@@ -1349,6 +1366,15 @@ type Querier interface {
 	//  WHERE product_id = $1
 	//  ORDER BY sort_order ASC
 	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]ListProductImagesByProductIDRow, error)
+	// The options these products offer, retired ones left out, in the order a
+	// customer chooses them.
+	//
+	//  SELECT id, product_id, option_group, label, price_delta_cents, sort_order, is_active
+	//  FROM product_options
+	//  WHERE product_id = ANY($1::uuid[])
+	//    AND deleted_at IS NULL
+	//  ORDER BY product_id, option_group, sort_order
+	ListProductOptions(ctx context.Context, productIds []uuid.UUID) ([]ListProductOptionsRow, error)
 	// Payments whose refund is asked for and not made yet, the oldest first.
 	//
 	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
@@ -1478,6 +1504,7 @@ type Querier interface {
 	//      p.updated_at,
 	//      p.deleted_at,
 	//      p.lead_time_minutes,
+	//      p.is_customizable,
 	//      c.name AS category_name
 	//  FROM products p
 	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -1583,6 +1610,7 @@ type Querier interface {
 	//      page.updated_at,
 	//      page.deleted_at,
 	//      page.lead_time_minutes,
+	//      page.is_customizable,
 	//      page.category_name,
 	//      COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
 	//  FROM (
@@ -1598,6 +1626,7 @@ type Querier interface {
 	//          p.updated_at,
 	//          p.deleted_at,
 	//          p.lead_time_minutes,
+	//          p.is_customizable,
 	//          c.name AS category_name
 	//      FROM products p
 	//      INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -1696,6 +1725,14 @@ type Querier interface {
 	//  SET last_number = order_day_counters.last_number + 1
 	//  RETURNING day, last_number
 	NextOrderDayNumber(ctx context.Context, zone string) (OrderDayCounter, error)
+	// Whether the order holds an item its customer configured, which staff review
+	// before the bakery makes it.
+	//
+	//  SELECT EXISTS (
+	//    SELECT 1 FROM order_items
+	//    WHERE order_id = $1 AND configuration <> '{}'::jsonb
+	//  )::bool AS has_custom_items
+	OrderHasCustomItems(ctx context.Context, orderID uuid.UUID) (bool, error)
 	//PhoneHeldByOtherActiveUser
 	//
 	//  SELECT EXISTS (
@@ -1853,6 +1890,16 @@ type Querier interface {
 	//    AND status = 'denied'
 	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 	RestartPayment(ctx context.Context, arg RestartPaymentParams) (Payment, error)
+	// Retires the product's options the manager left out. Cart lines may still
+	// name them, so they stay as rows.
+	//
+	//  UPDATE product_options
+	//  SET deleted_at = now(),
+	//      updated_at = now()
+	//  WHERE product_id = $1
+	//    AND deleted_at IS NULL
+	//    AND NOT (id = ANY($2::uuid[]))
+	RetireProductOptions(ctx context.Context, arg RetireProductOptionsParams) error
 	// Removes an erased account's personal data from the audit trail and keeps
 	// the trail: changes to the account and its profile lose their before and
 	// after values (a profile change holds a name or phone number), and the
@@ -2156,11 +2203,33 @@ type Querier interface {
 	//      price_cents  = $6,
 	//      is_active    = $7,
 	//      lead_time_minutes = $8,
+	//      is_customizable = $9,
 	//      updated_at   = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
-	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+	//  RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
+	// The manager's edits to options the product already has, in one statement.
+	//
+	//  UPDATE product_options o
+	//  SET option_group = r.option_group,
+	//      label = r.label,
+	//      price_delta_cents = r.price_delta_cents,
+	//      sort_order = r.sort_order,
+	//      is_active = r.is_active,
+	//      updated_at = now()
+	//  FROM jsonb_to_recordset($2::jsonb) AS r (
+	//    id uuid,
+	//    option_group product_option_group,
+	//    label text,
+	//    price_delta_cents bigint,
+	//    sort_order smallint,
+	//    is_active boolean
+	//  )
+	//  WHERE o.id = r.id
+	//    AND o.product_id = $1
+	//    AND o.deleted_at IS NULL
+	UpdateProductOptions(ctx context.Context, arg UpdateProductOptionsParams) (int64, error)
 	//UpdateRole
 	//
 	//  UPDATE users

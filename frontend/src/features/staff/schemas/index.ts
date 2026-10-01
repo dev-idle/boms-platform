@@ -5,6 +5,7 @@ import { USER_ROLE } from "@/constants/roles";
 import {
   orderCodeSchema,
   orderPaymentSchema,
+  customizationSchema,
   orderStatusSchema,
   orderTimelineEntrySchema,
   orderTypeSchema,
@@ -34,6 +35,8 @@ const staffOrderItemSchema = z.object({
   quantity: z.number().int().min(1),
   unit_price_cents: z.number().int().min(0),
   line_total_cents: z.number().int().min(0),
+  /** How the customer configured it, null for a plain item. */
+  customization: customizationSchema.nullable(),
 });
 
 /** The counter also sees which role made each move; null when the system made it (an unpaid order expiring). */

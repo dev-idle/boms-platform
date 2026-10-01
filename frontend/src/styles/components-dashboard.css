@@ -788,6 +788,53 @@
     grid-column: 1/-1;
   }
 
+  /* A customizable product's options: one line each, group · name · added price · offered · remove. */
+  .product-form-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--db-space-3);
+  }
+
+  .product-form-options__list {
+    border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .product-form-options__line {
+    align-items: start;
+    display: grid;
+    gap: var(--db-space-2);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: var(--db-space-2) var(--db-space-3);
+  }
+
+  .product-form-options__line + .product-form-options__line {
+    border-top: 1px solid var(--color-line-soft);
+  }
+
+  /* Narrow: the remove action takes a row of its own, at its end. */
+  .product-form-options__actions {
+    align-items: center;
+    display: flex;
+    grid-column: 1 / -1;
+    height: var(--field-control-height);
+    justify-content: flex-end;
+  }
+
+  @media (min-width: 48rem) {
+    .product-form-options__line {
+      grid-template-columns: 8.5rem minmax(0, 1fr) 7rem auto auto;
+    }
+
+    .product-form-options__actions {
+      grid-column: auto;
+    }
+  }
+
   .combo-form-items {
     /* Wide enough for the widest member of the column: the composer's button. */
     --combo-items-action-width: 4rem;
@@ -2033,6 +2080,34 @@
   .db-filter-chip[data-active="true"] {
     background-color: var(--color-matcha-500);
     color: var(--theme-on-primary);
+  }
+
+  /* How a customer configured a custom item, on every surface that shows the item. */
+  .customization-summary {
+    color: var(--color-ink-2);
+    display: grid;
+    font-size: 0.8125rem;
+    gap: 0.25rem;
+  }
+
+  .customization-summary__label {
+    color: var(--color-muted);
+    font-size: var(--label-size);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking);
+    text-transform: uppercase;
+  }
+
+  .customization-summary__photo-link {
+    display: inline-block;
+  }
+
+  .customization-summary__photo {
+    border: 1px solid var(--color-border);
+    display: block;
+    height: 4rem;
+    object-fit: cover;
+    width: 4rem;
   }
 
   /* Status = 6px dot + uppercase micro-label, never a filled pill. */

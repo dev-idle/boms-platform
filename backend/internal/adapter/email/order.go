@@ -37,6 +37,26 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 		},
 		receipt: true,
 	},
+	domainorder.NoticeRequested: {
+		subject:   "We received your request %s",
+		preheader: "We will check your custom order and email you once we accept it.",
+		eyebrow:   "Request received",
+		heading:   "Thank you for your request",
+		lead: []string{
+			"We have your order and your payment. Before we start, we check that we can make it as you asked, and we will email you once we accept it.",
+			"If we cannot make it, we will tell you why and refund you in full.",
+		},
+		receipt: true,
+	},
+	domainorder.NoticeAccepted: {
+		subject:   "We accepted your order %s",
+		preheader: "Your custom order is confirmed for your pickup time.",
+		eyebrow:   "Order accepted",
+		heading:   "Your order is confirmed",
+		lead: []string{
+			"We checked your custom order and will have it ready for your pickup time. We will email you again when it is ready to collect.",
+		},
+	},
 	domainorder.NoticeReady: {
 		subject:   "Your order %s is ready to collect",
 		preheader: "Come in during your pickup time and give your order code at the counter.",

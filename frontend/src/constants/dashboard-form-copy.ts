@@ -16,6 +16,8 @@ export const FORM_FIELD_HINT = {
   productLeadTime:
     "Notice this product needs before pickup, in minutes. An order waits the longer of this and the bakery's own notice (at most 10080).",
   comboItems: "Each product once. Add two products, or one product with quantity at least 2.",
+  productOptions:
+    "Customers pick one option from each group you offer; its added price goes on top of the product price. A removed option is retired, and carts that chose it ask the customer to configure the cake again.",
   discountMaxUses: "Leave empty for unlimited uses.",
   discountMaxUsesPerCustomer: "How many of one customer's orders may use it. Leave empty for no limit.",
   discountMinOrder: "Minimum cart total. Leave empty for no minimum.",
@@ -28,12 +30,15 @@ export const FORM_FIELD_HINT = {
 export const FORM_SWITCH_LABEL = {
   storefrontVisible: "Visible on storefront",
   availableToOrder: "Available to order",
+  customizable: "Configured by the customer",
   checkoutActive: "Active at checkout",
 } as const;
 
 export const FORM_SWITCH_HINT = {
   storefrontVisible: "When off, hidden from browse and category filters.",
   availableToOrder: "When off, hidden from the storefront and cart.",
+  customizable:
+    "When on, customers choose from the options below, add a message and a reference photo, and staff review the order before the kitchen starts.",
   checkoutActive: "When off, cannot be applied at checkout.",
 } as const;
 

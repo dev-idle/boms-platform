@@ -58,6 +58,16 @@ func TestStatusValid(t *testing.T) {
 	}
 }
 
+func TestPaidStatus(t *testing.T) {
+	t.Parallel()
+	if got := PaidStatus(true); got != StatusPending {
+		t.Errorf("a custom order waits for staff review, got %q", got)
+	}
+	if got := PaidStatus(false); got != StatusConfirmed {
+		t.Errorf("any other goes to the bakery, got %q", got)
+	}
+}
+
 func TestStatus_BeforeProduction(t *testing.T) {
 	t.Parallel()
 	for _, s := range []Status{StatusAwaitingPayment, StatusPending, StatusConfirmed} {

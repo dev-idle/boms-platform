@@ -16,7 +16,7 @@ const ticket = {
   station: "kitchen",
   status: "queued",
   pickup_at: "2026-09-29T09:00:00+07:00",
-  items: [{ name: "Matcha cake", quantity: 2 }],
+  items: [{ name: "Matcha cake", quantity: 2, customization: null }],
   created_at: "2026-09-28T09:00:00+07:00",
 };
 
@@ -57,8 +57,8 @@ describe("nextTicketAction", () => {
 
 describe("ticket items", () => {
   const items = [
-    { name: "Matcha cake", quantity: 2 },
-    { name: "Croissant", quantity: 1 },
+    { name: "Matcha cake", quantity: 2, customization: null },
+    { name: "Croissant", quantity: 1, customization: null },
   ];
 
   it("reads as one line", () => {

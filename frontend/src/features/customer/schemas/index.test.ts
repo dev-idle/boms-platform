@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ordersListFilterSchema, paymentStartSchema } from "./index";
+import { cartCustomizationInputSchema, ordersListFilterSchema, paymentStartSchema } from "./index";
 
 describe("ordersListFilterSchema", () => {
   it("accepts an open or a closed range of days", () => {
@@ -42,5 +42,35 @@ describe("paymentStartSchema", () => {
     ]) {
       expect(paymentStartSchema.safeParse({ approve_url: url }).success, url).toBe(false);
     }
+  });
+});
+
+// A custom cake is checked as the backend checks it before it goes in the cart.
+describe("cartCustomizationInputSchema", () => {
+  const cake = {
+    option_ids: ["0f2f3a6e-5f4c-4f2e-9c1a-1d2b3c4d5e6f"],
+    message: " Happy birthday, Mai ",
+    reference_image_url: "",
+    reference_rights_confirmed: false,
+  };
+
+  it("keeps a plain message, trimmed", () => {
+    expect(cartCustomizationInputSchema.parse(cake).message).toBe("Happy birthday, Mai");
+  });
+
+  it("asks for an option in every group offered", () => {
+    expect(cartCustomizationInputSchema.safeParse({ ...cake, option_ids: [""] }).success).toBe(false);
+  });
+
+  it("refuses a long or formatted message", () => {
+    for (const message of ["a".repeat(61), "Happy\nbirthday"]) {
+      expect(cartCustomizationInputSchema.safeParse({ ...cake, message }).success).toBe(false);
+    }
+  });
+
+  it("takes a photo only with the customer's word that they may share it", () => {
+    const photo = { ...cake, reference_image_url: "https://res.cloudinary.com/demo/image/upload/v1/boms/references/u/cake.jpg" };
+    expect(cartCustomizationInputSchema.safeParse(photo).success).toBe(false);
+    expect(cartCustomizationInputSchema.safeParse({ ...photo, reference_rights_confirmed: true }).success).toBe(true);
   });
 });

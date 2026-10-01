@@ -2,11 +2,14 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
+	"slices"
 	"time"
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainproduct "github.com/boms/backend/internal/domain/product"
 	"github.com/boms/backend/internal/port"
 	"github.com/google/uuid"
 )
@@ -23,6 +26,8 @@ type pricedCartLine struct {
 	UnitPriceCents int64
 	LineTotalCents int64
 	IsAvailable    bool
+	// Customization is the line as configured, priced now; nil for a plain line.
+	Customization *domainorder.Customization
 }
 
 type cartTotals struct {
@@ -67,8 +72,20 @@ func (p *cartPricer) priceLines(ctx context.Context, items []domaincart.Item) ([
 	}
 
 	productByID := make(map[uuid.UUID]port.CatalogListProduct, len(products))
+	customizable := make([]uuid.UUID, 0)
 	for _, product := range products {
 		productByID[product.ID] = product
+		if product.IsCustomizable {
+			customizable = append(customizable, product.ID)
+		}
+	}
+	options, err := p.products.ListOptions(ctx, customizable)
+	if err != nil {
+		return nil, err
+	}
+	optionsByProduct := make(map[uuid.UUID][]domainproduct.Option, len(customizable))
+	for _, option := range options {
+		optionsByProduct[option.ProductID] = append(optionsByProduct[option.ProductID], option)
 	}
 	comboByID := make(map[uuid.UUID]port.CatalogCombo, len(combos))
 	for _, combo := range combos {
@@ -90,8 +107,17 @@ func (p *cartPricer) priceLines(ctx context.Context, items []domaincart.Item) ([
 			}
 			line.Name = product.Name
 			line.Slug = product.Slug
-			line.UnitPriceCents = product.PriceCents
-			line.LineTotalCents = product.PriceCents * int64(item.Quantity)
+			unitPrice, customization, available, err := customizedPrice(product, optionsByProduct[product.ID], item.Configuration)
+			if err != nil {
+				return nil, err
+			}
+			line.Customization = customization
+			if !available {
+				out = append(out, line)
+				continue
+			}
+			line.UnitPriceCents = unitPrice
+			line.LineTotalCents = unitPrice * int64(item.Quantity)
 			line.IsAvailable = true
 		case domaincart.LineTypeCombo:
 			if item.ComboID == nil {
@@ -111,6 +137,49 @@ func (p *cartPricer) priceLines(ctx context.Context, items []domaincart.Item) ([
 		out = append(out, line)
 	}
 	return out, nil
+}
+
+// customizedPrice prices a product line as configured: the product's price
+// plus what each chosen option adds now. The line stops being available when
+// it no longer matches what the product offers — configured when the product
+// is not customizable, or the other way round, or its options retired or
+// changed — and keeps its message and photo so the customer sees what it was.
+func customizedPrice(
+	product port.CatalogListProduct,
+	offered []domainproduct.Option,
+	configuration json.RawMessage,
+) (int64, *domainorder.Customization, bool, error) {
+	c, err := domaincart.ParseCustomization(configuration)
+	if err != nil {
+		return 0, nil, false, err
+	}
+	if c == nil {
+		return product.PriceCents, nil, !product.IsCustomizable, nil
+	}
+	snapshot := &domainorder.Customization{Message: c.Message, ReferenceImageURL: c.ReferenceImageURL}
+	if !product.IsCustomizable {
+		return 0, snapshot, false, nil
+	}
+	chosen, err := domainproduct.Choose(offered, c.OptionIDs)
+	if err != nil {
+		// The choice no longer fits the product: the line waits to be removed.
+		return 0, snapshot, false, nil //nolint:nilerr // an outdated choice is a state of the line, not a failure
+	}
+	price := product.PriceCents
+	snapshot.Options = make([]domainorder.ChosenOption, 0, len(chosen))
+	for _, option := range chosen {
+		price += option.PriceDeltaCents
+		snapshot.Options = append(snapshot.Options, domainorder.ChosenOption{
+			Group: option.Group, Label: option.Label, PriceDeltaCents: option.PriceDeltaCents,
+		})
+	}
+	return price, snapshot, true, nil
+}
+
+// hasCustomLine reports whether any line is configured, which sends the order
+// to staff review once it is paid.
+func hasCustomLine(lines []pricedCartLine) bool {
+	return slices.ContainsFunc(lines, func(line pricedCartLine) bool { return line.Customization != nil })
 }
 
 // fulfillmentOf is what the priced lines ask of the bakery. Checkout reads it

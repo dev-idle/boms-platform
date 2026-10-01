@@ -152,7 +152,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UU
 			params := port.CreateOrderItemParams{
 				OrderID:        order.ID,
 				LineType:       line.Item.LineType,
-				Configuration:  line.Item.Configuration,
+				Customization:  line.Customization,
 				Name:           line.Name,
 				Slug:           line.Slug,
 				Quantity:       line.Item.Quantity,
@@ -186,13 +186,13 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UU
 			return err
 		}
 		// Nothing to pay, as when a discount covers the whole order: it is paid
-		// at once and goes to the bakery the way a paid order does.
+		// at once and goes on the way a paid order does.
 		if order.TotalCents == 0 {
 			customer := &port.OrderActor{ID: userID, Role: domainuser.RoleCustomer}
 			if order, err = u.transitions.applyInTx(txCtx, customer, port.UpdateOrderStatusParams{
 				OrderID:    order.ID,
 				FromStatus: domainorder.StatusAwaitingPayment,
-				ToStatus:   domainorder.StatusConfirmed,
+				ToStatus:   domainorder.PaidStatus(hasCustomLine(lines)),
 			}, ""); err != nil {
 				return err
 			}

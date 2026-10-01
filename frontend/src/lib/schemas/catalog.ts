@@ -20,6 +20,27 @@ export const catalogCategorySchema = z.object({
   sort_order: z.number().int().min(0),
 });
 
+/** What an option sets on a custom cake; a customer picks one from each group offered. */
+export const productOptionGroupSchema = z.enum(["size", "flavor", "decoration"]);
+
+type ProductOptionGroup = z.infer<typeof productOptionGroupSchema>;
+
+export const PRODUCT_OPTION_GROUP_LABEL: Record<ProductOptionGroup, string> = {
+  size: "Size",
+  flavor: "Flavor",
+  decoration: "Decoration",
+};
+
+/** The longest cake message, as backend `product.MaxMessageLength` checks it. */
+export const CAKE_MESSAGE_MAX = 60;
+
+const catalogProductOptionSchema = z.object({
+  id: z.uuid(),
+  group: productOptionGroupSchema,
+  label: z.string().min(1),
+  price_delta_cents: z.number().int().min(0),
+});
+
 export const catalogProductSchema = z.object({
   id: z.uuid(),
   category_id: z.uuid(),
@@ -30,6 +51,10 @@ export const catalogProductSchema = z.object({
   description: z.string().nullable().optional(),
   price_cents: z.number().int().min(0),
   image_urls: productImageUrlsResponseSchema,
+  /** Configured from its options before it goes in the cart. */
+  is_customizable: z.boolean(),
+  /** What a customer chooses from; on a customizable product's detail only. */
+  options: z.array(catalogProductOptionSchema).default([]),
 });
 
 export const catalogCategoriesListFilterSchema = z.object({

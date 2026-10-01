@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,6 +39,7 @@ func (r *ProductRepository) Create(ctx context.Context, params port.CreateProduc
 		PriceCents:      params.PriceCents,
 		IsActive:        params.IsActive,
 		LeadTimeMinutes: leadTimeMinutes(params.LeadTime),
+		IsCustomizable:  params.IsCustomizable,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create product")
@@ -63,6 +65,7 @@ func (r *ProductRepository) Update(ctx context.Context, params port.UpdateProduc
 		PriceCents:      params.PriceCents,
 		IsActive:        params.IsActive,
 		LeadTimeMinutes: leadTimeMinutes(params.LeadTime),
+		IsCustomizable:  params.IsCustomizable,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update product")
@@ -223,6 +226,95 @@ func (r *ProductRepository) FulfillmentOf(
 	}, nil
 }
 
+func (r *ProductRepository) ListOptions(ctx context.Context, productIDs []uuid.UUID) ([]domainproduct.Option, error) {
+	if len(productIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.q(ctx).ListProductOptions(ctx, productIDs)
+	if err != nil {
+		return nil, mapRepoError(err, "list product options")
+	}
+	out := make([]domainproduct.Option, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domainproduct.Option{
+			ID:              row.ID,
+			ProductID:       row.ProductID,
+			Group:           domainproduct.OptionGroup(row.OptionGroup),
+			Label:           row.Label,
+			PriceDeltaCents: row.PriceDeltaCents,
+			SortOrder:       row.SortOrder,
+			IsActive:        row.IsActive,
+		})
+	}
+	return out, nil
+}
+
+// optionRecord is one option as UpdateProductOptions and CreateProductOptions
+// read it from their JSON array.
+type optionRecord struct {
+	ID              *uuid.UUID `json:"id,omitempty"`
+	OptionGroup     string     `json:"option_group"`
+	Label           string     `json:"label"`
+	PriceDeltaCents int64      `json:"price_delta_cents"`
+	SortOrder       int16      `json:"sort_order"`
+	IsActive        bool       `json:"is_active"`
+}
+
+func (r *ProductRepository) ReplaceOptions(ctx context.Context, productID uuid.UUID, options []domainproduct.Option) error {
+	if txFromContext(ctx) == nil {
+		return apperrors.Errorf("replace product options: requires a transaction")
+	}
+	kept := make([]uuid.UUID, 0, len(options))
+	var updated, added []optionRecord
+	for _, option := range options {
+		record := optionRecord{
+			OptionGroup:     string(option.Group),
+			Label:           option.Label,
+			PriceDeltaCents: option.PriceDeltaCents,
+			SortOrder:       option.SortOrder,
+			IsActive:        option.IsActive,
+		}
+		if option.ID == uuid.Nil {
+			added = append(added, record)
+			continue
+		}
+		id := option.ID
+		record.ID = &id
+		kept = append(kept, id)
+		updated = append(updated, record)
+	}
+	if err := r.q(ctx).RetireProductOptions(ctx, sqlcgen.RetireProductOptionsParams{ProductID: productID, KeptIds: kept}); err != nil {
+		return mapRepoError(err, "retire product options")
+	}
+	if len(updated) > 0 {
+		rows, err := json.Marshal(updated)
+		if err != nil {
+			return apperrors.Errorf("encode product options: %w", err)
+		}
+		n, err := r.q(ctx).UpdateProductOptions(ctx, sqlcgen.UpdateProductOptionsParams{ProductID: productID, Rows: rows})
+		if err != nil {
+			return mapRepoError(err, "update product options")
+		}
+		if n != int64(len(updated)) {
+			return domainproduct.ErrInvalidOption
+		}
+	}
+	if len(added) > 0 {
+		rows, err := json.Marshal(added)
+		if err != nil {
+			return apperrors.Errorf("encode product options: %w", err)
+		}
+		n, err := r.q(ctx).CreateProductOptions(ctx, sqlcgen.CreateProductOptionsParams{ProductID: productID, Rows: rows})
+		if err != nil {
+			return mapRepoError(err, "create product options")
+		}
+		if n != int64(len(added)) {
+			return apperrors.Errorf("create product options: inserted %d of %d", n, len(added))
+		}
+	}
+	return nil
+}
+
 func mapManagerListProductsRow(row sqlcgen.ManagerListProductsRow) port.ManagerListProduct {
 	item := mapManagerJoinedProduct(
 		row.ID,
@@ -236,6 +328,7 @@ func mapManagerListProductsRow(row sqlcgen.ManagerListProductsRow) port.ManagerL
 		row.UpdatedAt,
 		row.DeletedAt,
 		row.LeadTimeMinutes,
+		row.IsCustomizable,
 		row.CategoryName,
 	)
 	item.ImageURLs = row.ImageUrls
@@ -255,6 +348,7 @@ func mapManagerGetProductRow(row sqlcgen.ManagerGetProductByIDRow) port.ManagerL
 		row.UpdatedAt,
 		row.DeletedAt,
 		row.LeadTimeMinutes,
+		row.IsCustomizable,
 		row.CategoryName,
 	)
 }
@@ -271,21 +365,23 @@ func mapManagerJoinedProduct(
 	updatedAt time.Time,
 	deletedAt *time.Time,
 	leadMinutes int32,
+	isCustomizable bool,
 	categoryName string,
 ) port.ManagerListProduct {
 	return port.ManagerListProduct{
 		Product: domainproduct.Product{
-			ID:          id,
-			CategoryID:  categoryID,
-			Name:        name,
-			Slug:        slug,
-			Description: description,
-			PriceCents:  priceCents,
-			IsActive:    isActive,
-			CreatedAt:   createdAt,
-			UpdatedAt:   updatedAt,
-			DeletedAt:   deletedAt,
-			LeadTime:    time.Duration(leadMinutes) * time.Minute,
+			ID:             id,
+			CategoryID:     categoryID,
+			Name:           name,
+			Slug:           slug,
+			Description:    description,
+			PriceCents:     priceCents,
+			IsActive:       isActive,
+			CreatedAt:      createdAt,
+			UpdatedAt:      updatedAt,
+			DeletedAt:      deletedAt,
+			LeadTime:       time.Duration(leadMinutes) * time.Minute,
+			IsCustomizable: isCustomizable,
 		},
 		CategoryName: categoryName,
 	}
@@ -293,17 +389,18 @@ func mapManagerJoinedProduct(
 
 func mapProduct(row sqlcgen.Product) *domainproduct.Product {
 	return &domainproduct.Product{
-		ID:          row.ID,
-		CategoryID:  row.CategoryID,
-		Name:        row.Name,
-		Slug:        row.Slug,
-		PriceCents:  row.PriceCents,
-		IsActive:    row.IsActive,
-		CreatedAt:   row.CreatedAt,
-		UpdatedAt:   row.UpdatedAt,
-		Description: row.Description,
-		DeletedAt:   row.DeletedAt,
-		LeadTime:    time.Duration(row.LeadTimeMinutes) * time.Minute,
+		ID:             row.ID,
+		CategoryID:     row.CategoryID,
+		Name:           row.Name,
+		Slug:           row.Slug,
+		PriceCents:     row.PriceCents,
+		IsActive:       row.IsActive,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+		Description:    row.Description,
+		DeletedAt:      row.DeletedAt,
+		LeadTime:       time.Duration(row.LeadTimeMinutes) * time.Minute,
+		IsCustomizable: row.IsCustomizable,
 	}
 }
 
@@ -321,6 +418,7 @@ func mapCatalogListProductsRow(row sqlcgen.CatalogListProductsRow) port.CatalogL
 		row.Slug,
 		row.Description,
 		row.PriceCents,
+		row.IsCustomizable,
 		row.CategoryName,
 		row.CategorySlug,
 	)
@@ -336,6 +434,7 @@ func mapCatalogGetProductRow(row sqlcgen.CatalogGetProductByIDRow) port.CatalogL
 		row.Slug,
 		row.Description,
 		row.PriceCents,
+		row.IsCustomizable,
 		row.CategoryName,
 		row.CategorySlug,
 	)
@@ -349,6 +448,7 @@ func mapCatalogGetProductsByIDsRow(row sqlcgen.CatalogGetProductsByIDsRow) port.
 		row.Slug,
 		row.Description,
 		row.PriceCents,
+		row.IsCustomizable,
 		row.CategoryName,
 		row.CategorySlug,
 	)
@@ -361,18 +461,20 @@ func mapCatalogProductFields(
 	slug string,
 	description *string,
 	priceCents int64,
+	isCustomizable bool,
 	categoryName string,
 	categorySlug string,
 ) port.CatalogListProduct {
 	return port.CatalogListProduct{
-		ID:           id,
-		CategoryID:   categoryID,
-		Name:         name,
-		Slug:         slug,
-		PriceCents:   priceCents,
-		CategoryName: categoryName,
-		CategorySlug: categorySlug,
-		Description:  description,
+		ID:             id,
+		CategoryID:     categoryID,
+		Name:           name,
+		Slug:           slug,
+		PriceCents:     priceCents,
+		IsCustomizable: isCustomizable,
+		CategoryName:   categoryName,
+		CategorySlug:   categorySlug,
+		Description:    description,
 	}
 }
 

@@ -12,6 +12,24 @@ type OrderItemResponse struct {
 	Quantity       int32   `json:"quantity"`
 	UnitPriceCents int64   `json:"unit_price_cents"`
 	LineTotalCents int64   `json:"line_total_cents"`
+	// Customization is how the customer configured the item, null for a plain one.
+	Customization *CustomizationResponse `json:"customization"`
+}
+
+// CustomizationResponse is how a customer configured a custom item: the
+// options chosen with what each added, a message for the cake and a reference
+// photo (empty when none).
+type CustomizationResponse struct {
+	Options           []ChosenOptionResponse `json:"options"`
+	Message           string                 `json:"message"`
+	ReferenceImageURL string                 `json:"reference_image_url"`
+}
+
+// ChosenOptionResponse is one option a custom item has.
+type ChosenOptionResponse struct {
+	Group           string `json:"group"`
+	Label           string `json:"label"`
+	PriceDeltaCents int64  `json:"price_delta_cents"`
 }
 
 // OrderTimelineEntryResponse is a status the order entered and when.

@@ -41,6 +41,10 @@ export function PrivacyPolicy() {
             accepted with it.
           </li>
           <li>
+            <strong>Custom cakes:</strong> the options and message you choose, and any reference photo
+            you upload. Cloudinary stores the photo at an unlisted address that we never publish.
+          </li>
+          <li>
             <strong>Payments:</strong> PayPal handles your payment. We receive its reference and
             the amount, never your card or bank details.
           </li>
@@ -67,7 +71,10 @@ export function PrivacyPolicy() {
       <PolicySection id="privacy-who-sees" title="4. Who sees it">
         <ul>
           <li>Counter staff see your name, email and phone, to arrange and hand over your pickup.</li>
-          <li>The kitchen sees what to make, when, and your display name — never how to contact you.</li>
+          <li>
+            The kitchen sees what to make, when, your display name, and how you asked a custom cake to
+            look, reference photo included — never how to contact you.
+          </li>
           <li>Managers see sales figures, not your contact details.</li>
           <li>
             Administrators see your account and contact details, to look after accounts and the
@@ -75,8 +82,8 @@ export function PrivacyPolicy() {
           </li>
         </ul>
         <p>
-          Our database is hosted by Neon, and payments are processed by PayPal. They handle your
-          data only to provide those services to us.
+          Our database is hosted by Neon, reference photos are stored by Cloudinary, and payments
+          are processed by PayPal. They handle your data only to provide those services to us.
         </p>
       </PolicySection>
 
@@ -88,6 +95,10 @@ export function PrivacyPolicy() {
             record of changes; you are signed out everywhere and the account cannot be restored.
           </li>
           <li>Your sign-in sessions, until you sign out or they expire.</li>
+          <li>
+            A reference photo, as long as the order it was made for; one you uploaded without ordering
+            stays stored until you ask us to delete it.
+          </li>
           <li>
             Your orders, as part of our sales records, for as long as accounting law requires — after
             you delete your account, without your name or contact details.

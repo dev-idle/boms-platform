@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { CustomizationSummary } from "@/components/ui/customization-summary";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import {
   formatOrderStatusLabel,
@@ -75,9 +76,12 @@ export function BakerTicketDetail({ ticketId }: BakerTicketDetailProps) {
                 line position is the key. */}
             {ticket.items.map((item, index) => (
               <li key={index} className="dashboard-order-line-item">
-                <p className="font-medium text-ink">
-                  {item.quantity}× {item.name}
-                </p>
+                <div className="grid gap-1">
+                  <p className="font-medium text-ink">
+                    {item.quantity}× {item.name}
+                  </p>
+                  {item.customization ? <CustomizationSummary customization={item.customization} /> : null}
+                </div>
               </li>
             ))}
           </ul>

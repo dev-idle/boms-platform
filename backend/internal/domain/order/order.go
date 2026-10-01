@@ -1,7 +1,6 @@
 package order
 
 import (
-	"encoding/json"
 	"time"
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
@@ -89,12 +88,13 @@ func PagePath(id uuid.UUID) string {
 
 // Item is an immutable order line captured at checkout.
 type Item struct {
-	ID             uuid.UUID
-	OrderID        uuid.UUID
-	LineType       domaincart.LineType
-	ProductID      *uuid.UUID
-	ComboID        *uuid.UUID
-	Configuration  json.RawMessage
+	ID        uuid.UUID
+	OrderID   uuid.UUID
+	LineType  domaincart.LineType
+	ProductID *uuid.UUID
+	ComboID   *uuid.UUID
+	// Customization is how the customer configured the item, nil for a plain one.
+	Customization  *Customization
 	Name           string
 	Slug           string
 	Quantity       int32

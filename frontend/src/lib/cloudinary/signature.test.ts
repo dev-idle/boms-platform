@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { getCloudinaryUploadFolder } from "./config";
 import { CLOUDINARY_UPLOAD_COPY } from "./messages";
 import {
   type CloudinaryUploadSignature,
@@ -7,14 +8,12 @@ import {
 } from "./signature";
 
 const baseSignature: CloudinaryUploadSignature = {
-  allowed_formats: "jpg,png,webp,avif",
   api_key: "key",
   cloud_name: "demo",
   folder: "boms/products",
   max_bytes: 5 * 1024 * 1024,
+  params: { allowed_formats: "jpg,png,webp,avif", folder: "boms/products", timestamp: "1700000000", unique_filename: "true" },
   signature: "abc",
-  timestamp: 1_700_000_000,
-  unique_filename: "true",
   upload_url: "https://api.cloudinary.com/v1_1/demo/image/upload",
 };
 
@@ -27,7 +26,7 @@ describe("validateCloudinarySignatureEnv", () => {
     vi.stubEnv("NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME", "demo");
     vi.stubEnv("NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER", "boms/products");
 
-    expect(() => validateCloudinarySignatureEnv(baseSignature)).not.toThrow();
+    expect(() => validateCloudinarySignatureEnv(baseSignature, getCloudinaryUploadFolder())).not.toThrow();
   });
 
   it("rejects cloud name drift", () => {
@@ -42,9 +41,17 @@ describe("validateCloudinarySignatureEnv", () => {
     vi.stubEnv("NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME", "demo");
     vi.stubEnv("NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER", "boms/staging");
 
-    expect(() => validateCloudinarySignatureEnv(baseSignature)).toThrow(
+    expect(() => validateCloudinarySignatureEnv(baseSignature, getCloudinaryUploadFolder())).toThrow(
       CLOUDINARY_UPLOAD_COPY.folderMismatch,
     );
+  });
+
+  it("leaves a folder the API names to the API", () => {
+    vi.stubEnv("NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME", "demo");
+
+    expect(() =>
+      validateCloudinarySignatureEnv({ ...baseSignature, folder: "boms/references/7c1f" }),
+    ).not.toThrow();
   });
 
   it("rejects upload URLs outside the Cloudinary API", () => {

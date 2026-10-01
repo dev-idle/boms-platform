@@ -35,12 +35,14 @@ func CanAdvanceTicket(from, to TicketStatus) bool {
 	return (from == TicketQueued && to == TicketInProgress) || (from == TicketInProgress && to == TicketReady)
 }
 
-// TicketItem is one product a ticket makes, named as it was at checkout.
+// TicketItem is one product a ticket makes, named as it was at checkout, with
+// how its customer configured it (nil for a plain one).
 type TicketItem struct {
-	OrderItemID uuid.UUID
-	ProductID   uuid.UUID
-	Name        string
-	Quantity    int32
+	OrderItemID   uuid.UUID
+	ProductID     uuid.UUID
+	Name          string
+	Quantity      int32
+	Customization *Customization
 }
 
 // Ticket is the part of an order one station makes.

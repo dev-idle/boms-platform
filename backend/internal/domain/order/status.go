@@ -50,6 +50,16 @@ func SeenByStaff(status Status, history []StatusEvent) bool {
 	})
 }
 
+// PaidStatus is the status an order takes once it is paid: one holding a
+// custom item waits for staff to accept it (pending) before the bakery makes
+// it; any other goes straight to the bakery.
+func PaidStatus(hasCustomItems bool) Status {
+	if hasCustomItems {
+		return StatusPending
+	}
+	return StatusConfirmed
+}
+
 // CanStaffTransition reports whether staff may change order status at the counter.
 func CanStaffTransition(from, to Status) bool {
 	if from == to {

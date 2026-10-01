@@ -24,6 +24,8 @@ func TestNoticeFor(t *testing.T) {
 		want   Notice
 	}{
 		{"a_paid_order_is_received", func(o Order) domainevent.Event { return StatusChangedEvent(StatusAwaitingPayment, o) }, StatusConfirmed, NoticePlaced},
+		{"a_paid_custom_order_is_received_for_review", func(o Order) domainevent.Event { return StatusChangedEvent(StatusAwaitingPayment, o) }, StatusPending, NoticeRequested},
+		{"a_reviewed_order_is_accepted", func(o Order) domainevent.Event { return StatusChangedEvent(StatusPending, o) }, StatusConfirmed, NoticeAccepted},
 		{"ready_to_collect", func(o Order) domainevent.Event { return StatusChangedEvent(StatusInProduction, o) }, StatusReady, NoticeReady},
 		{"cancelled", func(o Order) domainevent.Event { return StatusChangedEvent(StatusConfirmed, o) }, StatusCancelled, NoticeCancelled},
 		{"expired_unpaid", func(o Order) domainevent.Event { return StatusChangedEvent(StatusAwaitingPayment, o) }, StatusExpired, NoticeExpired},
@@ -44,8 +46,8 @@ func TestNoticeFor(t *testing.T) {
 
 	t.Run("steps_inside_the_bakery_send_nothing", func(t *testing.T) {
 		t.Parallel()
-		for _, to := range []Status{StatusConfirmed, StatusInProduction, StatusFulfilled} {
-			_, _, ok := NoticeFor(StatusChangedEvent(StatusPending, order(to)))
+		for _, to := range []Status{StatusInProduction, StatusFulfilled} {
+			_, _, ok := NoticeFor(StatusChangedEvent(StatusConfirmed, order(to)))
 			assert.False(t, ok, to)
 		}
 	})

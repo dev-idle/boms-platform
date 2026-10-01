@@ -42,7 +42,7 @@ func newTicketFixture(t *testing.T) *ticketFixture {
 		checkoutFixture: f,
 		tickets:         tickets,
 		staff: usecase.NewStaffOrderUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil, postgresadapter.NewPaymentRepository(f.pool),
-			postgresadapter.NewDiscountCodeRepository(f.pool)),
+			postgresadapter.NewDiscountCodeRepository(f.pool), f.store, f.cartUC),
 		counter: usecase.NewStaffTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
 		kitchen: usecase.NewBakerTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
 	}

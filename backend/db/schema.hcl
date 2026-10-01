@@ -398,6 +398,12 @@ table "products" {
     null    = false
     default = 0
   }
+  // A customer configures it from its options before it goes in the cart.
+  column "is_customizable" {
+    type    = boolean
+    null    = false
+    default = false
+  }
   primary_key {
     columns = [column.id]
   }
@@ -468,6 +474,84 @@ table "product_images" {
   }
   check "product_images_sort_order_range" {
     expr = "sort_order >= 0 AND sort_order < 5"
+  }
+}
+
+enum "product_option_group" {
+  schema = schema.public
+  values = ["size", "flavor", "decoration"]
+}
+
+// A choice a customer makes on a customizable product, priced on top of it.
+// An option is retired with deleted_at, never removed: cart lines name it.
+table "product_options" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "product_id" {
+    type = uuid
+    null = false
+  }
+  column "option_group" {
+    type = enum.product_option_group
+    null = false
+  }
+  column "label" {
+    type = text
+    null = false
+  }
+  column "price_delta_cents" {
+    type    = bigint
+    null    = false
+    default = 0
+  }
+  column "sort_order" {
+    type    = smallint
+    null    = false
+    default = 0
+  }
+  column "is_active" {
+    type    = boolean
+    null    = false
+    default = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "deleted_at" {
+    type = timestamptz
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "product_options_product_id_fkey" {
+    columns     = [column.product_id]
+    ref_columns = [table.products.column.id]
+    on_delete   = CASCADE
+  }
+  index "product_options_product_idx" {
+    columns = [column.product_id, column.option_group, column.sort_order]
+    where   = "deleted_at IS NULL"
+  }
+  check "product_options_label_check" {
+    expr = "char_length(label) >= 1 AND char_length(label) <= 60"
+  }
+  check "product_options_price_delta_cents_check" {
+    expr = "price_delta_cents >= 0 AND price_delta_cents <= 100000"
+  }
+  check "product_options_sort_order_check" {
+    expr = "sort_order >= 0"
   }
 }
 
@@ -842,10 +926,11 @@ table "cart_items" {
   index "cart_items_cart_id_idx" {
     columns = [column.cart_id]
   }
-  index "cart_items_cart_product_idx" {
+  // One line per plain product; a configured product gets a line per configuration.
+  index "cart_items_cart_plain_product_idx" {
     unique  = true
     columns = [column.cart_id, column.product_id]
-    where   = "line_type = 'product'"
+    where   = "line_type = 'product' AND configuration = '{}'::jsonb"
   }
   index "cart_items_cart_combo_idx" {
     unique  = true

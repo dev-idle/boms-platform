@@ -4,7 +4,7 @@ const CLOUDINARY_DELIVERY_HOST = "res.cloudinary.com";
 
 const CLOUDINARY_DEFAULT_PRODUCT_UPLOAD_FOLDER = "boms/products";
 
-export const CLOUDINARY_MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Keep in sync with backend cloudinary.MaxProductImageBytes
+export const CLOUDINARY_MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Keep in sync with backend cloudinary.MaxImageBytes
 
 /** Keep in sync with backend domain/product.MaxImagesPerProduct */
 export const CLOUDINARY_MAX_PRODUCT_IMAGES = 5;

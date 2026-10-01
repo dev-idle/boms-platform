@@ -138,11 +138,16 @@ func (r *TicketRepository) ListByOrder(ctx context.Context, orderID uuid.UUID) (
 	}
 	items := make(map[uuid.UUID][]domainorder.TicketItem, len(rows))
 	for _, row := range itemRows {
+		customization, err := domainorder.ParseCustomization(row.Configuration)
+		if err != nil {
+			return nil, apperrors.Errorf("order item %s: %w", row.OrderItemID, err)
+		}
 		items[row.TicketID] = append(items[row.TicketID], domainorder.TicketItem{
-			OrderItemID: row.OrderItemID,
-			ProductID:   row.ProductID,
-			Name:        row.Name,
-			Quantity:    row.Quantity,
+			OrderItemID:   row.OrderItemID,
+			ProductID:     row.ProductID,
+			Name:          row.Name,
+			Quantity:      row.Quantity,
+			Customization: customization,
 		})
 	}
 	out := make([]domainorder.Ticket, 0, len(rows))

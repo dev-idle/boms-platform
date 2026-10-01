@@ -1,6 +1,9 @@
 "use client";
 
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
+import { isApiError } from "@/lib/errors";
 
 import { useAddCartItem } from "../hooks";
 
@@ -24,11 +27,10 @@ export function AddToCartButton({
       disabled={addCartItem.isPending}
       type="button"
       onClick={() => {
-        addCartItem.mutate({
-          product_id: productId,
-          combo_id: comboId,
-          quantity,
-        });
+        addCartItem.mutate(
+          { product_id: productId, combo_id: comboId, quantity },
+          { onError: (error) => toast.error(isApiError(error) ? error.message : "Failed to add to cart") },
+        );
       }}
     >
       {addCartItem.isPending ? "Adding…" : label}

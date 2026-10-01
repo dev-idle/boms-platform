@@ -1,10 +1,10 @@
 -- name: CreateProduct :one
-INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes;
+INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes, is_customizable)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable;
 
 -- name: GetProductByID :one
-SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 FROM products
 WHERE id = $1
   AND deleted_at IS NULL;
@@ -22,6 +22,7 @@ SELECT
     p.updated_at,
     p.deleted_at,
     p.lead_time_minutes,
+    p.is_customizable,
     c.name AS category_name
 FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -37,10 +38,11 @@ SET category_id  = $2,
     price_cents  = $6,
     is_active    = $7,
     lead_time_minutes = $8,
+    is_customizable = $9,
     updated_at   = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes;
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable;
 
 -- name: SoftDeleteProduct :execrows
 UPDATE products
@@ -62,6 +64,7 @@ SELECT
     page.updated_at,
     page.deleted_at,
     page.lead_time_minutes,
+    page.is_customizable,
     page.category_name,
     COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
 FROM (
@@ -77,6 +80,7 @@ FROM (
         p.updated_at,
         p.deleted_at,
         p.lead_time_minutes,
+        p.is_customizable,
         c.name AS category_name
     FROM products p
     INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -122,6 +126,7 @@ SELECT
     page.slug,
     page.description,
     page.price_cents,
+    page.is_customizable,
     page.category_name,
     page.category_slug,
     COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
@@ -136,6 +141,7 @@ FROM (
         p.slug,
         p.description,
         p.price_cents,
+        p.is_customizable,
         c.name AS category_name,
         c.slug AS category_slug,
         c.sort_order AS category_sort_order
@@ -186,6 +192,7 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
+    p.is_customizable,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -202,6 +209,7 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
+    p.is_customizable,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p

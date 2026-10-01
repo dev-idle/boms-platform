@@ -71,9 +71,6 @@ export function useAddCartItem() {
       queryClient.setQueryData(customerQueryKeys.cart, cart);
       toast.success("Added to cart");
     },
-    onError: (error) => {
-      toast.error(cartMutationErrorMessage(error, "Failed to add to cart"));
-    },
   });
 }
 

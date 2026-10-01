@@ -38,6 +38,7 @@ func run() error {
 	defer pool.Close()
 
 	report, err := bootstrap.SeedCatalog(ctx, cfg, bootstrap.CatalogSeedDeps{
+		Tx:         pool,
 		Categories: postgresrepo.NewCategoryRepository(pool),
 		Products:   postgresrepo.NewProductRepository(pool),
 		Combos:     postgresrepo.NewComboRepository(pool),

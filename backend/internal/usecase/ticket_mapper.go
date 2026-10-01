@@ -9,7 +9,11 @@ import (
 func mapTicketItemsToDTO(items []domainorder.TicketItem) []dto.TicketItemResponse {
 	out := make([]dto.TicketItemResponse, 0, len(items))
 	for _, item := range items {
-		out = append(out, dto.TicketItemResponse{Name: item.Name, Quantity: item.Quantity})
+		out = append(out, dto.TicketItemResponse{
+			Name:          item.Name,
+			Quantity:      item.Quantity,
+			Customization: mapCustomizationToDTO(item.Customization),
+		})
 	}
 	return out
 }

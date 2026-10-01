@@ -42,11 +42,10 @@ export async function uploadImageToCloudinary(
   const formData = new FormData();
   formData.append("file", file);
   formData.append("api_key", signature.api_key);
-  formData.append("timestamp", String(signature.timestamp));
   formData.append("signature", signature.signature);
-  formData.append("folder", signature.folder);
-  formData.append("allowed_formats", signature.allowed_formats);
-  formData.append("unique_filename", signature.unique_filename);
+  for (const [name, value] of Object.entries(signature.params)) {
+    formData.append(name, value);
+  }
 
   const response = await fetch(signature.upload_url, {
     method: "POST",

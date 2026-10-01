@@ -20,6 +20,7 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
+    p.is_customizable,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -30,14 +31,15 @@ WHERE p.id = $1
 `
 
 type CatalogGetProductByIDRow struct {
-	ID           uuid.UUID `json:"id"`
-	CategoryID   uuid.UUID `json:"categoryId"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	Description  *string   `json:"description"`
-	PriceCents   int64     `json:"priceCents"`
-	CategoryName string    `json:"categoryName"`
-	CategorySlug string    `json:"categorySlug"`
+	ID             uuid.UUID `json:"id"`
+	CategoryID     uuid.UUID `json:"categoryId"`
+	Name           string    `json:"name"`
+	Slug           string    `json:"slug"`
+	Description    *string   `json:"description"`
+	PriceCents     int64     `json:"priceCents"`
+	IsCustomizable bool      `json:"isCustomizable"`
+	CategoryName   string    `json:"categoryName"`
+	CategorySlug   string    `json:"categorySlug"`
 }
 
 // CatalogGetProductByID
@@ -49,6 +51,7 @@ type CatalogGetProductByIDRow struct {
 //	    p.slug,
 //	    p.description,
 //	    p.price_cents,
+//	    p.is_customizable,
 //	    c.name AS category_name,
 //	    c.slug AS category_slug
 //	FROM products p
@@ -66,6 +69,7 @@ func (q *Queries) CatalogGetProductByID(ctx context.Context, id uuid.UUID) (Cata
 		&i.Slug,
 		&i.Description,
 		&i.PriceCents,
+		&i.IsCustomizable,
 		&i.CategoryName,
 		&i.CategorySlug,
 	)
@@ -80,6 +84,7 @@ SELECT
     p.slug,
     p.description,
     p.price_cents,
+    p.is_customizable,
     c.name AS category_name,
     c.slug AS category_slug
 FROM products p
@@ -90,14 +95,15 @@ WHERE p.id = ANY($1::uuid[])
 `
 
 type CatalogGetProductsByIDsRow struct {
-	ID           uuid.UUID `json:"id"`
-	CategoryID   uuid.UUID `json:"categoryId"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	Description  *string   `json:"description"`
-	PriceCents   int64     `json:"priceCents"`
-	CategoryName string    `json:"categoryName"`
-	CategorySlug string    `json:"categorySlug"`
+	ID             uuid.UUID `json:"id"`
+	CategoryID     uuid.UUID `json:"categoryId"`
+	Name           string    `json:"name"`
+	Slug           string    `json:"slug"`
+	Description    *string   `json:"description"`
+	PriceCents     int64     `json:"priceCents"`
+	IsCustomizable bool      `json:"isCustomizable"`
+	CategoryName   string    `json:"categoryName"`
+	CategorySlug   string    `json:"categorySlug"`
 }
 
 // CatalogGetProductsByIDs
@@ -109,6 +115,7 @@ type CatalogGetProductsByIDsRow struct {
 //	    p.slug,
 //	    p.description,
 //	    p.price_cents,
+//	    p.is_customizable,
 //	    c.name AS category_name,
 //	    c.slug AS category_slug
 //	FROM products p
@@ -132,6 +139,7 @@ func (q *Queries) CatalogGetProductsByIDs(ctx context.Context, productIds []uuid
 			&i.Slug,
 			&i.Description,
 			&i.PriceCents,
+			&i.IsCustomizable,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -153,6 +161,7 @@ SELECT
     page.slug,
     page.description,
     page.price_cents,
+    page.is_customizable,
     page.category_name,
     page.category_slug,
     COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
@@ -164,6 +173,7 @@ FROM (
         p.slug,
         p.description,
         p.price_cents,
+        p.is_customizable,
         c.name AS category_name,
         c.slug AS category_slug,
         c.sort_order AS category_sort_order
@@ -199,15 +209,16 @@ type CatalogListProductsParams struct {
 }
 
 type CatalogListProductsRow struct {
-	ID           uuid.UUID `json:"id"`
-	CategoryID   uuid.UUID `json:"categoryId"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	Description  *string   `json:"description"`
-	PriceCents   int64     `json:"priceCents"`
-	CategoryName string    `json:"categoryName"`
-	CategorySlug string    `json:"categorySlug"`
-	ImageUrls    []string  `json:"imageUrls"`
+	ID             uuid.UUID `json:"id"`
+	CategoryID     uuid.UUID `json:"categoryId"`
+	Name           string    `json:"name"`
+	Slug           string    `json:"slug"`
+	Description    *string   `json:"description"`
+	PriceCents     int64     `json:"priceCents"`
+	IsCustomizable bool      `json:"isCustomizable"`
+	CategoryName   string    `json:"categoryName"`
+	CategorySlug   string    `json:"categorySlug"`
+	ImageUrls      []string  `json:"imageUrls"`
 }
 
 // The page is cut first and the gallery gathered after: fetching images
@@ -221,6 +232,7 @@ type CatalogListProductsRow struct {
 //	    page.slug,
 //	    page.description,
 //	    page.price_cents,
+//	    page.is_customizable,
 //	    page.category_name,
 //	    page.category_slug,
 //	    COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
@@ -232,6 +244,7 @@ type CatalogListProductsRow struct {
 //	        p.slug,
 //	        p.description,
 //	        p.price_cents,
+//	        p.is_customizable,
 //	        c.name AS category_name,
 //	        c.slug AS category_slug,
 //	        c.sort_order AS category_sort_order
@@ -278,6 +291,7 @@ func (q *Queries) CatalogListProducts(ctx context.Context, arg CatalogListProduc
 			&i.Slug,
 			&i.Description,
 			&i.PriceCents,
+			&i.IsCustomizable,
 			&i.CategoryName,
 			&i.CategorySlug,
 			&i.ImageUrls,
@@ -338,9 +352,9 @@ func (q *Queries) CatalogListProductsCount(ctx context.Context, arg CatalogListP
 }
 
 const createProduct = `-- name: CreateProduct :one
-INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes, is_customizable)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 `
 
 type CreateProductParams struct {
@@ -351,13 +365,14 @@ type CreateProductParams struct {
 	PriceCents      int64     `json:"priceCents"`
 	IsActive        bool      `json:"isActive"`
 	LeadTimeMinutes int32     `json:"leadTimeMinutes"`
+	IsCustomizable  bool      `json:"isCustomizable"`
 }
 
 // CreateProduct
 //
-//	INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes)
-//	VALUES ($1, $2, $3, $4, $5, $6, $7)
-//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+//	INSERT INTO products (category_id, name, slug, description, price_cents, is_active, lead_time_minutes, is_customizable)
+//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
 	row := q.db.QueryRow(ctx, createProduct,
 		arg.CategoryID,
@@ -367,6 +382,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		arg.PriceCents,
 		arg.IsActive,
 		arg.LeadTimeMinutes,
+		arg.IsCustomizable,
 	)
 	var i Product
 	err := row.Scan(
@@ -381,6 +397,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.LeadTimeMinutes,
+		&i.IsCustomizable,
 	)
 	return i, err
 }
@@ -435,7 +452,7 @@ func (q *Queries) GetFulfillmentOf(ctx context.Context, arg GetFulfillmentOfPara
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 FROM products
 WHERE id = $1
   AND deleted_at IS NULL
@@ -443,7 +460,7 @@ WHERE id = $1
 
 // GetProductByID
 //
-//	SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+//	SELECT id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 //	FROM products
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
@@ -462,6 +479,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.LeadTimeMinutes,
+		&i.IsCustomizable,
 	)
 	return i, err
 }
@@ -479,6 +497,7 @@ SELECT
     p.updated_at,
     p.deleted_at,
     p.lead_time_minutes,
+    p.is_customizable,
     c.name AS category_name
 FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -498,6 +517,7 @@ type ManagerGetProductByIDRow struct {
 	UpdatedAt       time.Time  `json:"updatedAt"`
 	DeletedAt       *time.Time `json:"deletedAt"`
 	LeadTimeMinutes int32      `json:"leadTimeMinutes"`
+	IsCustomizable  bool       `json:"isCustomizable"`
 	CategoryName    string     `json:"categoryName"`
 }
 
@@ -515,6 +535,7 @@ type ManagerGetProductByIDRow struct {
 //	    p.updated_at,
 //	    p.deleted_at,
 //	    p.lead_time_minutes,
+//	    p.is_customizable,
 //	    c.name AS category_name
 //	FROM products p
 //	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -535,6 +556,7 @@ func (q *Queries) ManagerGetProductByID(ctx context.Context, id uuid.UUID) (Mana
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.LeadTimeMinutes,
+		&i.IsCustomizable,
 		&i.CategoryName,
 	)
 	return i, err
@@ -553,6 +575,7 @@ SELECT
     page.updated_at,
     page.deleted_at,
     page.lead_time_minutes,
+    page.is_customizable,
     page.category_name,
     COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
 FROM (
@@ -568,6 +591,7 @@ FROM (
         p.updated_at,
         p.deleted_at,
         p.lead_time_minutes,
+        p.is_customizable,
         c.name AS category_name
     FROM products p
     INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -611,6 +635,7 @@ type ManagerListProductsRow struct {
 	UpdatedAt       time.Time  `json:"updatedAt"`
 	DeletedAt       *time.Time `json:"deletedAt"`
 	LeadTimeMinutes int32      `json:"leadTimeMinutes"`
+	IsCustomizable  bool       `json:"isCustomizable"`
 	CategoryName    string     `json:"categoryName"`
 	ImageUrls       []string   `json:"imageUrls"`
 }
@@ -629,6 +654,7 @@ type ManagerListProductsRow struct {
 //	    page.updated_at,
 //	    page.deleted_at,
 //	    page.lead_time_minutes,
+//	    page.is_customizable,
 //	    page.category_name,
 //	    COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
 //	FROM (
@@ -644,6 +670,7 @@ type ManagerListProductsRow struct {
 //	        p.updated_at,
 //	        p.deleted_at,
 //	        p.lead_time_minutes,
+//	        p.is_customizable,
 //	        c.name AS category_name
 //	    FROM products p
 //	    INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
@@ -692,6 +719,7 @@ func (q *Queries) ManagerListProducts(ctx context.Context, arg ManagerListProduc
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.LeadTimeMinutes,
+			&i.IsCustomizable,
 			&i.CategoryName,
 			&i.ImageUrls,
 		); err != nil {
@@ -778,10 +806,11 @@ SET category_id  = $2,
     price_cents  = $6,
     is_active    = $7,
     lead_time_minutes = $8,
+    is_customizable = $9,
     updated_at   = now()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 `
 
 type UpdateProductParams struct {
@@ -793,6 +822,7 @@ type UpdateProductParams struct {
 	PriceCents      int64     `json:"priceCents"`
 	IsActive        bool      `json:"isActive"`
 	LeadTimeMinutes int32     `json:"leadTimeMinutes"`
+	IsCustomizable  bool      `json:"isCustomizable"`
 }
 
 // UpdateProduct
@@ -805,10 +835,11 @@ type UpdateProductParams struct {
 //	    price_cents  = $6,
 //	    is_active    = $7,
 //	    lead_time_minutes = $8,
+//	    is_customizable = $9,
 //	    updated_at   = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL
-//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes
+//	RETURNING id, category_id, name, slug, description, price_cents, is_active, created_at, updated_at, deleted_at, lead_time_minutes, is_customizable
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error) {
 	row := q.db.QueryRow(ctx, updateProduct,
 		arg.ID,
@@ -819,6 +850,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		arg.PriceCents,
 		arg.IsActive,
 		arg.LeadTimeMinutes,
+		arg.IsCustomizable,
 	)
 	var i Product
 	err := row.Scan(
@@ -833,6 +865,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.LeadTimeMinutes,
+		&i.IsCustomizable,
 	)
 	return i, err
 }

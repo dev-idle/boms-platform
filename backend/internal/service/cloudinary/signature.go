@@ -9,12 +9,15 @@ import (
 )
 
 const (
-	// AllowedImageFormats is signed on every manager product upload.
+	// AllowedImageFormats is signed on every upload.
 	AllowedImageFormats = "jpg,png,webp,avif"
 	// UniqueFilenameTrue is the Cloudinary upload flag value for unique filenames.
 	UniqueFilenameTrue = "true"
-	// MaxProductImageBytes caps manager catalog image uploads (5 MiB).
-	MaxProductImageBytes int64 = 5 * 1024 * 1024
+	// MaxImageBytes caps an image upload (5 MiB); the browser checks it.
+	MaxImageBytes int64 = 5 * 1024 * 1024
+	// ReferenceImageTransformation scales a customer's reference photo down to
+	// fit 2000 px before Cloudinary stores it.
+	ReferenceImageTransformation = "c_limit,h_2000,w_2000"
 )
 
 // SignUpload builds a Cloudinary upload authentication signature.

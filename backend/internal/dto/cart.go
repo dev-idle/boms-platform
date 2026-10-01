@@ -4,6 +4,18 @@ type AddCartItemRequest struct {
 	ProductID *string `json:"product_id,omitempty" validate:"omitempty,uuid"`
 	ComboID   *string `json:"combo_id,omitempty" validate:"omitempty,uuid"`
 	Quantity  int32   `json:"quantity" validate:"required,min=1,max=99"`
+	// Customization configures a customizable product; every other line has none.
+	Customization *CartCustomizationRequest `json:"customization,omitempty"`
+}
+
+// CartCustomizationRequest is how a customer configures a customizable
+// product: one option from each group it offers, a message for the cake, and a
+// photo they uploaded for reference, with their word that they may share it.
+type CartCustomizationRequest struct {
+	OptionIDs                []string `json:"option_ids" validate:"max=3,dive,uuid"`
+	Message                  string   `json:"message" validate:"max=60"`
+	ReferenceImageURL        string   `json:"reference_image_url" validate:"omitempty,url,max=2048"`
+	ReferenceRightsConfirmed bool     `json:"reference_rights_confirmed"`
 }
 
 type UpdateCartItemRequest struct {
@@ -25,6 +37,8 @@ type CartItemResponse struct {
 	UnitPriceCents int64   `json:"unit_price_cents"`
 	LineTotalCents int64   `json:"line_total_cents"`
 	IsAvailable    bool    `json:"is_available"`
+	// Customization is how the line is configured, null for a plain line.
+	Customization *CustomizationResponse `json:"customization"`
 }
 
 type CartDiscountResponse struct {

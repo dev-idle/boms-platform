@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 )
@@ -70,23 +71,24 @@ func (q *Queries) CreateCart(ctx context.Context, userID uuid.UUID) (Cart, error
 }
 
 const createCartItem = `-- name: CreateCartItem :one
-INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity, configuration)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 `
 
 type CreateCartItemParams struct {
-	CartID    uuid.UUID  `json:"cartId"`
-	LineType  LineType   `json:"lineType"`
-	ProductID *uuid.UUID `json:"productId"`
-	ComboID   *uuid.UUID `json:"comboId"`
-	Quantity  int32      `json:"quantity"`
+	CartID        uuid.UUID       `json:"cartId"`
+	LineType      LineType        `json:"lineType"`
+	ProductID     *uuid.UUID      `json:"productId"`
+	ComboID       *uuid.UUID      `json:"comboId"`
+	Quantity      int32           `json:"quantity"`
+	Configuration json.RawMessage `json:"configuration"`
 }
 
 // CreateCartItem
 //
-//	INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity)
-//	VALUES ($1, $2, $3, $4, $5)
+//	INSERT INTO cart_items (cart_id, line_type, product_id, combo_id, quantity, configuration)
+//	VALUES ($1, $2, $3, $4, $5, $6)
 //	RETURNING id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 func (q *Queries) CreateCartItem(ctx context.Context, arg CreateCartItemParams) (CartItem, error) {
 	row := q.db.QueryRow(ctx, createCartItem,
@@ -95,6 +97,7 @@ func (q *Queries) CreateCartItem(ctx context.Context, arg CreateCartItemParams) 
 		arg.ProductID,
 		arg.ComboID,
 		arg.Quantity,
+		arg.Configuration,
 	)
 	var i CartItem
 	err := row.Scan(
@@ -266,7 +269,7 @@ func (q *Queries) GetCartItemByID(ctx context.Context, arg GetCartItemByIDParams
 const getCartItemByProduct = `-- name: GetCartItemByProduct :one
 SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 FROM cart_items
-WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2
+WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2 AND configuration = '{}'::jsonb
 `
 
 type GetCartItemByProductParams struct {
@@ -274,11 +277,11 @@ type GetCartItemByProductParams struct {
 	ProductID *uuid.UUID `json:"productId"`
 }
 
-// GetCartItemByProduct
+// A plain line only: a configured product gets a line of its own each time.
 //
 //	SELECT id, cart_id, line_type, product_id, combo_id, quantity, configuration, created_at, updated_at
 //	FROM cart_items
-//	WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2
+//	WHERE cart_id = $1 AND line_type = 'product' AND product_id = $2 AND configuration = '{}'::jsonb
 func (q *Queries) GetCartItemByProduct(ctx context.Context, arg GetCartItemByProductParams) (CartItem, error) {
 	row := q.db.QueryRow(ctx, getCartItemByProduct, arg.CartID, arg.ProductID)
 	var i CartItem

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { productOptionGroupSchema } from "@/lib/schemas/catalog";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 /** Order lifecycle — mirrors backend `domain/order.Status`; the single frontend source. */
@@ -16,6 +17,24 @@ export const orderStatusSchema = z.enum([
 ]);
 
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
+
+/**
+ * How a customer configured a custom item: the options chosen with what each
+ * added, a message for the cake and a reference photo (empty when none).
+ */
+export const customizationSchema = z.object({
+  options: z.array(
+    z.object({
+      group: productOptionGroupSchema,
+      label: z.string().min(1),
+      price_delta_cents: z.number().int().min(0),
+    }),
+  ),
+  message: z.string(),
+  reference_image_url: z.union([z.url({ protocol: /^https$/ }), z.literal("")]),
+});
+
+export type Customization = z.infer<typeof customizationSchema>;
 
 /** Where an order's payment stands — null on the order before the customer starts paying. */
 export const orderPaymentSchema = z.object({

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
 
@@ -92,6 +93,8 @@ type RateLimitRedisConfig struct {
 	SelfWriteWindow       time.Duration
 	ManagerMediaMax       int
 	ManagerMediaWindow    time.Duration
+	ReferenceUploadMax    int
+	ReferenceUploadWindow time.Duration
 	AuthUserMax           int
 	AuthUserWindow        time.Duration
 	DiscountAttemptMax    int
@@ -248,6 +251,8 @@ type CloudinaryConfig struct {
 	APIKey       string
 	APISecret    string
 	UploadFolder string
+	// ReferenceFolder holds customers' reference photos, one folder each.
+	ReferenceFolder string
 }
 
 // Enabled reports whether signed product uploads can be issued.
@@ -264,6 +269,16 @@ func (c CloudinaryConfig) ResolvedUploadFolder() string {
 		return "boms/products"
 	}
 	return strings.Trim(folder, "/")
+}
+
+// CustomerReferenceFolder is the folder a customer's reference photos go to: their
+// own, under the configured base.
+func (c CloudinaryConfig) CustomerReferenceFolder(userID uuid.UUID) string {
+	base := strings.Trim(strings.TrimSpace(c.ReferenceFolder), "/")
+	if base == "" {
+		base = "boms/references"
+	}
+	return base + "/" + userID.String()
 }
 
 // Load reads the API's configuration from environment variables (defaults set
@@ -387,6 +402,8 @@ func load() (*Config, error) {
 			SelfWriteWindow:            v.GetDuration("rate_limit.redis.self_write_window"),
 			ManagerMediaMax:            v.GetInt("rate_limit.redis.manager_media_max"),
 			ManagerMediaWindow:         v.GetDuration("rate_limit.redis.manager_media_window"),
+			ReferenceUploadMax:         v.GetInt("rate_limit.redis.reference_upload_max"),
+			ReferenceUploadWindow:      v.GetDuration("rate_limit.redis.reference_upload_window"),
 			AuthUserMax:                v.GetInt("rate_limit.redis.auth_user_max"),
 			AuthUserWindow:             v.GetDuration("rate_limit.redis.auth_user_window"),
 			DiscountAttemptMax:         v.GetInt("rate_limit.redis.discount_attempt_max"),
@@ -503,10 +520,11 @@ func load() (*Config, error) {
 			DevAdminExtras:   devAdminExtras,
 		},
 		Cloudinary: CloudinaryConfig{
-			CloudName:    v.GetString("cloudinary.cloud_name"),
-			APIKey:       v.GetString("cloudinary.api_key"),
-			APISecret:    v.GetString("cloudinary.api_secret"),
-			UploadFolder: v.GetString("cloudinary.upload_folder"),
+			CloudName:       v.GetString("cloudinary.cloud_name"),
+			APIKey:          v.GetString("cloudinary.api_key"),
+			APISecret:       v.GetString("cloudinary.api_secret"),
+			UploadFolder:    v.GetString("cloudinary.upload_folder"),
+			ReferenceFolder: v.GetString("cloudinary.reference_folder"),
 		},
 		PayPal: PayPalConfig{
 			Mode:         strings.TrimSpace(v.GetString("paypal.mode")),
@@ -557,6 +575,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.redis.self_write_window", time.Minute)
 	v.SetDefault("rate_limit.redis.manager_media_max", 20)
 	v.SetDefault("rate_limit.redis.manager_media_window", time.Minute)
+	v.SetDefault("rate_limit.redis.reference_upload_max", 10)
+	v.SetDefault("rate_limit.redis.reference_upload_window", 10*time.Minute)
 	v.SetDefault("rate_limit.redis.auth_user_max", 60)
 	v.SetDefault("rate_limit.redis.auth_user_window", time.Minute)
 	v.SetDefault("rate_limit.redis.discount_attempt_max", 10)
@@ -662,6 +682,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cloudinary.api_key", "")
 	v.SetDefault("cloudinary.api_secret", "")
 	v.SetDefault("cloudinary.upload_folder", "boms/products")
+	v.SetDefault("cloudinary.reference_folder", "boms/references")
 
 	v.SetDefault("paypal.mode", PayPalModeSandbox)
 	v.SetDefault("paypal.client_id", "")
@@ -1020,6 +1041,7 @@ func (c RateLimitRedisConfig) validate() error {
 		{"rate_limit.redis.order_write", c.OrderWriteMax, c.OrderWriteWindow},
 		{"rate_limit.redis.self_write", c.SelfWriteMax, c.SelfWriteWindow},
 		{"rate_limit.redis.manager_media", c.ManagerMediaMax, c.ManagerMediaWindow},
+		{"rate_limit.redis.reference_upload", c.ReferenceUploadMax, c.ReferenceUploadWindow},
 		{"rate_limit.redis.auth_user", c.AuthUserMax, c.AuthUserWindow},
 		{"rate_limit.redis.discount_attempt", c.DiscountAttemptMax, c.DiscountAttemptWindow},
 		{"rate_limit.redis.realtime_ticket", c.RealtimeTicketMax, c.RealtimeTicketWindow},

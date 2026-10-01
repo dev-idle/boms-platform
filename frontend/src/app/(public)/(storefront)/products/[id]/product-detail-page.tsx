@@ -19,7 +19,7 @@ export function ProductDetailPage({
       initialProduct={initialProduct}
       productId={productId}
       purchaseActions={
-        <ProductPurchaseActions productId={initialProduct.id} />
+        <ProductPurchaseActions product={initialProduct} />
       }
     />
   );

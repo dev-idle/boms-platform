@@ -209,6 +209,14 @@ FROM jsonb_to_recordset(sqlc.arg('items')::jsonb) AS item (
   line_total_cents bigint
 );
 
+-- name: OrderHasCustomItems :one
+-- Whether the order holds an item its customer configured, which staff review
+-- before the bakery makes it.
+SELECT EXISTS (
+  SELECT 1 FROM order_items
+  WHERE order_id = $1 AND configuration <> '{}'::jsonb
+)::bool AS has_custom_items;
+
 -- name: SumOrderItemQuantitiesByOrderIDs :many
 SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count
 FROM order_items

@@ -7,14 +7,17 @@ import (
 )
 
 // Notice is an email that tells a customer where their order stands. Only the
-// moments a customer acts on get one: the order was paid and received, it is
-// ready to collect, it was cancelled, it expired unpaid, or it was not
-// collected. Steps inside the bakery (confirmed, in production) are shown live
-// on the order page instead of filling an inbox.
+// moments a customer acts on get one: the order was paid and received (a
+// custom one received for review, then accepted), it is ready to collect, it
+// was cancelled, it expired unpaid, or it was not collected. Steps inside the
+// bakery (in production) are shown live on the order page instead of filling
+// an inbox.
 type Notice string
 
 const (
 	NoticePlaced    Notice = "placed"
+	NoticeRequested Notice = "requested"
+	NoticeAccepted  Notice = "accepted"
 	NoticeReady     Notice = "ready"
 	NoticeCancelled Notice = "cancelled"
 	NoticeExpired   Notice = "expired"
@@ -24,7 +27,7 @@ const (
 // Valid reports whether n is a notice this package defines.
 func (n Notice) Valid() bool {
 	switch n {
-	case NoticePlaced, NoticeReady, NoticeCancelled, NoticeExpired, NoticeNoShow:
+	case NoticePlaced, NoticeRequested, NoticeAccepted, NoticeReady, NoticeCancelled, NoticeExpired, NoticeNoShow:
 		return true
 	default:
 		return false
@@ -39,6 +42,12 @@ func NoticeFor(e domainevent.Event) (uuid.UUID, Notice, bool) {
 	case e.Topic == TopicOrderStatusChanged && Status(e.Data["from"]) == StatusAwaitingPayment &&
 		Status(e.Data["status"]) == StatusConfirmed:
 		notice = NoticePlaced
+	case e.Topic == TopicOrderStatusChanged && Status(e.Data["from"]) == StatusAwaitingPayment &&
+		Status(e.Data["status"]) == StatusPending:
+		notice = NoticeRequested
+	case e.Topic == TopicOrderStatusChanged && Status(e.Data["from"]) == StatusPending &&
+		Status(e.Data["status"]) == StatusConfirmed:
+		notice = NoticeAccepted
 	case e.Topic == TopicOrderStatusChanged && Status(e.Data["status"]) == StatusReady:
 		notice = NoticeReady
 	case e.Topic == TopicOrderStatusChanged && Status(e.Data["status"]) == StatusCancelled:
@@ -61,10 +70,10 @@ func NoticeFor(e domainevent.Event) (uuid.UUID, Notice, bool) {
 // in status current. Emails can go out late (a worker was down, the mail server
 // asked to retry); one that would contradict what the customer sees on the
 // order page is not sent: "ready" for an order already collected or
-// cancelled, "received" for one already cancelled.
+// cancelled, "received" or "accepted" for one already cancelled.
 func (n Notice) StillApplies(current Status) bool {
 	switch n {
-	case NoticePlaced:
+	case NoticePlaced, NoticeRequested, NoticeAccepted:
 		return current != StatusCancelled
 	case NoticeReady:
 		return current == StatusReady

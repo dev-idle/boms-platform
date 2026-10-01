@@ -171,7 +171,7 @@ func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, log *zap.Logger) 
 	outbox := postgresrepo.NewOutboxRepository(pool)
 	payments := usecase.NewPaymentUsecase(pool, orders, discounts, tickets, paymentRepo, paypal.New(cfg.PayPal), outbox,
 		cfg.App.SiteURL, log)
-	cartUC := usecase.NewCartUsecase(carts, postgresrepo.NewProductRepository(pool), postgresrepo.NewComboRepository(pool), discounts)
+	cartUC := usecase.NewCartUsecase(carts, postgresrepo.NewProductRepository(pool), postgresrepo.NewComboRepository(pool), discounts, cfg.Cloudinary)
 	pickups := usecase.NewOrderUsecase(postgresrepo.NewUserRepository(pool), orders, carts, discounts, cartUC, pool, outbox,
 		postgresrepo.NewStoreSettingsRepository(pool), tickets, paymentRepo, payments)
 	return []orderJob{

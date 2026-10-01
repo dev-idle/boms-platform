@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
-	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainstore "github.com/boms/backend/internal/domain/store"
@@ -282,9 +281,11 @@ func (r *OrderRepository) CreateItems(ctx context.Context, items []port.CreateOr
 		if err != nil {
 			return err
 		}
-		configuration := item.Configuration
-		if len(configuration) == 0 {
-			configuration = json.RawMessage(`{}`)
+		configuration := json.RawMessage(`{}`)
+		if item.Customization != nil {
+			if configuration, err = json.Marshal(item.Customization); err != nil {
+				return apperrors.Errorf("encode order item customization: %w", err)
+			}
 		}
 		records = append(records, orderItemRecord{
 			OrderID:        item.OrderID,
@@ -338,9 +339,21 @@ func (r *OrderRepository) ListItemsByOrderID(ctx context.Context, orderID uuid.U
 	}
 	out := make([]domainorder.Item, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, mapOrderItem(row))
+		item, err := mapOrderItem(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, item)
 	}
 	return out, nil
+}
+
+func (r *OrderRepository) HasCustomItems(ctx context.Context, orderID uuid.UUID) (bool, error) {
+	has, err := r.q(ctx).OrderHasCustomItems(ctx, orderID)
+	if err != nil {
+		return false, mapRepoError(err, "order has custom items")
+	}
+	return has, nil
 }
 
 func (r *OrderRepository) HasOpen(ctx context.Context, userID uuid.UUID) (bool, error) {
@@ -382,7 +395,11 @@ func (r *OrderRepository) ListItemsByOrderIDs(
 	}
 	out := make(map[uuid.UUID][]domainorder.Item, len(orderIDs))
 	for _, row := range rows {
-		out[row.OrderID] = append(out[row.OrderID], mapOrderItem(row))
+		item, err := mapOrderItem(row)
+		if err != nil {
+			return nil, err
+		}
+		out[row.OrderID] = append(out[row.OrderID], item)
 	}
 	return out, nil
 }
@@ -578,12 +595,16 @@ func mapTermsAcceptance(version *string, acceptedAt *time.Time) *domainpolicy.Ac
 	return &domainpolicy.Acceptance{Version: *version, AcceptedAt: *acceptedAt}
 }
 
-func mapOrderItem(row sqlcgen.OrderItem) domainorder.Item {
-	item := domainorder.Item{
+func mapOrderItem(row sqlcgen.OrderItem) (domainorder.Item, error) {
+	customization, err := domainorder.ParseCustomization(row.Configuration)
+	if err != nil {
+		return domainorder.Item{}, apperrors.Errorf("order item %s: %w", row.ID, err)
+	}
+	return domainorder.Item{
 		ID:             row.ID,
 		OrderID:        row.OrderID,
 		LineType:       mapLineTypeFromSQL(row.LineType),
-		Configuration:  row.Configuration,
+		Customization:  customization,
 		Name:           row.Name,
 		Slug:           row.Slug,
 		Quantity:       row.Quantity,
@@ -592,11 +613,7 @@ func mapOrderItem(row sqlcgen.OrderItem) domainorder.Item {
 		CreatedAt:      row.CreatedAt,
 		ProductID:      row.ProductID,
 		ComboID:        row.ComboID,
-	}
-	if len(item.Configuration) == 0 {
-		item.Configuration = domaincart.EmptyConfiguration
-	}
-	return item
+	}, nil
 }
 
 func mapOrderTypeToSQL(t domainorder.Type) (sqlcgen.OrderType, error) {

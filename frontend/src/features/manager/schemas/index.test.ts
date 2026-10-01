@@ -17,6 +17,8 @@ const product = {
   is_active: true,
   lead_time_minutes: 0,
   image_urls: [],
+  is_customizable: false,
+  options: [],
 };
 
 function priceIssue(value: unknown): string | undefined {
@@ -149,5 +151,20 @@ describe("fulfillment fields", () => {
     expect(productFormSchema.safeParse({ ...product, lead_time_minutes: 10080 }).success).toBe(true);
     expect(productFormSchema.safeParse({ ...product, lead_time_minutes: 10081 }).success).toBe(false);
     expect(productFormSchema.safeParse({ ...product, lead_time_minutes: -1 }).success).toBe(false);
+  });
+
+  it("checks each option a customizable product offers as the backend does", () => {
+    const option = { group: "size", label: "20 cm", price_delta_cents: 1000, is_active: true };
+    const custom = { ...product, is_customizable: true };
+    expect(productFormSchema.safeParse({ ...custom, options: [option] }).success).toBe(true);
+    for (const bad of [
+      { ...option, label: "  " },
+      { ...option, label: "a".repeat(61) },
+      { ...option, label: "20\ncm" },
+      { ...option, group: "shape" },
+      { ...option, price_delta_cents: 100_001 },
+    ]) {
+      expect(productFormSchema.safeParse({ ...custom, options: [bad] }).success).toBe(false);
+    }
   });
 });

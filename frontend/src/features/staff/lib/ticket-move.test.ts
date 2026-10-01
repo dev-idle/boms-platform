@@ -7,7 +7,7 @@ const ticket = (station: StaffOrderTicket["station"], status: StaffOrderTicket["
   id: `00000000-0000-4000-8000-00000000000${station === "kitchen" ? 1 : 2}`,
   station,
   status,
-  items: [{ name: "Croissant", quantity: 1 }],
+  items: [{ name: "Croissant", quantity: 1, customization: null }],
 });
 
 describe("otherStation", () => {

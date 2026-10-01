@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { CustomizationSummary } from "@/components/ui/customization-summary";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import {
   formatOrderStatusLabel,
@@ -33,7 +34,7 @@ function nextStatusActions(
   switch (status) {
     case "pending":
       return [
-        { label: "Confirm order", status: "confirmed" },
+        { label: "Accept order", status: "confirmed" },
         { label: "Cancel order", status: "cancelled" },
       ];
     case "confirmed":
@@ -121,13 +122,14 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
                 key={item.id}
                 className="dashboard-order-line-item"
               >
-                <div>
+                <div className="grid gap-1">
                   <p className="font-medium text-ink">
                     {item.quantity}× {item.name}
                   </p>
                   <p className="text-muted">
                     {formatPriceCents(item.unit_price_cents)} each
                   </p>
+                  {item.customization ? <CustomizationSummary customization={item.customization} /> : null}
                 </div>
                 <p className="font-medium text-tabular">
                   {formatPriceCents(item.line_total_cents)}

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { CustomizationSummary } from "@/components/ui/customization-summary";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import {
   formatOrderStatusLabel,
@@ -76,6 +77,13 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
 
         <OrderProgressStepper status={order.status} timeline={order.timeline} />
 
+        {order.status === "pending" ? (
+          <p className="text-caption">
+            We are checking your custom order and will email you once we accept it. If we cannot make it, you are
+            refunded in full.
+          </p>
+        ) : null}
+
         {order.status === "awaiting_payment" ? <OrderPayment confirming={paying.isPending} order={order} /> : null}
 
         {/* The API sends what the items need only while the order may still change. */}
@@ -114,13 +122,14 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
         <ul className="storefront-order-detail__items">
           {order.items.map((item) => (
             <li key={item.id} className="storefront-order-detail__item">
-              <div>
+              <div className="grid gap-1">
                 <p className="text-section-heading">
                   {item.quantity}× {item.name}
                 </p>
                 <p className="text-caption">
                   {formatPriceCents(item.unit_price_cents)} each
                 </p>
+                {item.customization ? <CustomizationSummary customization={item.customization} /> : null}
               </div>
               <p className="text-table-cell">
                 {formatPriceCents(item.line_total_cents)}

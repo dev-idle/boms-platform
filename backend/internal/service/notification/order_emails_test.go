@@ -36,12 +36,12 @@ func TestOrderEmails_Publish(t *testing.T) {
 
 	t.Run("queues_one_task_per_notice_keyed_by_its_event", func(t *testing.T) {
 		t.Parallel()
-		placed, paid, ready, confirmed := order(domainorder.StatusAwaitingPayment), order(domainorder.StatusConfirmed),
-			order(domainorder.StatusReady), order(domainorder.StatusConfirmed)
+		placed, paid, ready, started := order(domainorder.StatusAwaitingPayment), order(domainorder.StatusConfirmed),
+			order(domainorder.StatusReady), order(domainorder.StatusInProduction)
 		events := []domainevent.Event{
 			domainorder.CreatedEvent(placed),
 			domainorder.StatusChangedEvent(domainorder.StatusAwaitingPayment, paid),
-			domainorder.StatusChangedEvent(domainorder.StatusPending, confirmed),
+			domainorder.StatusChangedEvent(domainorder.StatusConfirmed, started),
 			domainorder.StatusChangedEvent(domainorder.StatusInProduction, ready),
 		}
 		queue := &recordingQueue{}
@@ -51,7 +51,7 @@ func TestOrderEmails_Publish(t *testing.T) {
 		assert.Equal(t, []port.OrderEmailTask{
 			{EventID: events[1].ID, OrderID: paid.ID, Notice: domainorder.NoticePlaced},
 			{EventID: events[3].ID, OrderID: ready.ID, Notice: domainorder.NoticeReady},
-		}, queue.tasks, "placing an order not paid yet, or confirming one, sends nothing")
+		}, queue.tasks, "placing an order not paid yet, or starting one, sends nothing")
 	})
 
 	t.Run("a_queue_failure_fails_the_delivery", func(t *testing.T) {

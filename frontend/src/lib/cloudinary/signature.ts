@@ -11,14 +11,14 @@ import { CLOUDINARY_UPLOAD_COPY } from "./messages";
 const CLOUDINARY_UPLOAD_API_HOST = "api.cloudinary.com";
 
 const cloudinaryUploadSignatureSchema = z.object({
-  allowed_formats: z.string().min(1),
   api_key: z.string().min(1),
   cloud_name: z.string().min(1),
+  /** Where the image lands; the URL Cloudinary returns must be in it. */
   folder: z.string().min(1),
   max_bytes: z.number().int().positive(),
+  /** The signed upload fields, sent with the file exactly as given. */
+  params: z.record(z.string(), z.string()),
   signature: z.string().min(1),
-  timestamp: z.number().int().positive(),
-  unique_filename: z.string().min(1),
   upload_url: z.url(),
 });
 
@@ -26,9 +26,14 @@ export type CloudinaryUploadSignature = z.infer<
   typeof cloudinaryUploadSignatureSchema
 >;
 
-/** Ensures API signature targets match NEXT_PUBLIC_CLOUDINARY_* (fail-fast on env drift). */
+/**
+ * Ensures API signature targets match NEXT_PUBLIC_CLOUDINARY_* (fail-fast on env
+ * drift). `folder` is the folder this environment expects, when the browser
+ * knows it: a customer's own reference folder is the API's to name.
+ */
 export function validateCloudinarySignatureEnv(
   signature: CloudinaryUploadSignature,
+  folder?: string,
 ): void {
   let parsedUploadUrl: URL;
   try {
@@ -51,12 +56,12 @@ export function validateCloudinarySignatureEnv(
     throw new Error(CLOUDINARY_UPLOAD_COPY.cloudNameMismatch);
   }
 
-  const folder = getCloudinaryUploadFolder();
-  if (signature.folder !== folder) {
+  if (folder !== undefined && signature.folder !== folder) {
     throw new Error(CLOUDINARY_UPLOAD_COPY.folderMismatch);
   }
 }
 
+/** Signs a manager's catalog image upload. */
 export async function fetchCloudinaryUploadSignature(): Promise<CloudinaryUploadSignature> {
   const signature = await browserRequest<CloudinaryUploadSignature>(
     "/api/v1/manager/media/cloudinary-signature",
@@ -65,6 +70,16 @@ export async function fetchCloudinaryUploadSignature(): Promise<CloudinaryUpload
       schema: cloudinaryUploadSignatureSchema,
     },
   );
+  validateCloudinarySignatureEnv(signature, getCloudinaryUploadFolder());
+  return signature;
+}
+
+/** Signs a customer's reference photo upload into a folder of their own. */
+export async function fetchReferenceUploadSignature(): Promise<CloudinaryUploadSignature> {
+  const signature = await browserRequest<CloudinaryUploadSignature>("/api/v1/cart/reference-upload", {
+    method: "GET",
+    schema: cloudinaryUploadSignatureSchema,
+  });
   validateCloudinarySignatureEnv(signature);
   return signature;
 }

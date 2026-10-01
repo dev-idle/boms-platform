@@ -198,26 +198,29 @@ func (q *Queries) GetOrderTicket(ctx context.Context, id uuid.UUID) (OrderTicket
 }
 
 const listOrderTicketItems = `-- name: ListOrderTicketItems :many
-SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity
+SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity, oi.configuration
 FROM order_ticket_items i
 INNER JOIN order_tickets t ON t.id = i.ticket_id
+INNER JOIN order_items oi ON oi.id = i.order_item_id
 WHERE t.order_id = $1
 ORDER BY i.created_at, i.name
 `
 
 type ListOrderTicketItemsRow struct {
-	TicketID    uuid.UUID `json:"ticketId"`
-	OrderItemID uuid.UUID `json:"orderItemId"`
-	ProductID   uuid.UUID `json:"productId"`
-	Name        string    `json:"name"`
-	Quantity    int32     `json:"quantity"`
+	TicketID      uuid.UUID       `json:"ticketId"`
+	OrderItemID   uuid.UUID       `json:"orderItemId"`
+	ProductID     uuid.UUID       `json:"productId"`
+	Name          string          `json:"name"`
+	Quantity      int32           `json:"quantity"`
+	Configuration json.RawMessage `json:"configuration"`
 }
 
-// The items of every ticket of an order.
+// The items of every ticket of an order, with what the customer configured.
 //
-//	SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity
+//	SELECT i.ticket_id, i.order_item_id, i.product_id, i.name, i.quantity, oi.configuration
 //	FROM order_ticket_items i
 //	INNER JOIN order_tickets t ON t.id = i.ticket_id
+//	INNER JOIN order_items oi ON oi.id = i.order_item_id
 //	WHERE t.order_id = $1
 //	ORDER BY i.created_at, i.name
 func (q *Queries) ListOrderTicketItems(ctx context.Context, orderID uuid.UUID) ([]ListOrderTicketItemsRow, error) {
@@ -235,6 +238,7 @@ func (q *Queries) ListOrderTicketItems(ctx context.Context, orderID uuid.UUID) (
 			&i.ProductID,
 			&i.Name,
 			&i.Quantity,
+			&i.Configuration,
 		); err != nil {
 			return nil, err
 		}
