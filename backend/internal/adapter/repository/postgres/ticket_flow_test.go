@@ -41,9 +41,10 @@ func newTicketFixture(t *testing.T) *ticketFixture {
 		clerk:           f.newWorker(t, domainuser.RoleStaff),
 		checkoutFixture: f,
 		tickets:         tickets,
-		staff:           usecase.NewStaffOrderUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil, postgresadapter.NewPaymentRepository(f.pool)),
-		counter:         usecase.NewStaffTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
-		kitchen:         usecase.NewBakerTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
+		staff: usecase.NewStaffOrderUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil, postgresadapter.NewPaymentRepository(f.pool),
+			postgresadapter.NewDiscountCodeRepository(f.pool)),
+		counter: usecase.NewStaffTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
+		kitchen: usecase.NewBakerTicketUsecase(f.orders, tickets, f.pool, f.outbox, nil, nil),
 	}
 }
 
@@ -232,7 +233,8 @@ func TestTickets_Integration(t *testing.T) {
 			"ticket.changed:in_progress", "order.status_changed:ready", "ticket.changed:ready",
 		}, f.orderNotices(t, order.ID), "every ticket move is announced with the order status it derives")
 
-		_, err = f.staff.PatchStatus(ctx, clerk, domainuser.RoleStaff, uuid.MustParse(order.ID), domainorder.StatusFulfilled)
+		_, err = f.staff.PatchStatus(ctx, clerk, domainuser.RoleStaff, uuid.MustParse(order.ID),
+			dto.PatchStaffOrderStatusRequest{Status: string(domainorder.StatusFulfilled)})
 		require.NoError(t, err)
 		_, err = f.counter.Move(ctx, clerk, domainuser.RoleStaff, pastry.ID, domaincategory.StationKitchen)
 		require.ErrorIs(t, err, domainorder.ErrTicketOrderNotActive, "a collected order has nothing left to move")
@@ -281,7 +283,8 @@ func TestTickets_Integration(t *testing.T) {
 		_, err := f.kitchen.PatchStatus(ctx, baker, domainuser.RoleBaker, cake.ID, domainorder.TicketInProgress)
 		require.NoError(t, err)
 
-		_, err = f.staff.PatchStatus(ctx, clerk, domainuser.RoleStaff, uuid.MustParse(order.ID), domainorder.StatusCancelled)
+		_, err = f.staff.PatchStatus(ctx, clerk, domainuser.RoleStaff, uuid.MustParse(order.ID),
+			dto.PatchStaffOrderStatusRequest{Status: string(domainorder.StatusCancelled), Reason: "Out of matcha"})
 
 		require.NoError(t, err)
 		tickets, err := f.tickets.ListByOrder(ctx, uuid.MustParse(order.ID))
@@ -308,7 +311,8 @@ func TestTickets_Integration(t *testing.T) {
 			start := make(chan struct{})
 			wg.Go(func() {
 				<-start
-				_, cancelErr = f.staff.PatchStatus(ctx, clerk, domainuser.RoleStaff, uuid.MustParse(order.ID), domainorder.StatusCancelled)
+				_, cancelErr = f.staff.PatchStatus(ctx, clerk, domainuser.RoleStaff, uuid.MustParse(order.ID),
+					dto.PatchStaffOrderStatusRequest{Status: string(domainorder.StatusCancelled), Reason: "Out of matcha"})
 			})
 			wg.Go(func() {
 				<-start

@@ -108,6 +108,7 @@ const (
 	OrderStatusCancelled       OrderStatus = "cancelled"
 	OrderStatusAwaitingPayment OrderStatus = "awaiting_payment"
 	OrderStatusExpired         OrderStatus = "expired"
+	OrderStatusNoShow          OrderStatus = "no_show"
 )
 
 func (e *OrderStatus) Scan(src interface{}) error {
@@ -235,6 +236,7 @@ const (
 	PaymentStatusPending  PaymentStatus = "pending"
 	PaymentStatusCaptured PaymentStatus = "captured"
 	PaymentStatusDenied   PaymentStatus = "denied"
+	PaymentStatusRefunded PaymentStatus = "refunded"
 )
 
 func (e *PaymentStatus) Scan(src interface{}) error {
@@ -575,18 +577,21 @@ type OrderTicket struct {
 }
 
 type Payment struct {
-	ID              uuid.UUID       `json:"id"`
-	OrderID         uuid.UUID       `json:"orderId"`
-	Provider        PaymentProvider `json:"provider"`
-	ProviderOrderID string          `json:"providerOrderId"`
-	ApproveUrl      string          `json:"approveUrl"`
-	Status          PaymentStatus   `json:"status"`
-	CaptureID       *string         `json:"captureId"`
-	AmountCents     int64           `json:"amountCents"`
-	Currency        string          `json:"currency"`
-	CapturedAt      *time.Time      `json:"capturedAt"`
-	CreatedAt       time.Time       `json:"createdAt"`
-	UpdatedAt       time.Time       `json:"updatedAt"`
+	ID                uuid.UUID       `json:"id"`
+	OrderID           uuid.UUID       `json:"orderId"`
+	Provider          PaymentProvider `json:"provider"`
+	ProviderOrderID   string          `json:"providerOrderId"`
+	ApproveUrl        string          `json:"approveUrl"`
+	Status            PaymentStatus   `json:"status"`
+	CaptureID         *string         `json:"captureId"`
+	AmountCents       int64           `json:"amountCents"`
+	Currency          string          `json:"currency"`
+	CapturedAt        *time.Time      `json:"capturedAt"`
+	CreatedAt         time.Time       `json:"createdAt"`
+	UpdatedAt         time.Time       `json:"updatedAt"`
+	RefundRequestedAt *time.Time      `json:"refundRequestedAt"`
+	RefundID          *string         `json:"refundId"`
+	RefundedAt        *time.Time      `json:"refundedAt"`
 }
 
 type Product struct {

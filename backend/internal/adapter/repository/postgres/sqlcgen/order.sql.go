@@ -397,13 +397,14 @@ func (q *Queries) CreateOrderItems(ctx context.Context, items json.RawMessage) (
 }
 
 const createOrderStatusEvent = `-- name: CreateOrderStatusEvent :exec
-INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role)
+INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role, reason)
 VALUES (
   $1,
   $2::order_status,
   $3::order_status,
   $4,
-  $5::user_role
+  $5::user_role,
+  $6
 )
 `
 
@@ -413,17 +414,19 @@ type CreateOrderStatusEventParams struct {
 	ToStatus   OrderStatus  `json:"toStatus"`
 	ActorID    *uuid.UUID   `json:"actorId"`
 	ActorRole  *UserRole    `json:"actorRole"`
+	Reason     *string      `json:"reason"`
 }
 
 // CreateOrderStatusEvent
 //
-//	INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role)
+//	INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role, reason)
 //	VALUES (
 //	  $1,
 //	  $2::order_status,
 //	  $3::order_status,
 //	  $4,
-//	  $5::user_role
+//	  $5::user_role,
+//	  $6
 //	)
 func (q *Queries) CreateOrderStatusEvent(ctx context.Context, arg CreateOrderStatusEventParams) error {
 	_, err := q.db.Exec(ctx, createOrderStatusEvent,
@@ -432,6 +435,7 @@ func (q *Queries) CreateOrderStatusEvent(ctx context.Context, arg CreateOrderSta
 		arg.ToStatus,
 		arg.ActorID,
 		arg.ActorRole,
+		arg.Reason,
 	)
 	return err
 }
@@ -677,7 +681,7 @@ SELECT EXISTS (
   SELECT 1
   FROM orders
   WHERE user_id = $1
-    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status)
+    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status, 'no_show'::order_status)
 ) AS open
 `
 
@@ -689,7 +693,7 @@ SELECT EXISTS (
 //	  SELECT 1
 //	  FROM orders
 //	  WHERE user_id = $1
-//	    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status)
+//	    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status, 'no_show'::order_status)
 //	) AS open
 func (q *Queries) HasOpenOrdersForUser(ctx context.Context, userID uuid.UUID) (bool, error) {
 	row := q.db.QueryRow(ctx, hasOpenOrdersForUser, userID)
@@ -723,6 +727,49 @@ type ListDueUnpaidOrdersParams struct {
 //	LIMIT $2::int
 func (q *Queries) ListDueUnpaidOrders(ctx context.Context, arg ListDueUnpaidOrdersParams) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listDueUnpaidOrders, arg.GraceSeconds, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMissedPickups = `-- name: ListMissedPickups :many
+SELECT id
+FROM orders
+WHERE status = 'ready'::order_status
+  AND pickup_at < $1
+ORDER BY pickup_at
+LIMIT $2::int
+`
+
+type ListMissedPickupsParams struct {
+	MissedBefore *time.Time `json:"missedBefore"`
+	MaxRows      int32      `json:"maxRows"`
+}
+
+// Orders ready and not collected whose pickup falls before missed_before, the
+// longest waiting first.
+//
+//	SELECT id
+//	FROM orders
+//	WHERE status = 'ready'::order_status
+//	  AND pickup_at < $1
+//	ORDER BY pickup_at
+//	LIMIT $2::int
+func (q *Queries) ListMissedPickups(ctx context.Context, arg ListMissedPickupsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listMissedPickups, arg.MissedBefore, arg.MaxRows)
 	if err != nil {
 		return nil, err
 	}
@@ -882,7 +929,7 @@ func (q *Queries) ListOrderItemsByOrderIDs(ctx context.Context, orderIds []uuid.
 }
 
 const listOrderStatusEvents = `-- name: ListOrderStatusEvents :many
-SELECT to_status, actor_role, created_at
+SELECT to_status, actor_role, reason, created_at
 FROM order_status_events
 WHERE order_id = $1
 ORDER BY created_at ASC, id ASC
@@ -891,12 +938,13 @@ ORDER BY created_at ASC, id ASC
 type ListOrderStatusEventsRow struct {
 	ToStatus  OrderStatus `json:"toStatus"`
 	ActorRole *UserRole   `json:"actorRole"`
+	Reason    *string     `json:"reason"`
 	CreatedAt time.Time   `json:"createdAt"`
 }
 
 // ListOrderStatusEvents
 //
-//	SELECT to_status, actor_role, created_at
+//	SELECT to_status, actor_role, reason, created_at
 //	FROM order_status_events
 //	WHERE order_id = $1
 //	ORDER BY created_at ASC, id ASC
@@ -909,7 +957,12 @@ func (q *Queries) ListOrderStatusEvents(ctx context.Context, orderID uuid.UUID) 
 	items := []ListOrderStatusEventsRow{}
 	for rows.Next() {
 		var i ListOrderStatusEventsRow
-		if err := rows.Scan(&i.ToStatus, &i.ActorRole, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ToStatus,
+			&i.ActorRole,
+			&i.Reason,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -921,7 +974,7 @@ func (q *Queries) ListOrderStatusEvents(ctx context.Context, orderID uuid.UUID) 
 }
 
 const listOrderStatusEventsByOrderIDs = `-- name: ListOrderStatusEventsByOrderIDs :many
-SELECT order_id, to_status, actor_role, created_at
+SELECT order_id, to_status, actor_role, reason, created_at
 FROM order_status_events
 WHERE order_id = ANY($1::uuid[])
 ORDER BY order_id, created_at ASC, id ASC
@@ -931,12 +984,13 @@ type ListOrderStatusEventsByOrderIDsRow struct {
 	OrderID   uuid.UUID   `json:"orderId"`
 	ToStatus  OrderStatus `json:"toStatus"`
 	ActorRole *UserRole   `json:"actorRole"`
+	Reason    *string     `json:"reason"`
 	CreatedAt time.Time   `json:"createdAt"`
 }
 
 // The history of many orders in one round trip, as a data export reads it.
 //
-//	SELECT order_id, to_status, actor_role, created_at
+//	SELECT order_id, to_status, actor_role, reason, created_at
 //	FROM order_status_events
 //	WHERE order_id = ANY($1::uuid[])
 //	ORDER BY order_id, created_at ASC, id ASC
@@ -953,6 +1007,7 @@ func (q *Queries) ListOrderStatusEventsByOrderIDs(ctx context.Context, orderIds 
 			&i.OrderID,
 			&i.ToStatus,
 			&i.ActorRole,
+			&i.Reason,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -1255,6 +1310,25 @@ func (q *Queries) ListOrdersByUserCount(ctx context.Context, arg ListOrdersByUse
 	return count, err
 }
 
+const lockCustomerBookings = `-- name: LockCustomerBookings :exec
+SELECT pg_advisory_xact_lock($1::int, hashtext($2::uuid::text))
+`
+
+type LockCustomerBookingsParams struct {
+	Namespace int32     `json:"namespace"`
+	UserID    uuid.UUID `json:"userId"`
+}
+
+// Holds the customer's bookings until the transaction ends, so two of their
+// checkouts or pickup moves cannot both take a day's last place. The key is the
+// customer, under a namespace of its own.
+//
+//	SELECT pg_advisory_xact_lock($1::int, hashtext($2::uuid::text))
+func (q *Queries) LockCustomerBookings(ctx context.Context, arg LockCustomerBookingsParams) error {
+	_, err := q.db.Exec(ctx, lockCustomerBookings, arg.Namespace, arg.UserID)
+	return err
+}
+
 const lockOrder = `-- name: LockOrder :one
 SELECT
   id,
@@ -1379,6 +1453,91 @@ func (q *Queries) NextOrderDayNumber(ctx context.Context, zone string) (OrderDay
 	return i, err
 }
 
+const rescheduleOrder = `-- name: RescheduleOrder :one
+UPDATE orders
+SET pickup_at  = $1,
+    order_type = $2,
+    updated_at = now()
+WHERE id = $3
+  AND status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status)
+RETURNING
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at
+`
+
+type RescheduleOrderParams struct {
+	PickupAt  *time.Time `json:"pickupAt"`
+	OrderType OrderType  `json:"orderType"`
+	ID        uuid.UUID  `json:"id"`
+}
+
+// Moves the pickup of an order not being made yet; its type follows the new
+// time.
+//
+//	UPDATE orders
+//	SET pickup_at  = $1,
+//	    order_type = $2,
+//	    updated_at = now()
+//	WHERE id = $3
+//	  AND status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status)
+//	RETURNING
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  pickup_at,
+//	  created_at,
+//	  updated_at,
+//	  code,
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at
+func (q *Queries) RescheduleOrder(ctx context.Context, arg RescheduleOrderParams) (Order, error) {
+	row := q.db.QueryRow(ctx, rescheduleOrder, arg.PickupAt, arg.OrderType, arg.ID)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.PickupAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
+	)
+	return i, err
+}
+
 const staffGetOrderByID = `-- name: StaffGetOrderByID :one
 SELECT
   o.id,
@@ -1495,6 +1654,10 @@ FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
 WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+  AND (o.status <> 'cancelled'::order_status OR EXISTS (
+    SELECT 1 FROM order_status_events e
+    WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
+  ))
   AND (
     $1::order_status IS NULL
     OR o.status = $1::order_status
@@ -1528,7 +1691,8 @@ type StaffListOrdersRow struct {
 	CustomerDisplayName   *string     `json:"customerDisplayName"`
 }
 
-// An order not paid, now or ever, is not the bakery's to see.
+// An order not paid, now or ever, is not the bakery's to see: one cancelled
+// is only if it was accepted before (domainorder.SeenByStaff).
 //
 //	SELECT
 //	  o.id,
@@ -1551,6 +1715,10 @@ type StaffListOrdersRow struct {
 //	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 //	LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
 //	WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+//	  AND (o.status <> 'cancelled'::order_status OR EXISTS (
+//	    SELECT 1 FROM order_status_events e
+//	    WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
+//	  ))
 //	  AND (
 //	    $1::order_status IS NULL
 //	    OR o.status = $1::order_status
@@ -1599,6 +1767,10 @@ SELECT COUNT(*)::bigint AS count
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+  AND (o.status <> 'cancelled'::order_status OR EXISTS (
+    SELECT 1 FROM order_status_events e
+    WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
+  ))
   AND (
     $1::order_status IS NULL
     OR o.status = $1::order_status
@@ -1611,6 +1783,10 @@ WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status
 //	FROM orders o
 //	INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 //	WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+//	  AND (o.status <> 'cancelled'::order_status OR EXISTS (
+//	    SELECT 1 FROM order_status_events e
+//	    WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
+//	  ))
 //	  AND (
 //	    $1::order_status IS NULL
 //	    OR o.status = $1::order_status

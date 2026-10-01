@@ -33,14 +33,17 @@ func NewStaffOrderUsecase(
 	audit *auditlogger.Service,
 	log *zap.Logger,
 	payments port.PaymentRepository,
+	discounts port.DiscountCodeRepository,
 ) *StaffOrderUsecase {
 	return &StaffOrderUsecase{
-		orders:      orders,
-		tickets:     tickets,
-		payments:    payments,
-		transitions: orderTransitions{tx: tx, orders: orders, tickets: tickets, events: events},
-		audit:       audit,
-		log:         log,
+		orders:   orders,
+		tickets:  tickets,
+		payments: payments,
+		transitions: orderTransitions{
+			tx: tx, orders: orders, tickets: tickets, discounts: discounts, payments: payments, events: events,
+		},
+		audit: audit,
+		log:   log,
 	}
 }
 
@@ -116,18 +119,33 @@ func (u *StaffOrderUsecase) Get(ctx context.Context, orderID uuid.UUID) (*dto.St
 	if err != nil {
 		return nil, err
 	}
+	if !domainorder.SeenByStaff(row.Order.Status, parts.timeline) {
+		return nil, domainorder.ErrNotFound
+	}
 	return toStaffOrderResponse(row, parts), nil
 }
 
+// PatchStatus moves an order at the counter. A cancellation states the
+// reason the customer is shown, and refunds a paid order in full.
 func (u *StaffOrderUsecase) PatchStatus(
 	ctx context.Context,
 	actorID uuid.UUID,
 	actorRole domainuser.Role,
 	orderID uuid.UUID,
-	targetStatus domainorder.Status,
+	req dto.PatchStaffOrderStatusRequest,
 ) (*dto.StaffOrderResponse, error) {
+	targetStatus := domainorder.Status(req.Status)
 	if !targetStatus.Valid() {
 		return nil, apperrors.ErrValidation.WithDetail("status", "invalid order status")
+	}
+	reason := ""
+	if targetStatus == domainorder.StatusCancelled {
+		var err error
+		if reason, err = domainorder.NewCancelReason(req.Reason); err != nil {
+			return nil, err
+		}
+	} else if req.Reason != "" {
+		return nil, apperrors.ErrValidation.WithDetail("reason", "only a cancellation takes a reason")
 	}
 
 	beforeRow, err := u.orders.StaffGetByID(ctx, orderID)
@@ -145,17 +163,19 @@ func (u *StaffOrderUsecase) PatchStatus(
 		OrderID:    orderID,
 		FromStatus: beforeRow.Order.Status,
 		ToStatus:   targetStatus,
-	})
+	}, reason)
 	if err != nil {
 		return nil, err
 	}
 
 	afterRow := *beforeRow
 	afterRow.Order = *updated
+	after := map[string]string{"status": string(updated.Status)}
+	if reason != "" {
+		after["reason"] = reason
+	}
 	recordAudit(u.log, u.audit, ctx, domainorder.AuditActionStaffUpdatedOrderStatus, actorID, actorRole, &orderID, "order",
-		map[string]string{"status": string(beforeRow.Order.Status)},
-		map[string]string{"status": string(updated.Status)},
-	)
+		map[string]string{"status": string(beforeRow.Order.Status)}, after)
 
 	parts, err := readOrderDetail(ctx, u.orders, u.tickets, u.payments, orderID)
 	if err != nil {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   activeOrderProgressIndex,
-  isOrderDropped,
+  isUncollected,
   isWithTheBakery,
   statusReachedAt,
 } from "./order-progress";
@@ -16,26 +16,28 @@ describe("order progress", () => {
     expect(activeOrderProgressIndex("fulfilled")).toBe(4);
   });
 
-  it("marks orders that will not be made separately", () => {
-    expect(activeOrderProgressIndex("cancelled")).toBe(-1);
-    expect(activeOrderProgressIndex("expired")).toBe(-1);
-    expect(isOrderDropped("cancelled")).toBe(true);
-    expect(isOrderDropped("expired")).toBe(true);
-    expect(isOrderDropped("awaiting_payment")).toBe(false);
+  it("marks orders that end without being collected separately", () => {
+    for (const status of ["cancelled", "expired", "no_show"] as const) {
+      expect(activeOrderProgressIndex(status)).toBe(-1);
+      expect(isUncollected(status)).toBe(true);
+    }
+    expect(isUncollected("awaiting_payment")).toBe(false);
+    expect(isUncollected("fulfilled")).toBe(false);
   });
 
   it("shows the stations only once the bakery has the order", () => {
     expect(isWithTheBakery("awaiting_payment")).toBe(false);
     expect(isWithTheBakery("cancelled")).toBe(false);
     expect(isWithTheBakery("expired")).toBe(false);
+    expect(isWithTheBakery("no_show")).toBe(false);
     expect(isWithTheBakery("confirmed")).toBe(true);
     expect(isWithTheBakery("ready")).toBe(true);
   });
 
   it("reads when each step was reached from the timeline", () => {
     const timeline = [
-      { status: "pending", at: "2026-09-28T03:00:00Z" },
-      { status: "confirmed", at: "2026-09-28T03:05:00Z" },
+      { status: "pending", reason: null, at: "2026-09-28T03:00:00Z" },
+      { status: "confirmed", reason: null, at: "2026-09-28T03:05:00Z" },
     ] as const;
 
     expect(statusReachedAt(timeline, "pending")).toBe("2026-09-28T03:00:00Z");

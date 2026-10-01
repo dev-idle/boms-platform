@@ -12,6 +12,7 @@ export const orderStatusSchema = z.enum([
   "cancelled",
   "fulfilled",
   "expired",
+  "no_show",
 ]);
 
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
@@ -19,8 +20,11 @@ export type OrderStatus = z.infer<typeof orderStatusSchema>;
 /** Where an order's payment stands — null on the order before the customer starts paying. */
 export const orderPaymentSchema = z.object({
   provider: z.enum(["paypal"]),
-  status: z.enum(["created", "pending", "captured", "denied"]),
+  status: z.enum(["created", "pending", "captured", "denied", "refunded"]),
   captured_at: apiDateTimeSchema.nullable(),
+  /** Set once the order is cancelled; `refunded_at` once the money went back. */
+  refund_requested_at: apiDateTimeSchema.nullable(),
+  refunded_at: apiDateTimeSchema.nullable(),
 });
 
 export type OrderPayment = z.infer<typeof orderPaymentSchema>;
@@ -41,6 +45,8 @@ export const orderCodeSchema = z.string().regex(/^CH-\d{6}-\d{3,}$/);
 /** A status an order entered and when — one entry of `timeline` on an order detail. */
 export const orderTimelineEntrySchema = z.object({
   status: orderStatusSchema,
+  /** Why the bakery cancelled the order; null for any other move. */
+  reason: z.string().nullable(),
   at: apiDateTimeSchema,
 });
 

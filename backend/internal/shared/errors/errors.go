@@ -118,6 +118,7 @@ var (
 	ErrInvalidLink                  = New(http.StatusUnprocessableEntity, "invalid_link", "This link has expired or has already been used")
 	ErrOrderNotPayable              = New(http.StatusUnprocessableEntity, "order_not_payable", "This order can no longer be paid")
 	ErrPaymentNotCompleted          = New(http.StatusUnprocessableEntity, "payment_not_completed", "The payment was not completed")
+	ErrPaymentUnderReview           = New(http.StatusConflict, "payment_under_review", "PayPal is still reviewing your payment; try again once it clears")
 	ErrWebhookInvalid               = New(http.StatusBadRequest, "webhook_invalid", "The notice is not signed by the payment provider")
 )
 

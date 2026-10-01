@@ -22,6 +22,7 @@ import (
 type transitionOrders struct {
 	port.OrderRepository
 	updated    *domainorder.Order
+	discount   *uuid.UUID
 	history    []port.AddOrderStatusEventParams
 	err        error
 	historyErr error
@@ -32,7 +33,9 @@ func (f *transitionOrders) UpdateStatus(_ context.Context, params port.UpdateOrd
 		return nil, f.err
 	}
 	pickupAt := time.Date(2026, 7, 10, 3, 0, 0, 0, time.UTC)
-	f.updated = &domainorder.Order{ID: params.OrderID, UserID: uuid.New(), Status: params.ToStatus, PickupAt: &pickupAt}
+	f.updated = &domainorder.Order{
+		ID: params.OrderID, UserID: uuid.New(), Status: params.ToStatus, PickupAt: &pickupAt, DiscountCodeID: f.discount,
+	}
 	return f.updated, nil
 }
 
@@ -54,6 +57,29 @@ type cancelledTickets struct {
 func (f *cancelledTickets) CancelForOrder(_ context.Context, orderID uuid.UUID) ([]domainorder.Ticket, error) {
 	f.orderID = orderID
 	return f.cancelled, nil
+}
+
+// refundRequests records the orders whose payment is asked back; any other
+// call panics.
+type refundRequests struct {
+	port.PaymentRepository
+	orders []uuid.UUID
+}
+
+func (f *refundRequests) RequestRefund(_ context.Context, orderID uuid.UUID) error {
+	f.orders = append(f.orders, orderID)
+	return nil
+}
+
+// codeReleases records the discount uses given back; any other call panics.
+type codeReleases struct {
+	port.DiscountCodeRepository
+	released []uuid.UUID
+}
+
+func (f *codeReleases) ReleaseUse(_ context.Context, id uuid.UUID) error {
+	f.released = append(f.released, id)
+	return nil
 }
 
 type recordingOutbox struct {
@@ -92,7 +118,7 @@ func TestOrderTransitions_Apply(t *testing.T) {
 		orders, outbox := &transitionOrders{}, &recordingOutbox{}
 		transitions := orderTransitions{tx: inlineTx{}, orders: orders, events: outbox}
 
-		got, err := transitions.apply(context.Background(), &port.OrderActor{ID: baker, Role: domainuser.RoleBaker}, params)
+		got, err := transitions.apply(context.Background(), &port.OrderActor{ID: baker, Role: domainuser.RoleBaker}, params, "")
 		require.NoError(t, err)
 		assert.Equal(t, domainorder.StatusInProduction, got.Status)
 		require.Len(t, outbox.added, 1)
@@ -108,19 +134,26 @@ func TestOrderTransitions_Apply(t *testing.T) {
 		}, orders.history[0], "the history names the move and who made it")
 	})
 
-	t.Run("a_cancelled_order_cancels_its_tickets_and_frees_its_slot", func(t *testing.T) {
+	t.Run("a_cancelled_order_cancels_its_tickets_frees_its_slot_and_is_refunded", func(t *testing.T) {
 		t.Parallel()
 		orderID := uuid.New()
 		kitchenTicket := domainorder.Ticket{ID: uuid.New(), OrderID: orderID, Station: domaincategory.StationKitchen, Status: domainorder.TicketCancelled}
-		orders, outbox := &transitionOrders{}, &recordingOutbox{}
+		code := uuid.New()
+		orders, outbox := &transitionOrders{discount: &code}, &recordingOutbox{}
 		tickets := &cancelledTickets{cancelled: []domainorder.Ticket{kitchenTicket}}
-		transitions := orderTransitions{tx: inlineTx{}, orders: orders, tickets: tickets, events: outbox}
+		refunds, codes := &refundRequests{}, &codeReleases{}
+		transitions := orderTransitions{
+			tx: inlineTx{}, orders: orders, tickets: tickets, discounts: codes, payments: refunds, events: outbox,
+		}
 
 		_, err := transitions.apply(context.Background(), &port.OrderActor{ID: uuid.New(), Role: domainuser.RoleStaff}, port.UpdateOrderStatusParams{
 			OrderID: orderID, FromStatus: domainorder.StatusInProduction, ToStatus: domainorder.StatusCancelled,
-		})
+		}, "The oven broke down")
 
 		require.NoError(t, err)
+		assert.Equal(t, "The oven broke down", orders.history[0].Reason, "the customer is told why")
+		assert.Equal(t, []uuid.UUID{orderID}, refunds.orders, "a paid order is refunded in full")
+		assert.Empty(t, codes.released, "a code used on an order already being made is not given back")
 		assert.Equal(t, orderID, tickets.orderID, "the tickets of the cancelled order")
 		require.Len(t, outbox.added, 3)
 		assert.Equal(t, domainorder.TopicOrderStatusChanged, outbox.added[0].Topic)
@@ -128,6 +161,39 @@ func TestOrderTransitions_Apply(t *testing.T) {
 		assert.Contains(t, outbox.added[1].Audience.Roles, domainuser.RoleBaker, "the kitchen hears its ticket is off")
 		assert.Equal(t, domainorder.TopicSlotsChanged, outbox.added[2].Topic)
 		assert.Equal(t, "2026-07-10", outbox.added[2].Data["date"], "the bakery day of the freed slot")
+	})
+
+	t.Run("an_order_dropped_before_it_was_made_gives_its_discount_use_back", func(t *testing.T) {
+		t.Parallel()
+		code := uuid.New()
+		refunds, codes := &refundRequests{}, &codeReleases{}
+		transitions := orderTransitions{
+			tx: inlineTx{}, orders: &transitionOrders{discount: &code}, tickets: &cancelledTickets{},
+			discounts: codes, payments: refunds, events: &recordingOutbox{},
+		}
+
+		_, err := transitions.apply(context.Background(), &port.OrderActor{ID: uuid.New(), Role: domainuser.RoleCustomer}, port.UpdateOrderStatusParams{
+			OrderID: uuid.New(), FromStatus: domainorder.StatusConfirmed, ToStatus: domainorder.StatusCancelled,
+		}, "")
+
+		require.NoError(t, err)
+		assert.Equal(t, []uuid.UUID{code}, codes.released)
+		assert.Len(t, refunds.orders, 1)
+	})
+
+	t.Run("a_missed_pickup_keeps_its_slot_payment_and_discount", func(t *testing.T) {
+		t.Parallel()
+		code := uuid.New()
+		outbox := &recordingOutbox{}
+		transitions := orderTransitions{tx: inlineTx{}, orders: &transitionOrders{discount: &code}, events: outbox}
+
+		_, err := transitions.apply(context.Background(), nil, port.UpdateOrderStatusParams{
+			OrderID: uuid.New(), FromStatus: domainorder.StatusReady, ToStatus: domainorder.StatusNoShow,
+		}, "")
+
+		require.NoError(t, err, "no ticket, discount or payment repository is touched")
+		require.Len(t, outbox.added, 1)
+		assert.Equal(t, "no_show", outbox.added[0].Data["status"])
 	})
 
 	t.Run("reports_a_move_someone_else_made_first_as_invalid", func(t *testing.T) {
@@ -139,7 +205,7 @@ func TestOrderTransitions_Apply(t *testing.T) {
 			events: outbox,
 		}
 
-		_, err := transitions.apply(context.Background(), &port.OrderActor{ID: baker, Role: domainuser.RoleBaker}, params)
+		_, err := transitions.apply(context.Background(), &port.OrderActor{ID: baker, Role: domainuser.RoleBaker}, params, "")
 		assert.ErrorIs(t, err, domainorder.ErrInvalidStatusTransition)
 		assert.Empty(t, outbox.added, "no event for a move that did not happen")
 	})
@@ -153,7 +219,7 @@ func TestOrderTransitions_Apply(t *testing.T) {
 			events: &recordingOutbox{err: errOutbox},
 		}
 
-		got, err := transitions.apply(context.Background(), &port.OrderActor{ID: baker, Role: domainuser.RoleBaker}, params)
+		got, err := transitions.apply(context.Background(), &port.OrderActor{ID: baker, Role: domainuser.RoleBaker}, params, "")
 		assert.ErrorIs(t, err, errOutbox, "the transaction rolls back rather than commit a silent change")
 		assert.Nil(t, got)
 	})
@@ -168,7 +234,7 @@ func TestOrderTransitions_Apply(t *testing.T) {
 			events: outbox,
 		}
 
-		got, err := transitions.apply(context.Background(), &port.OrderActor{ID: baker, Role: domainuser.RoleBaker}, params)
+		got, err := transitions.apply(context.Background(), &port.OrderActor{ID: baker, Role: domainuser.RoleBaker}, params, "")
 		assert.ErrorIs(t, err, errHistory)
 		assert.Nil(t, got)
 		assert.Empty(t, outbox.added, "no notice for a move the transaction rolls back")

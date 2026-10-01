@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"time"
+
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpayment "github.com/boms/backend/internal/domain/payment"
 	"github.com/boms/backend/internal/dto"
@@ -10,7 +12,25 @@ func mapOrderPaymentToDTO(p *domainpayment.Payment) *dto.OrderPaymentResponse {
 	if p == nil {
 		return nil
 	}
-	return &dto.OrderPaymentResponse{Provider: string(p.Provider), Status: string(p.Status), CapturedAt: p.CapturedAt}
+	return &dto.OrderPaymentResponse{
+		Provider:          string(p.Provider),
+		Status:            string(p.Status),
+		CapturedAt:        p.CapturedAt,
+		RefundRequestedAt: p.RefundRequestedAt,
+		RefundedAt:        p.RefundedAt,
+	}
+}
+
+func mapFulfillmentToDTO(items domainorder.Fulfillment) dto.FulfillmentResponse {
+	return dto.FulfillmentResponse{HasKitchenItems: items.Kitchen, LeadMinutes: int(items.Lead / time.Minute)}
+}
+
+// reasonToDTO is a cancellation's reason, null for any other move.
+func reasonToDTO(reason string) *string {
+	if reason == "" {
+		return nil
+	}
+	return &reason
 }
 
 func mapOrderItemsToDTO(items []domainorder.Item) []dto.OrderItemResponse {
@@ -41,7 +61,7 @@ func mapOrderItemsToDTO(items []domainorder.Item) []dto.OrderItemResponse {
 func mapOrderTimelineToDTO(events []domainorder.StatusEvent) []dto.OrderTimelineEntryResponse {
 	out := make([]dto.OrderTimelineEntryResponse, 0, len(events))
 	for _, event := range events {
-		out = append(out, dto.OrderTimelineEntryResponse{Status: string(event.To), At: event.At})
+		out = append(out, dto.OrderTimelineEntryResponse{Status: string(event.To), Reason: reasonToDTO(event.Reason), At: event.At})
 	}
 	return out
 }
@@ -49,7 +69,7 @@ func mapOrderTimelineToDTO(events []domainorder.StatusEvent) []dto.OrderTimeline
 func mapStaffOrderTimelineToDTO(events []domainorder.StatusEvent) []dto.StaffOrderTimelineEntryResponse {
 	out := make([]dto.StaffOrderTimelineEntryResponse, 0, len(events))
 	for _, event := range events {
-		entry := dto.StaffOrderTimelineEntryResponse{Status: string(event.To), At: event.At}
+		entry := dto.StaffOrderTimelineEntryResponse{Status: string(event.To), Reason: reasonToDTO(event.Reason), At: event.At}
 		if event.ActorRole != "" {
 			role := string(event.ActorRole)
 			entry.ActorRole = &role

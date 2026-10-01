@@ -27,6 +27,7 @@ func TestNoticeFor(t *testing.T) {
 		{"ready_to_collect", func(o Order) domainevent.Event { return StatusChangedEvent(StatusInProduction, o) }, StatusReady, NoticeReady},
 		{"cancelled", func(o Order) domainevent.Event { return StatusChangedEvent(StatusConfirmed, o) }, StatusCancelled, NoticeCancelled},
 		{"expired_unpaid", func(o Order) domainevent.Event { return StatusChangedEvent(StatusAwaitingPayment, o) }, StatusExpired, NoticeExpired},
+		{"not_collected", func(o Order) domainevent.Event { return StatusChangedEvent(StatusReady, o) }, StatusNoShow, NoticeNoShow},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -88,6 +89,8 @@ func TestNotice_StillApplies(t *testing.T) {
 		{NoticeCancelled, StatusCancelled, true},
 		{NoticeExpired, StatusExpired, true},
 		{NoticeExpired, StatusConfirmed, false},
+		{NoticeNoShow, StatusNoShow, true},
+		{NoticeNoShow, StatusFulfilled, false},
 		{Notice("shipped"), StatusReady, false},
 	}
 	for _, tc := range cases {

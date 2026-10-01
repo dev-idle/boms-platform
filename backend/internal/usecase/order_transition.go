@@ -12,27 +12,30 @@ import (
 
 // orderTransitions commits order status moves for the roles that make them.
 type orderTransitions struct {
-	tx      port.TxManager
-	orders  port.OrderRepository
-	tickets port.TicketRepository
-	events  port.EventOutbox
+	tx        port.TxManager
+	orders    port.OrderRepository
+	tickets   port.TicketRepository
+	discounts port.DiscountCodeRepository
+	payments  port.PaymentRepository
+	events    port.EventOutbox
 }
 
 // apply moves an order to params.ToStatus and records the move in the order's
 // history and the change notice in the same transaction, so both exist exactly
 // when the move committed. An order that will not be made, cancelled or
 // expired, cancels its tickets and frees its pickup slot; the stations and open
-// checkouts are told. A concurrent move that
-// got there first leaves no row in FromStatus and is reported as an invalid
-// transition.
+// checkouts are told. reason is why the bakery cancels, empty for any other
+// move. A concurrent move that got there first leaves no row in FromStatus and
+// is reported as an invalid transition.
 func (t orderTransitions) apply(
 	ctx context.Context,
 	actor *port.OrderActor,
 	params port.UpdateOrderStatusParams,
+	reason string,
 ) (*domainorder.Order, error) {
 	var updated *domainorder.Order
 	err := t.tx.WithTx(ctx, func(txCtx context.Context) (err error) {
-		updated, err = t.applyInTx(txCtx, actor, params)
+		updated, err = t.applyInTx(txCtx, actor, params, reason)
 		return err
 	})
 	if err != nil {
@@ -47,6 +50,7 @@ func (t orderTransitions) applyInTx(
 	txCtx context.Context,
 	actor *port.OrderActor,
 	params port.UpdateOrderStatusParams,
+	reason string,
 ) (*domainorder.Order, error) {
 	order, err := t.orders.UpdateStatus(txCtx, params)
 	if err != nil {
@@ -55,18 +59,26 @@ func (t orderTransitions) applyInTx(
 		}
 		return nil, err
 	}
-	return order, t.recordInTx(txCtx, actor, params.FromStatus, *order)
+	return order, t.recordInTx(txCtx, actor, params.FromStatus, *order, reason)
 }
 
 // recordInTx follows an order's move from one status to its current one, in the
 // transaction that made it: its history, the change notice and, for an order
-// that will not be made, its tickets and pickup slot. actor is nil for the system.
-func (t orderTransitions) recordInTx(txCtx context.Context, actor *port.OrderActor, from domainorder.Status, order domainorder.Order) error {
+// that will not be made, its tickets, pickup slot, discount use and payment.
+// actor is nil for the system.
+func (t orderTransitions) recordInTx(
+	txCtx context.Context,
+	actor *port.OrderActor,
+	from domainorder.Status,
+	order domainorder.Order,
+	reason string,
+) error {
 	if err := t.orders.AddStatusEvent(txCtx, port.AddOrderStatusEventParams{
 		OrderID: order.ID,
 		From:    &from,
 		To:      order.Status,
 		Actor:   actor,
+		Reason:  reason,
 	}); err != nil {
 		return err
 	}
@@ -78,6 +90,19 @@ func (t orderTransitions) recordInTx(txCtx context.Context, actor *port.OrderAct
 	}
 	if err := t.cancelTickets(txCtx, order, from); err != nil {
 		return err
+	}
+	// An order dropped before it was made gives its discount use back.
+	if from.BeforeProduction() && order.DiscountCodeID != nil {
+		if err := t.discounts.ReleaseUse(txCtx, *order.DiscountCodeID); err != nil {
+			return err
+		}
+	}
+	// A cancelled order is refunded in full; the worker makes the refund, so a
+	// provider that is down never undoes the cancellation.
+	if order.Status == domainorder.StatusCancelled {
+		if err := t.payments.RequestRefund(txCtx, order.ID); err != nil {
+			return err
+		}
 	}
 	if order.PickupAt != nil {
 		return t.events.Add(txCtx, domainorder.SlotsChangedEvent(domainstore.DayOf(*order.PickupAt)))

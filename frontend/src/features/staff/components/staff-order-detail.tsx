@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import {
   formatOrderStatusLabel,
@@ -20,6 +19,7 @@ import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-
 
 import { usePatchStaffOrderStatus, useStaffOrder } from "../hooks";
 import type { PatchStaffOrderStatusInput } from "../schemas";
+import { StaffCancelOrderDialog } from "./staff-cancel-order-dialog";
 import { StaffOrderHistory } from "./staff-order-history";
 import { StaffOrderTickets } from "./staff-order-tickets";
 
@@ -157,6 +157,12 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
                 <span>{formatDateTime(order.payment.captured_at)}</span>
               </div>
             ) : null}
+            {order.payment?.refund_requested_at ? (
+              <div className="dashboard-order-totals-row text-muted">
+                <span>Refund to PayPal</span>
+                <span>{order.payment.refunded_at ? formatDateTime(order.payment.refunded_at) : "In progress"}</span>
+              </div>
+            ) : null}
           </div>
 
           {actions.length > 0 ? (
@@ -189,21 +195,11 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
 
       <StaffOrderHistory timeline={order.timeline} />
 
-      <ConfirmDialog
-        cancelLabel="Keep order"
-        confirmLabel="Cancel order"
-        confirmVariant="destructive"
-        description="The customer will see this order as cancelled."
-        isPending={patchStatus.isPending}
-        onCancel={() => setCancelOpen(false)}
-        onConfirm={() =>
-          patchStatus.mutate(
-            { status: "cancelled" },
-            { onSuccess: () => setCancelOpen(false) },
-          )
-        }
+      <StaffCancelOrderDialog
         open={cancelOpen}
-        title="Cancel this order?"
+        orderId={order.id}
+        refundCents={order.payment?.captured_at ? order.total_cents : null}
+        onClose={() => setCancelOpen(false)}
       />
     </div>
   );

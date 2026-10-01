@@ -94,7 +94,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 	store := postgresadapter.NewStoreSettingsRepository(pool)
 
 	cartUC := usecase.NewCartUsecase(carts, products, combos, discounts)
-	orderUC := usecase.NewOrderUsecase(users, orders, carts, discounts, cartUC, pool, outbox, store, postgresadapter.NewTicketRepository(pool), postgresadapter.NewPaymentRepository(pool))
+	orderUC := usecase.NewOrderUsecase(users, orders, carts, discounts, cartUC, pool, outbox, store, postgresadapter.NewTicketRepository(pool), postgresadapter.NewPaymentRepository(pool), nil)
 
 	customer, err := users.Create(ctx, port.CreateUserParams{
 		Email: "outbox-checkout@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,

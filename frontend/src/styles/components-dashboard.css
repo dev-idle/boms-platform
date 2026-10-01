@@ -1490,11 +1490,14 @@
     justify-content: flex-end;
   }
 
+  /* Every status stays a filter: past the toolbar's width the chips wrap. */
   .db-table-filters .db-filter-group {
     align-items: stretch;
     align-self: center;
     flex: none;
+    flex-wrap: wrap;
     margin-left: auto;
+    max-width: 100%;
     min-height: var(--db-filter-chip-height);
     padding: 0;
   }

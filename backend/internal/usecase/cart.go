@@ -323,10 +323,7 @@ func (u *CartUsecase) buildCartResponseFromLines(
 		DiscountCents: totals.DiscountCents,
 		TotalCents:    totals.TotalCents,
 		CheckoutReady: totals.CheckoutReady,
-		Fulfillment: dto.CartFulfillmentResponse{
-			HasKitchenItems: items.Kitchen,
-			LeadMinutes:     int(items.Lead / time.Minute),
-		},
+		Fulfillment:   mapFulfillmentToDTO(items),
 	}
 	for _, line := range lines {
 		item := dto.CartItemResponse{

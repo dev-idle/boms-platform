@@ -15,6 +15,7 @@ import {
   ticketStatusSchema,
 } from "@/lib/schemas/ticket";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
+import { reasonSchema } from "@/lib/validation/reason";
 
 const staffOrderCustomerSchema = z.object({
   user_id: z.uuid(),
@@ -84,9 +85,16 @@ export const staffOrdersListFilterSchema = z.object({
   status: orderStatusSchema.optional(),
 });
 
-export const patchStaffOrderStatusInputSchema = z.object({
-  status: z.enum(["confirmed", "fulfilled", "cancelled"]),
-});
+/** The reason the customer reads when the bakery cancels their order. */
+const cancelReasonSchema = reasonSchema("Tell the customer why");
+
+/** A move at the counter; a cancellation states the reason the customer reads. */
+export const patchStaffOrderStatusInputSchema = z.union([
+  z.object({ status: z.enum(["confirmed", "fulfilled"]) }),
+  z.object({ status: z.literal("cancelled"), reason: cancelReasonSchema }),
+]);
+
+export const cancelOrderFormSchema = z.object({ reason: cancelReasonSchema });
 
 /** Hand a ticket nobody started to the other station. */
 export const moveTicketInputSchema = z.object({
@@ -97,6 +105,7 @@ type StaffOrderSummary = z.infer<typeof staffOrderSummarySchema>;
 export type StaffOrder = z.infer<typeof staffOrderSchema>;
 export type StaffOrdersListFilterInput = z.infer<typeof staffOrdersListFilterSchema>;
 export type PatchStaffOrderStatusInput = z.infer<typeof patchStaffOrderStatusInputSchema>;
+export type CancelOrderFormInput = z.input<typeof cancelOrderFormSchema>;
 export type StaffOrderTicket = z.infer<typeof staffOrderTicketSchema>;
 export type MoveTicketInput = z.infer<typeof moveTicketInputSchema>;
 

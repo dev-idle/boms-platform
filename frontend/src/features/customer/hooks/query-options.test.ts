@@ -18,6 +18,15 @@ describe("customerQueryKeysForEvent", () => {
     ).toEqual([customerQueryKeys.ordersRoot, customerQueryKeys.order("o-1")]);
   });
 
+  it("refreshes the order list and that order when its pickup moves or its refund arrives", () => {
+    for (const type of ["order.rescheduled", "order.refunded"]) {
+      expect(customerQueryKeysForEvent({ type, data: { order_id: "o-1" } })).toEqual([
+        customerQueryKeys.ordersRoot,
+        customerQueryKeys.order("o-1"),
+      ]);
+    }
+  });
+
   it("refreshes every open order when the event names none", () => {
     expect(
       customerQueryKeysForEvent({ type: "order.status_changed", data: {} }),

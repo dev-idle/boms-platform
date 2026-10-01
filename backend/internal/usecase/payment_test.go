@@ -96,6 +96,7 @@ func (cancelledTicketsNone) CancelForOrder(context.Context, uuid.UUID) ([]domain
 type memoryPayments struct {
 	payment   *domainpayment.Payment
 	createErr error
+	refundID  *string
 }
 
 func (f *memoryPayments) Create(_ context.Context, params port.CreatePaymentParams) (*domainpayment.Payment, error) {
@@ -141,6 +142,30 @@ func (f *memoryPayments) RecordCapture(_ context.Context, _ uuid.UUID, capture d
 	return f.payment, nil
 }
 
+func (f *memoryPayments) RequestRefund(context.Context, uuid.UUID) error {
+	if f.payment != nil && f.payment.Status == domainpayment.StatusCaptured && f.payment.RefundRequestedAt == nil {
+		now := time.Now()
+		f.payment.RefundRequestedAt = &now
+	}
+	return nil
+}
+
+func (f *memoryPayments) ListRefundsDue(context.Context, int32) ([]domainpayment.Payment, error) {
+	if f.payment == nil || f.payment.Status != domainpayment.StatusCaptured || f.payment.RefundRequestedAt == nil {
+		return nil, nil
+	}
+	return []domainpayment.Payment{*f.payment}, nil
+}
+
+func (f *memoryPayments) RecordRefund(_ context.Context, _ uuid.UUID, refundID *string) (*domainpayment.Payment, error) {
+	if f.payment.Status != domainpayment.StatusCaptured || f.payment.RefundRequestedAt == nil {
+		return nil, apperrors.ErrNotFound
+	}
+	now := time.Now()
+	f.payment.Status, f.payment.RefundedAt, f.refundID = domainpayment.StatusRefunded, &now, refundID
+	return f.payment, nil
+}
+
 // fakeGateway answers as told and counts the provider orders it made and
 // the captures it was asked for.
 type fakeGateway struct {
@@ -152,6 +177,13 @@ type fakeGateway struct {
 	lookupErr  error
 	event      port.PaymentWebhookEvent
 	webhookErr error
+	refunds    int
+	refundErr  error
+}
+
+func (g *fakeGateway) Refund(context.Context, string) (string, error) {
+	g.refunds++
+	return "REFUND-1", g.refundErr
 }
 
 func (g *fakeGateway) Lookup(context.Context, string) (*domainpayment.Capture, error) {
@@ -397,7 +429,7 @@ func TestPaymentUsecase_Capture(t *testing.T) {
 		assert.Equal(t, domainorder.StatusAwaitingPayment, f.orders.order.Status)
 	})
 
-	t.Run("money_taken_for_an_order_closed_meanwhile_stays_on_record", func(t *testing.T) {
+	t.Run("money_taken_for_an_order_closed_meanwhile_goes_back", func(t *testing.T) {
 		t.Parallel()
 		f := newPaymentFixture()
 		f.started(domainpayment.StatusCreated)
@@ -408,7 +440,8 @@ func TestPaymentUsecase_Capture(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, domainpayment.StatusCaptured, status)
-		assert.Equal(t, domainpayment.StatusCaptured, f.payments.payment.Status, "the money can be returned")
+		assert.Equal(t, domainpayment.StatusCaptured, f.payments.payment.Status)
+		assert.NotNil(t, f.payments.payment.RefundRequestedAt, "the worker refunds it")
 		assert.Equal(t, domainorder.StatusCancelled, f.orders.order.Status)
 	})
 
@@ -596,5 +629,66 @@ func TestPaymentUsecase_ExpireOverdue(t *testing.T) {
 		require.ErrorIs(t, err, down)
 		assert.Zero(t, expired)
 		assert.Equal(t, domainorder.StatusAwaitingPayment, f.orders.order.Status, "an order is not expired unasked")
+	})
+}
+
+func TestPaymentUsecase_RefundDue(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	cancelledPaid := func() *paymentFixture {
+		f := newPaymentFixture()
+		f.started(domainpayment.StatusCaptured)
+		captureID := "CAPTURE-1"
+		requested := time.Now()
+		f.payments.payment.CaptureID, f.payments.payment.RefundRequestedAt = &captureID, &requested
+		f.orders.order.Status = domainorder.StatusCancelled
+		return f
+	}
+
+	t.Run("refunds_a_cancelled_order_and_tells_its_customer", func(t *testing.T) {
+		t.Parallel()
+		f := cancelledPaid()
+
+		refunded, err := f.usecase().RefundDue(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, refunded)
+		assert.Equal(t, domainpayment.StatusRefunded, f.payments.payment.Status)
+		require.NotNil(t, f.payments.refundID)
+		assert.Equal(t, "REFUND-1", *f.payments.refundID)
+		require.Len(t, f.outbox.events, 1)
+		assert.Equal(t, domainorder.TopicOrderRefunded, f.outbox.events[0].Topic)
+
+		again, err := f.usecase().RefundDue(ctx)
+		require.NoError(t, err)
+		assert.Zero(t, again, "a refund is made once")
+		assert.Equal(t, 1, f.gateway.refunds)
+	})
+
+	t.Run("a_capture_refunded_from_paypal_is_recorded_as_refunded", func(t *testing.T) {
+		t.Parallel()
+		f := cancelledPaid()
+		f.gateway.refundErr = domainpayment.ErrAlreadyRefunded
+
+		refunded, err := f.usecase().RefundDue(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, refunded)
+		assert.Equal(t, domainpayment.StatusRefunded, f.payments.payment.Status)
+		assert.Nil(t, f.payments.refundID, "PayPal names no refund of ours")
+	})
+
+	t.Run("a_refund_paypal_refuses_is_reported_and_asked_again", func(t *testing.T) {
+		t.Parallel()
+		f := cancelledPaid()
+		down := errors.New("paypal unavailable")
+		f.gateway.refundErr = down
+
+		refunded, err := f.usecase().RefundDue(ctx)
+
+		require.ErrorIs(t, err, down)
+		assert.Zero(t, refunded)
+		assert.Equal(t, domainpayment.StatusCaptured, f.payments.payment.Status, "still due")
+		assert.Empty(t, f.outbox.events)
 	})
 }

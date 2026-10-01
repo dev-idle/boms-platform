@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpayment "github.com/boms/backend/internal/domain/payment"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/usecase"
@@ -24,6 +26,24 @@ type emailOrders struct {
 	getErr   error
 	items    []domainorder.Item
 	itemsErr error
+	history  []domainorder.StatusEvent
+}
+
+func (o *emailOrders) ListStatusEvents(context.Context, uuid.UUID) ([]domainorder.StatusEvent, error) {
+	return o.history, nil
+}
+
+// emailPayments holds the order's payment, if it has one; any other call panics.
+type emailPayments struct {
+	port.PaymentRepository
+	payment *domainpayment.Payment
+}
+
+func (p *emailPayments) GetByOrderID(context.Context, uuid.UUID) (*domainpayment.Payment, error) {
+	if p.payment == nil {
+		return nil, apperrors.ErrNotFound
+	}
+	return p.payment, nil
 }
 
 func (o *emailOrders) StaffGetByID(context.Context, uuid.UUID) (*port.StaffOrderListRow, error) {
@@ -59,6 +79,7 @@ func (m *fakeMailer) Send(_ context.Context, e port.Email) error {
 
 type emailFixture struct {
 	orders   *emailOrders
+	payments *emailPayments
 	composer *fakeComposer
 	mailer   *fakeMailer
 	task     port.OrderEmailTask
@@ -77,6 +98,7 @@ func newEmailFixture(notice domainorder.Notice, status domainorder.Status) *emai
 			},
 			items: []domainorder.Item{{Name: "Almond Croissant", Quantity: 2, LineTotalCents: 900}},
 		},
+		payments: &emailPayments{},
 		composer: &fakeComposer{},
 		mailer:   &fakeMailer{},
 		task:     port.OrderEmailTask{EventID: uuid.New(), OrderID: orderID, Notice: notice},
@@ -84,12 +106,41 @@ func newEmailFixture(notice domainorder.Notice, status domainorder.Status) *emai
 }
 
 func (f *emailFixture) send() error {
-	uc := usecase.NewOrderEmailUsecase(f.orders, f.composer, f.mailer, zap.NewNop())
+	uc := usecase.NewOrderEmailUsecase(f.orders, f.payments, f.composer, f.mailer, zap.NewNop())
 	return uc.Send(context.Background(), f.task)
 }
 
 func TestOrderEmailUsecase_Send(t *testing.T) {
 	t.Parallel()
+
+	t.Run("a_cancellation_names_the_bakerys_reason_and_the_refund", func(t *testing.T) {
+		t.Parallel()
+		f := newEmailFixture(domainorder.NoticeCancelled, domainorder.StatusCancelled)
+		f.orders.history = []domainorder.StatusEvent{
+			{To: domainorder.StatusConfirmed},
+			{To: domainorder.StatusCancelled, Reason: "The oven broke down"},
+		}
+		requested := time.Now()
+		f.payments.payment = &domainpayment.Payment{AmountCents: 3940, RefundRequestedAt: &requested}
+
+		require.NoError(t, f.send())
+
+		require.Len(t, f.composer.got, 1)
+		assert.Equal(t, "The oven broke down", f.composer.got[0].Reason)
+		assert.Equal(t, int64(3940), f.composer.got[0].RefundCents)
+	})
+
+	t.Run("an_order_never_paid_is_cancelled_with_nothing_to_return", func(t *testing.T) {
+		t.Parallel()
+		f := newEmailFixture(domainorder.NoticeCancelled, domainorder.StatusCancelled)
+		f.orders.history = []domainorder.StatusEvent{{To: domainorder.StatusCancelled}}
+
+		require.NoError(t, f.send())
+
+		require.Len(t, f.composer.got, 1)
+		assert.Empty(t, f.composer.got[0].Reason, "the customer cancelled it")
+		assert.Zero(t, f.composer.got[0].RefundCents)
+	})
 
 	t.Run("mails_the_customer_the_notice", func(t *testing.T) {
 		t.Parallel()

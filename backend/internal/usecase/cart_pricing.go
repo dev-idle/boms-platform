@@ -130,6 +130,22 @@ func (u *CartUsecase) fulfillmentOf(ctx context.Context, lines []pricedCartLine)
 	return u.products.FulfillmentOf(ctx, productIDs, comboIDs)
 }
 
+// orderFulfillment is what an order's items ask of the bakery now, read the
+// way a cart's are: moving its pickup follows the checkout rules.
+func (u *CartUsecase) orderFulfillment(ctx context.Context, items []domainorder.Item) (domainorder.Fulfillment, error) {
+	productIDs := make([]uuid.UUID, 0, len(items))
+	comboIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.ProductID != nil {
+			productIDs = append(productIDs, *item.ProductID)
+		}
+		if item.ComboID != nil {
+			comboIDs = append(comboIDs, *item.ComboID)
+		}
+	}
+	return u.products.FulfillmentOf(ctx, productIDs, comboIDs)
+}
+
 func summarizeCart(lines []pricedCartLine, discount *domaindiscount.Code, now time.Time) cartTotals {
 	var subtotal int64
 	checkoutReady := false

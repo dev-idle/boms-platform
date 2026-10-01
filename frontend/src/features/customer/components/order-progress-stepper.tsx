@@ -6,7 +6,7 @@ import { formatDateTime } from "@/lib/validation/datetime";
 
 import {
   activeOrderProgressIndex,
-  isOrderDropped,
+  isUncollected,
   ORDER_PROGRESS_STEPS,
   statusReachedAt,
 } from "../lib/order-progress";
@@ -16,21 +16,34 @@ type OrderProgressStepperProps = {
   timeline: ReadonlyArray<OrderTimelineEntry>;
 };
 
+/** How an order that was not collected ended. */
+function endedNote(status: OrderStatus): string {
+  switch (status) {
+    case "expired":
+      return "This order was not paid in time and expired";
+    case "no_show":
+      return "This order was not collected by closing time";
+    default:
+      return "This order was cancelled";
+  }
+}
+
 export function OrderProgressStepper({ status, timeline }: OrderProgressStepperProps) {
   const activeIndex = activeOrderProgressIndex(status);
 
-  if (isOrderDropped(status)) {
-    const droppedAt = statusReachedAt(timeline, status);
+  if (isUncollected(status)) {
+    const endedAt = statusReachedAt(timeline, status);
+    const reason = timeline.find((entry) => entry.status === "cancelled")?.reason;
     return (
       <p className="storefront-order-progress storefront-order-progress--cancelled text-caption">
-        {status === "expired" ? "This order was not paid in time and expired" : "This order was cancelled"}
-        {droppedAt ? (
+        {endedNote(status)}
+        {endedAt ? (
           <>
             {" on "}
-            <time dateTime={droppedAt}>{formatDateTime(droppedAt)}</time>
+            <time dateTime={endedAt}>{formatDateTime(endedAt)}</time>
           </>
         ) : null}
-        .
+        .{reason ? ` Our reason: ${reason}` : null}
       </p>
     );
   }

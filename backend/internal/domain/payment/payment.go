@@ -28,6 +28,8 @@ const (
 	StatusCaptured Status = "captured"
 	// StatusDenied: the provider refused a pending capture; the buyer may pay again.
 	StatusDenied Status = "denied"
+	// StatusRefunded: the money taken went back to the buyer.
+	StatusRefunded Status = "refunded"
 )
 
 // Payment is an order's one payment.
@@ -43,7 +45,11 @@ type Payment struct {
 	AmountCents int64
 	Currency    string
 	CapturedAt  *time.Time
-	CreatedAt   time.Time
+	// RefundRequestedAt is when the order's cancellation asked for the money
+	// back; RefundedAt when the provider took the refund.
+	RefundRequestedAt *time.Time
+	RefundedAt        *time.Time
+	CreatedAt         time.Time
 }
 
 // Capture is the provider's answer to taking the money.
@@ -64,4 +70,10 @@ var (
 	ErrAmountMismatch = errors.New("captured amount does not match the order")
 	// ErrWebhookInvalid refuses a webhook delivery the provider did not sign.
 	ErrWebhookInvalid = errors.New("webhook signature invalid")
+	// ErrAlreadyRefunded: the provider already returned the whole capture, as
+	// when the bakery refunded it from the provider's own dashboard.
+	ErrAlreadyRefunded = errors.New("capture already refunded")
+	// ErrUnderReview: the provider holds the capture for review, so whether
+	// the money is taken is not known yet.
+	ErrUnderReview = errors.New("payment under review")
 )

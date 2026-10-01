@@ -1,7 +1,6 @@
 package v1
 
 import (
-	domainorder "github.com/boms/backend/internal/domain/order"
 	"github.com/boms/backend/internal/dto"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
@@ -66,13 +65,7 @@ func (h *StaffOrderHandler) PatchStatus(c fiber.Ctx) error {
 	if err := sharevalidator.Struct(&req); err != nil {
 		return writeValidationError(c, err)
 	}
-	out, err := h.usecase.PatchStatus(
-		c.Context(),
-		actorID,
-		actorRole,
-		orderID,
-		domainorder.Status(req.Status),
-	)
+	out, err := h.usecase.PatchStatus(c.Context(), actorID, actorRole, orderID, req)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

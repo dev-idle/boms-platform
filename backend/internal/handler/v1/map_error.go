@@ -106,6 +106,8 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrOrderNotPayable)
 	case errors.Is(err, domainpayment.ErrNotCompleted):
 		return writeAppError(c, apperrors.ErrPaymentNotCompleted)
+	case errors.Is(err, domainpayment.ErrUnderReview):
+		return writeAppError(c, apperrors.ErrPaymentUnderReview)
 	case errors.Is(err, domainpayment.ErrWebhookInvalid):
 		return writeAppError(c, apperrors.ErrWebhookInvalid)
 	case errors.Is(err, domaincart.ErrItemNotFound):
@@ -170,6 +172,8 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("payment_hold_minutes", "must be 5 to 120 minutes"))
 	case errors.Is(err, domainstore.ErrClosedDateOutOfRange):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("date", "must be between today and a year ahead"))
+	case errors.Is(err, domainorder.ErrInvalidCancelReason):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 plain characters"))
 	case errors.Is(err, domainstore.ErrInvalidClosedDateReason):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 characters"))
 	case errors.Is(err, domainstore.ErrClosedDateExists):

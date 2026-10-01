@@ -99,19 +99,51 @@ func (r *PaymentRepository) RecordCapture(ctx context.Context, paymentID uuid.UU
 	return mapPayment(row), nil
 }
 
+// RequestRefund implements port.PaymentRepository.
+func (r *PaymentRepository) RequestRefund(ctx context.Context, orderID uuid.UUID) error {
+	if err := r.q(ctx).RequestPaymentRefund(ctx, orderID); err != nil {
+		return mapRepoError(err, "request payment refund")
+	}
+	return nil
+}
+
+// ListRefundsDue implements port.PaymentRepository.
+func (r *PaymentRepository) ListRefundsDue(ctx context.Context, limit int32) ([]domainpayment.Payment, error) {
+	rows, err := r.q(ctx).ListRefundsDue(ctx, limit)
+	if err != nil {
+		return nil, mapRepoError(err, "list refunds due")
+	}
+	out := make([]domainpayment.Payment, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, *mapPayment(row))
+	}
+	return out, nil
+}
+
+// RecordRefund implements port.PaymentRepository.
+func (r *PaymentRepository) RecordRefund(ctx context.Context, paymentID uuid.UUID, refundID *string) (*domainpayment.Payment, error) {
+	row, err := r.q(ctx).RecordPaymentRefund(ctx, sqlcgen.RecordPaymentRefundParams{ID: paymentID, RefundID: refundID})
+	if err != nil {
+		return nil, mapRepoError(err, "record payment refund")
+	}
+	return mapPayment(row), nil
+}
+
 func mapPayment(row sqlcgen.Payment) *domainpayment.Payment {
 	return &domainpayment.Payment{
-		ID:              row.ID,
-		OrderID:         row.OrderID,
-		Provider:        domainpayment.Provider(row.Provider),
-		ProviderOrderID: row.ProviderOrderID,
-		ApproveURL:      row.ApproveUrl,
-		Status:          domainpayment.Status(row.Status),
-		CaptureID:       row.CaptureID,
-		AmountCents:     row.AmountCents,
-		Currency:        row.Currency,
-		CapturedAt:      row.CapturedAt,
-		CreatedAt:       row.CreatedAt,
+		ID:                row.ID,
+		OrderID:           row.OrderID,
+		Provider:          domainpayment.Provider(row.Provider),
+		ProviderOrderID:   row.ProviderOrderID,
+		ApproveURL:        row.ApproveUrl,
+		Status:            domainpayment.Status(row.Status),
+		CaptureID:         row.CaptureID,
+		AmountCents:       row.AmountCents,
+		Currency:          row.Currency,
+		CapturedAt:        row.CapturedAt,
+		RefundRequestedAt: row.RefundRequestedAt,
+		RefundedAt:        row.RefundedAt,
+		CreatedAt:         row.CreatedAt,
 	}
 }
 

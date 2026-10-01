@@ -30,6 +30,10 @@ type OrderEmail struct {
 	CustomerName string
 	Order        domainorder.Order
 	Items        []domainorder.Item
+	// Reason is why the bakery cancelled the order, empty when the customer
+	// did; RefundCents what goes back to them. Both only for a cancellation.
+	Reason      string
+	RefundCents int64
 }
 
 // OrderEmailComposer writes the email for an order notice.

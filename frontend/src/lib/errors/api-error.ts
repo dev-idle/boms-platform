@@ -51,6 +51,7 @@ export const ApiErrorCode = {
   DiscountUsedUp: "discount_used_up",
   OrderNotPayable: "order_not_payable",
   PaymentNotCompleted: "payment_not_completed",
+  PaymentUnderReview: "payment_under_review",
   WebhookInvalid: "webhook_invalid",
   InvalidTicketTransition: "invalid_ticket_transition",
   TicketOrderNotActive: "ticket_order_not_active",

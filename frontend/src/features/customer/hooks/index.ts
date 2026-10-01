@@ -17,6 +17,7 @@ import { ApiErrorCode, isApiError } from "@/lib/errors";
 import {
   addCartItem,
   applyCartDiscount,
+  cancelOrder,
   capturePayment,
   checkoutCart,
   getCart,
@@ -26,6 +27,7 @@ import {
   listOrders,
   removeCartDiscount,
   removeCartItem,
+  rescheduleOrder,
   startPayment,
   updateCartItem,
 } from "../api";
@@ -35,6 +37,7 @@ import {
   type ApplyCartDiscountInput,
   type CheckoutInput,
   type OrdersListFilterInput,
+  type RescheduleInput,
   type UpdateCartItemInput,
 } from "../schemas";
 import { customerQueryKeys } from "./query-options";
@@ -287,5 +290,61 @@ export function usePickupRules() {
   return useQuery({
     queryKey: customerQueryKeys.pickupRules,
     queryFn: getPickupRules,
+  });
+}
+
+/** Cancels the customer's order while the bakery has not started it. */
+export function useCancelOrder(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => cancelOrder(orderId),
+    onSuccess: (order) => {
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
+      toast.success(
+        order.payment?.refund_requested_at
+          ? "Order cancelled. Your refund is on its way to PayPal."
+          : "Order cancelled.",
+      );
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.code === ApiErrorCode.InvalidOrderStatusTransition) {
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
+        toast.error("We have started making this order, so it can no longer be cancelled.");
+        return;
+      }
+      if (isApiError(error) && error.code === ApiErrorCode.PaymentUnderReview) {
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
+        toast.error("PayPal is still reviewing your payment. You can cancel once it clears.");
+        return;
+      }
+      toast.error("We could not cancel the order. Please try again.");
+    },
+  });
+}
+
+/** Moves the pickup of the customer's order while the bakery has not started it. */
+export function useRescheduleOrder(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: RescheduleInput) => rescheduleOrder(orderId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
+      toast.success("Pickup time changed.");
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.code === ApiErrorCode.InvalidOrderStatusTransition) {
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
+        toast.error("We have started making this order, so its pickup can no longer be changed.");
+        return;
+      }
+      // The rules or the slots may be older than the server's.
+      if (isApiError(error) && PICKUP_REFUSALS.has(error.code)) {
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.pickupRules });
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.pickupSlotsRoot });
+      }
+      toast.error(cartMutationErrorMessage(error, "We could not change the pickup time."));
+    },
   });
 }

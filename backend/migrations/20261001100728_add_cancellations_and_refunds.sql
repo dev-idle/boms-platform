@@ -1,0 +1,4 @@
+-- Modify "order_status_events" table
+ALTER TABLE "order_status_events" ADD CONSTRAINT "order_status_events_reason_check" CHECK ((reason IS NULL) OR ((to_status = 'cancelled'::order_status) AND ((char_length(reason) >= 1) AND (char_length(reason) <= 200)))), ADD COLUMN "reason" text NULL;
+-- Modify "payments" table
+ALTER TABLE "payments" DROP CONSTRAINT "payments_captured_at_check", ADD CONSTRAINT "payments_captured_at_check" CHECK ((status = ANY (ARRAY['captured'::payment_status, 'refunded'::payment_status])) = (captured_at IS NOT NULL)), ADD CONSTRAINT "payments_refund_requested_check" CHECK (((refund_requested_at IS NULL) OR (captured_at IS NOT NULL)) AND ((refunded_at IS NULL) OR (refund_requested_at IS NOT NULL))), ADD CONSTRAINT "payments_refunded_at_check" CHECK ((status = 'refunded'::payment_status) = (refunded_at IS NOT NULL)), ADD COLUMN "refund_requested_at" timestamptz NULL, ADD COLUMN "refund_id" text NULL, ADD COLUMN "refunded_at" timestamptz NULL;

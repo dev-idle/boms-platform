@@ -99,6 +99,17 @@ func (s Settings) Validate() error {
 	return nil
 }
 
+// MissedBefore is the instant before which a pickup not collected by now is
+// missed: the start of the day after the last closing time now has passed.
+func (s Settings) MissedBefore(now time.Time) time.Time {
+	y, m, d := now.In(Location).Date()
+	today := time.Date(y, m, d, 0, 0, 0, 0, Location)
+	if now.Before(today.Add(s.ClosesAt)) {
+		return today
+	}
+	return today.AddDate(0, 0, 1)
+}
+
 // LastPickupDay is the last bakery day the booking window reaches from now.
 func (s Settings) LastPickupDay(now time.Time) time.Time {
 	return DayOf(now.Add(time.Duration(s.MaxAdvanceDays) * 24 * time.Hour))
@@ -161,16 +172,16 @@ func NewClosedDate(day time.Time, reason string, now time.Time) (string, error) 
 		return "", ErrClosedDateOutOfRange
 	}
 	reason = strings.TrimSpace(reason)
-	if reason == "" || utf8.RuneCountInString(reason) > maxReasonLength || !plainText(reason) {
+	if reason == "" || utf8.RuneCountInString(reason) > maxReasonLength || !PlainText(reason) {
 		return "", ErrInvalidClosedDateReason
 	}
 	return reason, nil
 }
 
-// plainText rejects control and invisible formatting characters: every visitor
-// reads the reason, and a direction override or a zero-width character would
-// make it read differently from what was saved.
-func plainText(s string) bool {
+// PlainText rejects control and invisible formatting characters: text a
+// customer reads must read as it was saved, and a direction override or a
+// zero-width character would make it read differently.
+func PlainText(s string) bool {
 	for _, r := range s {
 		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
 			return false

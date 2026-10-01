@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	domainorder "github.com/boms/backend/internal/domain/order"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 )
@@ -16,6 +18,7 @@ import (
 // order as it is now and never sends one that contradicts it.
 type OrderEmailUsecase struct {
 	orders   port.OrderRepository
+	payments port.PaymentRepository
 	composer port.OrderEmailComposer
 	mailer   port.Mailer
 	log      *zap.Logger
@@ -23,11 +26,12 @@ type OrderEmailUsecase struct {
 
 func NewOrderEmailUsecase(
 	orders port.OrderRepository,
+	payments port.PaymentRepository,
 	composer port.OrderEmailComposer,
 	mailer port.Mailer,
 	log *zap.Logger,
 ) *OrderEmailUsecase {
-	return &OrderEmailUsecase{orders: orders, composer: composer, mailer: mailer, log: log}
+	return &OrderEmailUsecase{orders: orders, payments: payments, composer: composer, mailer: mailer, log: log}
 }
 
 // Send emails task's notice to the order's customer. It skips the email when
@@ -66,6 +70,11 @@ func (u *OrderEmailUsecase) Send(ctx context.Context, task port.OrderEmailTask) 
 	if order.CustomerDisplayName != nil {
 		msg.CustomerName = *order.CustomerDisplayName
 	}
+	if task.Notice == domainorder.NoticeCancelled {
+		if msg.Reason, msg.RefundCents, err = u.cancellation(ctx, task.OrderID); err != nil {
+			return err
+		}
+	}
 	email, err := u.composer.ComposeOrderEmail(msg)
 	if err != nil {
 		return fmt.Errorf("%w: compose %s email: %w", port.ErrEmailUndeliverable, task.Notice, err)
@@ -86,4 +95,27 @@ func (u *OrderEmailUsecase) skip(task port.OrderEmailTask, reason string) {
 		zap.String("notice", string(task.Notice)),
 		zap.String("reason", reason),
 	)
+}
+
+// cancellation reads why the bakery cancelled the order, empty when the
+// customer did, and what goes back to them: nothing for an order never paid.
+func (u *OrderEmailUsecase) cancellation(ctx context.Context, orderID uuid.UUID) (string, int64, error) {
+	events, err := u.orders.ListStatusEvents(ctx, orderID)
+	if err != nil {
+		return "", 0, err
+	}
+	reason := ""
+	for _, event := range events {
+		if event.To == domainorder.StatusCancelled {
+			reason = event.Reason
+		}
+	}
+	payment, err := u.payments.GetByOrderID(ctx, orderID)
+	if errors.Is(err, apperrors.ErrNotFound) || (err == nil && payment.RefundRequestedAt == nil) {
+		return reason, 0, nil
+	}
+	if err != nil {
+		return "", 0, err
+	}
+	return reason, payment.AmountCents, nil
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/boms/backend/internal/adapter/email"
 	"github.com/boms/backend/internal/adapter/queue"
+	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
 	"github.com/boms/backend/internal/bootstrap"
 	domainevent "github.com/boms/backend/internal/domain/event"
 	domainorder "github.com/boms/backend/internal/domain/order"
@@ -74,7 +75,7 @@ func TestOrderEmailDelivery_Integration(t *testing.T) {
 	composer, err := email.NewOrderComposer("https://shop.example")
 	require.NoError(t, err)
 	mailer := &capturingMailer{}
-	handler := queue.OrderEmailHandler(usecase.NewOrderEmailUsecase(f.orders, composer, mailer, zap.NewNop()))
+	handler := queue.OrderEmailHandler(usecase.NewOrderEmailUsecase(f.orders, postgresadapter.NewPaymentRepository(f.pool), composer, mailer, zap.NewNop()))
 	require.NoError(t, handler(ctx, asynq.NewTask(pending[0].Type, pending[0].Payload)))
 
 	require.Len(t, mailer.sent, 1)

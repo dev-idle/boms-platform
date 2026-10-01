@@ -9,7 +9,7 @@ export const ORDER_PROGRESS_STEPS = [
 ] as const satisfies ReadonlyArray<{ key: OrderStatus; label: string }>;
 
 export function activeOrderProgressIndex(status: OrderStatus): number {
-  if (isOrderDropped(status)) {
+  if (isUncollected(status)) {
     return -1;
   }
   // An order placed before online payment waited for the counter instead: it
@@ -22,12 +22,12 @@ export function activeOrderProgressIndex(status: OrderStatus): number {
 
 /** Whether the bakery works on the order, so its stations' progress means something. */
 export function isWithTheBakery(status: OrderStatus): boolean {
-  return status !== "awaiting_payment" && !isOrderDropped(status);
+  return status !== "awaiting_payment" && !isUncollected(status);
 }
 
-/** Whether the order will not be made: cancelled, or not paid in time. */
-export function isOrderDropped(status: OrderStatus): boolean {
-  return status === "cancelled" || status === "expired";
+/** Whether the order ended without being collected: cancelled, not paid in time, or not picked up. */
+export function isUncollected(status: OrderStatus): boolean {
+  return status === "cancelled" || status === "expired" || status === "no_show";
 }
 
 /** When the order entered status, from its timeline; undefined while it has not. */

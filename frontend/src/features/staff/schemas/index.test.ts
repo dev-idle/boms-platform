@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { staffOrderSchema } from "./index";
+import { patchStaffOrderStatusInputSchema, staffOrderSchema } from "./index";
 
 const order = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -13,7 +13,7 @@ const order = {
   items: [],
   tickets: [],
   customer: { user_id: "00000000-0000-4000-8000-000000000002", email: "mai@example.com" },
-  payment: { provider: "paypal", status: "captured", captured_at: "2026-09-28T09:05:00+07:00" },
+  payment: { provider: "paypal", status: "captured", captured_at: "2026-09-28T09:05:00+07:00", refund_requested_at: null, refunded_at: null },
   created_at: "2026-09-28T09:00:00+07:00",
   updated_at: "2026-09-28T09:05:00+07:00",
 };
@@ -24,8 +24,8 @@ describe("staff order timeline", () => {
     const result = staffOrderSchema.safeParse({
       ...order,
       timeline: [
-        { status: "pending", actor_role: "customer", at: "2026-09-28T09:00:00+07:00" },
-        { status: "confirmed", actor_role: "staff", at: "2026-09-28T09:05:00+07:00" },
+        { status: "pending", actor_role: "customer", reason: null, at: "2026-09-28T09:00:00+07:00" },
+        { status: "confirmed", actor_role: "staff", reason: null, at: "2026-09-28T09:05:00+07:00" },
       ],
     });
     expect(result.success).toBe(true);
@@ -36,8 +36,8 @@ describe("staff order timeline", () => {
       ...order,
       status: "expired",
       timeline: [
-        { status: "awaiting_payment", actor_role: "customer", at: "2026-09-28T09:00:00+07:00" },
-        { status: "expired", actor_role: null, at: "2026-09-28T09:15:00+07:00" },
+        { status: "awaiting_payment", actor_role: "customer", reason: null, at: "2026-09-28T09:00:00+07:00" },
+        { status: "expired", actor_role: null, reason: null, at: "2026-09-28T09:15:00+07:00" },
       ],
     });
     expect(result.success).toBe(true);
@@ -46,11 +46,11 @@ describe("staff order timeline", () => {
   it("rejects a move without a known role", () => {
     const withoutRole = staffOrderSchema.safeParse({
       ...order,
-      timeline: [{ status: "pending", at: "2026-09-28T09:00:00+07:00" }],
+      timeline: [{ status: "pending", reason: null, at: "2026-09-28T09:00:00+07:00" }],
     });
     const unknownRole = staffOrderSchema.safeParse({
       ...order,
-      timeline: [{ status: "pending", actor_role: "system", at: "2026-09-28T09:00:00+07:00" }],
+      timeline: [{ status: "pending", actor_role: "system", reason: null, at: "2026-09-28T09:00:00+07:00" }],
     });
     expect(withoutRole.success).toBe(false);
     expect(unknownRole.success).toBe(false);
@@ -77,5 +77,21 @@ describe("staff order tickets", () => {
 
   it("rejects an order without its tickets", () => {
     expect(staffOrderSchema.safeParse({ ...order, tickets: undefined, timeline: [] }).success).toBe(false);
+  });
+});
+
+// A cancellation at the counter tells the customer why; no other move carries a reason.
+describe("staff order status move", () => {
+  it("cancels only with a reason", () => {
+    expect(patchStaffOrderStatusInputSchema.parse({ status: "cancelled", reason: " Out of matcha " })).toEqual({
+      status: "cancelled",
+      reason: "Out of matcha",
+    });
+    expect(patchStaffOrderStatusInputSchema.safeParse({ status: "cancelled" }).success).toBe(false);
+    expect(patchStaffOrderStatusInputSchema.safeParse({ status: "cancelled", reason: "  " }).success).toBe(false);
+  });
+
+  it("moves forward without a reason", () => {
+    expect(patchStaffOrderStatusInputSchema.parse({ status: "confirmed", reason: "x" })).toEqual({ status: "confirmed" });
   });
 });

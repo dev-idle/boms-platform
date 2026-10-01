@@ -31,6 +31,17 @@ type PaymentRepository interface {
 	// created or pending. Any other is apperrors.ErrNotFound: the answer was
 	// recorded already, so a repeated answer changes nothing.
 	RecordCapture(ctx context.Context, paymentID uuid.UUID, capture domainpayment.Capture) (*domainpayment.Payment, error)
+	// RequestRefund asks for the money back on the order's payment, in the
+	// transaction that cancels the order; a payment not taken, or asked for
+	// already, stays as it is.
+	RequestRefund(ctx context.Context, orderID uuid.UUID) error
+	// ListRefundsDue returns up to limit payments whose refund is asked for and
+	// not made yet, the oldest request first.
+	ListRefundsDue(ctx context.Context, limit int32) ([]domainpayment.Payment, error)
+	// RecordRefund records the provider's refund of a payment whose refund is
+	// due; refundID is nil when the provider had refunded it already. Any other
+	// is apperrors.ErrNotFound: the refund was recorded already.
+	RecordRefund(ctx context.Context, paymentID uuid.UUID, refundID *string) (*domainpayment.Payment, error)
 }
 
 // PaymentOrderRequest asks a provider to take an order's total; the buyer
@@ -68,4 +79,9 @@ type PaymentGateway interface {
 	// reads it; header reads the delivery's headers by name. An unsigned one
 	// is domainpayment.ErrWebhookInvalid.
 	VerifyWebhook(ctx context.Context, header func(name string) string, body []byte) (PaymentWebhookEvent, error)
+	// Refund returns the whole of a capture to the buyer and the provider's id
+	// for the refund. Asking again for the same capture returns the first
+	// answer; a capture refunded already, as from the provider's own
+	// dashboard, is domainpayment.ErrAlreadyRefunded.
+	Refund(ctx context.Context, captureID string) (refundID string, err error)
 }

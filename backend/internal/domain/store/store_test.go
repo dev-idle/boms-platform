@@ -151,3 +151,13 @@ func TestNewClosedDate(t *testing.T) {
 		require.NoError(t, err, "the limit counts characters, not bytes")
 	})
 }
+
+func TestSettingsMissedBefore(t *testing.T) {
+	t.Parallel()
+	s := validSettings()
+	today := time.Date(2026, 7, 10, 0, 0, 0, 0, Location)
+	// Before closing, a pickup is missed only from an earlier day.
+	assert.Equal(t, today, s.MissedBefore(time.Date(2026, 7, 10, 17, 59, 0, 0, Location)))
+	// From closing time, today's pickups are missed too.
+	assert.Equal(t, today.AddDate(0, 0, 1), s.MissedBefore(time.Date(2026, 7, 10, 18, 0, 0, 0, Location)))
+}

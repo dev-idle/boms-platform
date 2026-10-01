@@ -13,12 +13,16 @@ import (
 )
 
 // The counter sees which role moved an order; the customer sees only when it
-// moved. Asserted on the JSON the API sends.
+// moved, and both read why the bakery cancelled it. Asserted on the JSON the
+// API sends.
 func TestOrderTimelineVisibilityByRole(t *testing.T) {
 	t.Parallel()
 
 	at := time.Date(2026, 9, 28, 3, 5, 0, 0, time.UTC)
-	events := []domainorder.StatusEvent{{To: domainorder.StatusConfirmed, ActorRole: domainuser.RoleStaff, At: at}}
+	events := []domainorder.StatusEvent{
+		{To: domainorder.StatusConfirmed, ActorRole: domainuser.RoleStaff, At: at},
+		{To: domainorder.StatusCancelled, ActorRole: domainuser.RoleStaff, Reason: "Out of matcha", At: at},
+	}
 	entries := func(t *testing.T, v any) []map[string]any {
 		t.Helper()
 		raw, err := json.Marshal(v)
@@ -30,13 +34,19 @@ func TestOrderTimelineVisibilityByRole(t *testing.T) {
 
 	t.Run("customers_see_the_status_and_when", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, []map[string]any{{"status": "confirmed", "at": "2026-09-28T03:05:00Z"}},
+		assert.Equal(t, []map[string]any{
+			{"status": "confirmed", "reason": nil, "at": "2026-09-28T03:05:00Z"},
+			{"status": "cancelled", "reason": "Out of matcha", "at": "2026-09-28T03:05:00Z"},
+		},
 			entries(t, mapOrderTimelineToDTO(events)))
 	})
 
 	t.Run("staff_also_see_who_moved_it", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, []map[string]any{{"status": "confirmed", "actor_role": "staff", "at": "2026-09-28T03:05:00Z"}},
+		assert.Equal(t, []map[string]any{
+			{"status": "confirmed", "actor_role": "staff", "reason": nil, "at": "2026-09-28T03:05:00Z"},
+			{"status": "cancelled", "actor_role": "staff", "reason": "Out of matcha", "at": "2026-09-28T03:05:00Z"},
+		},
 			entries(t, mapStaffOrderTimelineToDTO(events)))
 	})
 }

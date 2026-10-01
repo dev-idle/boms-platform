@@ -27,8 +27,10 @@ type StaffOrderSummaryResponse struct {
 type StaffOrderTimelineEntryResponse struct {
 	Status string `json:"status"`
 	// ActorRole is null when the system made the move.
-	ActorRole *string   `json:"actor_role"`
-	At        time.Time `json:"at"`
+	ActorRole *string `json:"actor_role"`
+	// Reason is why the bakery cancelled the order; null for any other move.
+	Reason *string   `json:"reason"`
+	At     time.Time `json:"at"`
 }
 
 type StaffOrderResponse struct {
@@ -52,4 +54,6 @@ type StaffOrderResponse struct {
 
 type PatchStaffOrderStatusRequest struct {
 	Status string `json:"status" validate:"required,oneof=confirmed fulfilled cancelled"`
+	// Reason is required to cancel, and shown to the customer.
+	Reason string `json:"reason" validate:"max=200"`
 }

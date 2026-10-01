@@ -27,6 +27,8 @@ const (
 	// expiryBatch is how many overdue orders one run expires; the next run
 	// takes the rest.
 	expiryBatch = 50
+	// refundBatch is how many refunds one run makes; the next run takes the rest.
+	refundBatch = 50
 )
 
 // PaymentUsecase takes an order's payment through the provider, confirms the
@@ -55,14 +57,16 @@ func NewPaymentUsecase(
 	log *zap.Logger,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
-		tx:          tx,
-		orders:      orders,
-		discounts:   discounts,
-		payments:    payments,
-		gateway:     gateway,
-		transitions: orderTransitions{tx: tx, orders: orders, tickets: tickets, events: events},
-		siteURL:     siteURL,
-		log:         log,
+		tx:        tx,
+		orders:    orders,
+		discounts: discounts,
+		payments:  payments,
+		gateway:   gateway,
+		transitions: orderTransitions{
+			tx: tx, orders: orders, tickets: tickets, discounts: discounts, payments: payments, events: events,
+		},
+		siteURL: siteURL,
+		log:     log,
 	}
 }
 
@@ -229,45 +233,57 @@ func (u *PaymentUsecase) ExpireOverdue(ctx context.Context) (int, error) {
 // expire expires one overdue order unless the provider took, or is
 // reviewing, its payment; it reports whether the order expired.
 func (u *PaymentUsecase) expire(ctx context.Context, orderID uuid.UUID) (bool, error) {
-	p, err := u.payments.GetByOrderID(ctx, orderID)
-	if err != nil && !errors.Is(err, apperrors.ErrNotFound) {
+	taken, err := u.settle(ctx, orderID)
+	if err != nil || taken != "" {
 		return false, err
-	}
-	if p != nil && (p.Status == domainpayment.StatusCreated || p.Status == domainpayment.StatusPending) {
-		capture, err := u.gateway.Lookup(ctx, p.ProviderOrderID)
-		if err != nil {
-			return false, err
-		}
-		if capture != nil {
-			// An answer the return page and the webhook did not record.
-			if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
-				return u.record(txCtx, p, *capture)
-			}); err != nil {
-				return false, err
-			}
-			if capture.Status != domainpayment.StatusDenied {
-				return false, nil
-			}
-		}
 	}
 	err = u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		order, err := u.orders.Expire(txCtx, orderID, expiryGrace)
 		if err != nil {
 			return err
 		}
-		if err := u.transitions.recordInTx(txCtx, nil, domainorder.StatusAwaitingPayment, *order); err != nil {
-			return err
-		}
-		if order.DiscountCodeID != nil {
-			return u.discounts.ReleaseUse(txCtx, *order.DiscountCodeID)
-		}
-		return nil
+		return u.transitions.recordInTx(txCtx, nil, domainorder.StatusAwaitingPayment, *order, "")
 	})
 	if errors.Is(err, apperrors.ErrNotFound) {
 		// Paid since it was found overdue.
 		return false, nil
 	}
 	return err == nil, err
+}
+
+// settle asks the provider about an unpaid order's payment the return page and
+// the webhook left open, and records its answer. It returns StatusCaptured
+// when the money is taken, StatusPending while the provider reviews it, and ""
+// when nothing is taken: never started, denied, or not approved.
+func (u *PaymentUsecase) settle(ctx context.Context, orderID uuid.UUID) (domainpayment.Status, error) {
+	p, err := u.payments.GetByOrderID(ctx, orderID)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	switch p.Status {
+	case domainpayment.StatusCaptured:
+		return p.Status, nil
+	case domainpayment.StatusCreated, domainpayment.StatusPending:
+	default:
+		return "", nil
+	}
+	capture, err := u.gateway.Lookup(ctx, p.ProviderOrderID)
+	if err != nil || capture == nil {
+		return "", err
+	}
+	// An answer the return page and the webhook did not record.
+	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		return u.record(txCtx, p, *capture)
+	}); err != nil {
+		return "", err
+	}
+	if capture.Status == domainpayment.StatusDenied {
+		return "", nil
+	}
+	return capture.Status, nil
 }
 
 // record keeps the provider's answer to a capture and, when the money is
@@ -296,13 +312,62 @@ func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment,
 		OrderID:    order.ID,
 		FromStatus: domainorder.StatusAwaitingPayment,
 		ToStatus:   domainorder.StatusConfirmed,
-	})
+	}, "")
 	if errors.Is(err, domainorder.ErrInvalidStatusTransition) {
-		// The order closed while the buyer paid: the capture is kept on record
-		// so the money can be returned.
-		u.log.Error("payment_captured_for_closed_order",
+		// The order closed while the buyer paid: the money goes back.
+		u.log.Info("payment_refund_requested_for_closed_order",
 			zap.String("order_id", order.ID.String()), zap.String("status", string(order.Status)))
-		return nil
+		return u.payments.RequestRefund(txCtx, order.ID)
 	}
 	return err
+}
+
+// RefundDue makes the refunds cancelled orders asked for, a batch at a time,
+// and returns how many were made. Each refund stands alone: one the provider
+// refuses is reported with the rest while the others go on, and is asked for
+// again on the next run.
+func (u *PaymentUsecase) RefundDue(ctx context.Context) (int, error) {
+	due, err := u.payments.ListRefundsDue(ctx, refundBatch)
+	if err != nil {
+		return 0, err
+	}
+	refunded := 0
+	var failures []error
+	for i := range due {
+		if err := u.refund(ctx, &due[i]); err != nil {
+			failures = append(failures, apperrors.Errorf("refund payment %s: %w", due[i].ID, err))
+			continue
+		}
+		refunded++
+	}
+	return refunded, errors.Join(failures...)
+}
+
+// refund returns a payment's capture to the buyer, records it and tells the
+// customer and the counter.
+func (u *PaymentUsecase) refund(ctx context.Context, p *domainpayment.Payment) error {
+	var refundID *string
+	id, err := u.gateway.Refund(ctx, *p.CaptureID)
+	switch {
+	case errors.Is(err, domainpayment.ErrAlreadyRefunded):
+		// Refunded from the provider's own dashboard: nothing more goes back.
+	case err != nil:
+		return err
+	default:
+		refundID = &id
+	}
+	return u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if _, err := u.payments.RecordRefund(txCtx, p.ID, refundID); err != nil {
+			if errors.Is(err, apperrors.ErrNotFound) {
+				// Another run recorded it first.
+				return nil
+			}
+			return err
+		}
+		order, err := u.orders.LockForUpdate(txCtx, p.OrderID)
+		if err != nil {
+			return err
+		}
+		return u.transitions.events.Add(txCtx, domainorder.RefundedEvent(*order))
+	})
 }

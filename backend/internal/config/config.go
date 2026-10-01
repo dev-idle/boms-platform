@@ -176,8 +176,9 @@ const maxOutboxSweepBatch = 1000
 
 // OrderConfig tunes the worker's order jobs.
 type OrderConfig struct {
-	// ExpiryInterval is how often the worker expires orders not paid in time.
-	ExpiryInterval time.Duration
+	// JobInterval is how often the worker expires orders not paid in time,
+	// makes the refunds cancelled orders ask for and records missed pickups.
+	JobInterval time.Duration
 }
 
 // OutboxConfig tunes delivery of committed events. A post-commit delivery spends
@@ -426,7 +427,7 @@ func load() (*Config, error) {
 			HealthCheckTimeout: v.GetDuration("redis.health_timeout"),
 		},
 		Order: OrderConfig{
-			ExpiryInterval: v.GetDuration("order.expiry_interval"),
+			JobInterval: v.GetDuration("order.job_interval"),
 		},
 		Outbox: OutboxConfig{
 			DispatchTimeout: v.GetDuration("outbox.dispatch_timeout"),
@@ -611,7 +612,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("outbox.sweep_batch", 100)
 	v.SetDefault("outbox.retention", 7*24*time.Hour)
 	v.SetDefault("outbox.prune_interval", time.Hour)
-	v.SetDefault("order.expiry_interval", time.Minute)
+	v.SetDefault("order.job_interval", time.Minute)
 
 	v.SetDefault("realtime.addr", "127.0.0.1:8081")
 	v.SetDefault("realtime.public_url", "ws://localhost:8081/ws")
@@ -679,8 +680,8 @@ func (c *Config) ValidateWorker() error {
 	if err := validateSiteURL(c.App.Env, c.App.SiteURL); err != nil {
 		return err
 	}
-	if c.Order.ExpiryInterval <= 0 {
-		return errors.New("order.expiry_interval must be positive")
+	if c.Order.JobInterval <= 0 {
+		return errors.New("order.job_interval must be positive")
 	}
 	// Before an overdue order expires, the worker asks PayPal whether it was paid.
 	if err := c.PayPal.validate(c.App.Env); err != nil {

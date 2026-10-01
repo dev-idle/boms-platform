@@ -2349,10 +2349,23 @@
     justify-content: space-between;
   }
 
-  /* A section of the order: where each station stands, or its payment. */
+  /* A section of the order: where each station stands, its payment, or a change of plans. */
   .storefront-order-detail__preparation,
-  .storefront-order-detail__payment {
+  .storefront-order-detail__payment,
+  .storefront-order-detail__changes,
+  .storefront-order-detail__reschedule {
     display: grid;
+    gap: 0.75rem;
+  }
+
+  /* The section's own gap already sets the picker off its actions. */
+  .storefront-order-detail__reschedule .storefront-pickup-picker {
+    margin-block-start: 0;
+  }
+
+  .storefront-order-detail__change-actions {
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.75rem;
   }
 
@@ -2418,13 +2431,13 @@
     color: var(--color-ink-2);
   }
 
-  .storefront-cart-summary__pickup-error {
+  .storefront-pickup-picker__error {
     color: var(--color-danger-text);
     margin-block-start: 0.5rem;
   }
 
   /* Kept mounted as a live region; it takes no room while it has nothing to say. */
-  .storefront-cart-summary__pickup-error:empty {
+  .storefront-pickup-picker__error:empty {
     margin-block-start: 0;
   }
 

@@ -21,6 +21,7 @@ const ORDER_HISTORY_STATUS_OPTIONS: Array<{ value: OrderStatus | typeof ALL_STAT
   { value: "fulfilled", label: "Fulfilled" },
   { value: "cancelled", label: "Cancelled" },
   { value: "expired", label: "Expired" },
+  { value: "no_show", label: "No show" },
 ];
 
 const dayInputSchema = z.union([z.literal(""), z.iso.date()]);

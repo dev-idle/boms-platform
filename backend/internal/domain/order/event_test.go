@@ -42,6 +42,8 @@ func TestOrderEvents(t *testing.T) {
 		{name: "leaves_the_kitchen_when_picked_up", from: StatusReady, to: StatusFulfilled, counterSees: true, kitchenSees: true},
 		{name: "cancelled_before_the_kitchen_saw_it", from: StatusPending, to: StatusCancelled, counterSees: true},
 		{name: "expired_unpaid_stays_with_the_customer", from: StatusAwaitingPayment, to: StatusExpired},
+		{name: "cancelled_unpaid_stays_with_the_customer", from: StatusAwaitingPayment, to: StatusCancelled},
+		{name: "cancelled_in_the_kitchen_is_told_to_it", from: StatusConfirmed, to: StatusCancelled, counterSees: true, kitchenSees: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -104,6 +106,36 @@ func TestTicketChangedEvent(t *testing.T) {
 
 	unpaid := TicketChangedEvent(customer, StatusAwaitingPayment, Ticket{Station: domaincategory.StationCounter})
 	assert.Empty(t, unpaid.Audience.Roles, "an order never paid is the customer's alone")
+}
+
+func TestRescheduledAndRefundedEvents(t *testing.T) {
+	t.Parallel()
+	o := Order{ID: uuid.New(), UserID: uuid.New(), Status: StatusConfirmed}
+
+	moved := RescheduledEvent(o)
+	assert.Equal(t, TopicOrderRescheduled, moved.Topic)
+	assert.Equal(t, []uuid.UUID{o.UserID}, moved.Audience.UserIDs)
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleBaker}, moved.Audience.Roles,
+		"the kitchen bakes to the pickup time")
+
+	unpaid := RescheduledEvent(Order{ID: uuid.New(), UserID: o.UserID, Status: StatusAwaitingPayment})
+	assert.Empty(t, unpaid.Audience.Roles, "an order not paid yet is the customer's alone")
+
+	o.Status = StatusCancelled
+	refunded := RefundedEvent(o)
+	assert.Equal(t, TopicOrderRefunded, refunded.Topic)
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff}, refunded.Audience.Roles)
+	assert.Equal(t, map[string]string{"order_id": o.ID.String()}, refunded.Data)
+}
+
+func TestSeenByStaff(t *testing.T) {
+	t.Parallel()
+	accepted := []StatusEvent{{To: StatusAwaitingPayment}, {To: StatusConfirmed}, {To: StatusCancelled}}
+	unpaid := []StatusEvent{{To: StatusAwaitingPayment}, {To: StatusCancelled}}
+	assert.True(t, SeenByStaff(StatusCancelled, accepted), "cancelled after it was paid")
+	assert.False(t, SeenByStaff(StatusCancelled, unpaid), "cancelled before it was paid")
+	assert.True(t, SeenByStaff(StatusReady, nil))
+	assert.False(t, SeenByStaff(StatusAwaitingPayment, nil))
 }
 
 func TestStatus_VisibleToStaff(t *testing.T) {

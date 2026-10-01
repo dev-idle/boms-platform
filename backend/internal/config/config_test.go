@@ -204,7 +204,7 @@ func minimalDevConfig() *config.Config {
 		Rate:      config.RateLimitConfig{Max: 10, WindowDuration: time.Minute},
 		RateRedis: defaultRateRedis(),
 		Outbox:    defaultOutbox(),
-		Order:     config.OrderConfig{ExpiryInterval: time.Minute},
+		Order:     config.OrderConfig{JobInterval: time.Minute},
 		Mail:      defaultMail(),
 		Realtime:  defaultRealtime(),
 		Postgres: config.PostgresConfig{
@@ -339,12 +339,12 @@ func TestValidateWorker_NeedsOnlyTheStoresAndMail(t *testing.T) {
 	}
 }
 
-func TestValidateWorker_OrderExpiry(t *testing.T) {
+func TestValidateWorker_OrderJobs(t *testing.T) {
 	t.Parallel()
 	cfg := minimalDevConfig()
-	cfg.Order.ExpiryInterval = 0
-	if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), "order.expiry_interval") {
-		t.Fatalf("expected order.expiry_interval error, got: %v", err)
+	cfg.Order.JobInterval = 0
+	if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), "order.job_interval") {
+		t.Fatalf("expected order.job_interval error, got: %v", err)
 	}
 }
 

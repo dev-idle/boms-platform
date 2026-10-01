@@ -32,6 +32,12 @@ const cartDiscountSchema = z.object({
   discount_cents: z.number().int().min(0),
 });
 
+/** What items ask of the bakery: whether the kitchen makes any, and the longest notice one needs. */
+const fulfillmentSchema = z.object({
+  has_kitchen_items: z.boolean(),
+  lead_minutes: z.number().int().min(0),
+});
+
 export const cartSchema = z.object({
   id: z.uuid(),
   items: z.array(cartItemSchema),
@@ -41,10 +47,7 @@ export const cartSchema = z.object({
   total_cents: z.number().int().min(0),
   checkout_ready: z.boolean(),
   /** What the items ask of the bakery; the pickup picker offers times to suit. */
-  fulfillment: z.object({
-    has_kitchen_items: z.boolean(),
-    lead_minutes: z.number().int().min(0),
-  }),
+  fulfillment: fulfillmentSchema,
 });
 
 export const addCartItemInputSchema = z
@@ -68,6 +71,11 @@ export const applyCartDiscountInputSchema = z.object({
 });
 
 export const checkoutInputSchema = z.object({
+  pickup_at: apiDateTimeSchema,
+});
+
+/** `PATCH /orders/:id/pickup` — another slot for an order not being made yet. */
+export const rescheduleInputSchema = z.object({
   pickup_at: apiDateTimeSchema,
 });
 
@@ -97,6 +105,8 @@ export const orderSchema = z.object({
   timeline: z.array(orderTimelineEntrySchema),
   tickets: z.array(ticketSummarySchema),
   payment: orderPaymentSchema.nullable(),
+  /** What the items ask of the bakery, for moving the pickup; null once the order is being made. */
+  fulfillment: fulfillmentSchema.nullable(),
   /** When the order expires if still unpaid; null on an order placed before online payment. */
   payment_due_at: apiDateTimeSchema.nullable(),
   created_at: apiDateTimeSchema,
@@ -170,6 +180,8 @@ export type AddCartItemInput = z.infer<typeof addCartItemInputSchema>;
 export type UpdateCartItemInput = z.infer<typeof updateCartItemInputSchema>;
 export type ApplyCartDiscountInput = z.infer<typeof applyCartDiscountInputSchema>;
 export type CheckoutInput = z.infer<typeof checkoutInputSchema>;
+export type RescheduleInput = z.infer<typeof rescheduleInputSchema>;
+export type Fulfillment = z.infer<typeof fulfillmentSchema>;
 export type Order = z.infer<typeof orderSchema>;
 export type PaymentStart = z.infer<typeof paymentStartSchema>;
 export type PaymentCapture = z.infer<typeof paymentCaptureSchema>;

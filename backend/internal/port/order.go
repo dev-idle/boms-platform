@@ -93,6 +93,16 @@ type AddOrderStatusEventParams struct {
 	From    *domainorder.Status
 	To      domainorder.Status
 	Actor   *OrderActor
+	// Reason is why the bakery cancelled the order; empty for any other move.
+	Reason string
+}
+
+// RescheduleOrderParams moves an order's pickup; Type is the order type the
+// new time makes it.
+type RescheduleOrderParams struct {
+	OrderID  uuid.UUID
+	PickupAt time.Time
+	Type     domainorder.Type
 }
 
 type UpdateOrderStatusParams struct {
@@ -116,6 +126,12 @@ type OrderRepository interface {
 	// Expire expires an order still awaiting payment more than grace past its
 	// due time. Any other is apperrors.ErrNotFound: it was paid meanwhile.
 	Expire(ctx context.Context, orderID uuid.UUID, grace time.Duration) (*domainorder.Order, error)
+	// Reschedule moves the pickup of an order not being made yet. Any other is
+	// apperrors.ErrNotFound.
+	Reschedule(ctx context.Context, params RescheduleOrderParams) (*domainorder.Order, error)
+	// ListMissedPickups returns up to limit orders ready and not collected
+	// whose pickup falls before missedBefore, the longest waiting first.
+	ListMissedPickups(ctx context.Context, missedBefore time.Time, limit int32) ([]uuid.UUID, error)
 	// LockForUpdate row-locks the order until the transaction ends; call it only
 	// inside one. Every ticket move takes it first; the order's own status moves
 	// take the same row lock through their guarded UPDATE.
@@ -149,9 +165,10 @@ type OrderRepository interface {
 	// the transaction ends and returns how many orders already hold it. It must
 	// run in the transaction that creates the order.
 	HoldPickupSlot(ctx context.Context, startsAt time.Time, length time.Duration) (int, error)
-	// CountCustomerOrdersBetween counts a customer's orders not cancelled with a
-	// pickup in [from, to).
-	CountCustomerOrdersBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) (int, error)
+	// HoldCustomerDay locks the customer's bookings until the transaction ends
+	// and returns how many of their orders, neither cancelled nor expired, have
+	// a pickup in [from, to). It must run in the transaction that books.
+	HoldCustomerDay(ctx context.Context, userID uuid.UUID, from, to time.Time) (int, error)
 	// CountByPickupTime returns how many orders not cancelled are due at each
 	// pickup time in [from, to).
 	CountByPickupTime(ctx context.Context, from, to time.Time) ([]PickupCount, error)

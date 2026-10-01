@@ -3,6 +3,7 @@ import { z } from "zod";
 import { USER_ROLE } from "@/constants/roles";
 import { clockTimeSchema, clockToMinutes } from "@/lib/validation/clock";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
+import { reasonSchema } from "@/lib/validation/reason";
 import { vietnamPhoneZodString } from "@/lib/validation/phone";
 import type { PaginatedListResult } from "@/lib/pagination/parse-paginated-list";
 
@@ -247,14 +248,7 @@ export const closedDateSchema = z.object({
 
 export const closedDateFormSchema = z.object({
   date: z.iso.date("Choose a day"),
-  reason: z
-    .string()
-    .trim()
-    .min(1, "Tell customers why the bakery is closed")
-    .max(200, "At most 200 characters")
-    // Mirrors the backend: every visitor reads it, so no control or invisible
-    // formatting characters that would make it read differently.
-    .refine((value) => !/[\p{Cc}\p{Cf}]/u.test(value), "Use plain text only"),
+  reason: reasonSchema("Tell customers why the bakery is closed"),
 });
 
 export type StoreSettings = z.infer<typeof storeSettingsSchema>;

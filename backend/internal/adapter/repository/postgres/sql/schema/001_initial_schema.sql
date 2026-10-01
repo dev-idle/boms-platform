@@ -14,7 +14,8 @@ CREATE TYPE "order_status" AS ENUM (
   'fulfilled',
   'cancelled',
   'awaiting_payment',
-  'expired'
+  'expired',
+  'no_show'
 );
 CREATE TYPE "station" AS ENUM ('kitchen', 'counter');
 CREATE TYPE "order_type" AS ENUM ('instant', 'pre_order');
@@ -346,11 +347,13 @@ CREATE TABLE "order_status_events" (
   "actor_id" uuid NULL,
   "actor_role" "user_role" NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
+  "reason" text NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "order_status_events_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "order_status_events_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE CASCADE,
   CONSTRAINT "order_status_events_move_check" CHECK (from_status IS DISTINCT FROM to_status),
-  CONSTRAINT "order_status_events_actor_check" CHECK ((actor_id IS NULL) = (actor_role IS NULL))
+  CONSTRAINT "order_status_events_actor_check" CHECK ((actor_id IS NULL) = (actor_role IS NULL)),
+  CONSTRAINT "order_status_events_reason_check" CHECK ((reason IS NULL) OR ((to_status = 'cancelled'::order_status) AND ((char_length(reason) >= 1) AND (char_length(reason) <= 200))))
 );
 CREATE INDEX "order_status_events_order_created_idx" ON "order_status_events" ("order_id", "created_at");
 
@@ -423,7 +426,7 @@ CREATE UNIQUE INDEX "user_tokens_token_hash_idx" ON "user_tokens" ("token_hash")
 CREATE UNIQUE INDEX "user_tokens_user_purpose_idx" ON "user_tokens" ("user_id", "purpose");
 
 CREATE TYPE "payment_provider" AS ENUM ('paypal');
-CREATE TYPE "payment_status" AS ENUM ('created', 'pending', 'captured', 'denied');
+CREATE TYPE "payment_status" AS ENUM ('created', 'pending', 'captured', 'denied', 'refunded');
 
 CREATE TABLE "payments" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -438,13 +441,19 @@ CREATE TABLE "payments" (
   "captured_at" timestamptz NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "refund_requested_at" timestamptz NULL,
+  "refund_id" text NULL,
+  "refunded_at" timestamptz NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "payments_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE RESTRICT,
   CONSTRAINT "payments_amount_cents_check" CHECK (amount_cents > 0),
   CONSTRAINT "payments_capture_check" CHECK ((status = 'created') = (capture_id IS NULL)),
-  CONSTRAINT "payments_captured_at_check" CHECK ((status = 'captured') = (captured_at IS NOT NULL)),
-  CONSTRAINT "payments_currency_check" CHECK (currency ~ '^[A-Z]{3}$')
+  CONSTRAINT "payments_captured_at_check" CHECK ((status = ANY (ARRAY['captured'::payment_status, 'refunded'::payment_status])) = (captured_at IS NOT NULL)),
+  CONSTRAINT "payments_currency_check" CHECK (currency ~ '^[A-Z]{3}$'),
+  CONSTRAINT "payments_refund_requested_check" CHECK (((refund_requested_at IS NULL) OR (captured_at IS NOT NULL)) AND ((refunded_at IS NULL) OR (refund_requested_at IS NOT NULL))),
+  CONSTRAINT "payments_refunded_at_check" CHECK ((status = 'refunded'::payment_status) = (refunded_at IS NOT NULL))
 );
 CREATE UNIQUE INDEX "payments_capture_idx" ON "payments" ("provider", "capture_id") WHERE (capture_id IS NOT NULL);
 CREATE UNIQUE INDEX "payments_order_id_idx" ON "payments" ("order_id");
 CREATE UNIQUE INDEX "payments_provider_order_idx" ON "payments" ("provider", "provider_order_id");
+CREATE INDEX "payments_refund_due_idx" ON "payments" ("refund_requested_at") WHERE ((status = 'captured'::payment_status) AND (refund_requested_at IS NOT NULL));

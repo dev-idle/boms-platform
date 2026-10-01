@@ -45,6 +45,7 @@ export function orderStatusToPillVariant(status: OrderStatus): StatusPillVariant
       return "completed";
     case "cancelled":
     case "expired":
+    case "no_show":
       return "cancelled";
   }
 }

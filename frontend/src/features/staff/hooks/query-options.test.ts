@@ -12,6 +12,15 @@ describe("staffQueryKeysForEvent", () => {
     ]);
   });
 
+  it("refreshes both queues when a pickup moves, and only the orders when a refund arrives", () => {
+    expect(
+      staffQueryKeysForEvent({ type: "order.rescheduled", data: { order_id: "o-1" } }),
+    ).toEqual([staffQueryKeys.ordersRoot, staffQueryKeys.ticketsRoot]);
+    expect(
+      staffQueryKeysForEvent({ type: "order.refunded", data: { order_id: "o-1" } }),
+    ).toEqual([staffQueryKeys.ordersRoot]);
+  });
+
   it("refreshes the prep queue and the ticket's order when a ticket moves", () => {
     expect(
       staffQueryKeysForEvent({ type: "ticket.changed", data: { order_id: "o-1", ticket_id: "t-1" } }),

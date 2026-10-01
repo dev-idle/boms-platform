@@ -571,13 +571,14 @@ type Querier interface {
 	CreateOrderItems(ctx context.Context, items json.RawMessage) (int64, error)
 	//CreateOrderStatusEvent
 	//
-	//  INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role)
+	//  INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role, reason)
 	//  VALUES (
 	//    $1,
 	//    $2::order_status,
 	//    $3::order_status,
 	//    $4,
-	//    $5::user_role
+	//    $5::user_role,
+	//    $6
 	//  )
 	CreateOrderStatusEvent(ctx context.Context, arg CreateOrderStatusEventParams) error
 	//CreateOrderTicketItems
@@ -612,7 +613,7 @@ type Querier interface {
 	//    $6
 	//  )
 	//  ON CONFLICT (order_id) DO NOTHING
-	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error)
 	//CreateProduct
 	//
@@ -915,13 +916,13 @@ type Querier interface {
 	GetOrderTicket(ctx context.Context, id uuid.UUID) (OrderTicket, error)
 	//GetPaymentByOrderID
 	//
-	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 	//  FROM payments
 	//  WHERE order_id = $1
 	GetPaymentByOrderID(ctx context.Context, orderID uuid.UUID) (Payment, error)
 	//GetPaymentByProviderOrderID
 	//
-	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 	//  FROM payments
 	//  WHERE provider = $1
 	//    AND provider_order_id = $2
@@ -997,7 +998,7 @@ type Querier interface {
 	//    SELECT 1
 	//    FROM orders
 	//    WHERE user_id = $1
-	//      AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status)
+	//      AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status, 'no_show'::order_status)
 	//  ) AS open
 	HasOpenOrdersForUser(ctx context.Context, userID uuid.UUID) (bool, error)
 	//IncrementDiscountCodeUsedCount
@@ -1149,6 +1150,16 @@ type Querier interface {
 	//  ORDER BY payment_due_at
 	//  LIMIT $2::int
 	ListDueUnpaidOrders(ctx context.Context, arg ListDueUnpaidOrdersParams) ([]uuid.UUID, error)
+	// Orders ready and not collected whose pickup falls before missed_before, the
+	// longest waiting first.
+	//
+	//  SELECT id
+	//  FROM orders
+	//  WHERE status = 'ready'::order_status
+	//    AND pickup_at < $1
+	//  ORDER BY pickup_at
+	//  LIMIT $2::int
+	ListMissedPickups(ctx context.Context, arg ListMissedPickupsParams) ([]uuid.UUID, error)
 	//ListOrderItemsByOrderID
 	//
 	//  SELECT
@@ -1189,14 +1200,14 @@ type Querier interface {
 	ListOrderItemsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]OrderItem, error)
 	//ListOrderStatusEvents
 	//
-	//  SELECT to_status, actor_role, created_at
+	//  SELECT to_status, actor_role, reason, created_at
 	//  FROM order_status_events
 	//  WHERE order_id = $1
 	//  ORDER BY created_at ASC, id ASC
 	ListOrderStatusEvents(ctx context.Context, orderID uuid.UUID) ([]ListOrderStatusEventsRow, error)
 	// The history of many orders in one round trip, as a data export reads it.
 	//
-	//  SELECT order_id, to_status, actor_role, created_at
+	//  SELECT order_id, to_status, actor_role, reason, created_at
 	//  FROM order_status_events
 	//  WHERE order_id = ANY($1::uuid[])
 	//  ORDER BY order_id, created_at ASC, id ASC
@@ -1338,6 +1349,15 @@ type Querier interface {
 	//  WHERE product_id = $1
 	//  ORDER BY sort_order ASC
 	ListProductImagesByProductID(ctx context.Context, productID uuid.UUID) ([]ListProductImagesByProductIDRow, error)
+	// Payments whose refund is asked for and not made yet, the oldest first.
+	//
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  FROM payments
+	//  WHERE status = 'captured'
+	//    AND refund_requested_at IS NOT NULL
+	//  ORDER BY refund_requested_at
+	//  LIMIT $1::int
+	ListRefundsDue(ctx context.Context, maxRows int32) ([]Payment, error)
 	// A station's queue: its tickets of orders accepted and not yet collected,
 	// soonest pickup first, each with what it makes. The page is cut first and
 	// the items gathered after, as in CatalogListProducts.
@@ -1397,6 +1417,12 @@ type Querier interface {
 	//  ORDER BY closed_on
 	//  LIMIT $3::int
 	ListStoreClosedDates(ctx context.Context, arg ListStoreClosedDatesParams) ([]ListStoreClosedDatesRow, error)
+	// Holds the customer's bookings until the transaction ends, so two of their
+	// checkouts or pickup moves cannot both take a day's last place. The key is the
+	// customer, under a namespace of its own.
+	//
+	//  SELECT pg_advisory_xact_lock($1::int, hashtext($2::uuid::text))
+	LockCustomerBookings(ctx context.Context, arg LockCustomerBookingsParams) error
 	// Holds the order row until the transaction ends: every ticket move takes it
 	// first, and the order's own status moves take the same row lock through their
 	// guarded UPDATE, so its status is derived from tickets no one else is moving.
@@ -1704,8 +1730,21 @@ type Querier interface {
 	//      updated_at  = now()
 	//  WHERE id = $3
 	//    AND status IN ('created', 'pending')
-	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 	RecordPaymentCapture(ctx context.Context, arg RecordPaymentCaptureParams) (Payment, error)
+	// Records the provider's refund of a payment whose refund was asked for; a
+	// payment refunded already stays as it is.
+	//
+	//  UPDATE payments
+	//  SET status      = 'refunded',
+	//      refund_id   = $1,
+	//      refunded_at = now(),
+	//      updated_at  = now()
+	//  WHERE id = $2
+	//    AND status = 'captured'
+	//    AND refund_requested_at IS NOT NULL
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	RecordPaymentRefund(ctx context.Context, arg RecordPaymentRefundParams) (Payment, error)
 	// Single use: the token goes as it is redeemed, in one statement, so two
 	// requests with the same link cannot both succeed. An expired token, or one
 	// of a closed account, opens nothing.
@@ -1753,6 +1792,44 @@ type Querier interface {
 	//      expires_at = EXCLUDED.expires_at,
 	//      created_at = now()
 	ReplaceUserToken(ctx context.Context, arg ReplaceUserTokenParams) error
+	// Asks for the money back on a cancelled order's payment, in the transaction
+	// that cancels it. A payment not taken, or asked already, stays as it is.
+	//
+	//  UPDATE payments
+	//  SET refund_requested_at = now(),
+	//      updated_at          = now()
+	//  WHERE order_id = $1
+	//    AND status = 'captured'
+	//    AND refund_requested_at IS NULL
+	RequestPaymentRefund(ctx context.Context, orderID uuid.UUID) error
+	// Moves the pickup of an order not being made yet; its type follows the new
+	// time.
+	//
+	//  UPDATE orders
+	//  SET pickup_at  = $1,
+	//      order_type = $2,
+	//      updated_at = now()
+	//  WHERE id = $3
+	//    AND status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status)
+	//  RETURNING
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    pickup_at,
+	//    created_at,
+	//    updated_at,
+	//    code,
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at
+	RescheduleOrder(ctx context.Context, arg RescheduleOrderParams) (Order, error)
 	// A reset link reached the account's inbox, so it confirms the address too.
 	//
 	//  UPDATE users
@@ -1774,7 +1851,7 @@ type Querier interface {
 	//      updated_at        = now()
 	//  WHERE order_id = $3
 	//    AND status = 'denied'
-	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 	RestartPayment(ctx context.Context, arg RestartPaymentParams) (Payment, error)
 	// Removes an erased account's personal data from the audit trail and keeps
 	// the trail: changes to the account and its profile lose their before and
@@ -1889,7 +1966,8 @@ type Querier interface {
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
 	//  WHERE o.id = $1
 	StaffGetOrderByID(ctx context.Context, id uuid.UUID) (StaffGetOrderByIDRow, error)
-	// An order not paid, now or ever, is not the bakery's to see.
+	// An order not paid, now or ever, is not the bakery's to see: one cancelled
+	// is only if it was accepted before (domainorder.SeenByStaff).
 	//
 	//  SELECT
 	//    o.id,
@@ -1912,6 +1990,10 @@ type Querier interface {
 	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
 	//  WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+	//    AND (o.status <> 'cancelled'::order_status OR EXISTS (
+	//      SELECT 1 FROM order_status_events e
+	//      WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
+	//    ))
 	//    AND (
 	//      $1::order_status IS NULL
 	//      OR o.status = $1::order_status
@@ -1925,6 +2007,10 @@ type Querier interface {
 	//  FROM orders o
 	//  INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 	//  WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+	//    AND (o.status <> 'cancelled'::order_status OR EXISTS (
+	//      SELECT 1 FROM order_status_events e
+	//      WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
+	//    ))
 	//    AND (
 	//      $1::order_status IS NULL
 	//      OR o.status = $1::order_status

@@ -1,6 +1,7 @@
 package order
 
 import (
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,7 +21,23 @@ const (
 	// TopicTicketChanged announces a ticket starting, finishing, moving station
 	// or being cancelled with its order.
 	TopicTicketChanged domainevent.Topic = "ticket.changed"
+	// TopicOrderRescheduled announces an order's pickup moving to another time.
+	TopicOrderRescheduled domainevent.Topic = "order.rescheduled"
+	// TopicOrderRefunded announces a cancelled order's payment going back.
+	TopicOrderRefunded domainevent.Topic = "order.refunded"
 )
+
+// rolesSeeing is the bakery roles that see an order in any of statuses.
+func rolesSeeing(statuses ...Status) []domainuser.Role {
+	var roles []domainuser.Role
+	if slices.ContainsFunc(statuses, Status.VisibleToStaff) {
+		roles = append(roles, domainuser.RoleStaff)
+	}
+	if slices.ContainsFunc(statuses, Status.VisibleToBaker) {
+		roles = append(roles, domainuser.RoleBaker)
+	}
+	return roles
+}
 
 // TicketChangedEvent announces ticket to the order's customer, to the counter
 // when staff see the order, and to the kitchen when bakers see it — a kitchen ticket shows where
@@ -28,16 +45,9 @@ const (
 // the order's status changes. orderStatus is the status the kitchen knows the
 // order by: for a cancellation, the status it left.
 func TicketChangedEvent(customerID uuid.UUID, orderStatus Status, ticket Ticket) domainevent.Event {
-	var roles []domainuser.Role
-	if orderStatus.VisibleToStaff() {
-		roles = append(roles, domainuser.RoleStaff)
-	}
-	if orderStatus.VisibleToBaker() {
-		roles = append(roles, domainuser.RoleBaker)
-	}
 	return domainevent.New(TopicTicketChanged, domainevent.Audience{
 		UserIDs: []uuid.UUID{customerID},
-		Roles:   roles,
+		Roles:   rolesSeeing(orderStatus),
 	}, map[string]string{
 		"ticket_id": ticket.ID.String(),
 		"order_id":  ticket.OrderID.String(),
@@ -68,21 +78,37 @@ func CreatedEvent(order Order) domainevent.Event {
 // StatusChangedEvent announces order's move from the status it left. The
 // counter hears about it unless the order was never paid, and the kitchen only
 // when the order enters, leaves or moves within the statuses bakers work with;
-// every other order is not theirs to see.
+// every other order is not theirs to see. A cancellation is news only to those
+// who saw the order before it.
 func StatusChangedEvent(from Status, order Order) domainevent.Event {
-	var roles []domainuser.Role
-	if from.VisibleToStaff() || order.Status.VisibleToStaff() {
-		roles = append(roles, domainuser.RoleStaff)
-	}
-	if from.VisibleToBaker() || order.Status.VisibleToBaker() {
-		roles = append(roles, domainuser.RoleBaker)
+	seen := []Status{from}
+	if order.Status != StatusCancelled {
+		seen = append(seen, order.Status)
 	}
 	return domainevent.New(TopicOrderStatusChanged, domainevent.Audience{
 		UserIDs: []uuid.UUID{order.UserID},
-		Roles:   roles,
+		Roles:   rolesSeeing(seen...),
 	}, map[string]string{
 		"order_id": order.ID.String(),
 		"from":     string(from),
 		"status":   string(order.Status),
 	})
+}
+
+// RescheduledEvent announces order's new pickup time to its customer and to
+// the bakery roles that see the order.
+func RescheduledEvent(order Order) domainevent.Event {
+	return domainevent.New(TopicOrderRescheduled, domainevent.Audience{
+		UserIDs: []uuid.UUID{order.UserID},
+		Roles:   rolesSeeing(order.Status),
+	}, map[string]string{"order_id": order.ID.String()})
+}
+
+// RefundedEvent announces that order's payment went back to its customer, to
+// them and to the bakery roles that see the order.
+func RefundedEvent(order Order) domainevent.Event {
+	return domainevent.New(TopicOrderRefunded, domainevent.Audience{
+		UserIDs: []uuid.UUID{order.UserID},
+		Roles:   rolesSeeing(order.Status),
+	}, map[string]string{"order_id": order.ID.String()})
 }

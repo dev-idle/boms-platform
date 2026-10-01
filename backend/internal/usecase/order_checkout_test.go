@@ -42,7 +42,7 @@ func TestOrderUsecase_Checkout_StoreUnreachable(t *testing.T) {
 	t.Parallel()
 	store, tx := newMemoryStore(), &countingTxManager{}
 	store.err = errors.New("database unavailable")
-	uc := usecase.NewOrderUsecase(nil, unplacedOrders{}, nil, nil, nil, tx, &recordingOutbox{}, store, nil, nil)
+	uc := usecase.NewOrderUsecase(nil, unplacedOrders{}, nil, nil, nil, tx, &recordingOutbox{}, store, nil, nil, nil)
 
 	_, err := uc.Checkout(context.Background(), uuid.New(), uuid.New(), dto.CheckoutRequest{PickupAt: time.Now().Add(24 * time.Hour), TermsVersion: domainpolicy.TermsVersion})
 
@@ -56,7 +56,7 @@ func TestOrderUsecase_Checkout_WithoutTheCurrentTerms(t *testing.T) {
 	t.Parallel()
 	store, tx := newMemoryStore(), &countingTxManager{}
 	store.err = errors.New("the rules must not be read")
-	uc := usecase.NewOrderUsecase(nil, nil, nil, nil, nil, tx, &recordingOutbox{}, store, nil, nil)
+	uc := usecase.NewOrderUsecase(nil, nil, nil, nil, nil, tx, &recordingOutbox{}, store, nil, nil, nil)
 
 	for _, version := range []string{"", "2025-01-01"} {
 		_, err := uc.Checkout(context.Background(), uuid.New(), uuid.New(), dto.CheckoutRequest{

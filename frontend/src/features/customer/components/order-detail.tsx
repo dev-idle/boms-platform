@@ -18,6 +18,7 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useOrder, usePayPalReturn } from "../hooks";
 import { isWithTheBakery } from "../lib/order-progress";
+import { OrderChanges } from "./order-changes";
 import { OrderPayment } from "./order-payment";
 import { OrderProgressStepper } from "./order-progress-stepper";
 
@@ -76,6 +77,11 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
         <OrderProgressStepper status={order.status} timeline={order.timeline} />
 
         {order.status === "awaiting_payment" ? <OrderPayment confirming={paying.isPending} order={order} /> : null}
+
+        {/* The API sends what the items need only while the order may still change. */}
+        {order.fulfillment ? (
+          <OrderChanges fulfillment={order.fulfillment} order={order} />
+        ) : null}
 
         {isWithTheBakery(order.status) && order.tickets.length > 0 ? (
           <section
@@ -144,6 +150,11 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
           </div>
           {order.payment?.captured_at ? (
             <p className="text-caption">Paid with PayPal on {formatDateTime(order.payment.captured_at)}</p>
+          ) : null}
+          {order.payment?.refunded_at ? (
+            <p className="text-caption">Refunded to PayPal on {formatDateTime(order.payment.refunded_at)}</p>
+          ) : order.payment?.refund_requested_at ? (
+            <p className="text-caption">Refund to PayPal in progress</p>
           ) : null}
         </div>
       </div>

@@ -35,6 +35,7 @@ type OrderUsecase struct {
 	store       port.StoreSettingsRepository
 	tickets     port.TicketRepository
 	payments    port.PaymentRepository
+	payment     *PaymentUsecase
 	transitions orderTransitions
 }
 
@@ -49,11 +50,14 @@ func NewOrderUsecase(
 	store port.StoreSettingsRepository,
 	tickets port.TicketRepository,
 	payments port.PaymentRepository,
+	payment *PaymentUsecase,
 ) *OrderUsecase {
 	return &OrderUsecase{
 		users: users, orders: orders, carts: carts, discount: discount, cartUC: cartUC,
-		tx: tx, events: events, store: store, tickets: tickets, payments: payments,
-		transitions: orderTransitions{tx: tx, orders: orders, tickets: tickets, events: events},
+		tx: tx, events: events, store: store, tickets: tickets, payments: payments, payment: payment,
+		transitions: orderTransitions{
+			tx: tx, orders: orders, tickets: tickets, discounts: discount, payments: payments, events: events,
+		},
 	}
 }
 
@@ -99,7 +103,11 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UU
 		if !customer.EmailVerified {
 			return domainuser.ErrEmailNotVerified
 		}
-		booking, err := u.bookPickup(txCtx, userID, lines, pickupAt, now, policy)
+		items, err := u.cartUC.fulfillmentOf(txCtx, lines)
+		if err != nil {
+			return err
+		}
+		booking, err := u.bookPickup(txCtx, userID, items, pickupAt, now, policy, nil)
 		if err != nil {
 			return err
 		}
@@ -185,7 +193,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UU
 				OrderID:    order.ID,
 				FromStatus: domainorder.StatusAwaitingPayment,
 				ToStatus:   domainorder.StatusConfirmed,
-			}); err != nil {
+			}, ""); err != nil {
 				return err
 			}
 		}
@@ -250,34 +258,35 @@ type pickupBooking struct {
 	fillsSlot bool
 }
 
-// bookPickup decides the order's type from the priced lines of the locked
-// cart, checks the pickup time against the rules for that type, and holds its
-// slot until the transaction ends. It refuses a slot that is already full and
-// a customer who already holds as many orders for that day as one may. The
-// cart lock serializes one customer's checkouts, so the day count cannot race.
+// bookPickup decides the order's type from what its items ask of the bakery,
+// checks the pickup time against the rules for that type, and holds its slot
+// until the transaction ends. It refuses a slot that is already full and a
+// customer who already holds as many orders for that day as one may; current
+// is the pickup an order being moved holds now, nil at checkout. Both holds
+// last until the transaction ends, so neither count can race.
 func (u *OrderUsecase) bookPickup(
 	txCtx context.Context,
 	userID uuid.UUID,
-	lines []pricedCartLine,
+	items domainorder.Fulfillment,
 	pickupAt, now time.Time,
 	policy domainorder.PickupPolicy,
+	current *time.Time,
 ) (pickupBooking, error) {
-	items, err := u.cartUC.fulfillmentOf(txCtx, lines)
-	if err != nil {
-		return pickupBooking{}, err
-	}
 	orderType, err := policy.Validate(pickupAt, now, items)
 	if err != nil {
 		return pickupBooking{}, err
 	}
 	day := domainstore.DayOf(pickupAt)
-	dayStart := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, domainstore.Location)
-	mine, err := u.orders.CountCustomerOrdersBetween(txCtx, userID, dayStart, dayStart.AddDate(0, 0, 1))
-	if err != nil {
-		return pickupBooking{}, err
-	}
-	if mine >= domainorder.MaxOrdersPerCustomerPerDay {
-		return pickupBooking{}, domainorder.ErrPickupDayLimit
+	// An order moving within its own day counts toward that day already.
+	if current == nil || !domainstore.DayOf(*current).Equal(day) {
+		dayStart := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, domainstore.Location)
+		mine, err := u.orders.HoldCustomerDay(txCtx, userID, dayStart, dayStart.AddDate(0, 0, 1))
+		if err != nil {
+			return pickupBooking{}, err
+		}
+		if mine >= domainorder.MaxOrdersPerCustomerPerDay {
+			return pickupBooking{}, domainorder.ErrPickupDayLimit
+		}
 	}
 	held, err := u.orders.HoldPickupSlot(txCtx, pickupAt, policy.Settings.SlotLength)
 	if err != nil {
@@ -373,6 +382,16 @@ func (u *OrderUsecase) orderResponse(ctx context.Context, userID, orderID uuid.U
 		PaymentDueAt:         order.PaymentDueAt,
 		CreatedAt:            order.CreatedAt,
 		UpdatedAt:            order.UpdatedAt,
+	}
+	// The pickup picker needs what the items ask of the bakery only while the
+	// customer may still move the pickup.
+	if order.Status.BeforeProduction() {
+		items, err := u.cartUC.orderFulfillment(ctx, parts.items)
+		if err != nil {
+			return nil, err
+		}
+		fulfillment := mapFulfillmentToDTO(items)
+		resp.Fulfillment = &fulfillment
 	}
 	return resp, nil
 }

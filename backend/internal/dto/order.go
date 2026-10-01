@@ -16,7 +16,9 @@ type OrderItemResponse struct {
 
 // OrderTimelineEntryResponse is a status the order entered and when.
 type OrderTimelineEntryResponse struct {
-	Status string    `json:"status"`
+	Status string `json:"status"`
+	// Reason is why the bakery cancelled the order; null for any other move.
+	Reason *string   `json:"reason"`
 	At     time.Time `json:"at"`
 }
 
@@ -36,8 +38,11 @@ type OrderResponse struct {
 	Payment              *OrderPaymentResponse        `json:"payment"`
 	// PaymentDueAt is when the order expires if it is still unpaid.
 	PaymentDueAt *time.Time `json:"payment_due_at"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	// Fulfillment is what the items ask of the bakery, for choosing another
+	// pickup; null once the order is being made.
+	Fulfillment *FulfillmentResponse `json:"fulfillment"`
+	CreatedAt   time.Time            `json:"created_at"`
+	UpdatedAt   time.Time            `json:"updated_at"`
 }
 
 // OrderPaymentResponse is where an order's payment stands; null before the
@@ -46,6 +51,10 @@ type OrderPaymentResponse struct {
 	Provider   string     `json:"provider"`
 	Status     string     `json:"status"`
 	CapturedAt *time.Time `json:"captured_at"`
+	// RefundRequestedAt is set once the order is cancelled; RefundedAt once the
+	// money went back.
+	RefundRequestedAt *time.Time `json:"refund_requested_at"`
+	RefundedAt        *time.Time `json:"refunded_at"`
 }
 
 // PaymentStartResponse is the provider page the customer approves the payment on.
@@ -75,6 +84,11 @@ type OrderHistoryQuery struct {
 	Status string
 	From   string
 	To     string
+}
+
+// RescheduleOrderRequest moves an order's pickup to another slot.
+type RescheduleOrderRequest struct {
+	PickupAt time.Time `json:"pickup_at" validate:"required"`
 }
 
 type CheckoutRequest struct {

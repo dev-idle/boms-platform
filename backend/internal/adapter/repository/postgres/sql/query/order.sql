@@ -150,7 +150,7 @@ SELECT EXISTS (
   SELECT 1
   FROM orders
   WHERE user_id = $1
-    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status)
+    AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status, 'no_show'::order_status)
 ) AS open;
 
 -- name: ListOrdersByUserCount :one
@@ -273,8 +273,13 @@ SELECT
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 LEFT JOIN customer_profiles cp ON cp.user_id = o.user_id
--- An order not paid, now or ever, is not the bakery's to see.
+-- An order not paid, now or ever, is not the bakery's to see: one cancelled
+-- is only if it was accepted before (domainorder.SeenByStaff).
 WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+  AND (o.status <> 'cancelled'::order_status OR EXISTS (
+    SELECT 1 FROM order_status_events e
+    WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
+  ))
   AND (
     sqlc.narg('status')::order_status IS NULL
     OR o.status = sqlc.narg('status')::order_status
@@ -287,6 +292,10 @@ SELECT COUNT(*)::bigint AS count
 FROM orders o
 INNER JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 WHERE o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
+  AND (o.status <> 'cancelled'::order_status OR EXISTS (
+    SELECT 1 FROM order_status_events e
+    WHERE e.order_id = o.id AND e.to_status IN ('pending'::order_status, 'confirmed'::order_status)
+  ))
   AND (
     sqlc.narg('status')::order_status IS NULL
     OR o.status = sqlc.narg('status')::order_status
@@ -353,24 +362,25 @@ SET last_number = order_day_counters.last_number + 1
 RETURNING day, last_number;
 
 -- name: CreateOrderStatusEvent :exec
-INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role)
+INSERT INTO order_status_events (order_id, from_status, to_status, actor_id, actor_role, reason)
 VALUES (
   sqlc.arg('order_id'),
   sqlc.narg('from_status')::order_status,
   sqlc.arg('to_status')::order_status,
   sqlc.narg('actor_id'),
-  sqlc.narg('actor_role')::user_role
+  sqlc.narg('actor_role')::user_role,
+  sqlc.narg('reason')
 );
 
 -- name: ListOrderStatusEvents :many
-SELECT to_status, actor_role, created_at
+SELECT to_status, actor_role, reason, created_at
 FROM order_status_events
 WHERE order_id = $1
 ORDER BY created_at ASC, id ASC;
 
 -- name: ListOrderStatusEventsByOrderIDs :many
 -- The history of many orders in one round trip, as a data export reads it.
-SELECT order_id, to_status, actor_role, created_at
+SELECT order_id, to_status, actor_role, reason, created_at
 FROM order_status_events
 WHERE order_id = ANY(sqlc.arg('order_ids')::uuid[])
 ORDER BY order_id, created_at ASC, id ASC;
@@ -393,6 +403,12 @@ FROM orders
 WHERE pickup_at >= sqlc.arg('from_at')::timestamptz
   AND pickup_at < sqlc.arg('to_at')::timestamptz
   AND status NOT IN ('cancelled'::order_status, 'expired'::order_status);
+
+-- name: LockCustomerBookings :exec
+-- Holds the customer's bookings until the transaction ends, so two of their
+-- checkouts or pickup moves cannot both take a day's last place. The key is the
+-- customer, under a namespace of its own.
+SELECT pg_advisory_xact_lock(sqlc.arg('namespace')::int, hashtext(sqlc.arg('user_id')::uuid::text));
 
 -- name: CountCustomerOrdersBetween :one
 -- A customer's orders not cancelled or expired with a pickup in [from_at, to_at).
@@ -505,3 +521,41 @@ RETURNING
   terms_version,
   checkout_key,
   payment_due_at;
+
+-- name: RescheduleOrder :one
+-- Moves the pickup of an order not being made yet; its type follows the new
+-- time.
+UPDATE orders
+SET pickup_at  = sqlc.arg('pickup_at'),
+    order_type = sqlc.arg('order_type'),
+    updated_at = now()
+WHERE id = sqlc.arg('id')
+  AND status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status)
+RETURNING
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at;
+
+-- name: ListMissedPickups :many
+-- Orders ready and not collected whose pickup falls before missed_before, the
+-- longest waiting first.
+SELECT id
+FROM orders
+WHERE status = 'ready'::order_status
+  AND pickup_at < sqlc.arg('missed_before')
+ORDER BY pickup_at
+LIMIT sqlc.arg('max_rows')::int;

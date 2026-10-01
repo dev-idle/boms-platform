@@ -47,3 +47,35 @@ SET status      = sqlc.arg('status'),
 WHERE id = sqlc.arg('id')
   AND status IN ('created', 'pending')
 RETURNING *;
+
+-- name: RequestPaymentRefund :exec
+-- Asks for the money back on a cancelled order's payment, in the transaction
+-- that cancels it. A payment not taken, or asked already, stays as it is.
+UPDATE payments
+SET refund_requested_at = now(),
+    updated_at          = now()
+WHERE order_id = $1
+  AND status = 'captured'
+  AND refund_requested_at IS NULL;
+
+-- name: ListRefundsDue :many
+-- Payments whose refund is asked for and not made yet, the oldest first.
+SELECT *
+FROM payments
+WHERE status = 'captured'
+  AND refund_requested_at IS NOT NULL
+ORDER BY refund_requested_at
+LIMIT sqlc.arg('max_rows')::int;
+
+-- name: RecordPaymentRefund :one
+-- Records the provider's refund of a payment whose refund was asked for; a
+-- payment refunded already stays as it is.
+UPDATE payments
+SET status      = 'refunded',
+    refund_id   = sqlc.narg('refund_id'),
+    refunded_at = now(),
+    updated_at  = now()
+WHERE id = sqlc.arg('id')
+  AND status = 'captured'
+  AND refund_requested_at IS NOT NULL
+RETURNING *;

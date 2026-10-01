@@ -1,9 +1,10 @@
 // Command worker delivers the outbox events the API could not deliver right
 // after commit — a crashed process, a Redis outage — deletes delivery records
-// past their retention, sends the emails events queue, and expires orders not
-// paid in time. Run it beside the API; several copies can run at once, since
-// sweeps skip rows another copy holds, each queued email goes to one of them,
-// and an order expires only from awaiting payment.
+// past their retention, sends the emails events queue, expires orders not paid
+// in time, makes the refunds cancelled orders ask for and records missed
+// pickups. Run it beside the API; several copies can run at once, since sweeps
+// skip rows another copy holds, each queued email goes to one of them, every
+// order move is guarded on the status it leaves, and a refund is recorded once.
 package main
 
 import (
@@ -70,7 +71,7 @@ func main() {
 		cfg.Outbox.DispatchTimeout,
 	)
 
-	// Expiring an order writes events: deliver them at once, as the API does.
+	// The order jobs write events: deliver them at once, as the API does.
 	pgPool.OnCommit(dispatcher.AfterCommit)
 
 	stopEmails, err := startEmails(cfg.Mail, cfg.App.SiteURL, redisClient.RDB(), pgPool, zlog)
@@ -78,18 +79,15 @@ func main() {
 		zlog.Fatal("email_init", zap.Error(err))
 	}
 
-	payments := usecase.NewPaymentUsecase(pgPool, postgresrepo.NewOrderRepository(pgPool),
-		postgresrepo.NewDiscountCodeRepository(pgPool), postgresrepo.NewTicketRepository(pgPool),
-		postgresrepo.NewPaymentRepository(pgPool), paypal.New(cfg.PayPal), postgresrepo.NewOutboxRepository(pgPool),
-		cfg.App.SiteURL, zlog)
+	orderJobs := newOrderJobs(cfg, pgPool, zlog)
 
 	zlog.Info("worker_started",
 		zap.Duration("sweep_interval", cfg.Outbox.SweepInterval),
 		zap.Duration("prune_interval", cfg.Outbox.PruneInterval),
-		zap.Duration("order_expiry_interval", cfg.Order.ExpiryInterval),
+		zap.Duration("order_job_interval", cfg.Order.JobInterval),
 		zap.Int("email_concurrency", cfg.Mail.Concurrency),
 	)
-	run(ctx, dispatcher, payments, cfg, zlog)
+	run(ctx, dispatcher, orderJobs, cfg, zlog)
 	// A delivery is a publish and a mark, each within the dispatch timeout.
 	waitCtx, cancel := context.WithTimeout(context.Background(), 2*cfg.Outbox.DispatchTimeout)
 	defer cancel()
@@ -112,7 +110,8 @@ func startEmails(cfg config.MailConfig, siteURL string, rdb *redis.Client, pool 
 	}
 	mailer := email.NewSMTPMailer(cfg)
 	users := postgresrepo.NewUserRepository(pool)
-	orderEmails := usecase.NewOrderEmailUsecase(postgresrepo.NewOrderRepository(pool), orderComposer, mailer, log)
+	orderEmails := usecase.NewOrderEmailUsecase(postgresrepo.NewOrderRepository(pool), postgresrepo.NewPaymentRepository(pool),
+		orderComposer, mailer, log)
 	accountEmails := usecase.NewAccountEmailUsecase(users, postgresrepo.NewUserTokenRepository(pool), accountComposer, mailer, log)
 	server := asynq.NewServerFromRedisClient(rdb, asynq.Config{
 		Concurrency: cfg.Concurrency,
@@ -155,13 +154,36 @@ type outboxJobs interface {
 	Prune(ctx context.Context, retention time.Duration) (int64, error)
 }
 
-// orderJobs is the order work the worker schedules.
-type orderJobs interface {
-	ExpireOverdue(ctx context.Context) (int, error)
+// orderJob is order work the worker runs on every order tick; run returns how
+// many orders it moved.
+type orderJob struct {
+	name string
+	run  func(ctx context.Context) (int, error)
 }
 
-// run sweeps, prunes and expires on their intervals until ctx is cancelled.
-func run(ctx context.Context, jobs outboxJobs, orders orderJobs, cfg *config.Config, log *zap.Logger) {
+// newOrderJobs is the order work, in the order a tick runs it.
+func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, log *zap.Logger) []orderJob {
+	orders := postgresrepo.NewOrderRepository(pool)
+	carts := postgresrepo.NewCartRepository(pool)
+	discounts := postgresrepo.NewDiscountCodeRepository(pool)
+	tickets := postgresrepo.NewTicketRepository(pool)
+	paymentRepo := postgresrepo.NewPaymentRepository(pool)
+	outbox := postgresrepo.NewOutboxRepository(pool)
+	payments := usecase.NewPaymentUsecase(pool, orders, discounts, tickets, paymentRepo, paypal.New(cfg.PayPal), outbox,
+		cfg.App.SiteURL, log)
+	cartUC := usecase.NewCartUsecase(carts, postgresrepo.NewProductRepository(pool), postgresrepo.NewComboRepository(pool), discounts)
+	pickups := usecase.NewOrderUsecase(postgresrepo.NewUserRepository(pool), orders, carts, discounts, cartUC, pool, outbox,
+		postgresrepo.NewStoreSettingsRepository(pool), tickets, paymentRepo, payments)
+	return []orderJob{
+		{name: "expire_unpaid", run: payments.ExpireOverdue},
+		{name: "make_refunds", run: payments.RefundDue},
+		{name: "mark_no_shows", run: pickups.MarkNoShows},
+	}
+}
+
+// run sweeps, prunes and runs the order jobs on their intervals until ctx is
+// cancelled.
+func run(ctx context.Context, jobs outboxJobs, orders []orderJob, cfg *config.Config, log *zap.Logger) {
 	// A restarted worker recovers at once instead of one interval later.
 	sweep(ctx, jobs, cfg.Outbox, log)
 
@@ -169,8 +191,8 @@ func run(ctx context.Context, jobs outboxJobs, orders orderJobs, cfg *config.Con
 	defer sweepTicker.Stop()
 	pruneTicker := time.NewTicker(cfg.Outbox.PruneInterval)
 	defer pruneTicker.Stop()
-	expiryTicker := time.NewTicker(cfg.Order.ExpiryInterval)
-	defer expiryTicker.Stop()
+	orderTicker := time.NewTicker(cfg.Order.JobInterval)
+	defer orderTicker.Stop()
 
 	for {
 		select {
@@ -178,14 +200,16 @@ func run(ctx context.Context, jobs outboxJobs, orders orderJobs, cfg *config.Con
 			return
 		case <-sweepTicker.C:
 			sweep(ctx, jobs, cfg.Outbox, log)
-		case <-expiryTicker.C:
-			// A failed order is overdue still, so the next tick tries it again.
-			expired, err := orders.ExpireOverdue(ctx)
-			if err != nil {
-				log.Error("order_expiry_failed", zap.Error(err))
-			}
-			if expired > 0 {
-				log.Info("orders_expired", zap.Int("orders", expired))
+		case <-orderTicker.C:
+			// What a job could not do is still due, so the next tick tries it again.
+			for _, job := range orders {
+				moved, err := job.run(ctx)
+				if err != nil {
+					log.Error("order_job_failed", zap.String("job", job.name), zap.Error(err))
+				}
+				if moved > 0 {
+					log.Info("order_job_done", zap.String("job", job.name), zap.Int("orders", moved))
+				}
 			}
 		case <-pruneTicker.C:
 			deleted, err := jobs.Prune(ctx, cfg.Outbox.Retention)

@@ -18,4 +18,5 @@ var (
 	ErrTicketNotMovable        = errors.New("only a ticket nobody has started can move")
 	ErrTicketStationTaken      = errors.New("the order already has a ticket at that station")
 	ErrPickupDayLimit          = errors.New("the customer already has as many orders as one customer may book for that day")
+	ErrInvalidCancelReason     = errors.New("a cancellation needs a reason of 1 to 200 plain characters")
 )

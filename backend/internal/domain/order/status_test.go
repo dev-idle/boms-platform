@@ -1,6 +1,10 @@
 package order
 
-import "testing"
+import (
+	"errors"
+	"strings"
+	"testing"
+)
 
 func TestCanStaffTransition(t *testing.T) {
 	t.Parallel()
@@ -51,5 +55,37 @@ func TestStatusValid(t *testing.T) {
 	}
 	if Status("bogus").Valid() {
 		t.Fatal("Status(bogus).Valid() = true, want false")
+	}
+}
+
+func TestStatus_BeforeProduction(t *testing.T) {
+	t.Parallel()
+	for _, s := range []Status{StatusAwaitingPayment, StatusPending, StatusConfirmed} {
+		if !s.BeforeProduction() {
+			t.Errorf("%q: the customer may still cancel or move it", s)
+		}
+	}
+	for _, s := range []Status{StatusInProduction, StatusReady, StatusFulfilled, StatusCancelled, StatusExpired, StatusNoShow} {
+		if s.BeforeProduction() {
+			t.Errorf("%q: being made or closed", s)
+		}
+	}
+}
+
+func TestNewCancelReason(t *testing.T) {
+	t.Parallel()
+	got, err := NewCancelReason("  Out of matcha today  ")
+	if err != nil || got != "Out of matcha today" {
+		t.Fatalf("got %q, %v; want the trimmed reason", got, err)
+	}
+	for name, raw := range map[string]string{
+		"empty":          "   ",
+		"too_long":       strings.Repeat("a", 201),
+		"control":        "Out of\nmatcha",
+		"direction_mark": "Out of " + string(rune(0x202e)) + "matcha",
+	} {
+		if _, err := NewCancelReason(raw); !errors.Is(err, ErrInvalidCancelReason) {
+			t.Errorf("%s: got %v, want ErrInvalidCancelReason", name, err)
+		}
 	}
 }

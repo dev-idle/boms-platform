@@ -50,13 +50,6 @@ func (f *fakeJobs) counts() (sweeps, prunes int) {
 	return f.sweeps, f.prunes
 }
 
-type fakeOrders struct{ runs atomic.Int32 }
-
-func (f *fakeOrders) ExpireOverdue(context.Context) (int, error) {
-	f.runs.Add(1)
-	return 0, nil
-}
-
 func TestSweep_DrainsABacklogInOneTick(t *testing.T) {
 	t.Parallel()
 	jobs := &fakeJobs{batches: []int{2, 2, 1}}
@@ -80,7 +73,11 @@ func TestSweep_StopsOnError(t *testing.T) {
 func TestRun_SweepsPrunesAndExpiresUntilStopped(t *testing.T) {
 	t.Parallel()
 	jobs := &fakeJobs{}
-	orders := &fakeOrders{}
+	var orderRuns atomic.Int32
+	orders := []orderJob{{name: "count", run: func(context.Context) (int, error) {
+		orderRuns.Add(1)
+		return 0, nil
+	}}}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
@@ -90,14 +87,14 @@ func TestRun_SweepsPrunesAndExpiresUntilStopped(t *testing.T) {
 				PruneInterval: 5 * time.Millisecond,
 				SweepBatch:    10,
 			},
-			Order: config.OrderConfig{ExpiryInterval: 5 * time.Millisecond},
+			Order: config.OrderConfig{JobInterval: 5 * time.Millisecond},
 		}, zap.NewNop())
 		close(done)
 	}()
 
 	assert.Eventually(t, func() bool {
 		sweeps, prunes := jobs.counts()
-		return sweeps > 0 && prunes > 0 && orders.runs.Load() > 0
+		return sweeps > 0 && prunes > 0 && orderRuns.Load() > 0
 	}, 5*time.Second, 5*time.Millisecond)
 
 	cancel()

@@ -84,3 +84,47 @@ func (h *OrderHandler) Get(c fiber.Ctx) error {
 	}
 	return response.OK(c, out)
 }
+
+// Cancel cancels the customer's order while it is not being made yet.
+func (h *OrderHandler) Cancel(c fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return writeAppError(c, apperrors.ErrUnauthorized)
+	}
+	orderID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid order id"))
+	}
+	out, err := h.usecase.Cancel(c.Context(), userID, orderID)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OK(c, out)
+}
+
+// Reschedule moves the pickup of the customer's order while it is not being
+// made yet.
+func (h *OrderHandler) Reschedule(c fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		return writeAppError(c, apperrors.ErrUnauthorized)
+	}
+	orderID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid order id"))
+	}
+	var req dto.RescheduleOrderRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
+	}
+	if err := sharevalidator.Struct(&req); err != nil {
+		return writeValidationError(c, err)
+	}
+	out, err := h.usecase.Reschedule(c.Context(), userID, orderID, req)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OK(c, out)
+}

@@ -37,6 +37,7 @@ type checkoutFixture struct {
 	cartUC    *usecase.CartUsecase
 	orderUC   *usecase.OrderUsecase
 	paymentUC *usecase.PaymentUsecase
+	paypal    *paidPayPal
 	cake      uuid.UUID
 	pastry    uuid.UUID
 	combo     uuid.UUID
@@ -63,9 +64,10 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 	tickets := postgresadapter.NewTicketRepository(pool)
 	payments := postgresadapter.NewPaymentRepository(pool)
 	f.cartUC = usecase.NewCartUsecase(f.carts, products, combos, discounts)
-	f.orderUC = usecase.NewOrderUsecase(f.users, f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, tickets, payments)
-	f.paymentUC = usecase.NewPaymentUsecase(pool, f.orders, discounts, tickets, payments, &paidPayPal{amounts: map[string]int64{}},
+	f.paypal = &paidPayPal{amounts: map[string]int64{}, taken: map[string]domainpayment.Status{}}
+	f.paymentUC = usecase.NewPaymentUsecase(pool, f.orders, discounts, tickets, payments, f.paypal,
 		f.outbox, "https://shop.example", zap.NewNop())
+	f.orderUC = usecase.NewOrderUsecase(f.users, f.orders, f.carts, discounts, f.cartUC, pool, f.outbox, f.store, tickets, payments, f.paymentUC)
 
 	kitchen, err := categories.Create(ctx, port.CreateCategoryParams{Name: "Cakes", Slug: "cakes", IsActive: true, Station: domaincategory.StationKitchen})
 	require.NoError(t, err)
@@ -92,11 +94,13 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 }
 
 // paidPayPal stands in for PayPal with a buyer who approves every payment and
-// pays it in full; a webhook call panics.
+// pays it in full; a webhook call panics. taken holds the captures the shop
+// never heard of, by PayPal order.
 type paidPayPal struct {
 	port.PaymentGateway
 	mu      sync.Mutex
 	amounts map[string]int64
+	taken   map[string]domainpayment.Status
 }
 
 func (p *paidPayPal) CreateOrder(_ context.Context, req port.PaymentOrderRequest) (string, string, error) {
@@ -107,9 +111,24 @@ func (p *paidPayPal) CreateOrder(_ context.Context, req port.PaymentOrderRequest
 	return id, "https://www.sandbox.paypal.com/checkoutnow?token=" + id, nil
 }
 
-// Lookup finds nothing captured: a buyer who never came back from PayPal.
-func (p *paidPayPal) Lookup(context.Context, string) (*domainpayment.Capture, error) {
-	return nil, nil
+// Refund returns a capture whole.
+func (p *paidPayPal) Refund(_ context.Context, captureID string) (string, error) {
+	return "REFUND-" + captureID, nil
+}
+
+// Lookup finds what taken holds; otherwise nothing captured, as for a buyer
+// who never came back from PayPal.
+func (p *paidPayPal) Lookup(_ context.Context, providerOrderID string) (*domainpayment.Capture, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	status, ok := p.taken[providerOrderID]
+	if !ok {
+		return nil, nil
+	}
+	return &domainpayment.Capture{
+		ID: "CAPTURE-" + providerOrderID, Status: status,
+		AmountCents: p.amounts[providerOrderID], Currency: domainpayment.Currency,
+	}, nil
 }
 
 func (p *paidPayPal) Capture(_ context.Context, providerOrderID string) (domainpayment.Capture, error) {
@@ -222,12 +241,12 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		pastryOnly := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
 		cart, err := f.cartUC.Get(ctx, pastryOnly)
 		require.NoError(t, err)
-		assert.Equal(t, dto.CartFulfillmentResponse{HasKitchenItems: false, LeadMinutes: 0}, cart.Fulfillment)
+		assert.Equal(t, dto.FulfillmentResponse{HasKitchenItems: false, LeadMinutes: 0}, cart.Fulfillment)
 
 		withCombo := f.newCustomer(t, []uuid.UUID{f.pastry}, []uuid.UUID{f.combo})
 		cart, err = f.cartUC.Get(ctx, withCombo)
 		require.NoError(t, err)
-		assert.Equal(t, dto.CartFulfillmentResponse{HasKitchenItems: true, LeadMinutes: 180}, cart.Fulfillment,
+		assert.Equal(t, dto.FulfillmentResponse{HasKitchenItems: true, LeadMinutes: 180}, cart.Fulfillment,
 			"a combo counts by the products it holds")
 	})
 

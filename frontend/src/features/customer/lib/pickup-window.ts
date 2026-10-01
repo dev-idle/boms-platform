@@ -2,7 +2,7 @@ import { formatOrderTypeLabel, type OrderType } from "@/lib/schemas/order";
 import { clockToMinutes, formatClockMinutes } from "@/lib/validation/clock";
 import type { PickupFulfillment, PickupProblem, PickupWindow } from "@/lib/validation/pickup";
 
-import type { Cart, PickupRules } from "../schemas";
+import type { Fulfillment, PickupRules } from "../schemas";
 
 /** The API's pickup rules in the shape the pickup checks read. */
 export function toPickupWindow(rules: PickupRules): PickupWindow {
@@ -17,8 +17,8 @@ export function toPickupWindow(rules: PickupRules): PickupWindow {
   };
 }
 
-/** What the cart's items ask of the bakery, in the shape the pickup checks read. */
-export function toPickupFulfillment(fulfillment: Cart["fulfillment"]): PickupFulfillment {
+/** What items ask of the bakery, in the shape the pickup checks read. */
+export function toPickupFulfillment(fulfillment: Fulfillment): PickupFulfillment {
   return { kitchen: fulfillment.has_kitchen_items, leadMinutes: fulfillment.lead_minutes };
 }
 

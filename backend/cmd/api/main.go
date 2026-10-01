@@ -114,8 +114,8 @@ func main() {
 	pgPool.OnCommit(eventDispatcher.AfterCommit)
 	ticketRepo := postgresrepo.NewTicketRepository(pgPool)
 	paymentRepo := postgresrepo.NewPaymentRepository(pgPool)
-	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo)
 	paymentUC := usecase.NewPaymentUsecase(pgPool, orderRepo, discountCodeRepo, ticketRepo, paymentRepo, paypal.New(cfg.PayPal), outboxRepo, cfg.App.SiteURL, zlog)
+	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	accountErasureUC := usecase.NewAccountErasureUsecase(
 		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
@@ -130,7 +130,7 @@ func main() {
 		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, cartRepo, sessionStore, auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
-	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo)
+	staffOrderUC := usecase.NewStaffOrderUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo)
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -300,6 +300,8 @@ func main() {
 	customerOrders.Get("/:id", orderHandler.Get)
 	customerOrders.Post("/:id/payment", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), paymentHandler.Start)
 	customerOrders.Post("/:id/payment/capture", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), paymentHandler.Capture)
+	customerOrders.Post("/:id/cancel", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), orderHandler.Cancel)
+	customerOrders.Patch("/:id/pickup", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), orderHandler.Reschedule)
 	// PayPal's notices: no session, each one signed and checked with PayPal.
 	apiV1.Post("/payments/paypal/webhook", middleware.PaymentWebhookRateLimit(rdb, cfg.RateRedis), paymentHandler.Webhook)
 

@@ -46,14 +46,21 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 			"Come in during your pickup time and give your order code at the counter.",
 		},
 	},
+	// The lead says who cancelled and why, and what comes back (cancelledLead).
 	domainorder.NoticeCancelled: {
 		subject:   "Your order %s was cancelled",
 		preheader: "Your order will not be made.",
 		eyebrow:   "Order cancelled",
 		heading:   "Your order was cancelled",
+	},
+	domainorder.NoticeNoShow: {
+		subject:   "Your order %s was not collected",
+		preheader: "We kept your order until closing time on its pickup day.",
+		eyebrow:   "Missed pickup",
+		heading:   "Your order was not collected",
 		lead: []string{
-			"We are sorry: your order has been cancelled and will not be made.",
-			"If you did not expect this, reply to this email or call us and we will help.",
+			"Your order was ready, but it was not collected by closing time on its pickup day, so we recorded it as a missed pickup.",
+			"As our refund policy explains, a missed pickup is not refunded: it was made for you and cannot be sold again.",
 		},
 	},
 	domainorder.NoticeExpired: {
@@ -136,6 +143,9 @@ func (c *OrderComposer) view(words orderCopy, msg port.OrderEmail) orderView {
 	if msg.CustomerName != "" {
 		view.Greeting = "Hi " + msg.CustomerName + ","
 	}
+	if msg.Notice == domainorder.NoticeCancelled {
+		view.Lead = cancelledLead(msg)
+	}
 	if order.PickupAt != nil {
 		view.Pickup = order.PickupAt.In(domainstore.Location).Format(pickupLayout)
 	}
@@ -154,6 +164,19 @@ func (c *OrderComposer) view(words orderCopy, msg port.OrderEmail) orderView {
 		})
 	}
 	return view
+}
+
+// cancelledLead says who cancelled the order and why, and what goes back.
+func cancelledLead(msg port.OrderEmail) []string {
+	lead := []string{"Your order has been cancelled as you asked, and will not be made."}
+	if msg.Reason != "" {
+		lead = []string{"We are sorry: we had to cancel your order, and it will not be made.", "Our reason: " + msg.Reason}
+	}
+	if msg.RefundCents > 0 {
+		lead = append(lead, "We are returning "+money(msg.RefundCents)+
+			" to your PayPal account. When it arrives is up to PayPal and your bank.")
+	}
+	return append(lead, "If you did not expect this, reply to this email or call us and we will help.")
 }
 
 // money writes cents as US dollars, the currency the bakery prices in, the way

@@ -193,6 +193,48 @@ func TestClient_Lookup(t *testing.T) {
 	})
 }
 
+func TestClient_Refund(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	refunding := func(t *testing.T, status int, body string) *Client {
+		client, _ := fakePayPal(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/v2/payments/captures/CAPTURE-1/refund", r.URL.Path)
+			assert.Equal(t, "refund-CAPTURE-1", r.Header.Get("PayPal-Request-Id"), "a retry returns the first refund")
+			w.WriteHeader(status)
+			_, _ = io.WriteString(w, body)
+		})
+		return client
+	}
+
+	t.Run("returns_the_whole_capture", func(t *testing.T) {
+		t.Parallel()
+		id, err := refunding(t, http.StatusCreated, `{"id":"REFUND-1","status":"COMPLETED"}`).Refund(ctx, "CAPTURE-1")
+		require.NoError(t, err)
+		assert.Equal(t, "REFUND-1", id)
+	})
+
+	t.Run("a_refund_still_clearing_is_made", func(t *testing.T) {
+		t.Parallel()
+		id, err := refunding(t, http.StatusCreated, `{"id":"REFUND-1","status":"PENDING"}`).Refund(ctx, "CAPTURE-1")
+		require.NoError(t, err)
+		assert.Equal(t, "REFUND-1", id)
+	})
+
+	t.Run("a_capture_refunded_from_the_dashboard_is_reported_as_such", func(t *testing.T) {
+		t.Parallel()
+		_, err := refunding(t, http.StatusUnprocessableEntity,
+			`{"name":"UNPROCESSABLE_ENTITY","debug_id":"d3","details":[{"issue":"CAPTURE_FULLY_REFUNDED"}]}`).Refund(ctx, "CAPTURE-1")
+		require.ErrorIs(t, err, domainpayment.ErrAlreadyRefunded)
+	})
+
+	t.Run("a_failed_refund_is_an_error", func(t *testing.T) {
+		t.Parallel()
+		_, err := refunding(t, http.StatusCreated, `{"id":"REFUND-1","status":"FAILED"}`).Refund(ctx, "CAPTURE-1")
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, domainpayment.ErrAlreadyRefunded)
+	})
+}
+
 func TestClient_VerifyWebhook(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

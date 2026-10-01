@@ -35,6 +35,7 @@ export function StaffOrderHistory({ timeline }: StaffOrderHistoryProps) {
               <p className="dashboard-activity-feed-meta">
                 {entry.actor_role ? roleDisplayLabel(entry.actor_role) : "System"}
               </p>
+              {entry.reason ? <p className="dashboard-activity-feed-meta">Reason: {entry.reason}</p> : null}
             </li>
           ))}
         </ol>

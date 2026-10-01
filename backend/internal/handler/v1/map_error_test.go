@@ -81,6 +81,7 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "discount_used_up", err: domaindiscount.ErrUsedUpByCustomer, wantStatus: 422, wantCode: "discount_used_up"},
 		{name: "order_not_payable", err: domainpayment.ErrNotPayable, wantStatus: 422, wantCode: "order_not_payable"},
 		{name: "payment_not_completed", err: domainpayment.ErrNotCompleted, wantStatus: 422, wantCode: "payment_not_completed"},
+		{name: "payment_under_review", err: domainpayment.ErrUnderReview, wantStatus: 409, wantCode: "payment_under_review"},
 		{name: "webhook_invalid", err: domainpayment.ErrWebhookInvalid, wantStatus: 400, wantCode: "webhook_invalid"},
 		{name: "store_invalid_hours", err: domainstore.ErrInvalidHours, wantStatus: 400, wantCode: "validation_error"},
 		{name: "store_invalid_lead_time", err: domainstore.ErrInvalidLeadTime, wantStatus: 400, wantCode: "validation_error"},
@@ -90,6 +91,7 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "store_invalid_instant_prep", err: domainstore.ErrInvalidInstantPrep, wantStatus: 400, wantCode: "validation_error"},
 		{name: "closed_date_out_of_range", err: domainstore.ErrClosedDateOutOfRange, wantStatus: 400, wantCode: "validation_error"},
 		{name: "closed_date_reason", err: domainstore.ErrInvalidClosedDateReason, wantStatus: 400, wantCode: "validation_error"},
+		{name: "cancel_reason", err: domainorder.ErrInvalidCancelReason, wantStatus: 400, wantCode: "validation_error"},
 		{name: "closed_date_exists", err: domainstore.ErrClosedDateExists, wantStatus: 409, wantCode: "closed_date_exists"},
 		{name: "closed_date_not_found", err: domainstore.ErrClosedDateNotFound, wantStatus: 404, wantCode: "not_found"},
 	}

@@ -97,6 +97,30 @@ func TestOrderComposer(t *testing.T) {
 		assert.NotContains(t, expired.Text, "Subtotal")
 	})
 
+	t.Run("a_cancellation_says_who_cancelled_why_and_what_goes_back", func(t *testing.T) {
+		t.Parallel()
+		msg := orderEmail(domainorder.NoticeCancelled)
+		mine, err := newComposer(t).ComposeOrderEmail(msg)
+		require.NoError(t, err)
+		assert.Contains(t, mine.Text, "cancelled as you asked")
+		assert.NotContains(t, mine.Text, "PayPal", "an order never paid has nothing to return")
+
+		msg.Reason, msg.RefundCents = "Out of <b>matcha</b>", 3940
+		bakery, err := newComposer(t).ComposeOrderEmail(msg)
+		require.NoError(t, err)
+		assert.Contains(t, bakery.Text, "Our reason: Out of <b>matcha</b>")
+		assert.Contains(t, bakery.HTML, "Out of &lt;b&gt;matcha&lt;/b&gt;", "the reason is text, not markup")
+		assert.Contains(t, bakery.Text, "We are returning $39.40 to your PayPal account")
+	})
+
+	t.Run("a_missed_pickup_is_not_refunded", func(t *testing.T) {
+		t.Parallel()
+		missed, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeNoShow))
+		require.NoError(t, err)
+		assert.Equal(t, "Your order CH-260930-007 was not collected", missed.Subject)
+		assert.Contains(t, missed.Text, "is not refunded")
+	})
+
 	t.Run("a_customer_without_a_name_is_greeted_plainly", func(t *testing.T) {
 		t.Parallel()
 		msg := orderEmail(domainorder.NoticeReady)

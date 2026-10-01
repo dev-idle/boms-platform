@@ -93,6 +93,28 @@ func (r *OrderRepository) Expire(ctx context.Context, orderID uuid.UUID, grace t
 	return mapOrder(row), nil
 }
 
+// Reschedule implements port.OrderRepository.
+func (r *OrderRepository) Reschedule(ctx context.Context, params port.RescheduleOrderParams) (*domainorder.Order, error) {
+	row, err := r.q(ctx).RescheduleOrder(ctx, sqlcgen.RescheduleOrderParams{
+		ID:        params.OrderID,
+		PickupAt:  &params.PickupAt,
+		OrderType: sqlcgen.OrderType(params.Type),
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "reschedule order")
+	}
+	return mapOrder(row), nil
+}
+
+// ListMissedPickups implements port.OrderRepository.
+func (r *OrderRepository) ListMissedPickups(ctx context.Context, missedBefore time.Time, limit int32) ([]uuid.UUID, error) {
+	ids, err := r.q(ctx).ListMissedPickups(ctx, sqlcgen.ListMissedPickupsParams{MissedBefore: &missedBefore, MaxRows: limit})
+	if err != nil {
+		return nil, mapRepoError(err, "list missed pickups")
+	}
+	return ids, nil
+}
+
 // CountCustomerDiscountUses implements port.OrderRepository.
 func (r *OrderRepository) CountCustomerDiscountUses(ctx context.Context, userID, discountCodeID uuid.UUID) (int, error) {
 	count, err := r.q(ctx).CountCustomerDiscountUses(ctx, sqlcgen.CountCustomerDiscountUsesParams{
@@ -378,6 +400,7 @@ func (r *OrderRepository) ListStatusEventsByOrderIDs(
 		out[row.OrderID] = append(out[row.OrderID], domainorder.StatusEvent{
 			To:        mapOrderStatusFromSQL(row.ToStatus),
 			ActorRole: actorRoleFromSQL(row.ActorRole),
+			Reason:    reasonFromSQL(row.Reason),
 			At:        row.CreatedAt,
 		})
 	}
@@ -418,7 +441,19 @@ func (r *OrderRepository) HoldPickupSlot(ctx context.Context, startsAt time.Time
 	return int(count), nil
 }
 
-func (r *OrderRepository) CountCustomerOrdersBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) (int, error) {
+// customerBookingLockNamespace keeps customer locks apart from any other advisory lock.
+const customerBookingLockNamespace = 1102
+
+func (r *OrderRepository) HoldCustomerDay(ctx context.Context, userID uuid.UUID, from, to time.Time) (int, error) {
+	if txFromContext(ctx) == nil {
+		return 0, apperrors.Errorf("hold customer day: requires a transaction")
+	}
+	if err := r.q(ctx).LockCustomerBookings(ctx, sqlcgen.LockCustomerBookingsParams{
+		Namespace: customerBookingLockNamespace,
+		UserID:    userID,
+	}); err != nil {
+		return 0, mapRepoError(err, "lock customer bookings")
+	}
 	count, err := r.q(ctx).CountCustomerOrdersBetween(ctx, sqlcgen.CountCustomerOrdersBetweenParams{
 		UserID: userID,
 		FromAt: from,
@@ -464,12 +499,17 @@ func (r *OrderRepository) AddStatusEvent(ctx context.Context, params port.AddOrd
 		}
 		actorID, actorRole = &params.Actor.ID, &role
 	}
+	var reason *string
+	if params.Reason != "" {
+		reason = &params.Reason
+	}
 	err = r.q(ctx).CreateOrderStatusEvent(ctx, sqlcgen.CreateOrderStatusEventParams{
 		OrderID:    params.OrderID,
 		FromStatus: from,
 		ToStatus:   to,
 		ActorID:    actorID,
 		ActorRole:  actorRole,
+		Reason:     reason,
 	})
 	if err != nil {
 		return mapRepoError(err, "create order status event")
@@ -487,10 +527,18 @@ func (r *OrderRepository) ListStatusEvents(ctx context.Context, orderID uuid.UUI
 		out = append(out, domainorder.StatusEvent{
 			To:        mapOrderStatusFromSQL(row.ToStatus),
 			ActorRole: actorRoleFromSQL(row.ActorRole),
+			Reason:    reasonFromSQL(row.Reason),
 			At:        row.CreatedAt,
 		})
 	}
 	return out, nil
+}
+
+func reasonFromSQL(reason *string) string {
+	if reason == nil {
+		return ""
+	}
+	return *reason
 }
 
 // actorRoleFromSQL is the role of whoever moved an order; empty for the system.
@@ -578,6 +626,8 @@ func mapOrderStatusToSQL(s domainorder.Status) (sqlcgen.OrderStatus, error) {
 		return sqlcgen.OrderStatusCancelled, nil
 	case domainorder.StatusExpired:
 		return sqlcgen.OrderStatusExpired, nil
+	case domainorder.StatusNoShow:
+		return sqlcgen.OrderStatusNoShow, nil
 	case domainorder.StatusFulfilled:
 		return sqlcgen.OrderStatusFulfilled, nil
 	default:
@@ -698,6 +748,8 @@ func mapOrderStatusFromSQL(s sqlcgen.OrderStatus) domainorder.Status {
 		return domainorder.StatusCancelled
 	case sqlcgen.OrderStatusExpired:
 		return domainorder.StatusExpired
+	case sqlcgen.OrderStatusNoShow:
+		return domainorder.StatusNoShow
 	case sqlcgen.OrderStatusFulfilled:
 		return domainorder.StatusFulfilled
 	default:

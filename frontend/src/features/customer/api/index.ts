@@ -19,6 +19,7 @@ import {
   paymentStartSchema,
   pickupRulesSchema,
   pickupSlotsSchema,
+  rescheduleInputSchema,
   updateCartItemInputSchema,
   type AddCartItemInput,
   type ApplyCartDiscountInput,
@@ -31,6 +32,7 @@ import {
   type PaymentStart,
   type PickupRules,
   type PickupSlots,
+  type RescheduleInput,
   type UpdateCartItemInput,
 } from "../schemas";
 
@@ -174,5 +176,25 @@ export async function getPickupRules(): Promise<PickupRules> {
   return browserRequest<PickupRules>("/api/v1/store/pickup-rules", {
     method: "GET",
     schema: pickupRulesSchema,
+  });
+}
+
+/** Cancels the customer's order while it is not being made yet. */
+export async function cancelOrder(orderId: string): Promise<Order> {
+  const id = z.uuid().parse(orderId);
+  return browserRequest<Order>(`/api/v1/orders/${id}/cancel`, {
+    method: "POST",
+    schema: orderSchema,
+  });
+}
+
+/** Moves the pickup of the customer's order while it is not being made yet. */
+export async function rescheduleOrder(orderId: string, input: RescheduleInput): Promise<Order> {
+  const id = z.uuid().parse(orderId);
+  const body = rescheduleInputSchema.parse(input);
+  return browserRequest<Order>(`/api/v1/orders/${id}/pickup`, {
+    method: "PATCH",
+    schema: orderSchema,
+    json: body,
   });
 }

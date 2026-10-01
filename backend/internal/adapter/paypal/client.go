@@ -167,6 +167,30 @@ func (c *Client) Lookup(ctx context.Context, providerOrderID string) (*domainpay
 	return &capture, nil
 }
 
+// Refund implements port.PaymentGateway. An empty body returns the whole
+// capture; PayPal reports a refund still clearing (PENDING) as taken.
+func (c *Client) Refund(ctx context.Context, captureID string) (string, error) {
+	var refund struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+	}
+	// The request id makes a retry return the first answer instead of a second
+	// refund.
+	err := c.call(ctx, http.MethodPost, "/v2/payments/captures/"+url.PathEscape(captureID)+"/refund",
+		"refund-"+captureID, struct{}{}, &refund)
+	var apiErr *apiError
+	if errors.As(err, &apiErr) && apiErr.status == http.StatusUnprocessableEntity && apiErr.issue == "CAPTURE_FULLY_REFUNDED" {
+		return "", domainpayment.ErrAlreadyRefunded
+	}
+	if err != nil {
+		return "", fmt.Errorf("refund paypal capture: %w", err)
+	}
+	if refund.ID == "" || (refund.Status != "COMPLETED" && refund.Status != "PENDING") {
+		return "", fmt.Errorf("refund paypal capture: refund %q answered %q", refund.ID, refund.Status)
+	}
+	return refund.ID, nil
+}
+
 // buyerCanRetry reports the capture refusals that approving again fixes: the
 // buyer has not approved, or the funding they chose was declined.
 func buyerCanRetry(issue string) bool {

@@ -4,6 +4,8 @@ import { z } from "zod";
 export const REALTIME_EVENT_TYPE = {
   orderCreated: "order.created",
   orderStatusChanged: "order.status_changed",
+  orderRescheduled: "order.rescheduled",
+  orderRefunded: "order.refunded",
   settingsUpdated: "settings.updated",
   slotsChanged: "slots.changed",
   ticketChanged: "ticket.changed",

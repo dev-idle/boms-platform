@@ -25,11 +25,14 @@ const (
 	// StatusExpired is an order that was not paid in time: it gave back its
 	// pickup slot and discount.
 	StatusExpired Status = "expired"
+	// StatusNoShow is an order made and not collected by closing time on its
+	// pickup day; it is not refunded.
+	StatusNoShow Status = "no_show"
 )
 
 func (s Status) Valid() bool {
 	switch s {
-	case StatusAwaitingPayment, StatusPending, StatusConfirmed, StatusInProduction, StatusReady, StatusCancelled, StatusFulfilled, StatusExpired:
+	case StatusAwaitingPayment, StatusPending, StatusConfirmed, StatusInProduction, StatusReady, StatusCancelled, StatusFulfilled, StatusExpired, StatusNoShow:
 		return true
 	default:
 		return false
@@ -40,6 +43,13 @@ func (s Status) Valid() bool {
 // tickets are cancelled and its pickup slot is free again.
 func (s Status) Dropped() bool {
 	return s == StatusCancelled || s == StatusExpired
+}
+
+// BeforeProduction reports whether an order in this status is not being made
+// yet: its customer may still cancel it or move its pickup, and a cancellation
+// gives its discount use back.
+func (s Status) BeforeProduction() bool {
+	return s == StatusAwaitingPayment || s == StatusPending || s == StatusConfirmed
 }
 
 // Order is a placed checkout snapshot with server-computed totals.

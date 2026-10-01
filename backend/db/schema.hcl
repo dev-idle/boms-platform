@@ -720,7 +720,7 @@ enum "line_type" {
 
 enum "order_status" {
   schema = schema.public
-  values = ["pending", "confirmed", "in_production", "ready", "fulfilled", "cancelled", "awaiting_payment", "expired"]
+  values = ["pending", "confirmed", "in_production", "ready", "fulfilled", "cancelled", "awaiting_payment", "expired", "no_show"]
 }
 
 // How an order is prepared: instant (ready-made, collected the same day) or a pre-order.
@@ -1238,6 +1238,11 @@ table "order_status_events" {
     type = enum.user_role
     null = true
   }
+  // Why the bakery cancelled the order; the customer reads it.
+  column "reason" {
+    type = text
+    null = true
+  }
   column "created_at" {
     type    = timestamptz
     null    = false
@@ -1264,6 +1269,9 @@ table "order_status_events" {
   }
   check "order_status_events_actor_check" {
     expr = "(actor_id IS NULL) = (actor_role IS NULL)"
+  }
+  check "order_status_events_reason_check" {
+    expr = "reason IS NULL OR (to_status = 'cancelled'::order_status AND char_length(reason) BETWEEN 1 AND 200)"
   }
 }
 
@@ -1513,7 +1521,7 @@ enum "payment_provider" {
 // refused a pending capture, and the buyer may pay again.
 enum "payment_status" {
   schema = schema.public
-  values = ["created", "pending", "captured", "denied"]
+  values = ["created", "pending", "captured", "denied", "refunded"]
 }
 
 // How an order is paid: one row per order, never deleted. Only the provider's
@@ -1564,6 +1572,20 @@ table "payments" {
     type = timestamptz
     null = true
   }
+  // Set in the transaction that cancels the paid order; the refund follows.
+  column "refund_requested_at" {
+    type = timestamptz
+    null = true
+  }
+  // Empty when PayPal reports the capture already refunded, as from its dashboard.
+  column "refund_id" {
+    type = text
+    null = true
+  }
+  column "refunded_at" {
+    type = timestamptz
+    null = true
+  }
   column "created_at" {
     type    = timestamptz
     null    = false
@@ -1590,6 +1612,11 @@ table "payments" {
     unique  = true
     columns = [column.provider, column.provider_order_id]
   }
+  // Refunds the worker still has to make, oldest request first.
+  index "payments_refund_due_idx" {
+    columns = [column.refund_requested_at]
+    where   = "status = 'captured'::payment_status AND refund_requested_at IS NOT NULL"
+  }
   index "payments_capture_idx" {
     unique  = true
     columns = [column.provider, column.capture_id]
@@ -1605,6 +1632,12 @@ table "payments" {
     expr = "(status = 'created') = (capture_id IS NULL)"
   }
   check "payments_captured_at_check" {
-    expr = "(status = 'captured') = (captured_at IS NOT NULL)"
+    expr = "(status IN ('captured', 'refunded')) = (captured_at IS NOT NULL)"
+  }
+  check "payments_refunded_at_check" {
+    expr = "(status = 'refunded') = (refunded_at IS NOT NULL)"
+  }
+  check "payments_refund_requested_check" {
+    expr = "(refund_requested_at IS NULL OR captured_at IS NOT NULL) AND (refunded_at IS NULL OR refund_requested_at IS NOT NULL)"
   }
 }
