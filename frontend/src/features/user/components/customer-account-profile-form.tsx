@@ -67,6 +67,7 @@ function CustomerAccountProfileFormBody({
   return (
     <Form {...form}>
       <form
+        method="post"
         className="dashboard-profile-form storefront-account-form"
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}

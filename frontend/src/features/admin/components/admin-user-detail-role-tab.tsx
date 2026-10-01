@@ -109,6 +109,7 @@ function AdminUserDetailRoleFormBody({
     <>
       <Form {...form}>
         <form
+          method="post"
           className="dashboard-profile-form"
           noValidate
           onSubmit={form.handleSubmit(requestRoleSubmit)}

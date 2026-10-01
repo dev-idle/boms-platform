@@ -60,6 +60,7 @@ export function DeleteAccountCard() {
     <>
       <Form {...form}>
         <form
+          method="post"
           className="storefront-account-danger"
           noValidate
           onSubmit={form.handleSubmit(() => setOpen(true))}

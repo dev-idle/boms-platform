@@ -91,6 +91,7 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
   return (
     <Form {...form}>
       <form
+        method="post"
         className="dashboard-profile-form"
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}

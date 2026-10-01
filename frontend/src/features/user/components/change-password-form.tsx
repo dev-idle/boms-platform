@@ -72,6 +72,7 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
   return (
     <Form {...form}>
       <form
+        method="post"
         className={cn("dashboard-profile-form", formClassName)}
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}

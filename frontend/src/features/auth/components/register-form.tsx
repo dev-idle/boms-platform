@@ -89,6 +89,7 @@ export function RegisterForm() {
     >
       <Form {...form}>
         <form
+          method="post"
           className="auth-form"
           onSubmit={form.handleSubmit(onSubmit)}
           noValidate

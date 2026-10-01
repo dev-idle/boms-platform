@@ -83,7 +83,7 @@ export function ResetPasswordForm() {
       title={AUTH_FORM_COPY.resetPassword.title}
     >
       <Form {...form}>
-        <form className="auth-form" noValidate onSubmit={form.handleSubmit(onSubmit)}>
+        <form method="post" className="auth-form" noValidate onSubmit={form.handleSubmit(onSubmit)}>
           <FormField
             control={form.control}
             name="new_password"

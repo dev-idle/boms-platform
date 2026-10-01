@@ -49,6 +49,7 @@ export function StorefrontHeaderSearch({
     >
       <form
         className="search-field"
+        method="get"
         onSubmit={(event) => {
           event.preventDefault();
           onSubmit();

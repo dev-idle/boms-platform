@@ -157,6 +157,7 @@ function ProductFormFields({
   return (
     <Form {...form}>
       <form
+        method="post"
         className="dashboard-profile-form"
         noValidate
         onSubmit={form.handleSubmit(onSubmit)}

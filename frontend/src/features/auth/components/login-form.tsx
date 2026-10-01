@@ -115,6 +115,7 @@ export function LoginForm() {
     >
       <Form {...form}>
         <form
+          method="post"
           className="auth-form"
           onSubmit={form.handleSubmit(onSubmit)}
           noValidate

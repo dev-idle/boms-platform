@@ -64,7 +64,7 @@ export function ForgotPasswordForm() {
       title={AUTH_FORM_COPY.forgotPassword.title}
     >
       <Form {...form}>
-        <form className="auth-form" noValidate onSubmit={form.handleSubmit(onSubmit)}>
+        <form method="post" className="auth-form" noValidate onSubmit={form.handleSubmit(onSubmit)}>
           <FormField
             control={form.control}
             name="email"

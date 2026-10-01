@@ -34,6 +34,22 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // A form submitted before hydration falls back to the browser's default, a
+    // GET that puts every field — passwords included — in the URL.
+    name: "boms/form-method",
+    files: ["src/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXOpeningElement[name.name='form']:not(:has(JSXAttribute[name.name='method']))",
+          message:
+            'Give every <form> a method: method="post" when a script submits it, so a submit before hydration never puts its fields in the URL.',
+        },
+      ],
+    },
+  },
+  {
     name: "boms/lib-boundaries",
     files: ["src/lib/**/*.{ts,tsx}"],
     ignores: ["src/lib/api-client.ts", "src/lib/dal/**"],
