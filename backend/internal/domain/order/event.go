@@ -35,11 +35,13 @@ func customerOf(order Order) []uuid.UUID {
 	return []uuid.UUID{*order.UserID}
 }
 
-// rolesSeeing is the bakery roles that see an order in any of statuses.
+// rolesSeeing is the bakery roles that see an order in any of statuses: the
+// counter, and the managers whose dashboard counts it, once it is the
+// bakery's; the kitchen while it is production work.
 func rolesSeeing(statuses ...Status) []domainuser.Role {
 	var roles []domainuser.Role
 	if slices.ContainsFunc(statuses, Status.VisibleToStaff) {
-		roles = append(roles, domainuser.RoleStaff)
+		roles = append(roles, domainuser.RoleStaff, domainuser.RoleManager)
 	}
 	if slices.ContainsFunc(statuses, Status.VisibleToBaker) {
 		roles = append(roles, domainuser.RoleBaker)
@@ -76,8 +78,8 @@ func SlotsChangedEvent(day time.Time) domainevent.Event {
 
 // CreatedEvent announces a new order to its customer, and to the bakery roles
 // that see it as it starts: none for an order awaiting payment, which the
-// bakery hears about when it is paid; the counter and the kitchen for one
-// staff took, which starts confirmed.
+// bakery hears about when it is paid; the counter, the managers and the
+// kitchen for one staff took, which starts confirmed.
 func CreatedEvent(order Order) domainevent.Event {
 	return domainevent.New(TopicOrderCreated, domainevent.Audience{
 		UserIDs: customerOf(order),

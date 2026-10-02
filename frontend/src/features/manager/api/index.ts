@@ -24,6 +24,7 @@ import {
   managerDiscountCodeSchema,
   managerPromotionSchema,
   managerReviewSchema,
+  operationsSchema,
   productFormSchema,
   productListFilterSchema,
   promotionAudienceSchema,
@@ -54,6 +55,7 @@ import {
   type ManagerProduct,
   type ManagerPromotion,
   type ManagerReview,
+  type Operations,
   type ProductFormInput,
   type ProductListFilterInput,
   type ProductsListResult,
@@ -380,6 +382,14 @@ export async function moderateReview(id: string, status: ReviewModeration): Prom
     method: "PATCH",
     schema: managerReviewSchema,
     json: { status: reviewModerationSchema.parse(status) },
+  });
+}
+
+/** Where the bakery's work stands now. */
+export async function getOperations(): Promise<Operations> {
+  return browserRequest<Operations>("/api/v1/manager/operations", {
+    method: "GET",
+    schema: operationsSchema,
   });
 }
 

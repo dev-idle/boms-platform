@@ -2094,6 +2094,16 @@
     width: var(--db-table-col-status-pill);
   }
 
+  /* Late pickups: the code and the status pill are fixed; the pickup time
+     keeps 12rem, and below that the wrapper scrolls. */
+  .db-table--late {
+    min-width: calc(var(--db-table-col-code) + var(--db-table-col-status-pill) + 12rem);
+  }
+
+  .db-table--late col.db-table-col-status {
+    width: var(--db-table-col-status-pill);
+  }
+
   /* Report tables: the first column keeps 10rem beside two, three or four
      fixed figure columns; below that the wrapper scrolls. */
   .db-table--figures-2 {

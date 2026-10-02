@@ -55,6 +55,7 @@ func TestOrderEvents(t *testing.T) {
 			assert.Equal(t, TopicOrderStatusChanged, e.Topic)
 			assert.Equal(t, []uuid.UUID{*o.UserID}, e.Audience.UserIDs)
 			assert.Equal(t, tc.counterSees, slices.Contains(e.Audience.Roles, domainuser.RoleStaff))
+			assert.Equal(t, tc.counterSees, slices.Contains(e.Audience.Roles, domainuser.RoleManager), "managers count what the counter sees")
 			assert.Equal(t, tc.kitchenSees, slices.Contains(e.Audience.Roles, domainuser.RoleBaker))
 			assert.Equal(t, string(tc.to), e.Data["status"])
 		})
@@ -96,14 +97,14 @@ func TestTicketChangedEvent(t *testing.T) {
 	counter := TicketChangedEvent(order, StatusInProduction, ticket)
 	assert.Equal(t, TopicTicketChanged, counter.Topic)
 	assert.Equal(t, []uuid.UUID{customer}, counter.Audience.UserIDs)
-	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleBaker}, counter.Audience.Roles,
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleManager, domainuser.RoleBaker}, counter.Audience.Roles,
 		"the kitchen sees where the counter's part of an order it works on stands")
 	assert.Equal(t, map[string]string{
 		"ticket_id": ticket.ID.String(), "order_id": ticket.OrderID.String(), "station": "counter", "status": "ready",
 	}, counter.Data)
 
 	unseen := TicketChangedEvent(order, StatusPending, Ticket{Station: domaincategory.StationKitchen})
-	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff}, unseen.Audience.Roles,
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleManager}, unseen.Audience.Roles,
 		"the kitchen hears nothing of an order it may not see yet")
 
 	unpaid := TicketChangedEvent(order, StatusAwaitingPayment, Ticket{Station: domaincategory.StationCounter})
@@ -118,7 +119,7 @@ func TestRescheduledAndRefundedEvents(t *testing.T) {
 	moved := RescheduledEvent(o)
 	assert.Equal(t, TopicOrderRescheduled, moved.Topic)
 	assert.Equal(t, []uuid.UUID{*o.UserID}, moved.Audience.UserIDs)
-	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleBaker}, moved.Audience.Roles,
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleManager, domainuser.RoleBaker}, moved.Audience.Roles,
 		"the kitchen bakes to the pickup time")
 
 	unpaid := RescheduledEvent(Order{ID: uuid.New(), UserID: o.UserID, Status: StatusAwaitingPayment})
@@ -127,7 +128,7 @@ func TestRescheduledAndRefundedEvents(t *testing.T) {
 	o.Status = StatusCancelled
 	refunded := RefundedEvent(o)
 	assert.Equal(t, TopicOrderRefunded, refunded.Topic)
-	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff}, refunded.Audience.Roles)
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleManager}, refunded.Audience.Roles)
 	assert.Equal(t, map[string]string{"order_id": o.ID.String()}, refunded.Data)
 }
 
@@ -160,5 +161,5 @@ func TestCreatedEvent_TakenByStaff(t *testing.T) {
 	e := CreatedEvent(guest)
 
 	assert.Empty(t, e.Audience.UserIDs)
-	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleBaker}, e.Audience.Roles)
+	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleManager, domainuser.RoleBaker}, e.Audience.Roles)
 }

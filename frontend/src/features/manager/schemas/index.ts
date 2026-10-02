@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { productOptionGroupSchema } from "@/lib/schemas/catalog";
 import { incidentTypeSchema, orderIncidentSchema } from "@/lib/schemas/incident";
-import { orderCodeSchema } from "@/lib/schemas/order";
+import { orderCodeSchema, orderStatusSchema } from "@/lib/schemas/order";
 import { averageRatingSchema, MAX_RATING, ratingSchema, reviewStatusSchema } from "@/lib/schemas/review";
 import { stationSchema } from "@/lib/schemas/ticket";
 import { CATALOG_INTEGER_MAX, catalogSlugSchema } from "@/lib/validation/catalog";
@@ -448,6 +448,24 @@ export const salesReportSchema = z.object({
   production: z.object({ orders: count, average_minutes: count.nullable() }),
 });
 
+/**
+ * GET /manager/operations — where the bakery's work stands now: the orders
+ * still to make or hand over by status, each station's tickets (a station
+ * with none left out), today's pickups, the orders whose pickup slot ended
+ * uncollected (the ten waiting longest, and how many in all), and how long the
+ * orders that became ready today took.
+ */
+export const operationsSchema = z.object({
+  orders: z.object({ pending: count, confirmed: count, in_production: count, ready: count }),
+  stations: z.array(z.object({ station: stationSchema, queued: count, in_progress: count, ready: count })),
+  pickups: z.object({ due: count, collected: count, to_collect: count, missed: count }),
+  late: z.object({
+    total: count,
+    orders: z.array(z.object({ code: orderCodeSchema, status: orderStatusSchema, pickup_at: apiDateTimeSchema })),
+  }),
+  production: salesReportSchema.shape.production,
+});
+
 /** An engagement feature a customer may use — mirrors the backend engagement report. */
 const engagementFeatureSchema = z.enum(["reviews", "favorites", "wishlist", "messages", "promotions"]);
 
@@ -524,6 +542,7 @@ export type DiscountCodeListFilterInput = z.infer<
 export type EngagementFeature = z.infer<typeof engagementFeatureSchema>;
 export type SalesReportFilterInput = z.infer<typeof salesReportFilterSchema>;
 export type SalesReport = z.infer<typeof salesReportSchema>;
+export type Operations = z.infer<typeof operationsSchema>;
 export type EngagementReport = z.infer<typeof engagementReportSchema>;
 export type ManagerIncident = z.infer<typeof managerIncidentSchema>;
 export type IncidentListFilterInput = z.input<typeof incidentListFilterSchema>;

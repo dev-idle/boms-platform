@@ -15,7 +15,6 @@ import (
 	domainevent "github.com/boms/backend/internal/domain/event"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainstore "github.com/boms/backend/internal/domain/store"
-	domainuser "github.com/boms/backend/internal/domain/user"
 )
 
 func newOrderEvent() domainevent.Event {
@@ -106,7 +105,7 @@ func TestOutboxRepository_Integration(t *testing.T) {
 				assert.Equal(t, e.Topic, got.Topic)
 				assert.Equal(t, e.Data, got.Data)
 				assert.Equal(t, e.Audience.UserIDs, got.Audience.UserIDs)
-				assert.ElementsMatch(t, []domainuser.Role{domainuser.RoleStaff, domainuser.RoleBaker}, got.Audience.Roles)
+				assert.ElementsMatch(t, e.Audience.Roles, got.Audience.Roles)
 				assert.True(t, handed.OccurredAt.Equal(got.OccurredAt), "hook and store agree on when it happened")
 			}
 		}

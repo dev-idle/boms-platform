@@ -33,7 +33,13 @@ describe("managerQueryKeysForEvent", () => {
     ]);
   });
 
+  it("refreshes the operations dashboard when an order arrives or moves, or a ticket does", () => {
+    for (const type of ["order.created", "order.status_changed", "order.rescheduled", "ticket.changed"]) {
+      expect(managerQueryKeysForEvent({ type, data: { order_id: "o-1" } })).toEqual([managerQueryKeys.operations]);
+    }
+  });
+
   it("ignores events it does not know", () => {
-    expect(managerQueryKeysForEvent({ type: "order.created", data: { order_id: "o-1" } })).toEqual([]);
+    expect(managerQueryKeysForEvent({ type: "message.created", data: { order_id: "o-1" } })).toEqual([]);
   });
 });

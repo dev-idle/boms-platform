@@ -24,6 +24,7 @@ import {
   getDiscountCodeById,
   getEngagementReport,
   getIncidentSummary,
+  getOperations,
   getProductById,
   getPromotionAudience,
   getReviewSummary,
@@ -314,6 +315,18 @@ export function useModerateReview() {
     onError: (error) => {
       toast.error(isApiError(error) ? error.message : "Failed to update the review");
     },
+  });
+}
+
+/** How often the dashboard reads again even with no news: an order turns late as time passes, which no event says. */
+const OPERATIONS_REFRESH_MS = 60_000;
+
+/** Where the bakery's work stands now; refreshed live by order and ticket news, and every minute. */
+export function useOperations() {
+  return useQuery({
+    queryKey: managerQueryKeys.operations,
+    queryFn: getOperations,
+    refetchInterval: OPERATIONS_REFRESH_MS,
   });
 }
 

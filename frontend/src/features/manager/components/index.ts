@@ -8,6 +8,7 @@ export { ManagerEngagement } from "./manager-engagement";
 export { ManagerIncidents } from "./manager-incidents";
 export { ManagerLiveUpdates } from "./manager-live-updates";
 export { ManagerNewPromotion } from "./manager-new-promotion";
+export { ManagerOperations } from "./manager-operations";
 export { ManagerProductsTable } from "./manager-products-table";
 export { ManagerPromotionsTable } from "./manager-promotions-table";
 export { ManagerReviews } from "./manager-reviews";

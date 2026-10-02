@@ -101,7 +101,7 @@ func toSalesReportResponse(sales port.SalesRange, parts salesReportParts) *dto.S
 			DiscountCents:    parts.discounts.DiscountCents,
 			Codes:            make([]dto.DiscountCodeUseResponse, 0, len(parts.codes)),
 		},
-		Production: dto.ProductionTimeResponse{Orders: parts.production.Orders},
+		Production: mapProductionTimeToDTO(parts.production),
 	}
 	for _, row := range parts.periods {
 		out.Periods = append(out.Periods, dto.SalesPeriodResponse{
@@ -141,9 +141,6 @@ func toSalesReportResponse(sales port.SalesRange, parts salesReportParts) *dto.S
 		out.Discounts.Codes = append(out.Discounts.Codes, dto.DiscountCodeUseResponse{
 			Code: code.Code, Orders: code.Orders, DiscountCents: code.DiscountCents,
 		})
-	}
-	if parts.production.Orders > 0 {
-		out.Production.AverageMinutes = &parts.production.AverageMinutes
 	}
 	return out
 }

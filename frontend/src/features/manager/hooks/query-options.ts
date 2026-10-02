@@ -44,6 +44,7 @@ export const managerQueryKeys = {
     [...managerQueryKeys.promotionsRoot, filter] as const,
   promotionAudience: ["manager", "promotions", "audience"] as const,
   engagementReport: ["manager", "engagement"] as const,
+  operations: ["manager", "operations"] as const,
   salesReport: (filter: SalesReportFilterInput) => ["manager", "sales-report", filter] as const,
   incidentsRoot: ["manager", "incidents"] as const,
   incidents: (filter: IncidentListFilterInput) => [...managerQueryKeys.incidentsRoot, filter] as const,
@@ -55,13 +56,15 @@ export const managerLiveQueryKeys: readonly QueryKey[] = [
   managerQueryKeys.reviewsRoot,
   managerQueryKeys.promotionsRoot,
   managerQueryKeys.incidentsRoot,
+  managerQueryKeys.operations,
 ];
 
 /**
  * Queries a pushed event makes stale in a manager tab: a review written, or
  * published or hidden in another tab, changes the reviews and their summary; a
  * promotion sent, or done sending, changes the promotions; an incident recorded
- * changes the incident log and its counts.
+ * changes the incident log and its counts; an order arriving, moving or moving
+ * its pickup, or a ticket moving, changes the operations dashboard.
  */
 export function managerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -72,6 +75,11 @@ export function managerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
       return [managerQueryKeys.promotionsRoot];
     case REALTIME_EVENT_TYPE.incidentRecorded:
       return [managerQueryKeys.incidentsRoot];
+    case REALTIME_EVENT_TYPE.orderCreated:
+    case REALTIME_EVENT_TYPE.orderStatusChanged:
+    case REALTIME_EVENT_TYPE.orderRescheduled:
+    case REALTIME_EVENT_TYPE.ticketChanged:
+      return [managerQueryKeys.operations];
     default:
       return [];
   }

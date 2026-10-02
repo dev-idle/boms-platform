@@ -9,6 +9,7 @@ import {
   incidentSummarySchema,
   managerIncidentSchema,
   managerPromotionSchema,
+  operationsSchema,
   productFormSchema,
   promotionFormSchema,
   salesReportSchema,
@@ -292,5 +293,25 @@ describe("salesReportSchema", () => {
   it("refuses a grouping or an item kind the API does not send", () => {
     expect(salesReportSchema.safeParse({ ...report, group: "year" }).success).toBe(false);
     expect(salesReportSchema.safeParse({ ...report, items: [{ ...report.items[0], kind: "gift" }] }).success).toBe(false);
+  });
+});
+
+describe("operationsSchema", () => {
+  const operations = {
+    orders: { pending: 1, confirmed: 1, in_production: 1, ready: 1 },
+    stations: [{ station: "kitchen", queued: 0, in_progress: 1, ready: 1 }],
+    pickups: { due: 5, collected: 1, to_collect: 4, missed: 0 },
+    late: { total: 12, orders: [{ code: "CH-261003-001", status: "ready", pickup_at: "2026-10-03T11:00:00+07:00" }] },
+    production: { orders: 0, average_minutes: null },
+  };
+
+  it("reads the work as it stands, more late orders than listed included", () => {
+    expect(operationsSchema.safeParse(operations).success).toBe(true);
+  });
+
+  it("refuses a station the bakery does not have", () => {
+    expect(
+      operationsSchema.safeParse({ ...operations, stations: [{ station: "oven", queued: 0, in_progress: 0, ready: 0 }] }).success,
+    ).toBe(false);
   });
 });

@@ -1080,9 +1080,10 @@ table "orders" {
       desc   = true
     }
   }
-  index "orders_production_pickup_idx" {
+  // Orders still to make or hand over, by status and pickup.
+  index "orders_open_pickup_idx" {
     columns = [column.status, column.pickup_at]
-    where   = "status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)"
+    where   = "status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)"
   }
   index "orders_code_idx" {
     unique  = true
@@ -1393,6 +1394,11 @@ table "order_status_events" {
   }
   index "order_status_events_order_created_idx" {
     columns = [column.order_id, column.created_at]
+  }
+  // The moves to ready, found by when they happened: production time.
+  index "order_status_events_ready_created_idx" {
+    columns = [column.created_at]
+    where   = "to_status = 'ready'::order_status"
   }
   check "order_status_events_move_check" {
     expr = "from_status IS DISTINCT FROM to_status"

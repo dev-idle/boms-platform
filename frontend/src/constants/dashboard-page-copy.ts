@@ -1,8 +1,7 @@
-/** Dashboard home page lead copy — role landing placeholders (SSOT). */
+/** Dashboard home page lead copy (SSOT). */
 export const DASHBOARD_HOME_LEAD = {
   admin: "Use the sidebar to manage users and store settings, or update your profile.",
-  manager:
-    "Use the sidebar to manage catalog, combos, and discount codes, or update your profile.",
+  manager: "The orders the bakery is making and handing over now, as they move.",
 } as const;
 
 /** Page eyebrows — brass micro-label above dashboard h1. */

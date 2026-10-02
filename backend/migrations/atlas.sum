@@ -1,4 +1,4 @@
-h1:Eg5vkqmaPv4LWSqXH5AKfCuQYcqPVAsz1I9utMChDKQ=
+h1:qycY8/7NpiQjvIeWabSYpsknoCOkovm6xf1Ar1zDPF0=
 20260601120000_initial_schema.sql h1:hWLNRIrLbMJTc/CLUGjWNH0Fb09J/y8XzuQEt/QGGrk=
 20260922102739_normalize_vietnam_phones.sql h1:4oExt+YB+B+QSWpmLCr5iOkIt9eXN1vbQEOgeop4cP0=
 20260923183657_add_combo_image_url.sql h1:NpmnOxO237rYpbOISIYiKx+e7OcCxw3JcWrpBlmMW9c=
@@ -30,3 +30,6 @@ h1:Eg5vkqmaPv4LWSqXH5AKfCuQYcqPVAsz1I9utMChDKQ=
 20261001200110_add_reviews.sql h1:eMOGtHUlXcvxYDi/8VLb+LH7R11rx1vQVog+VGdcX7U=
 20261002104431_add_promotions.sql h1:WzbfrOUWu/h1DRZydeQ1m7eJGyErf+JtiG3kyjX+pdU=
 20261002115849_add_order_incidents.sql h1:EHPgRvuUyxc/UAkkoyKfpioSTv5ns6sKX4haJHpHMf8=
+20261002160002_index_open_orders.sql h1:Vc2nUVKiPRdqhgNFmJwvECszc6HPCFbWVNlCqgz4vFA=
+20261002160012_index_ready_status_events.sql h1:At/QXs5WBFoEd557tJN9IILyvi/oavMZEVTtTXxI3+0=
+20261002160022_drop_orders_production_index.sql h1:ANJWrn/L+QJBWOXQZYF+P9VVNZ/BEoSoqDeXdOW0ZXI=

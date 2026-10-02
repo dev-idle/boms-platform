@@ -306,8 +306,8 @@ CREATE UNIQUE INDEX "orders_staff_checkout_key_idx" ON "orders" ("checkout_key")
 CREATE INDEX "orders_payment_due_idx" ON "orders" ("payment_due_at") WHERE (status = 'awaiting_payment'::order_status);
 CREATE INDEX "orders_pickup_slot_idx" ON "orders" ("pickup_at") WHERE (status <> 'cancelled'::order_status);
 CREATE INDEX "orders_user_id_created_at_idx" ON "orders" ("user_id", "created_at" DESC);
-CREATE INDEX "orders_production_pickup_idx" ON "orders" ("status", "pickup_at") WHERE (
-  status IN ('confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
+CREATE INDEX "orders_open_pickup_idx" ON "orders" ("status", "pickup_at") WHERE (
+  status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
 );
 
 CREATE TABLE "order_items" (
@@ -387,6 +387,7 @@ CREATE TABLE "order_status_events" (
   CONSTRAINT "order_status_events_reason_check" CHECK ((reason IS NULL) OR ((to_status = 'cancelled'::order_status) AND ((char_length(reason) >= 1) AND (char_length(reason) <= 200))))
 );
 CREATE INDEX "order_status_events_order_created_idx" ON "order_status_events" ("order_id", "created_at");
+CREATE INDEX "order_status_events_ready_created_idx" ON "order_status_events" ("created_at") WHERE (to_status = 'ready'::order_status);
 
 -- Create "outbox_events" table
 CREATE TABLE "outbox_events" (

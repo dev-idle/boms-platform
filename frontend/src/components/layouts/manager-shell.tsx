@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { LiveIndicator } from "@/components/ui/live-indicator";
 import { ROUTE } from "@/constants/routes";
 
 import { DashboardShell, type DashboardNavItem } from "./dashboard-shell";
@@ -49,6 +50,7 @@ export function ManagerShell({ children }: ManagerShellProps) {
       navItems={MANAGER_NAV_ITEMS}
       profileHref={ROUTE.manager.account.profile}
       roleLabel="Manager"
+      sidebarStatus={<LiveIndicator />}
     >
       {children}
     </DashboardShell>
