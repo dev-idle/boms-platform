@@ -117,9 +117,9 @@ func (u *ConversationUsecase) customerOrder(ctx context.Context, userID, orderID
 	return order, err
 }
 
-// holdCustomer holds the account a message is about until it commits, as a
-// checkout holds its customer: erasing the account waits, then erases the
-// message with the rest; a message that waited on an erasure finds no account.
+// holdCustomer holds the account a message or review is about until it
+// commits, as a checkout holds its customer: erasing the account waits, then
+// erases it with the rest; one that waited on an erasure finds no account.
 func holdCustomer(txCtx context.Context, users port.UserRepository, customerID uuid.UUID) error {
 	_, err := users.GetByIDForShare(txCtx, customerID)
 	if errors.Is(err, apperrors.ErrNotFound) {

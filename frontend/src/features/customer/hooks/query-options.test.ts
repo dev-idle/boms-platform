@@ -61,6 +61,12 @@ describe("customerQueryKeysForEvent", () => {
     ]);
   });
 
+  it("refreshes the customer's reviews when one is written, published or hidden", () => {
+    expect(customerQueryKeysForEvent({ type: "review.changed", data: { product_id: "p-1" } })).toEqual([
+      customerQueryKeys.reviewsRoot,
+    ]);
+  });
+
   it("ignores events it does not know", () => {
     expect(customerQueryKeysForEvent({ type: "catalog.updated", data: {} })).toEqual([]);
   });

@@ -16,6 +16,7 @@ import {
   checkoutInputSchema,
   orderSchema,
   orderSummarySchema,
+  orderReviewSchema,
   orderThreadSchema,
   ordersListFilterSchema,
   paymentCaptureSchema,
@@ -23,6 +24,7 @@ import {
   pickupRulesSchema,
   pickupSlotsSchema,
   rescheduleInputSchema,
+  reviewInputSchema,
   savedProductSchema,
   updateCartItemInputSchema,
   type AddCartItemInput,
@@ -30,6 +32,7 @@ import {
   type Cart,
   type CheckoutInput,
   type Order,
+  type OrderReview,
   type OrderThread,
   type OrdersListFilterInput,
   type OrdersListResult,
@@ -38,6 +41,7 @@ import {
   type PickupRules,
   type PickupSlots,
   type RescheduleInput,
+  type ReviewInput,
   type SavedList,
   type SavedProduct,
   type UpdateCartItemInput,
@@ -231,6 +235,26 @@ export async function postOrderMessage(orderId: string, input: MessageInput): Pr
 export async function markOrderMessagesRead(orderId: string): Promise<void> {
   const id = z.uuid().parse(orderId);
   await browserRequestVoid(`/api/v1/orders/${id}/messages/read`, { method: "POST" });
+}
+
+/** The customer's reviews of the products on their order. */
+export async function listOrderReviews(orderId: string): Promise<OrderReview[]> {
+  const id = z.uuid().parse(orderId);
+  return browserRequest<OrderReview[]>(`/api/v1/orders/${id}/reviews`, {
+    method: "GET",
+    schema: z.array(orderReviewSchema),
+  });
+}
+
+/** Reviews a product the customer picked up on their order. */
+export async function createReview(orderId: string, input: ReviewInput): Promise<OrderReview> {
+  const id = z.uuid().parse(orderId);
+  const body = reviewInputSchema.parse(input);
+  return browserRequest<OrderReview>(`/api/v1/orders/${id}/reviews`, {
+    method: "POST",
+    schema: orderReviewSchema,
+    json: body,
+  });
 }
 
 /** Both of the customer's lists, latest first. */

@@ -1984,3 +1984,117 @@ table "saved_products" {
     where   = "(deleted_at IS NULL)"
   }
 }
+
+enum "review_status" {
+  schema = schema.public
+  values = ["pending", "published", "hidden"]
+}
+
+// A customer's review of a product they collected: one per product per order,
+// held for a manager to publish or hide before anyone else reads it.
+table "reviews" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "order_id" {
+    type = uuid
+    null = false
+  }
+  column "product_id" {
+    type = uuid
+    null = false
+  }
+  column "user_id" {
+    type = uuid
+    null = false
+  }
+  column "rating" {
+    type = smallint
+    null = false
+  }
+  // What the customer wrote, if anything; erasing their account clears it.
+  column "comment" {
+    type = text
+    null = true
+  }
+  column "status" {
+    type    = enum.review_status
+    null    = false
+    default = "pending"
+  }
+  // The manager who last published or hid it, and when.
+  column "moderated_by" {
+    type = uuid
+    null = true
+  }
+  column "moderated_at" {
+    type = timestamptz
+    null = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "deleted_at" {
+    type = timestamptz
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "reviews_order_id_fkey" {
+    columns     = [column.order_id]
+    ref_columns = [table.orders.column.id]
+    on_delete   = RESTRICT
+  }
+  foreign_key "reviews_product_id_fkey" {
+    columns     = [column.product_id]
+    ref_columns = [table.products.column.id]
+    on_delete   = RESTRICT
+  }
+  foreign_key "reviews_user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  foreign_key "reviews_moderated_by_fkey" {
+    columns     = [column.moderated_by]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  index "reviews_order_product_idx" {
+    unique  = true
+    columns = [column.order_id, column.product_id]
+  }
+  // A product's published reviews, latest first.
+  index "reviews_product_published_idx" {
+    columns = [column.product_id, column.created_at]
+    where   = "((status = 'published'::review_status) AND (deleted_at IS NULL))"
+  }
+  // The moderation queue, by status, latest first.
+  index "reviews_status_created_idx" {
+    columns = [column.status, column.created_at]
+    where   = "(deleted_at IS NULL)"
+  }
+  index "reviews_user_id_idx" {
+    columns = [column.user_id]
+  }
+  check "reviews_rating_check" {
+    expr = "rating BETWEEN 1 AND 5"
+  }
+  check "reviews_comment_check" {
+    expr = "comment IS NULL OR char_length(comment) BETWEEN 1 AND 1000"
+  }
+  check "reviews_moderation_check" {
+    expr = "(moderated_by IS NULL) = (moderated_at IS NULL) AND (status = 'pending') = (moderated_at IS NULL)"
+  }
+}

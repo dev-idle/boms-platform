@@ -19,10 +19,12 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useOrder, usePayPalReturn } from "../hooks";
 import { isWithTheBakery } from "../lib/order-progress";
+import { reviewableProducts } from "../lib/reviewable-products";
 import { OrderChanges } from "./order-changes";
 import { OrderMessages } from "./order-messages";
 import { OrderPayment } from "./order-payment";
 import { OrderProgressStepper } from "./order-progress-stepper";
+import { OrderReviews } from "./order-reviews";
 
 type OrderDetailProps = {
   orderId: string;
@@ -53,6 +55,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
   if (!order) {
     return <p className="text-sm text-muted">Order not found.</p>;
   }
+  const reviewable = reviewableProducts(order);
 
   return (
     <div className="storefront-order-detail">
@@ -184,6 +187,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
           ) : null}
         </div>
       </div>
+      {reviewable.length > 0 ? <OrderReviews orderId={order.id} products={reviewable} /> : null}
       {order.can_message ? <OrderMessages orderId={order.id} /> : null}
     </div>
   );

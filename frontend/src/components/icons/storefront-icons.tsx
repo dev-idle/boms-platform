@@ -182,3 +182,23 @@ export function BookmarkIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+/** One star of a rating; filled by the rating's own styles. */
+export function StarIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={cn("storefront-icon", className)}
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.65"
+      viewBox={STOREFRONT_ICON_VIEWBOX}
+      width="24"
+    >
+      <path d="M12 3.75 14.55 8.9l5.7.83-4.13 4.02.98 5.67L12 16.74l-5.1 2.68.98-5.67-4.13-4.02 5.7-.83L12 3.75Z" />
+    </svg>
+  );
+}

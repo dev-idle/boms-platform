@@ -23,11 +23,13 @@ import {
   cancelOrder,
   capturePayment,
   checkoutCart,
+  createReview,
   getCart,
   getOrder,
   getOrderMessages,
   getPickupRules,
   getPickupSlots,
+  listOrderReviews,
   listOrders,
   listSavedProducts,
   markOrderMessagesRead,
@@ -47,6 +49,7 @@ import {
   type CheckoutInput,
   type OrdersListFilterInput,
   type RescheduleInput,
+  type ReviewInput,
   type SavedList,
   type SavedProduct,
   type UpdateCartItemInput,
@@ -402,6 +405,41 @@ export function useMarkOrderMessagesRead(orderId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.messages(orderId) });
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
+    },
+  });
+}
+
+/** The customer's reviews of the products on their order. */
+export function useOrderReviews(orderId: string) {
+  return useQuery({
+    queryKey: customerQueryKeys.reviews(orderId),
+    queryFn: () => listOrderReviews(orderId),
+  });
+}
+
+/** Reviews a product the customer picked up on their order; the form places field errors itself. */
+export function useCreateReview(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ReviewInput) => createReview(orderId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.reviews(orderId) });
+      toast.success("Thank you for your review");
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.code === ApiErrorCode.ReviewExists) {
+        void queryClient.invalidateQueries({ queryKey: customerQueryKeys.reviews(orderId) });
+        toast.error("You have already reviewed this product on this order.");
+        return;
+      }
+      if (isApiError(error) && error.isRateLimited()) {
+        toast.error("You are posting reviews quickly. Wait a while, then try again.");
+        return;
+      }
+      if (isApiError(error) && error.hasValidationDetails()) {
+        return;
+      }
+      toast.error(cartMutationErrorMessage(error, "We could not post your review. Please try again."));
     },
   });
 }

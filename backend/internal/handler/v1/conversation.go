@@ -32,7 +32,7 @@ func (h *ConversationHandler) Thread(c fiber.Ctx) error {
 	if err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid order id"))
 	}
-	beforeID, appErr := parseBeforeMessage(c)
+	beforeID, appErr := parseBeforeID(c, "message")
 	if appErr != nil {
 		return writeAppError(c, appErr)
 	}
@@ -85,16 +85,16 @@ func (h *ConversationHandler) MarkRead(c fiber.Ctx) error {
 	return response.NoContent(c)
 }
 
-// parseBeforeMessage reads the optional ?before= message id a thread page
-// starts before.
-func parseBeforeMessage(c fiber.Ctx) (*uuid.UUID, *apperrors.AppError) {
+// parseBeforeID reads the optional ?before= id of the message or review a
+// page starts before.
+func parseBeforeID(c fiber.Ctx, noun string) (*uuid.UUID, *apperrors.AppError) {
 	raw := c.Query("before")
 	if raw == "" {
 		return nil, nil
 	}
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		return nil, apperrors.ErrValidation.WithDetail("before", "invalid message id")
+		return nil, apperrors.ErrValidation.WithDetail("before", "invalid "+noun+" id")
 	}
 	return &id, nil
 }

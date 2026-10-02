@@ -42,6 +42,7 @@ func (h *DataExportHandler) Export(c fiber.Ctx) error {
 		AccountActivity: out.Activity,
 		Cart:            out.Cart,
 		SavedProducts:   out.Saved,
+		Reviews:         out.Reviews,
 		Orders:          out.Orders,
 	})
 }

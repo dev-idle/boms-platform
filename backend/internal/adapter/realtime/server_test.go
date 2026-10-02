@@ -369,18 +369,20 @@ func TestServerDelivery(t *testing.T) {
 		}
 	})
 
-	t.Run("staff_hears_its_role_channel", func(t *testing.T) {
+	t.Run("staff_and_managers_hear_their_role_channel", func(t *testing.T) {
 		t.Parallel()
 		h := newHarness(t, nil)
-		token, _ := h.ticket(t, domainuser.RoleStaff)
-		conn, _ := h.dial(t, token, testOrigin)
+		for _, role := range []domainuser.Role{domainuser.RoleStaff, domainuser.RoleManager} {
+			token, _ := h.ticket(t, role)
+			conn, _ := h.dial(t, token, testOrigin)
 
-		h.hub.Deliver(eventbus.RoleChannel(domainuser.RoleBaker), []byte("baker"))
-		h.hub.Deliver(eventbus.RoleChannel(domainuser.RoleStaff), []byte("staff"))
+			h.hub.Deliver(eventbus.RoleChannel(domainuser.RoleBaker), []byte("baker"))
+			h.hub.Deliver(eventbus.RoleChannel(role), []byte(role))
 
-		payload, err := read(t, conn)
-		require.NoError(t, err)
-		assert.Equal(t, "staff", payload)
+			payload, err := read(t, conn)
+			require.NoError(t, err)
+			assert.Equal(t, string(role), payload)
+		}
 	})
 
 	t.Run("drops_a_socket_that_fell_behind", func(t *testing.T) {

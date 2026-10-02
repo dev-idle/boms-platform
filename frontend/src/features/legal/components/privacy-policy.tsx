@@ -53,6 +53,10 @@ export function PrivacyPolicy() {
             your orders.
           </li>
           <li>
+            <strong>Reviews:</strong> the rating and comment you give a product you picked up, and
+            whether we published it.
+          </li>
+          <li>
             <strong>Custom cakes:</strong> the options and message you choose, and any reference photo
             you upload. Cloudinary stores the photo at an unlisted address that we never publish.
           </li>
@@ -91,7 +95,14 @@ export function PrivacyPolicy() {
             The kitchen sees what to make, when, your display name, and how you asked a custom cake to
             look, reference photo included — never how to contact you.
           </li>
-          <li>Managers see sales figures, not your contact details.</li>
+          <li>
+            Managers see sales figures, and the reviews you write with their order and the name on
+            your profile, so they can tell real reviews from fake ones — not your contact details.
+          </li>
+          <li>
+            Anyone visiting our shop sees a review we published: its rating, comment and date, never
+            your name.
+          </li>
           <li>
             Administrators see your account and contact details, to look after accounts and the
             changes made to them.
@@ -106,10 +117,11 @@ export function PrivacyPolicy() {
       <PolicySection id="privacy-how-long" title="5. How long we keep it">
         <ul>
           <li>
-            Your account, profile, cart, favorites, wishlist and the messages about your orders, until
-            you delete your account. Deleting it erases your name, phone number and email, empties your
-            cart and your lists, erases those messages and removes your personal details from the
-            record of changes; you are signed out everywhere and the account cannot be restored.
+            Your account, profile, cart, favorites, wishlist, reviews and the messages about your
+            orders, until you delete your account. Deleting it erases your name, phone number and
+            email, empties your cart and your lists, erases those messages and your reviews and removes
+            your personal details from the record of changes; you are signed out everywhere and the
+            account cannot be restored.
           </li>
           <li>Your sign-in sessions, until you sign out or they expire.</li>
           <li>

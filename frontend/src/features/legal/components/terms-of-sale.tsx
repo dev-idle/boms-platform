@@ -98,7 +98,21 @@ export function TermsOfSale() {
         </p>
       </PolicySection>
 
-      <PolicySection id="terms-allergens" title="7. Ingredients and allergens">
+      <PolicySection id="terms-reviews" title="7. Reviews">
+        <ul>
+          <li>
+            Once you pick an order up, you can review each product on it once: a rating of 1 to 5
+            stars and, if you like, a comment.
+          </li>
+          <li>
+            A manager reads every review before it appears on the product&apos;s page, without your name.
+            We publish honest reviews, good or bad, and hide one that is abusive, shares someone&apos;s
+            personal details or is not about the product.
+          </li>
+        </ul>
+      </PolicySection>
+
+      <PolicySection id="terms-allergens" title="8. Ingredients and allergens">
         <p>
           Our kitchen handles gluten, milk, eggs, nuts and soy. Product pages describe what goes
           into each item, but we cannot guarantee any item is free of traces. Ask us before ordering
@@ -106,7 +120,7 @@ export function TermsOfSale() {
         </p>
       </PolicySection>
 
-      <PolicySection id="terms-changes" title="8. Changes to these terms">
+      <PolicySection id="terms-changes" title="9. Changes to these terms">
         <p>
           When we change these terms, the version and date at the top of this page change too, and
           you accept the new version with your next order. An order you already placed stays under
@@ -114,7 +128,7 @@ export function TermsOfSale() {
         </p>
       </PolicySection>
 
-      <PolicySection id="terms-contact" title="9. Contact">
+      <PolicySection id="terms-contact" title="10. Contact">
         <p>
           Write to <a href={`mailto:${BRAND.contactEmail}`}>{BRAND.contactEmail}</a> or call{" "}
           {BRAND.contactPhone}.

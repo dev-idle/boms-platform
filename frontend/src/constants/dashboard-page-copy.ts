@@ -10,6 +10,7 @@ export const DASHBOARD_PAGE_EYEBROW = {
   overview: "Overview",
   catalogue: "Catalogue",
   promotions: "Promotions",
+  feedback: "Feedback",
   operations: "Operations",
   accountsAccess: "Accounts & access",
   store: "Store",

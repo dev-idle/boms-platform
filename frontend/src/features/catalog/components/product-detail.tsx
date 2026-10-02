@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 import { useCatalogProduct } from "../hooks";
 import { buildCatalogBrowseHref } from "../lib/catalog-browse-params";
+import { ProductReviews } from "./product-reviews";
 
 type ProductDetailProps = {
   productId: string;
@@ -162,6 +163,8 @@ export function ProductDetail({
           ) : null}
         </div>
       </article>
+
+      <ProductReviews productId={product.id} />
     </div>
   );
 }

@@ -2342,13 +2342,16 @@
     gap: 1.5rem;
   }
 
-  .storefront-order-messages {
+  /* The order's messages and its reviews: each a panel, its header, then the content. */
+  .storefront-order-messages,
+  .storefront-order-reviews {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
   }
 
-  .storefront-order-messages__header {
+  .storefront-order-messages__header,
+  .storefront-order-reviews__header {
     display: grid;
     gap: 0.5rem;
   }
@@ -2365,6 +2368,53 @@
     display: grid;
     gap: 0.75rem;
     justify-items: start;
+  }
+
+  /* Reviews — the customer's on an order, a product's on its page: one per
+     row, a hairline apart, holding a review or the form to write it. */
+  .review-list {
+    display: grid;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .review-list__item {
+    display: grid;
+    gap: 0.75rem;
+    padding-block: 1.25rem;
+  }
+
+  .review-list__item:first-child {
+    padding-block-start: 0;
+  }
+
+  .review-list__item:last-child {
+    padding-block-end: 0;
+  }
+
+  .review-list__item + .review-list__item {
+    border-top: 1px solid var(--color-line-soft);
+  }
+
+  .review-list__meta {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .order-review-form {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .order-review-form > button {
+    justify-self: start;
+  }
+
+  .order-review-form__rating {
+    min-width: 0;
   }
 
   .storefront-order-detail__meta {
@@ -3440,6 +3490,109 @@
   .saved-toggle:disabled {
     color: var(--color-disabled);
     cursor: default;
+  }
+
+  /* A rating reads in brass, the accent on paper: the stars it gives filled,
+     the rest outlined. Small beside text; the label carries the number. */
+  .rating-stars {
+    color: var(--color-brass);
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 0.125rem;
+  }
+
+  .rating-stars .storefront-icon {
+    block-size: 0.875rem;
+    inline-size: 0.875rem;
+  }
+
+  .rating-stars__star[data-filled] .storefront-icon,
+  .rating-input__star[data-filled] .storefront-icon {
+    fill: currentColor;
+  }
+
+  /* Choosing a rating: five 44px targets, filled up to the choice. The radio
+     is visually hidden, so its star carries the focus ring. */
+  .rating-input {
+    display: flex;
+  }
+
+  .rating-input__star {
+    align-items: center;
+    color: var(--color-brass);
+    cursor: pointer;
+    display: inline-flex;
+    height: 2.75rem;
+    justify-content: center;
+    touch-action: manipulation;
+    transition: background-color var(--duration-micro) var(--ease-luxury);
+    width: 2.75rem;
+  }
+
+  .rating-input__star:hover:not(:has(:disabled)) {
+    background-color: var(--color-paper-4);
+  }
+
+  .rating-input__star .storefront-icon {
+    block-size: 1.5rem;
+    inline-size: 1.5rem;
+  }
+
+  /* Inside the target: the stars touch, so a ring outside would run under
+     the next one. */
+  .rating-input__star:has(:focus-visible) {
+    outline: 2px solid var(--color-matcha-500);
+    outline-offset: -2px;
+  }
+
+  .rating-input__star:has(:disabled) {
+    color: var(--color-disabled);
+    cursor: default;
+  }
+
+  /* What a customer wrote keeps the lines they broke it into. */
+  .review-comment {
+    color: var(--color-ink-2);
+    line-height: 1.7;
+    margin: 0;
+    max-width: 65ch;
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+  }
+
+  /* The product's reviews: under the detail, a hairline above them; the
+     average as data, the stars beside it, then each review a hairline apart. */
+  .catalog-reviews {
+    border-top: 1px solid var(--color-border);
+    display: grid;
+    gap: 1.5rem;
+    margin-block-start: 3rem;
+    padding-block-start: 2rem;
+  }
+
+  .catalog-reviews__header {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .catalog-reviews__summary {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0;
+  }
+
+  .catalog-reviews__average {
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: 1.75rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+
+  .catalog-reviews > button {
+    justify-self: start;
   }
 
   .catalog-page__results-panel {

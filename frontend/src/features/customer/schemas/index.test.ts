@@ -5,6 +5,7 @@ import {
   orderSchema,
   ordersListFilterSchema,
   paymentStartSchema,
+  reviewInputSchema,
   savedProductSchema,
 } from "./index";
 
@@ -138,5 +139,27 @@ describe("savedProductSchema", () => {
 
   it("knows only the favorites and the wishlist", () => {
     expect(savedProductSchema.safeParse({ ...saved, list: "basket" }).success).toBe(false);
+  });
+});
+
+describe("reviewInputSchema", () => {
+  const productId = "0b6c8f5e-3c1d-4a8e-9f0a-2d7e6c5b4a39";
+
+  it("asks for a rating before anything is posted", () => {
+    expect(reviewInputSchema.safeParse({ product_id: productId, rating: 0, comment: "" }).success).toBe(false);
+    expect(reviewInputSchema.safeParse({ product_id: productId, rating: 6, comment: "" }).success).toBe(false);
+  });
+
+  it("keeps the comment trimmed, and a rating alone", () => {
+    expect(reviewInputSchema.parse({ product_id: productId, rating: 5, comment: "  Flaky\nand buttery " }).comment).toBe(
+      "Flaky\nand buttery",
+    );
+    expect(reviewInputSchema.parse({ product_id: productId, rating: 4, comment: "  " }).comment).toBe("");
+  });
+
+  it("counts the comment's characters as the API does, an emoji as one", () => {
+    const longest = "🎂".repeat(1000);
+    expect(reviewInputSchema.safeParse({ product_id: productId, rating: 5, comment: longest }).success).toBe(true);
+    expect(reviewInputSchema.safeParse({ product_id: productId, rating: 5, comment: `${longest}a` }).success).toBe(false);
   });
 });

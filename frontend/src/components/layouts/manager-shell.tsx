@@ -30,6 +30,7 @@ const MANAGER_NAV_ITEMS: readonly DashboardNavItem[] = [
     label: "Discount Codes",
     match: "prefix",
   },
+  { href: ROUTE.manager.reviews, icon: "reviews", label: "Reviews", match: "prefix" },
 ] as const;
 
 type ManagerShellProps = {

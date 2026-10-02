@@ -174,6 +174,17 @@ func MessageWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig)
 	}, cfg.MessageWriteMax, cfg.MessageWriteWindow, true)
 }
 
+// ReviewWriteRateLimit limits how many reviews one customer writes, so a
+// session cannot flood the moderation queue.
+func ReviewWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":review_write"
+		}
+		return "rl:ip:" + ClientIP(c) + ":review_write"
+	}, cfg.ReviewWriteMax, cfg.ReviewWriteWindow, true)
+}
+
 // RealtimeTicketRateLimit limits how often one user may ask for a realtime
 // ticket. Each ticket costs a Redis write and, once redeemed, a socket.
 func RealtimeTicketRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {

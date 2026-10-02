@@ -45,6 +45,7 @@ export const PAGE_TITLES = {
   discountCodes: "Discount Codes",
   newDiscountCode: "New Discount Code",
   editDiscountCode: "Edit Discount Code",
+  reviews: "Reviews",
   breadcrumbDetail: "Detail",
   breadcrumbNew: "New",
 } as const;

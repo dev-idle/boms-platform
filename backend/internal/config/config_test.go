@@ -152,6 +152,7 @@ func defaultRateRedis() config.RateLimitRedisConfig {
 		ManagerWriteMax: 30, ManagerWriteWindow: time.Minute,
 		OrderWriteMax: 20, OrderWriteWindow: time.Minute,
 		MessageWriteMax: 10, MessageWriteWindow: time.Minute,
+		ReviewWriteMax: 20, ReviewWriteWindow: time.Hour,
 		SelfWriteMax: 10, SelfWriteWindow: time.Minute,
 		ManagerMediaMax: 20, ManagerMediaWindow: time.Minute,
 		ReferenceUploadMax: 10, ReferenceUploadWindow: 10 * time.Minute,

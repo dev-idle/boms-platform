@@ -132,7 +132,7 @@ func TestSavedProducts_Integration(t *testing.T) {
 		conversations := postgresadapter.NewConversationRepository(f.pool)
 
 		export, err := usecase.NewDataExportUsecase(f.users, customerProfiles, postgresadapter.NewStaffProfileRepository(f.pool),
-			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, savedRepo, f.carts, fixedSessions{}, audit,
+			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, savedRepo, postgresadapter.NewReviewRepository(f.pool), f.carts, fixedSessions{}, audit,
 		).Export(ctx, customer)
 		require.NoError(t, err)
 		require.Len(t, export.Saved, 2)
@@ -141,7 +141,7 @@ func TestSavedProducts_Integration(t *testing.T) {
 			export.Saved[1].List + ":" + export.Saved[1].ProductName,
 		})
 
-		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, savedRepo, audit,
+		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, savedRepo, postgresadapter.NewReviewRepository(f.pool), audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})
 		require.NoError(t, erasure.Erase(ctx, customer, fixturePassword))
 

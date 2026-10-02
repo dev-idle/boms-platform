@@ -189,3 +189,20 @@ func PlainText(s string) bool {
 	}
 	return true
 }
+
+// beyondPlainText is what free text written on a phone may hold that plain
+// text does not: line breaks, and the zero-width joiner emoji such as a cook
+// or a shrug are built from.
+var beyondPlainText = strings.NewReplacer("\n", "", string(rune(0x200d)), "")
+
+// PlainLines is PlainText for text that may break across lines, as a message
+// or a review is written.
+func PlainLines(s string) bool {
+	return PlainText(beyondPlainText.Replace(s))
+}
+
+// TrimLines trims text that may break across lines, with every line break
+// stored as "\n".
+func TrimLines(s string) string {
+	return strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n"))
+}

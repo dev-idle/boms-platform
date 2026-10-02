@@ -18,8 +18,12 @@ import {
   discountCodeListFilterSchema,
   managerComboSchema,
   managerDiscountCodeSchema,
+  managerReviewSchema,
   productFormSchema,
   productListFilterSchema,
+  reviewListFilterSchema,
+  reviewModerationSchema,
+  reviewSummarySchema,
   type CategoriesListResult,
   type CategoryFormInput,
   type CategoryListFilterInput,
@@ -33,9 +37,14 @@ import {
   type ManagerCombo,
   type ManagerDiscountCode,
   type ManagerProduct,
+  type ManagerReview,
   type ProductFormInput,
   type ProductListFilterInput,
   type ProductsListResult,
+  type ReviewListFilterInput,
+  type ReviewModeration,
+  type ReviewsListResult,
+  type ReviewSummary,
 } from "../schemas";
 
 function categoriesPath(filter: CategoryListFilterInput): string {
@@ -316,5 +325,38 @@ export async function deleteDiscountCode(id: string): Promise<void> {
   const parsedId = z.uuid().parse(id);
   await browserRequestVoid(`/api/v1/manager/discount-codes/${parsedId}`, {
     method: "DELETE",
+  });
+}
+
+/** A page of reviews, latest first, narrowed to one status when one is given. */
+export async function listReviews(input: ReviewListFilterInput): Promise<ReviewsListResult> {
+  const filter = reviewListFilterSchema.parse(input);
+  const params = new URLSearchParams({ page: String(filter.page), page_size: String(filter.page_size) });
+  if (filter.status) {
+    params.set("status", filter.status);
+  }
+  const result = await browserRequestWithMeta<ManagerReview[]>(`/api/v1/manager/reviews?${params.toString()}`, {
+    method: "GET",
+    schema: z.array(managerReviewSchema),
+  });
+  const parsed = parsePaginatedList(result.data, result.meta, { page: filter.page, page_size: filter.page_size });
+  return { reviews: parsed.items, pagination: parsed.pagination };
+}
+
+/** Every review not hidden, added up. */
+export async function getReviewSummary(): Promise<ReviewSummary> {
+  return browserRequest<ReviewSummary>("/api/v1/manager/reviews/summary", {
+    method: "GET",
+    schema: reviewSummarySchema,
+  });
+}
+
+/** Publishes a review on the storefront, or hides it. */
+export async function moderateReview(id: string, status: ReviewModeration): Promise<ManagerReview> {
+  const parsedId = z.uuid().parse(id);
+  return browserRequest<ManagerReview>(`/api/v1/manager/reviews/${parsedId}`, {
+    method: "PATCH",
+    schema: managerReviewSchema,
+    json: { status: reviewModerationSchema.parse(status) },
   });
 }

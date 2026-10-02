@@ -418,6 +418,16 @@ type Querier interface {
 	//    AND s.product_id <> $3
 	//    AND s.deleted_at IS NULL
 	CountOtherSavedProducts(ctx context.Context, arg CountOtherSavedProductsParams) (int64, error)
+	// How many published reviews a product has, and their ratings added up.
+	//
+	//  SELECT
+	//    count(*)::bigint AS review_count,
+	//    COALESCE(sum(rating), 0)::bigint AS rating_total
+	//  FROM reviews
+	//  WHERE product_id = $1
+	//    AND status = 'published'::review_status
+	//    AND deleted_at IS NULL
+	CountPublishedReviews(ctx context.Context, productID uuid.UUID) (CountPublishedReviewsRow, error)
 	//CountStationTickets
 	//
 	//  SELECT count(*)::bigint AS count
@@ -708,6 +718,12 @@ type Querier interface {
 	//    is_active boolean
 	//  )
 	CreateProductOptions(ctx context.Context, arg CreateProductOptionsParams) (int64, error)
+	//CreateReview
+	//
+	//  INSERT INTO reviews (order_id, product_id, user_id, rating, comment)
+	//  VALUES ($1, $2, $3, $4, $5)
+	//  RETURNING id, product_id, rating, comment, status, created_at
+	CreateReview(ctx context.Context, arg CreateReviewParams) (CreateReviewRow, error)
 	//CreateStaffProfile
 	//
 	//  INSERT INTO staff_profiles (user_id, full_name, phone, employee_code)
@@ -814,6 +830,16 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	EraseUser(ctx context.Context, id uuid.UUID) (int64, error)
+	// Erases what the customer wrote as their account is erased; their reviews
+	// no longer count.
+	//
+	//  UPDATE reviews
+	//  SET comment = NULL,
+	//      deleted_at = now(),
+	//      updated_at = now()
+	//  WHERE user_id = $1
+	//    AND deleted_at IS NULL
+	EraseUserReviews(ctx context.Context, userID uuid.UUID) error
 	// An order still awaiting payment more than grace_seconds past its due time
 	// expires; one paid meanwhile does not.
 	//
@@ -1056,6 +1082,14 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
+	// Where a review stands and who wrote it, held until the transaction ends.
+	//
+	//  SELECT status, user_id
+	//  FROM reviews
+	//  WHERE id = $1
+	//    AND deleted_at IS NULL
+	//  FOR UPDATE
+	GetReviewForUpdate(ctx context.Context, id uuid.UUID) (GetReviewForUpdateRow, error)
 	// The order staff took with that Idempotency-Key, whoever it is for.
 	//
 	//  SELECT
@@ -1553,6 +1587,24 @@ type Querier interface {
 	//    AND deleted_at IS NULL
 	//  ORDER BY product_id, option_group, sort_order
 	ListProductOptions(ctx context.Context, productIds []uuid.UUID) ([]ListProductOptionsRow, error)
+	// A page of a product's published reviews, latest first: the latest, or those
+	// written before the review before_id names.
+	//
+	//  SELECT r.id, r.rating, r.comment, r.created_at
+	//  FROM reviews r
+	//  WHERE r.product_id = $1
+	//    AND r.status = 'published'::review_status
+	//    AND r.deleted_at IS NULL
+	//    AND (
+	//      $2::uuid IS NULL
+	//      OR (r.created_at, r.id) < (
+	//        SELECT b.created_at, b.id FROM reviews b
+	//        WHERE b.id = $2::uuid AND b.product_id = r.product_id
+	//      )
+	//    )
+	//  ORDER BY r.created_at DESC, r.id DESC
+	//  LIMIT $3
+	ListPublishedReviews(ctx context.Context, arg ListPublishedReviewsParams) ([]ListPublishedReviewsRow, error)
 	// Payments whose refund is asked for and not made yet, the oldest first.
 	//
 	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
@@ -1562,6 +1614,33 @@ type Querier interface {
 	//  ORDER BY refund_requested_at
 	//  LIMIT $1::int
 	ListRefundsDue(ctx context.Context, maxRows int32) ([]Payment, error)
+	// The customer's reviews of the products on one of their orders.
+	//
+	//  SELECT id, product_id, rating, comment, status, created_at
+	//  FROM reviews
+	//  WHERE order_id = $1
+	//    AND user_id = $2
+	//    AND deleted_at IS NULL
+	//  ORDER BY created_at, id
+	ListReviewsByOrder(ctx context.Context, arg ListReviewsByOrderParams) ([]ListReviewsByOrderRow, error)
+	// Every review the customer wrote, for a personal data export.
+	//
+	//  SELECT
+	//    r.order_id,
+	//    o.code AS order_code,
+	//    r.product_id,
+	//    p.name AS product_name,
+	//    r.rating,
+	//    r.comment,
+	//    r.status,
+	//    r.created_at
+	//  FROM reviews r
+	//  JOIN orders o ON o.id = r.order_id
+	//  JOIN products p ON p.id = r.product_id
+	//  WHERE r.user_id = $1
+	//    AND r.deleted_at IS NULL
+	//  ORDER BY r.created_at, r.id
+	ListReviewsByUser(ctx context.Context, userID uuid.UUID) ([]ListReviewsByUserRow, error)
 	// Both of the customer's lists, latest first, with each product as the
 	// catalog shows it. A product the bakery stopped selling is kept but not
 	// shown, as the catalog does not show it; it is back on the list when it is
@@ -1892,6 +1971,43 @@ type Querier interface {
 	//      OR p.slug ILIKE '%' || $2::text || '%'
 	//    )
 	ManagerListProductsCount(ctx context.Context, arg ManagerListProductsCountParams) (int64, error)
+	// A page of reviews to moderate, latest first, with the product, the order
+	// and the name the customer gave.
+	//
+	//  SELECT
+	//    r.id,
+	//    o.code AS order_code,
+	//    r.product_id,
+	//    p.name AS product_name,
+	//    r.rating,
+	//    r.comment,
+	//    r.status,
+	//    r.created_at,
+	//    cp.display_name AS customer_name,
+	//    sp.full_name AS moderator_name
+	//  FROM reviews r
+	//  JOIN orders o ON o.id = r.order_id
+	//  JOIN products p ON p.id = r.product_id
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = r.user_id
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = r.moderated_by
+	//  WHERE r.deleted_at IS NULL
+	//    AND (
+	//      $1::review_status IS NULL
+	//      OR r.status = $1::review_status
+	//    )
+	//  ORDER BY r.created_at DESC, r.id DESC
+	//  LIMIT $3 OFFSET $2
+	ManagerListReviews(ctx context.Context, arg ManagerListReviewsParams) ([]ManagerListReviewsRow, error)
+	//ManagerListReviewsCount
+	//
+	//  SELECT count(*)::bigint
+	//  FROM reviews r
+	//  WHERE r.deleted_at IS NULL
+	//    AND (
+	//      $1::review_status IS NULL
+	//      OR r.status = $1::review_status
+	//    )
+	ManagerListReviewsCount(ctx context.Context, status *ReviewStatus) (int64, error)
 	//MarkConversationReadByCustomer
 	//
 	//  UPDATE conversations
@@ -1923,6 +2039,35 @@ type Querier interface {
 	//  WHERE id = ANY($1::uuid[])
 	//    AND published_at IS NULL
 	MarkOutboxEventsPublished(ctx context.Context, ids []uuid.UUID) error
+	// Publishes or hides a review, and returns it as the moderation list shows it.
+	//
+	//  WITH moderated AS (
+	//    UPDATE reviews
+	//    SET status = $1,
+	//        moderated_by = $2,
+	//        moderated_at = now(),
+	//        updated_at = now()
+	//    WHERE reviews.id = $3
+	//      AND reviews.deleted_at IS NULL
+	//    RETURNING id, order_id, product_id, user_id, rating, comment, status, created_at, moderated_by
+	//  )
+	//  SELECT
+	//    m.id,
+	//    o.code AS order_code,
+	//    m.product_id,
+	//    p.name AS product_name,
+	//    m.rating,
+	//    m.comment,
+	//    m.status,
+	//    m.created_at,
+	//    cp.display_name AS customer_name,
+	//    sp.full_name AS moderator_name
+	//  FROM moderated m
+	//  JOIN orders o ON o.id = m.order_id
+	//  JOIN products p ON p.id = m.product_id
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = m.user_id
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = m.moderated_by
+	ModerateReview(ctx context.Context, arg ModerateReviewParams) (ModerateReviewRow, error)
 	// Only a ticket nobody has started moves; the order's unique ticket per
 	// station refuses a station that already has one.
 	//
@@ -2193,6 +2338,39 @@ type Querier interface {
 	//    AND deleted_at IS NULL
 	//    AND NOT (id = ANY($2::uuid[]))
 	RetireProductOptions(ctx context.Context, arg RetireProductOptionsParams) error
+	// Every review not hidden of a product the bakery keeps: how many, how many
+	// wait for a manager, their ratings added up, and how many of each rating.
+	//
+	//  SELECT
+	//    count(*)::bigint AS review_count,
+	//    count(*) FILTER (WHERE r.status = 'pending'::review_status)::bigint AS pending_count,
+	//    COALESCE(sum(r.rating), 0)::bigint AS rating_total,
+	//    count(*) FILTER (WHERE r.rating = 1)::bigint AS one_star,
+	//    count(*) FILTER (WHERE r.rating = 2)::bigint AS two_stars,
+	//    count(*) FILTER (WHERE r.rating = 3)::bigint AS three_stars,
+	//    count(*) FILTER (WHERE r.rating = 4)::bigint AS four_stars,
+	//    count(*) FILTER (WHERE r.rating = 5)::bigint AS five_stars
+	//  FROM reviews r
+	//  JOIN products p ON p.id = r.product_id AND p.deleted_at IS NULL
+	//  WHERE r.deleted_at IS NULL
+	//    AND r.status <> 'hidden'::review_status
+	ReviewRatingCounts(ctx context.Context) (ReviewRatingCountsRow, error)
+	// Each reviewed product the bakery keeps, its reviews not hidden added up, the
+	// lowest average first: what needs a manager's attention leads.
+	//
+	//  SELECT
+	//    p.id,
+	//    p.name,
+	//    count(*)::bigint AS review_count,
+	//    sum(r.rating)::bigint AS rating_total
+	//  FROM reviews r
+	//  JOIN products p ON p.id = r.product_id AND p.deleted_at IS NULL
+	//  WHERE r.deleted_at IS NULL
+	//    AND r.status <> 'hidden'::review_status
+	//  GROUP BY p.id, p.name
+	//  ORDER BY sum(r.rating)::numeric / count(*), count(*) DESC, p.name
+	//  LIMIT $1
+	ReviewRatingsByProduct(ctx context.Context, limit int32) ([]ReviewRatingsByProductRow, error)
 	// Puts a product on sale on one of the customer's lists, or brings back the
 	// row they removed. Saving it again leaves it where it is on the list. No row
 	// is written for a product that is not on sale.

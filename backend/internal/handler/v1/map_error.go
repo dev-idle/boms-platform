@@ -13,6 +13,7 @@ import (
 	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
+	domainreview "github.com/boms/backend/internal/domain/review"
 	domainsaved "github.com/boms/backend/internal/domain/saved"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -200,6 +201,18 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("list", "must be favorite or wishlist"))
 	case errors.Is(err, domainsaved.ErrListFull):
 		return writeAppError(c, apperrors.ErrSavedListFull)
+	case errors.Is(err, domainreview.ErrInvalidRating):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("rating", "must be 1 to 5 stars"))
+	case errors.Is(err, domainreview.ErrInvalidComment):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("comment", "up to 1000 plain characters"))
+	case errors.Is(err, domainreview.ErrInvalidStatus):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("status", "must be published or hidden"))
+	case errors.Is(err, domainreview.ErrNotReviewable):
+		return writeAppError(c, apperrors.ErrReviewUnavailable)
+	case errors.Is(err, domainreview.ErrExists):
+		return writeAppError(c, apperrors.ErrReviewExists)
+	case errors.Is(err, domainreview.ErrNotFound):
+		return writeAppError(c, apperrors.ErrNotFound)
 	case errors.Is(err, domainorder.ErrInvalidCancelReason):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 plain characters"))
 	case errors.Is(err, domainstore.ErrInvalidClosedDateReason):

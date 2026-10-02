@@ -27,14 +27,15 @@ const dataExportPage int32 = 100
 // DataExportUsecase gathers what the bakery holds about one person for them to
 // download (the right of access): their account and profile, the policies they
 // accepted, their sign-in sessions, the changes recorded to their account and,
-// for a customer, their cart, their favorites and wishlist, and every order
-// with its lines, history and messages.
+// for a customer, their cart, their favorites and wishlist, their reviews, and
+// every order with its lines, history and messages.
 type DataExportUsecase struct {
 	users         port.UserRepository
 	profiles      *profilesvc.Service
 	orders        port.OrderRepository
 	conversations port.ConversationRepository
 	saved         port.SavedProductRepository
+	reviews       port.ReviewRepository
 	carts         port.CartRepository
 	sessions      port.SessionLister
 	activity      port.AccountActivityReader
@@ -48,6 +49,7 @@ func NewDataExportUsecase(
 	orders port.OrderRepository,
 	conversations port.ConversationRepository,
 	saved port.SavedProductRepository,
+	reviews port.ReviewRepository,
 	carts port.CartRepository,
 	sessions port.SessionLister,
 	activity port.AccountActivityReader,
@@ -58,6 +60,7 @@ func NewDataExportUsecase(
 		orders:        orders,
 		conversations: conversations,
 		saved:         saved,
+		reviews:       reviews,
 		carts:         carts,
 		sessions:      sessions,
 		activity:      activity,
@@ -74,6 +77,7 @@ type DataExport struct {
 	Activity []dto.AccountActivityResponse
 	Cart     []dto.DataExportCartItemResponse
 	Saved    []dto.DataExportSavedProductResponse
+	Reviews  []dto.DataExportReviewResponse
 	Orders   []dto.DataExportOrderResponse
 }
 
@@ -92,10 +96,11 @@ func (u *DataExportUsecase) Export(ctx context.Context, userID uuid.UUID) (*Data
 		return nil, err
 	}
 	out := &DataExport{
-		User:   user,
-		Cart:   []dto.DataExportCartItemResponse{},
-		Saved:  []dto.DataExportSavedProductResponse{},
-		Orders: []dto.DataExportOrderResponse{},
+		User:    user,
+		Cart:    []dto.DataExportCartItemResponse{},
+		Saved:   []dto.DataExportSavedProductResponse{},
+		Reviews: []dto.DataExportReviewResponse{},
+		Orders:  []dto.DataExportOrderResponse{},
 	}
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
@@ -130,6 +135,11 @@ func (u *DataExportUsecase) Export(ctx context.Context, userID uuid.UUID) (*Data
 		group.Go(func() error {
 			saved, err := u.saved.ListForExport(groupCtx, user.ID)
 			out.Saved = mapExportSavedProducts(saved)
+			return err
+		})
+		group.Go(func() error {
+			reviews, err := u.reviews.ListForExport(groupCtx, user.ID)
+			out.Reviews = mapExportReviews(reviews)
 			return err
 		})
 		group.Go(func() error {
@@ -314,6 +324,23 @@ func mapExportSavedProducts(saved []port.SavedProductEntry) []dto.DataExportSave
 			ProductID:   item.ProductID.String(),
 			ProductName: item.ProductName,
 			SavedAt:     item.SavedAt,
+		})
+	}
+	return out
+}
+
+func mapExportReviews(reviews []port.ReviewEntry) []dto.DataExportReviewResponse {
+	out := make([]dto.DataExportReviewResponse, 0, len(reviews))
+	for _, review := range reviews {
+		out = append(out, dto.DataExportReviewResponse{
+			OrderID:     review.OrderID.String(),
+			OrderCode:   review.OrderCode,
+			ProductID:   review.ProductID.String(),
+			ProductName: review.ProductName,
+			Rating:      review.Rating,
+			Comment:     review.Comment,
+			Status:      string(review.Status),
+			CreatedAt:   review.CreatedAt,
 		})
 	}
 	return out

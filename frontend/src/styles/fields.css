@@ -514,6 +514,14 @@
   height: 100%;
 }
 
+/* A field for a few lines of text: the same underline, as tall as its rows. */
+textarea.field-chrome {
+  height: auto;
+  line-height: 1.6;
+  padding-block: 0.625rem;
+  resize: vertical;
+}
+
 .field-chrome::placeholder {
   color: var(--field-placeholder);
 }

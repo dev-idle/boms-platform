@@ -120,11 +120,12 @@ func main() {
 	quota := redisrepo.NewQuota(redisClient)
 	conversationRepo := postgresrepo.NewConversationRepository(pgPool)
 	savedProductRepo := postgresrepo.NewSavedProductRepository(pgPool)
+	reviewRepo := postgresrepo.NewReviewRepository(pgPool)
 	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC, pickupCodes,
 		conversationRepo)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	accountErasureUC := usecase.NewAccountErasureUsecase(
-		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, conversationRepo, savedProductRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
+		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, conversationRepo, savedProductRepo, reviewRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
 	)
 	emailVerificationUC := usecase.NewEmailVerificationUsecase(pgPool, userRepo, userTokenRepo, outboxRepo, auditLogger)
 	passwordResetUC := usecase.NewPasswordResetUsecase(
@@ -133,7 +134,7 @@ func main() {
 		auditLogger, zlog,
 	)
 	dataExportUC := usecase.NewDataExportUsecase(
-		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, conversationRepo, savedProductRepo, cartRepo, sessionStore, auditLogRepo,
+		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, conversationRepo, savedProductRepo, reviewRepo, cartRepo, sessionStore, auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffOrderUC := usecase.NewStaffOrderUsecase(userRepo, orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC,
@@ -142,6 +143,8 @@ func main() {
 	conversationUC := usecase.NewConversationUsecase(userRepo, orderRepo, conversationRepo, pgPool, outboxRepo)
 	staffConversationUC := usecase.NewStaffConversationUsecase(userRepo, orderRepo, conversationRepo, pgPool, outboxRepo)
 	savedProductUC := usecase.NewSavedProductUsecase(userRepo, savedProductRepo, pgPool)
+	reviewUC := usecase.NewReviewUsecase(userRepo, orderRepo, reviewRepo, pgPool, outboxRepo)
+	managerReviewUC := usecase.NewManagerReviewUsecase(reviewRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -173,6 +176,8 @@ func main() {
 	conversationHandler := v1.NewConversationHandler(conversationUC)
 	staffConversationHandler := v1.NewStaffConversationHandler(staffConversationUC)
 	savedProductHandler := v1.NewSavedProductHandler(savedProductUC)
+	reviewHandler := v1.NewReviewHandler(reviewUC)
+	managerReviewHandler := v1.NewManagerReviewHandler(managerReviewUC)
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
 	storeHandler := v1.NewStoreHandler(storeUC)
@@ -294,6 +299,7 @@ func main() {
 	catalogRead.Get("/categories", catalogHandler.ListCategories)
 	catalogRead.Get("/products", catalogHandler.ListProducts)
 	catalogRead.Get("/products/:id", catalogHandler.GetProduct)
+	catalogRead.Get("/products/:id/reviews", reviewHandler.ProductReviews)
 	catalogRead.Get("/combos", catalogHandler.ListCombos)
 	catalogRead.Get("/combos/:id", catalogHandler.GetCombo)
 
@@ -321,6 +327,8 @@ func main() {
 	customerOrders.Get("/:id/messages", conversationHandler.Thread)
 	customerOrders.Post("/:id/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), conversationHandler.Post)
 	customerOrders.Post("/:id/messages/read", conversationHandler.MarkRead)
+	customerOrders.Get("/:id/reviews", reviewHandler.ListByOrder)
+	customerOrders.Post("/:id/reviews", middleware.ReviewWriteRateLimit(rdb, cfg.RateRedis), reviewHandler.Create)
 
 	customerSaved := customerSessionGroup(apiV1, "/saved-products", tokenSigner, sessionStore, passwordChanged)
 	customerSaved.Get("", savedProductHandler.List)
@@ -343,6 +351,8 @@ func main() {
 	managerRead.Get("/combos/:id", managerComboHandler.Get)
 	managerRead.Get("/discount-codes", managerDiscountCodeHandler.List)
 	managerRead.Get("/discount-codes/:id", managerDiscountCodeHandler.Get)
+	managerRead.Get("/reviews", managerReviewHandler.List)
+	managerRead.Get("/reviews/summary", managerReviewHandler.Summary)
 	managerRead.Get(
 		"/media/cloudinary-signature",
 		middleware.ManagerMediaRateLimit(rdb, cfg.RateRedis),
@@ -368,6 +378,7 @@ func main() {
 	managerWrite.Post("/discount-codes", managerDiscountCodeHandler.Create)
 	managerWrite.Patch("/discount-codes/:id", managerDiscountCodeHandler.Patch)
 	managerWrite.Delete("/discount-codes/:id", managerDiscountCodeHandler.Delete)
+	managerWrite.Patch("/reviews/:id", managerReviewHandler.Moderate)
 
 	staffOrders := apiV1.Group(
 		"/staff",

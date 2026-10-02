@@ -18,6 +18,7 @@ import (
 	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
+	domainreview "github.com/boms/backend/internal/domain/review"
 	domainsaved "github.com/boms/backend/internal/domain/saved"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -107,6 +108,12 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "conversation_not_found", err: domainconversation.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
 		{name: "saved_list_invalid", err: domainsaved.ErrInvalidList, wantStatus: 400, wantCode: "validation_error"},
 		{name: "saved_list_full", err: domainsaved.ErrListFull, wantStatus: 422, wantCode: "saved_list_full"},
+		{name: "review_rating", err: domainreview.ErrInvalidRating, wantStatus: 400, wantCode: "validation_error"},
+		{name: "review_comment", err: domainreview.ErrInvalidComment, wantStatus: 400, wantCode: "validation_error"},
+		{name: "review_status", err: domainreview.ErrInvalidStatus, wantStatus: 400, wantCode: "validation_error"},
+		{name: "review_unavailable", err: domainreview.ErrNotReviewable, wantStatus: 422, wantCode: "review_unavailable"},
+		{name: "review_exists", err: domainreview.ErrExists, wantStatus: 409, wantCode: "review_exists"},
+		{name: "review_not_found", err: domainreview.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
 		{name: "closed_date_exists", err: domainstore.ErrClosedDateExists, wantStatus: 409, wantCode: "closed_date_exists"},
 		{name: "closed_date_not_found", err: domainstore.ErrClosedDateNotFound, wantStatus: 404, wantCode: "not_found"},
 	}

@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { isApiError } from "@/lib/errors";
+
 import {
   createCategory,
   createCombo,
@@ -21,10 +23,13 @@ import {
   getComboById,
   getDiscountCodeById,
   getProductById,
+  getReviewSummary,
   listCategories,
   listCombos,
   listDiscountCodes,
   listProducts,
+  listReviews,
+  moderateReview,
   updateCategory,
   updateCombo,
   updateDiscountCode,
@@ -35,6 +40,7 @@ import {
   comboListFilterSchema,
   discountCodeListFilterSchema,
   productListFilterSchema,
+  reviewListFilterSchema,
   type CategoryFormInput,
   type CategoryListFilterInput,
   type ComboFormInput,
@@ -43,6 +49,8 @@ import {
   type DiscountCodeListFilterInput,
   type ProductFormInput,
   type ProductListFilterInput,
+  type ReviewListFilterInput,
+  type ReviewModeration,
 } from "../schemas";
 import { managerQueryKeys, MANAGER_LIST_STALE_TIME_MS } from "./query-options";
 
@@ -256,6 +264,41 @@ export function useDeleteDiscountCode() {
       void queryClient.invalidateQueries({
         queryKey: managerQueryKeys.discountCodesRoot,
       });
+    },
+  });
+}
+
+/** A page of reviews to moderate; refreshed live as customers write them. */
+export function useReviews(input: ReviewListFilterInput) {
+  const filter = reviewListFilterSchema.parse(input);
+  return useQuery({
+    queryKey: managerQueryKeys.reviews(filter),
+    queryFn: () => listReviews(filter),
+    placeholderData: keepPreviousData,
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
+  });
+}
+
+/** Every review not hidden, added up. */
+export function useReviewSummary() {
+  return useQuery({
+    queryKey: managerQueryKeys.reviewSummary,
+    queryFn: getReviewSummary,
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
+  });
+}
+
+/** Publishes a review or hides it; the table holds several, so the review rides with each call. */
+export function useModerateReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ReviewModeration }) => moderateReview(id, status),
+    onSuccess: (review) => {
+      void queryClient.invalidateQueries({ queryKey: managerQueryKeys.reviewsRoot });
+      toast.success(review.status === "published" ? "Review published" : "Review hidden");
+    },
+    onError: (error) => {
+      toast.error(isApiError(error) ? error.message : "Failed to update the review");
     },
   });
 }

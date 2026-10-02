@@ -3,7 +3,6 @@
 package conversation
 
 import (
-	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -48,17 +47,11 @@ func (s Status) Valid() bool {
 	return s == StatusOpen || s == StatusClosed
 }
 
-// beyondPlainText removes what a message may hold that plain text does not:
-// line breaks, and the zero-width joiner that phone keyboards build emoji
-// such as a cook or a shrug from.
-var beyondPlainText = strings.NewReplacer("\n", "", string(rune(0x200d)), "")
-
 // NewBody checks a message as written: trimmed, 1 to MaxBodyLength
 // characters, plain text that may break across lines.
 func NewBody(body string) (string, error) {
-	body = strings.TrimSpace(strings.ReplaceAll(body, "\r\n", "\n"))
-	if body == "" || utf8.RuneCountInString(body) > MaxBodyLength ||
-		!domainstore.PlainText(beyondPlainText.Replace(body)) {
+	body = domainstore.TrimLines(body)
+	if body == "" || utf8.RuneCountInString(body) > MaxBodyLength || !domainstore.PlainLines(body) {
 		return "", ErrInvalidBody
 	}
 	return body, nil

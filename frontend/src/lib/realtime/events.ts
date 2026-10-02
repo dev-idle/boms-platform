@@ -9,6 +9,7 @@ export const REALTIME_EVENT_TYPE = {
   orderRescheduled: "order.rescheduled",
   orderRefunded: "order.refunded",
   productSoldOutChanged: "product.sold_out_changed",
+  reviewChanged: "review.changed",
   settingsUpdated: "settings.updated",
   slotsChanged: "slots.changed",
   ticketChanged: "ticket.changed",

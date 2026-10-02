@@ -123,6 +123,15 @@ function MessagesIcon({ className }: IconProps) {
   );
 }
 
+/** Star — what customers rate their pickups. */
+function ReviewsIcon({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <path d="M12 3.75 14.55 8.9l5.7.83-4.13 4.02.98 5.67L12 16.74l-5.1 2.68.98-5.67-4.13-4.02 5.7-.83L12 3.75Z" />
+    </IconBase>
+  );
+}
+
 /** Clock — the day's pickup times. */
 function PickupsIcon({ className }: IconProps) {
   return (
@@ -185,6 +194,7 @@ const DASHBOARD_NAV_ICONS = {
   prep: PrepIcon,
   products: ProductsIcon,
   profile: ProfileIcon,
+  reviews: ReviewsIcon,
   settings: SettingsIcon,
   users: UsersIcon,
 } as const;

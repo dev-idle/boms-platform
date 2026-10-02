@@ -3,6 +3,7 @@ import { z } from "zod";
 import { catalogSlugSchema } from "@/lib/validation/catalog";
 import { CAKE_MESSAGE_MAX, catalogProductSchema } from "@/lib/schemas/catalog";
 import { messageSchema } from "@/lib/schemas/message";
+import { MAX_RATING, ratingSchema, REVIEW_COMMENT_MAX_LENGTH, reviewStatusSchema } from "@/lib/schemas/review";
 import {
   customizationSchema,
   orderCodeSchema,
@@ -180,6 +181,29 @@ export const orderThreadSchema = z.object({
   has_more: z.boolean(),
 });
 
+/** GET /orders/:id/reviews — the customer's review of a product on their order. */
+export const orderReviewSchema = z.object({
+  id: z.uuid(),
+  product_id: z.uuid(),
+  rating: ratingSchema,
+  comment: z.string().min(1).nullable(),
+  status: reviewStatusSchema,
+  created_at: apiDateTimeSchema,
+});
+
+/** A review as written; the API trims the comment and checks its characters again. */
+export const reviewInputSchema = z.object({
+  product_id: z.uuid(),
+  rating: z.number().int().min(1, "Choose a rating").max(MAX_RATING),
+  comment: z
+    .string()
+    .trim()
+    .refine(
+      (comment) => [...comment].length <= REVIEW_COMMENT_MAX_LENGTH,
+      `A comment holds up to ${REVIEW_COMMENT_MAX_LENGTH} characters`,
+    ),
+});
+
 /** GET /api/v1/store/pickup-rules — the window checkout holds a pickup to. */
 export const pickupRulesSchema = z.object({
   opens_at: clockTimeSchema,
@@ -237,6 +261,8 @@ export type OrdersListFilterInput = z.infer<typeof ordersListFilterSchema>;
 export type PickupRules = z.infer<typeof pickupRulesSchema>;
 export type PickupSlots = z.infer<typeof pickupSlotsSchema>;
 export type OrderThread = z.infer<typeof orderThreadSchema>;
+export type OrderReview = z.infer<typeof orderReviewSchema>;
+export type ReviewInput = z.infer<typeof reviewInputSchema>;
 export type SavedList = z.infer<typeof savedListSchema>;
 
 /** How a list is named in a sentence: "your favorites", "your wishlist". */

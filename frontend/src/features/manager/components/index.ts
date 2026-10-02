@@ -4,5 +4,7 @@ export { DiscountCodeForm } from "./discount-code-form";
 export { ManagerCategoriesTable } from "./manager-categories-table";
 export { ManagerCombosTable } from "./manager-combos-table";
 export { ManagerDiscountCodesTable } from "./manager-discount-codes-table";
+export { ManagerLiveUpdates } from "./manager-live-updates";
 export { ManagerProductsTable } from "./manager-products-table";
+export { ManagerReviews } from "./manager-reviews";
 export { ProductForm } from "./product-form";

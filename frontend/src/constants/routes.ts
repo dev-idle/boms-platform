@@ -8,7 +8,7 @@
  *   - Staff:    /staff/orders, /staff/orders/new, /staff/orders/:id, /staff/pickups, /staff/prep, /staff/availability, /staff/chat, /staff/chat/:orderId, /staff/account/*
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
- *               /manager/discount-codes, /manager/account/*
+ *               /manager/discount-codes, /manager/reviews, /manager/account/*
  *   - Admin:    /admin, /admin/users, /admin/settings, /admin/account/*
  */
 export const ROUTE = {
@@ -73,6 +73,7 @@ export const ROUTE = {
     discountCodes: "/manager/discount-codes",
     discountCodesNew: "/manager/discount-codes/new",
     discountCodeDetail: (id: string) => `/manager/discount-codes/${id}`,
+    reviews: "/manager/reviews",
     account: {
       root: "/manager/account",
       profile: "/manager/account/profile",

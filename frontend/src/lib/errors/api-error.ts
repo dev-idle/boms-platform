@@ -57,6 +57,8 @@ export const ApiErrorCode = {
   PickupCodeLocked: "pickup_code_locked",
   MessagingUnavailable: "messaging_unavailable",
   SavedListFull: "saved_list_full",
+  ReviewUnavailable: "review_unavailable",
+  ReviewExists: "review_exists",
   WebhookInvalid: "webhook_invalid",
   InvalidTicketTransition: "invalid_ticket_transition",
   TicketOrderNotActive: "ticket_order_not_active",

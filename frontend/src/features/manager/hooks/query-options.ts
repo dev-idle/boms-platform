@@ -1,8 +1,13 @@
+import type { QueryKey } from "@tanstack/react-query";
+
+import { REALTIME_EVENT_TYPE, type RealtimeEvent } from "@/lib/realtime/events";
+
 import type {
   CategoryListFilterInput,
   ComboListFilterInput,
   DiscountCodeListFilterInput,
   ProductListFilterInput,
+  ReviewListFilterInput,
 } from "../schemas";
 
 /** List queries: align with global default; explicit for manager catalog tables. */
@@ -27,4 +32,24 @@ export const managerQueryKeys = {
     [...managerQueryKeys.discountCodesRoot, filter] as const,
   discountCode: (id: string) =>
     [...managerQueryKeys.all, "discount-code", id] as const,
+  reviewsRoot: ["manager", "reviews"] as const,
+  reviews: (filter: ReviewListFilterInput) =>
+    [...managerQueryKeys.reviewsRoot, filter] as const,
+  reviewSummary: ["manager", "reviews", "summary"] as const,
 };
+
+/** Everything pushed events can change in a manager tab, refetched after a gap. */
+export const managerLiveQueryKeys: readonly QueryKey[] = [managerQueryKeys.reviewsRoot];
+
+/**
+ * Queries a pushed event makes stale in a manager tab: a review written, or
+ * published or hidden in another tab, changes the reviews and their summary.
+ */
+export function managerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
+  switch (event.type) {
+    case REALTIME_EVENT_TYPE.reviewChanged:
+      return [managerQueryKeys.reviewsRoot];
+    default:
+      return [];
+  }
+}

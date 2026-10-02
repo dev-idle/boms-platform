@@ -30,6 +30,7 @@ func TestPerUserRateLimits(t *testing.T) {
 		RealtimeTicketMax: 2, RealtimeTicketWindow: time.Minute,
 		DataExportMax: 2, DataExportWindow: time.Minute,
 		MessageWriteMax: 2, MessageWriteWindow: time.Minute,
+		ReviewWriteMax: 2, ReviewWriteWindow: time.Minute,
 		VerificationResendMax: 2, VerificationResendWindow: time.Minute,
 	}
 	limiters := map[string]func(*goredis.Client, config.RateLimitRedisConfig) fiber.Handler{
@@ -37,6 +38,7 @@ func TestPerUserRateLimits(t *testing.T) {
 		"realtime_tickets":     RealtimeTicketRateLimit,
 		"data_exports":         DataExportRateLimit,
 		"message_writes":       MessageWriteRateLimit,
+		"review_writes":        ReviewWriteRateLimit,
 		"verification_resends": VerificationResendRateLimit,
 	}
 	for name, limiter := range limiters {

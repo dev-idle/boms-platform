@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { productOptionGroupSchema } from "@/lib/schemas/catalog";
+import { orderCodeSchema } from "@/lib/schemas/order";
+import { averageRatingSchema, MAX_RATING, ratingSchema, reviewStatusSchema } from "@/lib/schemas/review";
 import { stationSchema } from "@/lib/schemas/ticket";
 import { CATALOG_INTEGER_MAX, catalogSlugSchema } from "@/lib/validation/catalog";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
@@ -320,6 +322,48 @@ export const discountCodeListFilterSchema = z.object({
   search: z.string().optional().default(""),
 });
 
+/** GET /manager/reviews — a review as a manager moderates it; the moderator is null while it waits. */
+export const managerReviewSchema = z.object({
+  id: z.uuid(),
+  order_code: orderCodeSchema,
+  product_name: z.string().min(1),
+  rating: ratingSchema,
+  comment: z.string().min(1).nullable(),
+  status: reviewStatusSchema,
+  created_at: apiDateTimeSchema,
+  customer_name: z.string().nullable(),
+  moderator_name: z.string().nullable(),
+});
+
+export const reviewListFilterSchema = z.object({
+  page: z.number().int().min(1).default(1),
+  page_size: z.number().int().min(1).max(100).default(20),
+  status: reviewStatusSchema.optional(),
+});
+
+/** What a manager decides about a review: the storefront shows it, or not. */
+export const reviewModerationSchema = reviewStatusSchema.exclude(["pending"]);
+
+/**
+ * GET /manager/reviews/summary — every review not hidden added up: how many,
+ * how many wait for a manager, their average, how many gave each rating
+ * (`stars[0]` one star), and each product's, the lowest average first.
+ */
+export const reviewSummarySchema = z.object({
+  review_count: z.number().int().min(0),
+  pending_count: z.number().int().min(0),
+  average_rating: averageRatingSchema.nullable(),
+  stars: z.array(z.number().int().min(0)).length(MAX_RATING),
+  products: z.array(
+    z.object({
+      product_id: z.uuid(),
+      product_name: z.string().min(1),
+      review_count: z.number().int().min(1),
+      average_rating: averageRatingSchema,
+    }),
+  ),
+});
+
 export type ManagerCombo = z.infer<typeof managerComboSchema>;
 export type ComboFormInput = z.infer<typeof comboFormSchema>;
 /** RHF defaults — `price_cents` unset on create until the manager enters it. */
@@ -333,6 +377,21 @@ export type DiscountCodeFormValues = z.input<typeof discountCodeFormSchema>;
 export type DiscountCodeListFilterInput = z.infer<
   typeof discountCodeListFilterSchema
 >;
+
+export type ManagerReview = z.infer<typeof managerReviewSchema>;
+export type ReviewListFilterInput = z.infer<typeof reviewListFilterSchema>;
+export type ReviewModeration = z.infer<typeof reviewModerationSchema>;
+export type ReviewSummary = z.infer<typeof reviewSummarySchema>;
+
+export type ReviewsListResult = {
+  reviews: ManagerReview[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+  };
+};
 
 export type CombosListResult = {
   combos: ManagerCombo[];

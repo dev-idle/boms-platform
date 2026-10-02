@@ -1,4 +1,5 @@
 import type { OrderStatus } from "@/lib/schemas/order";
+import type { ReviewStatus } from "@/lib/schemas/review";
 import type { TicketStatus } from "@/lib/schemas/ticket";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +61,18 @@ export function ticketStatusToPillVariant(status: TicketStatus): StatusPillVaria
     case "ready":
       return "ready";
     case "cancelled":
+      return "cancelled";
+  }
+}
+
+/** Map review statuses onto the same pills: a review waiting for a manager is pending like an order. */
+export function reviewStatusToPillVariant(status: ReviewStatus): StatusPillVariant {
+  switch (status) {
+    case "pending":
+      return "pending";
+    case "published":
+      return "ready";
+    case "hidden":
       return "cancelled";
   }
 }

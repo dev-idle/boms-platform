@@ -1,4 +1,4 @@
-import { keepPreviousData, queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, keepPreviousData, queryOptions } from "@tanstack/react-query";
 
 import {
   catalogCategoriesListFilterSchema,
@@ -13,6 +13,7 @@ import { CATALOG_CATEGORIES_PAGE_SIZE } from "@/constants/catalog";
 
 import {
   getCatalogProduct,
+  getProductReviews,
   listCatalogCategories,
   listCatalogCombos,
   listCatalogProducts,
@@ -26,6 +27,7 @@ const catalogQueryKeys = {
   products: (filter: CatalogProductsListFilterInput) =>
     [...catalogQueryKeys.productsRoot, filter] as const,
   product: (id: string) => ["catalog", "product", id] as const,
+  productReviews: (id: string) => ["catalog", "product", id, "reviews"] as const,
   combosRoot: ["catalog", "combos"] as const,
   combos: (filter: CatalogCombosListFilterInput) =>
     [...catalogQueryKeys.combosRoot, filter] as const,
@@ -61,6 +63,17 @@ export function catalogProductQueryOptions(id: string, enabled: boolean) {
     queryFn: () => getCatalogProduct(id),
     enabled,
     retry: false,
+    staleTime: 60_000,
+  });
+}
+
+/** A product's published reviews, a page at a time: "Show more" reads those before the last shown. */
+export function catalogProductReviewsQueryOptions(productId: string) {
+  return infiniteQueryOptions({
+    queryKey: catalogQueryKeys.productReviews(productId),
+    queryFn: ({ pageParam }) => getProductReviews(productId, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => (page.has_more ? page.reviews.at(-1)?.id : undefined),
     staleTime: 60_000,
   });
 }

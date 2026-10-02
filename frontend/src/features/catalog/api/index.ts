@@ -20,6 +20,7 @@ import {
   type CatalogProductsListFilterInput,
   type CatalogProductsListResult,
 } from "@/lib/schemas/catalog";
+import { productReviewsSchema, type ProductReviews } from "@/lib/schemas/review";
 
 export async function listCatalogCategories(
   input: CatalogCategoriesListFilterInput = {
@@ -87,6 +88,17 @@ export async function getCatalogProduct(id: string): Promise<CatalogProduct> {
   return browserRequest<CatalogProduct>(`/api/v1/catalog/products/${parsedId}`, {
     method: "GET",
     schema: catalogProductSchema,
+    skipRefreshRetry: true,
+  });
+}
+
+/** A page of a product's published reviews, latest first: the latest, or those before the review `before`. */
+export async function getProductReviews(productId: string, before?: string): Promise<ProductReviews> {
+  const id = z.uuid().parse(productId);
+  const query = before ? `?before=${z.uuid().parse(before)}` : "";
+  return browserRequest<ProductReviews>(`/api/v1/catalog/products/${id}/reviews${query}`, {
+    method: "GET",
+    schema: productReviewsSchema,
     skipRefreshRetry: true,
   });
 }

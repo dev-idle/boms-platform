@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import type {
@@ -13,6 +13,7 @@ import {
   catalogCategoriesQueryOptions,
   catalogCombosQueryOptions,
   catalogProductQueryOptions,
+  catalogProductReviewsQueryOptions,
   catalogProductsQueryOptions,
 } from "./query-options";
 
@@ -41,6 +42,10 @@ export function useCatalogProduct(
     ...catalogProductQueryOptions(id, isValidId && (options?.enabled ?? true)),
     staleTime: 60_000,
   });
+}
+
+export function useProductReviews(productId: string) {
+  return useInfiniteQuery(catalogProductReviewsQueryOptions(productId));
 }
 
 export function useCatalogCombos(input: CatalogCombosListFilterInput) {

@@ -53,7 +53,7 @@ func (h *StaffConversationHandler) Thread(c fiber.Ctx) error {
 	if err != nil {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid order id"))
 	}
-	beforeID, appErr := parseBeforeMessage(c)
+	beforeID, appErr := parseBeforeID(c, "message")
 	if appErr != nil {
 		return writeAppError(c, appErr)
 	}

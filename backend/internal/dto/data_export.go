@@ -7,7 +7,7 @@ import (
 
 // DataExportResponse is everything the bakery holds about one person, as they
 // download it from their account: the account and profile, the policies they
-// accepted at sign-up, and every order they placed.
+// accepted at sign-up, the reviews they wrote and every order they placed.
 type DataExportResponse struct {
 	ExportedAt      time.Time                        `json:"exported_at"`
 	Account         MeResponse                       `json:"account"`
@@ -16,6 +16,7 @@ type DataExportResponse struct {
 	AccountActivity []AccountActivityResponse        `json:"account_activity"`
 	Cart            []DataExportCartItemResponse     `json:"cart"`
 	SavedProducts   []DataExportSavedProductResponse `json:"saved_products"`
+	Reviews         []DataExportReviewResponse       `json:"reviews"`
 	Orders          []DataExportOrderResponse        `json:"orders"`
 }
 
@@ -62,6 +63,19 @@ type DataExportSavedProductResponse struct {
 	ProductID   string    `json:"product_id"`
 	ProductName string    `json:"product_name"`
 	SavedAt     time.Time `json:"saved_at"`
+}
+
+// DataExportReviewResponse is a review the customer wrote of a product on one
+// of their orders, with where it stands with the manager.
+type DataExportReviewResponse struct {
+	OrderID     string    `json:"order_id"`
+	OrderCode   string    `json:"order_code"`
+	ProductID   string    `json:"product_id"`
+	ProductName string    `json:"product_name"`
+	Rating      int16     `json:"rating"`
+	Comment     *string   `json:"comment"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // TermsAcceptanceResponse is the policy version someone accepted and when.
