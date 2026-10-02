@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  PROMOTION_BODY_MAX_LENGTH,
   categoryFormSchema,
   comboFormSchema,
   discountCodeFormSchema,
+  managerPromotionSchema,
   productFormSchema,
+  promotionFormSchema,
 } from "./index";
 
 /** The shape a valid product form submits, so each case changes one field. */
@@ -166,5 +169,37 @@ describe("fulfillment fields", () => {
     ]) {
       expect(productFormSchema.safeParse({ ...custom, options: [bad] }).success).toBe(false);
     }
+  });
+});
+
+describe("promotionFormSchema", () => {
+  it("trims what the manager wrote and asks for both parts", () => {
+    expect(promotionFormSchema.parse({ subject: "  Matcha week ", body: " Ten percent off\n" })).toEqual({
+      subject: "Matcha week",
+      body: "Ten percent off",
+    });
+    expect(promotionFormSchema.safeParse({ subject: " ", body: "Hi" }).success).toBe(false);
+    expect(promotionFormSchema.safeParse({ subject: "Hi", body: " \n " }).success).toBe(false);
+  });
+
+  it("counts characters as the API does, an emoji as one", () => {
+    const longest = "🎂".repeat(PROMOTION_BODY_MAX_LENGTH);
+    expect(promotionFormSchema.safeParse({ subject: "Hi", body: longest }).success).toBe(true);
+    expect(promotionFormSchema.safeParse({ subject: "Hi", body: `${longest}a` }).success).toBe(false);
+  });
+});
+
+describe("managerPromotionSchema", () => {
+  it("reads a promotion still sending, before anyone is counted", () => {
+    const sending = {
+      id: "0b6c8f5e-3c1d-4a8e-9f0a-2d7e6c5b4a39",
+      subject: "Matcha week",
+      status: "sending",
+      recipient_count: null,
+      created_at: "2026-10-02T09:00:00+07:00",
+      sender_name: "Hoa Pham",
+    };
+    expect(managerPromotionSchema.safeParse(sending).success).toBe(true);
+    expect(managerPromotionSchema.safeParse({ ...sending, status: "draft" }).success).toBe(false);
   });
 });

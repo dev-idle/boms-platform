@@ -17,6 +17,7 @@ export const updateSelfProfileSchema = z
       .trim()
       .max(255, "Full name must be at most 255 characters")
       .optional(),
+    marketing_opt_in: z.boolean().optional(),
   })
   .strict();
 
@@ -33,6 +34,7 @@ export const customerSelfProfileFormSchema = z.object({
     .max(255, "Display name must be at most 255 characters")
     .optional(),
   phone: vietnamPhoneZodString(),
+  marketing_opt_in: z.boolean(),
 });
 
 export const changePasswordSchema = z.object({

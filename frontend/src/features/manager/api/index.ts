@@ -18,9 +18,13 @@ import {
   discountCodeListFilterSchema,
   managerComboSchema,
   managerDiscountCodeSchema,
+  managerPromotionSchema,
   managerReviewSchema,
   productFormSchema,
   productListFilterSchema,
+  promotionAudienceSchema,
+  promotionFormSchema,
+  promotionListFilterSchema,
   reviewListFilterSchema,
   reviewModerationSchema,
   reviewSummarySchema,
@@ -37,10 +41,15 @@ import {
   type ManagerCombo,
   type ManagerDiscountCode,
   type ManagerProduct,
+  type ManagerPromotion,
   type ManagerReview,
   type ProductFormInput,
   type ProductListFilterInput,
   type ProductsListResult,
+  type PromotionAudience,
+  type PromotionFormInput,
+  type PromotionListFilterInput,
+  type PromotionsListResult,
   type ReviewListFilterInput,
   type ReviewModeration,
   type ReviewsListResult,
@@ -358,5 +367,34 @@ export async function moderateReview(id: string, status: ReviewModeration): Prom
     method: "PATCH",
     schema: managerReviewSchema,
     json: { status: reviewModerationSchema.parse(status) },
+  });
+}
+
+/** A page of the promotions sent, latest first. */
+export async function listPromotions(input: PromotionListFilterInput): Promise<PromotionsListResult> {
+  const filter = promotionListFilterSchema.parse(input);
+  const params = new URLSearchParams({ page: String(filter.page), page_size: String(filter.page_size) });
+  const result = await browserRequestWithMeta<ManagerPromotion[]>(`/api/v1/manager/promotions?${params.toString()}`, {
+    method: "GET",
+    schema: z.array(managerPromotionSchema),
+  });
+  const parsed = parsePaginatedList(result.data, result.meta, { page: filter.page, page_size: filter.page_size });
+  return { promotions: parsed.items, pagination: parsed.pagination };
+}
+
+/** How many customers a promotion sent now goes to. */
+export async function getPromotionAudience(): Promise<PromotionAudience> {
+  return browserRequest<PromotionAudience>("/api/v1/manager/promotions/audience", {
+    method: "GET",
+    schema: promotionAudienceSchema,
+  });
+}
+
+/** Sends a promotion: the worker emails it to every customer who agreed to promotions. */
+export async function sendPromotion(input: PromotionFormInput): Promise<ManagerPromotion> {
+  return browserRequest<ManagerPromotion>("/api/v1/manager/promotions", {
+    method: "POST",
+    schema: managerPromotionSchema,
+    json: promotionFormSchema.parse(input),
   });
 }

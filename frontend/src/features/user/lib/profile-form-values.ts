@@ -43,18 +43,17 @@ export function normalizeFullNamePhoneFormValues(
   };
 }
 
-function customerProfileFormDefaults(
-  profile: Pick<CustomerProfile, "display_name" | "phone">,
-): CustomerSelfProfileFormValues {
+type CustomerProfileFields = Pick<CustomerProfile, "display_name" | "phone" | "marketing_consent_at">;
+
+function customerProfileFormDefaults(profile: CustomerProfileFields): CustomerSelfProfileFormValues {
   return {
     display_name: fieldValueOrEmpty(profile.display_name),
     phone: nationalNumber(profile.phone ?? ""),
+    marketing_opt_in: profile.marketing_consent_at !== null,
   };
 }
 
-export function customerProfileSnapshot(
-  profile: Pick<CustomerProfile, "display_name" | "phone">,
-): CustomerSelfProfileFormValues {
+export function customerProfileSnapshot(profile: CustomerProfileFields): CustomerSelfProfileFormValues {
   return normalizeCustomerProfileFormValues(customerProfileFormDefaults(profile));
 }
 
@@ -64,6 +63,7 @@ export function normalizeCustomerProfileFormValues(
   return {
     display_name: patchOptionalString(values.display_name ?? ""),
     phone: patchOptionalString(values.phone ?? ""),
+    marketing_opt_in: values.marketing_opt_in,
   };
 }
 

@@ -403,6 +403,48 @@ func (ns NullProductOptionGroup) Value() (driver.Value, error) {
 	return string(ns.ProductOptionGroup), nil
 }
 
+type PromotionStatus string
+
+const (
+	PromotionStatusSending PromotionStatus = "sending"
+	PromotionStatusSent    PromotionStatus = "sent"
+)
+
+func (e *PromotionStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PromotionStatus(s)
+	case string:
+		*e = PromotionStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PromotionStatus: %T", src)
+	}
+	return nil
+}
+
+type NullPromotionStatus struct {
+	PromotionStatus PromotionStatus `json:"promotionStatus"`
+	Valid           bool            `json:"valid"` // Valid is true if PromotionStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPromotionStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.PromotionStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PromotionStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPromotionStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PromotionStatus), nil
+}
+
 type ReviewStatus string
 
 const (
@@ -716,11 +758,12 @@ type Combo struct {
 }
 
 type CustomerProfile struct {
-	UserID      uuid.UUID `json:"userId"`
-	DisplayName *string   `json:"displayName"`
-	Phone       *string   `json:"phone"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	UserID             uuid.UUID  `json:"userId"`
+	DisplayName        *string    `json:"displayName"`
+	Phone              *string    `json:"phone"`
+	MarketingConsentAt *time.Time `json:"marketingConsentAt"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
 }
 
 type DiscountCode struct {

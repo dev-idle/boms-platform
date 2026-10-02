@@ -23,13 +23,16 @@ import {
   getComboById,
   getDiscountCodeById,
   getProductById,
+  getPromotionAudience,
   getReviewSummary,
   listCategories,
   listCombos,
   listDiscountCodes,
   listProducts,
+  listPromotions,
   listReviews,
   moderateReview,
+  sendPromotion,
   updateCategory,
   updateCombo,
   updateDiscountCode,
@@ -40,6 +43,7 @@ import {
   comboListFilterSchema,
   discountCodeListFilterSchema,
   productListFilterSchema,
+  promotionListFilterSchema,
   reviewListFilterSchema,
   type CategoryFormInput,
   type CategoryListFilterInput,
@@ -49,6 +53,8 @@ import {
   type DiscountCodeListFilterInput,
   type ProductFormInput,
   type ProductListFilterInput,
+  type PromotionFormInput,
+  type PromotionListFilterInput,
   type ReviewListFilterInput,
   type ReviewModeration,
 } from "../schemas";
@@ -299,6 +305,38 @@ export function useModerateReview() {
     },
     onError: (error) => {
       toast.error(isApiError(error) ? error.message : "Failed to update the review");
+    },
+  });
+}
+
+/** A page of the promotions sent; refreshed live as they go out. */
+export function usePromotions(input: PromotionListFilterInput) {
+  const filter = promotionListFilterSchema.parse(input);
+  return useQuery({
+    queryKey: managerQueryKeys.promotions(filter),
+    queryFn: () => listPromotions(filter),
+    placeholderData: keepPreviousData,
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
+  });
+}
+
+/** How many customers a promotion sent now goes to, read afresh each time the form opens. */
+export function usePromotionAudience() {
+  return useQuery({
+    queryKey: managerQueryKeys.promotionAudience,
+    queryFn: getPromotionAudience,
+    staleTime: 0,
+  });
+}
+
+/** Sends a promotion; the form places field errors itself. */
+export function useSendPromotion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PromotionFormInput) => sendPromotion(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: managerQueryKeys.promotionsRoot });
+      toast.success("Promotion on its way");
     },
   });
 }

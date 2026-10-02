@@ -18,6 +18,10 @@ type Email struct {
 	Subject string
 	Text    string
 	HTML    string
+	// ListUnsubscribe is the page that stops emails like this one, which
+	// mail clients offer as their own unsubscribe button; empty for an email
+	// the recipient asked for.
+	ListUnsubscribe string
 }
 
 // Mailer sends email to one recipient.

@@ -2,13 +2,14 @@
  * Canonical paths — single source for `src/proxy.ts`, layouts, and links.
  *
  * URL conventions (one role = one namespace):
- *   - Public:   /, /login, /register, /forgot-password, /reset-password, /verify-email,
+ *   - Public:   /, /login, /register, /forgot-password, /reset-password, /verify-email, /unsubscribe,
  *               /products, /products/:id, /terms, /privacy, /refund-policy
  *   - Customer: /cart, /orders, /customer/saved, /customer/account/*
  *   - Staff:    /staff/orders, /staff/orders/new, /staff/orders/:id, /staff/pickups, /staff/prep, /staff/availability, /staff/chat, /staff/chat/:orderId, /staff/account/*
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
- *               /manager/discount-codes, /manager/reviews, /manager/account/*
+ *               /manager/discount-codes, /manager/reviews, /manager/promotions, /manager/promotions/new,
+ *               /manager/account/*
  *   - Admin:    /admin, /admin/users, /admin/settings, /admin/account/*
  */
 export const ROUTE = {
@@ -19,6 +20,8 @@ export const ROUTE = {
   /** Emailed links land here; the token rides in the URL fragment. */
   resetPassword: "/reset-password",
   verifyEmail: "/verify-email",
+  /** Promotion emails link here; the token rides in the fragment. */
+  unsubscribe: "/unsubscribe",
   products: "/products",
   productDetail: (id: string) => `/products/${id}`,
   terms: "/terms",
@@ -74,6 +77,8 @@ export const ROUTE = {
     discountCodesNew: "/manager/discount-codes/new",
     discountCodeDetail: (id: string) => `/manager/discount-codes/${id}`,
     reviews: "/manager/reviews",
+    promotions: "/manager/promotions",
+    promotionsNew: "/manager/promotions/new",
     account: {
       root: "/manager/account",
       profile: "/manager/account/profile",

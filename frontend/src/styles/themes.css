@@ -73,6 +73,8 @@
   --db-table-col-datetime: 9.75rem;
   /* An order code column: "CH-260928-001" in 12px mono, plus that padding. */
   --db-table-col-code: 9.25rem;
+  /* A person's name column: "Nguyen Thi Hoa" plus the cell padding. */
+  --db-table-col-sender: 12rem;
   /* A rating column: five 14px stars, then "4.5" in mono, plus that padding. */
   --db-table-col-rating: 10.25rem;
   --db-table-admin-fixed-cols: calc(

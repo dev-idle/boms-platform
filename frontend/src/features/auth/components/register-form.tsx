@@ -6,10 +6,12 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { CheckboxField } from "@/components/ui/checkbox-field";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { BRAND } from "@/constants/brand";
 import { PolicyConsent } from "@/features/legal";
 import { loginHrefWithNext, validateNext } from "@/lib/validate-next";
 import { ApiErrorCode, isApiError } from "@/lib/errors";
@@ -32,6 +34,7 @@ export function RegisterForm() {
       email: "",
       password: "",
       accept_terms: false,
+      marketing_opt_in: false,
     },
   });
 
@@ -144,6 +147,25 @@ export function RegisterForm() {
                   scope="account"
                 />
                 <FormMessage id="register-terms-error" />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="marketing_opt_in"
+            render={({ field }) => (
+              <FormItem className="auth-field">
+                <CheckboxField
+                  checked={field.value}
+                  name={field.name}
+                  ref={field.ref}
+                  onBlur={field.onBlur}
+                  onChange={(event) => field.onChange(event.target.checked)}
+                >
+                  Email me promotions from {BRAND.name}: new bakes and offers, now and then. You can stop them at any
+                  time.
+                </CheckboxField>
               </FormItem>
             )}
           />

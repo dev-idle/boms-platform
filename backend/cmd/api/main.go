@@ -19,6 +19,7 @@ import (
 	"github.com/boms/backend/internal/bootstrap"
 	"github.com/boms/backend/internal/config"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpromotion "github.com/boms/backend/internal/domain/promotion"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	v1 "github.com/boms/backend/internal/handler/v1"
 	"github.com/boms/backend/internal/infrastructure/crypto"
@@ -121,6 +122,7 @@ func main() {
 	conversationRepo := postgresrepo.NewConversationRepository(pgPool)
 	savedProductRepo := postgresrepo.NewSavedProductRepository(pgPool)
 	reviewRepo := postgresrepo.NewReviewRepository(pgPool)
+	promotionRepo := postgresrepo.NewPromotionRepository(pgPool)
 	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC, pickupCodes,
 		conversationRepo)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
@@ -145,6 +147,9 @@ func main() {
 	savedProductUC := usecase.NewSavedProductUsecase(userRepo, savedProductRepo, pgPool)
 	reviewUC := usecase.NewReviewUsecase(userRepo, orderRepo, reviewRepo, pgPool, outboxRepo)
 	managerReviewUC := usecase.NewManagerReviewUsecase(reviewRepo, pgPool, outboxRepo, auditLogger, zlog)
+	managerPromotionUC := usecase.NewManagerPromotionUsecase(promotionRepo, pgPool, outboxRepo, auditLogger, zlog)
+	unsubscribeUC := usecase.NewUnsubscribeUsecase(userRepo, customerProfileRepo, pgPool, auditLogger,
+		domainpromotion.NewUnsubscribeTokens(cfg.Promotion.UnsubscribeSecret))
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	bakerTicketUC := usecase.NewBakerTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
 	realtimeTickets := redisrepo.NewRealtimeTicketStore(redisClient)
@@ -178,6 +183,8 @@ func main() {
 	savedProductHandler := v1.NewSavedProductHandler(savedProductUC)
 	reviewHandler := v1.NewReviewHandler(reviewUC)
 	managerReviewHandler := v1.NewManagerReviewHandler(managerReviewUC)
+	managerPromotionHandler := v1.NewManagerPromotionHandler(managerPromotionUC)
+	unsubscribeHandler := v1.NewUnsubscribeHandler(unsubscribeUC)
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
 	storeHandler := v1.NewStoreHandler(storeUC)
@@ -209,6 +216,7 @@ func main() {
 	authGroup.Post("/verify-email", middleware.AuthLinkRateLimit(rdb, cfg.RateRedis), emailVerificationHandler.Verify)
 	authGroup.Post("/password-reset/request", middleware.PasswordResetRateLimit(rdb, cfg.RateRedis), passwordResetHandler.Request)
 	authGroup.Post("/password-reset/confirm", middleware.AuthLinkRateLimit(rdb, cfg.RateRedis), passwordResetHandler.Confirm)
+	apiV1.Post("/promotions/unsubscribe", middleware.AuthLinkRateLimit(rdb, cfg.RateRedis), unsubscribeHandler.Unsubscribe)
 
 	passwordChanged := middleware.RequirePasswordChanged(sessionStore)
 	selfWrite := middleware.SelfWriteRateLimit(rdb, cfg.RateRedis)
@@ -353,6 +361,8 @@ func main() {
 	managerRead.Get("/discount-codes/:id", managerDiscountCodeHandler.Get)
 	managerRead.Get("/reviews", managerReviewHandler.List)
 	managerRead.Get("/reviews/summary", managerReviewHandler.Summary)
+	managerRead.Get("/promotions", managerPromotionHandler.List)
+	managerRead.Get("/promotions/audience", managerPromotionHandler.Audience)
 	managerRead.Get(
 		"/media/cloudinary-signature",
 		middleware.ManagerMediaRateLimit(rdb, cfg.RateRedis),
@@ -379,6 +389,7 @@ func main() {
 	managerWrite.Patch("/discount-codes/:id", managerDiscountCodeHandler.Patch)
 	managerWrite.Delete("/discount-codes/:id", managerDiscountCodeHandler.Delete)
 	managerWrite.Patch("/reviews/:id", managerReviewHandler.Moderate)
+	managerWrite.Post("/promotions", managerPromotionHandler.Send)
 
 	staffOrders := apiV1.Group(
 		"/staff",

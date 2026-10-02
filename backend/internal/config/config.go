@@ -28,6 +28,7 @@ type Config struct {
 	Redis      RedisConfig
 	Outbox     OutboxConfig
 	Order      OrderConfig
+	Promotion  PromotionConfig
 	Mail       MailConfig
 	Realtime   RealtimeConfig
 	Log        LogConfig
@@ -198,6 +199,21 @@ type OrderConfig struct {
 func (c OrderConfig) validatePickupCodeSecret() error {
 	if len(c.PickupCodeSecret) < 32 {
 		return errors.New("order.pickup_code_secret must be at least 32 characters")
+	}
+	return nil
+}
+
+// PromotionConfig holds what promotion emails need beyond the mail server.
+type PromotionConfig struct {
+	// UnsubscribeSecret signs customers into the unsubscribe links of their
+	// promotion emails; the worker writes them and the API checks them.
+	UnsubscribeSecret string
+}
+
+// validate checks the key both the API and the worker sign unsubscribe links with.
+func (c PromotionConfig) validate() error {
+	if len(c.UnsubscribeSecret) < 32 {
+		return errors.New("promotion.unsubscribe_secret must be at least 32 characters")
 	}
 	return nil
 }
@@ -471,6 +487,9 @@ func load() (*Config, error) {
 			JobInterval:      v.GetDuration("order.job_interval"),
 			PickupCodeSecret: strings.TrimSpace(v.GetString("order.pickup_code_secret")),
 		},
+		Promotion: PromotionConfig{
+			UnsubscribeSecret: strings.TrimSpace(v.GetString("promotion.unsubscribe_secret")),
+		},
 		Outbox: OutboxConfig{
 			DispatchTimeout: v.GetDuration("outbox.dispatch_timeout"),
 			SweepInterval:   v.GetDuration("outbox.sweep_interval"),
@@ -665,6 +684,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("outbox.prune_interval", time.Hour)
 	v.SetDefault("order.job_interval", time.Minute)
 	v.SetDefault("order.pickup_code_secret", "")
+	v.SetDefault("promotion.unsubscribe_secret", "")
 
 	v.SetDefault("realtime.addr", "127.0.0.1:8081")
 	v.SetDefault("realtime.public_url", "ws://localhost:8081/ws")
@@ -737,6 +757,9 @@ func (c *Config) ValidateWorker() error {
 		return errors.New("order.job_interval must be positive")
 	}
 	if err := c.Order.validatePickupCodeSecret(); err != nil {
+		return err
+	}
+	if err := c.Promotion.validate(); err != nil {
 		return err
 	}
 	// Before an overdue order expires, the worker asks PayPal whether it was paid.
@@ -933,7 +956,10 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	return c.Order.validatePickupCodeSecret()
+	if err := c.Order.validatePickupCodeSecret(); err != nil {
+		return err
+	}
+	return c.Promotion.validate()
 }
 
 // Realtime bounds that keep revocation prompt and a ticket short-lived. A

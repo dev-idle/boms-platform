@@ -46,6 +46,7 @@ CREATE TABLE "customer_profiles" (
   "user_id" uuid NOT NULL,
   "display_name" text NULL,
   "phone" text NULL,
+  "marketing_consent_at" timestamptz NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY ("user_id"),
@@ -572,3 +573,23 @@ CREATE UNIQUE INDEX "reviews_order_product_idx" ON "reviews" ("order_id", "produ
 CREATE INDEX "reviews_product_published_idx" ON "reviews" ("product_id", "created_at") WHERE ((status = 'published'::review_status) AND (deleted_at IS NULL));
 CREATE INDEX "reviews_status_created_idx" ON "reviews" ("status", "created_at") WHERE (deleted_at IS NULL);
 CREATE INDEX "reviews_user_id_idx" ON "reviews" ("user_id");
+
+CREATE TYPE "promotion_status" AS ENUM ('sending', 'sent');
+
+CREATE TABLE "promotions" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "subject" text NOT NULL,
+  "body" text NOT NULL,
+  "status" "promotion_status" NOT NULL DEFAULT 'sending',
+  "created_by" uuid NOT NULL,
+  "recipient_count" integer NULL,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("id"),
+  CONSTRAINT "promotions_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users" ("id") ON DELETE RESTRICT,
+  CONSTRAINT "promotions_body_check" CHECK ((char_length(body) >= 1) AND (char_length(body) <= 5000)),
+  CONSTRAINT "promotions_recipient_count_check" CHECK (recipient_count >= 0),
+  CONSTRAINT "promotions_sent_check" CHECK ((status = 'sent'::promotion_status) = (recipient_count IS NOT NULL)),
+  CONSTRAINT "promotions_subject_check" CHECK ((char_length(subject) >= 1) AND (char_length(subject) <= 120))
+);
+CREATE INDEX "promotions_created_at_idx" ON "promotions" ("created_at");

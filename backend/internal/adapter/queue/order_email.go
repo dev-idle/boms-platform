@@ -20,8 +20,13 @@ import (
 const (
 	// TypeOrderEmail is the task that emails an order notice.
 	TypeOrderEmail = "email:order"
-	// QueueEmail holds customer email apart from any other work.
+	// QueueEmail holds the email customers wait for — order updates and
+	// account links — apart from any other work.
 	QueueEmail = "email"
+	// QueuePromotion holds promotions, which the worker sends only while no
+	// email customers wait for is queued: a promotion to every customer never
+	// holds up a reset link.
+	QueuePromotion = "promotion"
 
 	// With Asynq's backoff, eight retries span about an hour and a half; past
 	// that an order email is stale, and the order page has said the same thing
@@ -53,13 +58,13 @@ func NewEmailQueue(rdb redis.UniversalClient) *EmailQueue {
 	return &EmailQueue{client: asynq.NewClientFromRedisClient(rdb)}
 }
 
-// enqueue adds task under id. A second task with the same id is refused while
-// the first is queued or kept after sending, and that refusal is the success
-// the email ports promise: the event it came from was delivered again.
-func (q *EmailQueue) enqueue(ctx context.Context, task *asynq.Task, id string, maxRetry int, retention time.Duration) error {
+// enqueue adds task to queue under id. A second task with the same id is
+// refused while the first is queued or kept after sending, and that refusal is
+// the success the email ports promise: the event it came from was delivered again.
+func (q *EmailQueue) enqueue(ctx context.Context, task *asynq.Task, queue, id string, maxRetry int, retention time.Duration) error {
 	_, err := q.client.EnqueueContext(ctx, task,
 		asynq.TaskID(id),
-		asynq.Queue(QueueEmail),
+		asynq.Queue(queue),
 		asynq.MaxRetry(maxRetry),
 		asynq.Timeout(emailTaskTimeout),
 		asynq.Retention(retention),
@@ -94,7 +99,7 @@ func (q *EmailQueue) EnqueueOrderEmail(ctx context.Context, task port.OrderEmail
 	if err != nil {
 		return fmt.Errorf("encode order email task: %w", err)
 	}
-	return q.enqueue(ctx, asynq.NewTask(TypeOrderEmail, payload), task.EventID.String(), orderEmailMaxRetry, orderEmailRetention)
+	return q.enqueue(ctx, asynq.NewTask(TypeOrderEmail, payload), QueueEmail, task.EventID.String(), orderEmailMaxRetry, orderEmailRetention)
 }
 
 // orderEmailSender is the worker side of an order email.

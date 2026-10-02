@@ -110,6 +110,12 @@ table "customer_profiles" {
     type = text
     null = true
   }
+  // When the customer agreed to be emailed promotions; empty while they have
+  // not, or since they withdrew.
+  column "marketing_consent_at" {
+    type = timestamptz
+    null = true
+  }
   column "created_at" {
     type    = timestamptz
     null    = false
@@ -2096,5 +2102,76 @@ table "reviews" {
   }
   check "reviews_moderation_check" {
     expr = "(moderated_by IS NULL) = (moderated_at IS NULL) AND (status = 'pending') = (moderated_at IS NULL)"
+  }
+}
+
+enum "promotion_status" {
+  schema = schema.public
+  values = ["sending", "sent"]
+}
+
+// A promotion a manager emailed to the customers who agreed to receive them:
+// sending while the worker queues one email per customer, then sent to how many.
+table "promotions" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "subject" {
+    type = text
+    null = false
+  }
+  column "body" {
+    type = text
+    null = false
+  }
+  column "status" {
+    type    = enum.promotion_status
+    null    = false
+    default = "sending"
+  }
+  column "created_by" {
+    type = uuid
+    null = false
+  }
+  column "recipient_count" {
+    type = integer
+    null = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "promotions_created_by_fkey" {
+    columns     = [column.created_by]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  // The promotions a manager sent, latest first.
+  index "promotions_created_at_idx" {
+    columns = [column.created_at]
+  }
+  check "promotions_subject_check" {
+    expr = "char_length(subject) BETWEEN 1 AND 120"
+  }
+  check "promotions_body_check" {
+    expr = "char_length(body) BETWEEN 1 AND 5000"
+  }
+  check "promotions_sent_check" {
+    expr = "(status = 'sent') = (recipient_count IS NOT NULL)"
+  }
+  check "promotions_recipient_count_check" {
+    expr = "recipient_count >= 0"
   }
 }

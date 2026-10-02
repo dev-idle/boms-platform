@@ -28,10 +28,15 @@ describe("profile-form-values", () => {
       phone: "912345678",
     });
     expect(
-      customerProfileSnapshot({ display_name: "  Pat  ", phone: null }),
+      customerProfileSnapshot({ display_name: "  Pat  ", phone: null, marketing_consent_at: null }),
     ).toEqual({
       display_name: "Pat",
       phone: "",
+      marketing_opt_in: false,
     });
+    expect(
+      customerProfileSnapshot({ display_name: null, phone: null, marketing_consent_at: "2026-10-02T09:00:00+07:00" })
+        .marketing_opt_in,
+    ).toBe(true);
   });
 });

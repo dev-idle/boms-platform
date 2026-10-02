@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { USER_ROLE } from "@/constants/roles";
+import { apiDateTimeSchema } from "@/lib/validation/datetime";
 
 const optionalNullableStringSchema = z.string().optional().nullable();
 
@@ -9,6 +10,8 @@ const customerProfileSchema = z.object({
   type: z.literal("customer"),
   display_name: optionalNullableStringSchema,
   phone: optionalNullableStringSchema,
+  /** When the customer agreed to be emailed promotions; null while they have not. */
+  marketing_consent_at: apiDateTimeSchema.nullable(),
 });
 
 const staffProfileSchema = z.object({

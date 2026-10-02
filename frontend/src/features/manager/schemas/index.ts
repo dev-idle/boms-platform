@@ -364,6 +364,50 @@ export const reviewSummarySchema = z.object({
   ),
 });
 
+/** The most characters a promotion's subject and message hold — mirrors backend `promotion.MaxSubjectLength` and `MaxBodyLength` (code points). */
+export const PROMOTION_SUBJECT_MAX_LENGTH = 120;
+export const PROMOTION_BODY_MAX_LENGTH = 5000;
+
+/** GET /manager/promotions — a promotion sent; how many it went to is null while it is sending. */
+export const managerPromotionSchema = z.object({
+  id: z.uuid(),
+  subject: z.string().min(1),
+  status: z.enum(["sending", "sent"]),
+  recipient_count: z.number().int().min(0).nullable(),
+  created_at: apiDateTimeSchema,
+  sender_name: z.string().nullable(),
+});
+
+export const promotionListFilterSchema = z.object({
+  page: z.number().int().min(1).default(1),
+  page_size: z.number().int().min(1).max(100).default(20),
+});
+
+/** GET /manager/promotions/audience — how many customers a promotion sent now goes to. */
+export const promotionAudienceSchema = z.object({
+  recipients: z.number().int().min(0),
+});
+
+/** A promotion as written; the API trims both and checks their characters again. */
+export const promotionFormSchema = z.object({
+  subject: z
+    .string()
+    .trim()
+    .min(1, "Write a subject")
+    .refine(
+      (subject) => [...subject].length <= PROMOTION_SUBJECT_MAX_LENGTH,
+      `A subject holds up to ${PROMOTION_SUBJECT_MAX_LENGTH} characters`,
+    ),
+  body: z
+    .string()
+    .trim()
+    .min(1, "Write the message")
+    .refine(
+      (body) => [...body].length <= PROMOTION_BODY_MAX_LENGTH,
+      `A message holds up to ${PROMOTION_BODY_MAX_LENGTH} characters`,
+    ),
+});
+
 export type ManagerCombo = z.infer<typeof managerComboSchema>;
 export type ComboFormInput = z.infer<typeof comboFormSchema>;
 /** RHF defaults — `price_cents` unset on create until the manager enters it. */
@@ -378,6 +422,19 @@ export type DiscountCodeListFilterInput = z.infer<
   typeof discountCodeListFilterSchema
 >;
 
+export type ManagerPromotion = z.infer<typeof managerPromotionSchema>;
+export type PromotionListFilterInput = z.infer<typeof promotionListFilterSchema>;
+export type PromotionAudience = z.infer<typeof promotionAudienceSchema>;
+export type PromotionFormInput = z.infer<typeof promotionFormSchema>;
+export type PromotionsListResult = {
+  promotions: ManagerPromotion[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+  };
+};
 export type ManagerReview = z.infer<typeof managerReviewSchema>;
 export type ReviewListFilterInput = z.infer<typeof reviewListFilterSchema>;
 export type ReviewModeration = z.infer<typeof reviewModerationSchema>;

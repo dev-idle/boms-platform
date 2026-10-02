@@ -88,9 +88,10 @@ func toMeResponse(user *domainuser.User, profile any) dto.MeResponse {
 	switch p := profile.(type) {
 	case *domainprofile.Customer:
 		res.Profile = dto.MeCustomerProfileResponse{
-			Type:        "customer",
-			DisplayName: p.DisplayName,
-			Phone:       p.Phone,
+			Type:               "customer",
+			DisplayName:        p.DisplayName,
+			Phone:              p.Phone,
+			MarketingConsentAt: p.MarketingConsentAt,
 		}
 	case *domainprofile.Staff:
 		res.Profile = dto.MeStaffProfileResponse{

@@ -42,7 +42,7 @@ func (q *EmailQueue) EnqueueAccountEmail(ctx context.Context, task port.AccountE
 	if err != nil {
 		return fmt.Errorf("encode account email task: %w", err)
 	}
-	return q.enqueue(ctx, asynq.NewTask(TypeAccountEmail, payload), task.EventID.String(), accountEmailMaxRetry, accountEmailRetention)
+	return q.enqueue(ctx, asynq.NewTask(TypeAccountEmail, payload), QueueEmail, task.EventID.String(), accountEmailMaxRetry, accountEmailRetention)
 }
 
 // accountEmailSender is the worker side of an account email.

@@ -13,6 +13,7 @@ import (
 	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
+	domainpromotion "github.com/boms/backend/internal/domain/promotion"
 	domainreview "github.com/boms/backend/internal/domain/review"
 	domainsaved "github.com/boms/backend/internal/domain/saved"
 	domainstore "github.com/boms/backend/internal/domain/store"
@@ -61,7 +62,7 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrEmailNotVerified)
 	case errors.Is(err, domainuser.ErrEmailAlreadyVerified):
 		return writeAppError(c, apperrors.ErrEmailAlreadyVerified)
-	case errors.Is(err, domainaccount.ErrLinkInvalid):
+	case errors.Is(err, domainaccount.ErrLinkInvalid), errors.Is(err, domainpromotion.ErrInvalidUnsubscribeToken):
 		return writeAppError(c, apperrors.ErrInvalidLink)
 	case errors.Is(err, domainuser.ErrProfileNotFound):
 		return writeAppError(c, apperrors.ErrProfileNotFound)
@@ -213,6 +214,10 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrReviewExists)
 	case errors.Is(err, domainreview.ErrNotFound):
 		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domainpromotion.ErrInvalidSubject):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("subject", "1 to 120 plain characters on one line"))
+	case errors.Is(err, domainpromotion.ErrInvalidBody):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "1 to 5000 plain characters"))
 	case errors.Is(err, domainorder.ErrInvalidCancelReason):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 plain characters"))
 	case errors.Is(err, domainstore.ErrInvalidClosedDateReason):

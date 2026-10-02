@@ -13,6 +13,7 @@ export const PAGE_TITLES = {
   forgotPassword: "Forgot password",
   resetPassword: "Choose a new password",
   verifyEmail: "Confirm your email",
+  unsubscribe: "Unsubscribe",
   cart: "Cart",
   orders: "Orders",
   saved: "Saved",
@@ -46,6 +47,8 @@ export const PAGE_TITLES = {
   newDiscountCode: "New Discount Code",
   editDiscountCode: "Edit Discount Code",
   reviews: "Reviews",
+  promotions: "Promotions",
+  newPromotion: "New Promotion",
   breadcrumbDetail: "Detail",
   breadcrumbNew: "New",
 } as const;

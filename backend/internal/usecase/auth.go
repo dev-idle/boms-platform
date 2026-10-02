@@ -101,7 +101,8 @@ func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*d
 			return apperrors.Errorf("customer profile repository is required")
 		}
 		_, createErr = a.customerProfileRepo.Create(txCtx, port.UpsertCustomerProfileParams{
-			UserID: user.ID,
+			UserID:         user.ID,
+			MarketingOptIn: &req.MarketingOptIn,
 		})
 		if createErr != nil {
 			return createErr

@@ -209,6 +209,7 @@ func minimalDevConfig() *config.Config {
 		RateRedis: defaultRateRedis(),
 		Outbox:    defaultOutbox(),
 		Order:     config.OrderConfig{JobInterval: time.Minute, PickupCodeSecret: strings.Repeat("k", 32)},
+		Promotion: config.PromotionConfig{UnsubscribeSecret: strings.Repeat("u", 32)},
 		Mail:      defaultMail(),
 		Realtime:  defaultRealtime(),
 		Postgres: config.PostgresConfig{
@@ -359,6 +360,17 @@ func TestValidate_PickupCodeSecret(t *testing.T) {
 	for name, validate := range map[string]func() error{"api": cfg.Validate, "worker": cfg.ValidateWorker} {
 		if err := validate(); err == nil || !strings.Contains(err.Error(), "order.pickup_code_secret") {
 			t.Fatalf("%s: expected order.pickup_code_secret error, got: %v", name, err)
+		}
+	}
+}
+
+func TestValidate_PromotionUnsubscribeSecret(t *testing.T) {
+	t.Parallel()
+	cfg := minimalDevConfig()
+	cfg.Promotion.UnsubscribeSecret = "short"
+	for name, validate := range map[string]func() error{"api": cfg.Validate, "worker": cfg.ValidateWorker} {
+		if err := validate(); err == nil || !strings.Contains(err.Error(), "promotion.unsubscribe_secret") {
+			t.Fatalf("%s: expected promotion.unsubscribe_secret error, got: %v", name, err)
 		}
 	}
 }

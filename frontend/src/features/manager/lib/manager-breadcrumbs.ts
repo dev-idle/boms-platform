@@ -25,6 +25,13 @@ export function managerCombosBreadcrumb(leaf: string): DashboardBreadcrumbItem[]
   ];
 }
 
+export function managerPromotionsBreadcrumb(leaf: string): DashboardBreadcrumbItem[] {
+  return [
+    { label: PAGE_TITLES.promotions, href: ROUTE.manager.promotions },
+    { label: leaf },
+  ];
+}
+
 export function managerDiscountCodesBreadcrumb(
   leaf: string,
 ): DashboardBreadcrumbItem[] {

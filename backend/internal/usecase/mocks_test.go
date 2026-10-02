@@ -160,6 +160,10 @@ func (m *mockCustomerProfileRepo) UpdateByUserID(ctx context.Context, params por
 func (m *mockCustomerProfileRepo) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
 	return m.Called(ctx, userID).Error(0)
 }
+func (m *mockCustomerProfileRepo) WithdrawMarketingConsent(ctx context.Context, userID uuid.UUID) (bool, error) {
+	args := m.Called(ctx, userID)
+	return args.Bool(0), args.Error(1)
+}
 
 type mockStaffProfileRepo struct{ mock.Mock }
 

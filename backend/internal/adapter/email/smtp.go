@@ -88,6 +88,9 @@ func (m *SMTPMailer) message(e port.Email) (*mail.Msg, error) {
 	msg.Subject(e.Subject)
 	msg.SetDate()
 	msg.SetMessageID()
+	if e.ListUnsubscribe != "" {
+		msg.SetGenHeaderPreformatted(mail.HeaderListUnsubscribe, "<"+e.ListUnsubscribe+">")
+	}
 	msg.SetBodyString(mail.TypeTextPlain, e.Text)
 	msg.AddAlternativeString(mail.TypeTextHTML, e.HTML)
 	return msg, nil

@@ -11,6 +11,7 @@ import {
   registerSchema,
   tokenResponseSchema,
   userSchema,
+  unsubscribeSchema,
   verifyEmailSchema,
   type ForgotPasswordInput,
   type LoginInput,
@@ -22,10 +23,10 @@ import {
 
 /** Signs up with the policies the form showed: the API records their version. */
 export async function register(body: RegisterInput): Promise<User> {
-  const { email, password } = registerSchema.parse(body);
+  const { email, password, marketing_opt_in } = registerSchema.parse(body);
   return browserRequest<User>("/api/v1/auth/register", {
     method: "POST",
-    json: { email, password, terms_version: TERMS_VERSION },
+    json: { email, password, terms_version: TERMS_VERSION, marketing_opt_in },
     schema: userSchema,
     skipAuth: true,
     skipRefreshRetry: true,
@@ -75,6 +76,17 @@ export async function confirmPasswordReset(body: PasswordResetConfirmInput): Pro
 export async function verifyEmail(token: string): Promise<void> {
   const parsed = verifyEmailSchema.parse({ token });
   await browserRequestVoid("/api/v1/auth/verify-email", {
+    method: "POST",
+    json: parsed,
+    skipAuth: true,
+    skipRefreshRetry: true,
+  });
+}
+
+/** Stops promotion emails to the customer an emailed link names; no sign-in needed. */
+export async function unsubscribe(token: string): Promise<void> {
+  const parsed = unsubscribeSchema.parse({ token });
+  await browserRequestVoid("/api/v1/promotions/unsubscribe", {
     method: "POST",
     json: parsed,
     skipAuth: true,

@@ -30,7 +30,7 @@ describe("isPublicAuthEntryPath", () => {
 
   it("leaves emailed-link pages open to a signed-in user", () => {
     // A link from an email may be opened in a browser that is signed in.
-    for (const path of [ROUTE.verifyEmail, ROUTE.resetPassword]) {
+    for (const path of [ROUTE.verifyEmail, ROUTE.resetPassword, ROUTE.unsubscribe]) {
       expect(isPublicAuthEntryPath(path)).toBe(false);
       for (const role of Object.values(USER_ROLE)) {
         expect(shouldRedirectAuthenticatedPublicUser(path, role)).toBe(false);

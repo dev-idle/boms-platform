@@ -418,6 +418,20 @@ type Querier interface {
 	//    AND s.product_id <> $3
 	//    AND s.deleted_at IS NULL
 	CountOtherSavedProducts(ctx context.Context, arg CountOtherSavedProductsParams) (int64, error)
+	//CountPromotionRecipients
+	//
+	//  SELECT count(*)::bigint
+	//  FROM customer_profiles cp
+	//  JOIN users u ON u.id = cp.user_id
+	//  WHERE cp.marketing_consent_at IS NOT NULL
+	//    AND u.deleted_at IS NULL
+	//    AND u.email_verified_at IS NOT NULL
+	//    AND u.role = 'customer'::user_role
+	CountPromotionRecipients(ctx context.Context) (int64, error)
+	//CountPromotions
+	//
+	//  SELECT count(*)::bigint FROM promotions
+	CountPromotions(ctx context.Context) (int64, error)
 	// How many published reviews a product has, and their ratings added up.
 	//
 	//  SELECT
@@ -493,11 +507,16 @@ type Querier interface {
 	//  VALUES ($1, $2, $3, $4, $5, $6, $7)
 	//  RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 	CreateCombo(ctx context.Context, arg CreateComboParams) (Combo, error)
-	//CreateCustomerProfile
+	// A customer who agrees to promotions as they sign up agrees now.
 	//
-	//  INSERT INTO customer_profiles (user_id, display_name, phone)
-	//  VALUES ($1, $2, $3)
-	//  RETURNING user_id, display_name, phone, created_at, updated_at
+	//  INSERT INTO customer_profiles (user_id, display_name, phone, marketing_consent_at)
+	//  VALUES (
+	//    $1,
+	//    $2,
+	//    $3,
+	//    CASE WHEN $4::boolean THEN now() END
+	//  )
+	//  RETURNING user_id, display_name, phone, marketing_consent_at, created_at, updated_at
 	CreateCustomerProfile(ctx context.Context, arg CreateCustomerProfileParams) (CustomerProfile, error)
 	//CreateDiscountCode
 	//
@@ -718,6 +737,23 @@ type Querier interface {
 	//    is_active boolean
 	//  )
 	CreateProductOptions(ctx context.Context, arg CreateProductOptionsParams) (int64, error)
+	// Records a promotion to send, and returns it as managers list it.
+	//
+	//  WITH created AS (
+	//    INSERT INTO promotions (subject, body, created_by)
+	//    VALUES ($1, $2, $3)
+	//    RETURNING id, subject, status, recipient_count, created_at, created_by
+	//  )
+	//  SELECT
+	//    c.id,
+	//    c.subject,
+	//    c.status,
+	//    c.recipient_count,
+	//    c.created_at,
+	//    sp.full_name AS sender_name
+	//  FROM created c
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = c.created_by
+	CreatePromotion(ctx context.Context, arg CreatePromotionParams) (CreatePromotionRow, error)
 	//CreateReview
 	//
 	//  INSERT INTO reviews (order_id, product_id, user_id, rating, comment)
@@ -806,11 +842,13 @@ type Querier interface {
 	//    AND o.user_id = $1::uuid
 	//    AND m.deleted_at IS NULL
 	EraseCustomerMessages(ctx context.Context, userID uuid.UUID) error
-	// Clears what a customer told us about themselves; the row stays, empty.
+	// Clears what a customer told us about themselves and the promotions they
+	// agreed to; the row stays, empty.
 	//
 	//  UPDATE customer_profiles
 	//  SET display_name = NULL,
 	//      phone = NULL,
+	//      marketing_consent_at = NULL,
 	//      updated_at = now()
 	//  WHERE user_id = $1
 	EraseCustomerProfile(ctx context.Context, userID uuid.UUID) error
@@ -935,7 +973,7 @@ type Querier interface {
 	GetConversationByOrderID(ctx context.Context, orderID uuid.UUID) (GetConversationByOrderIDRow, error)
 	//GetCustomerProfileByUserID
 	//
-	//  SELECT user_id, display_name, phone, created_at, updated_at
+	//  SELECT user_id, display_name, phone, marketing_consent_at, created_at, updated_at
 	//  FROM customer_profiles
 	//  WHERE user_id = $1
 	GetCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (CustomerProfile, error)
@@ -1082,6 +1120,26 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	GetProductByID(ctx context.Context, id uuid.UUID) (Product, error)
+	// What one customer's email of a promotion says and where it goes, while
+	// promotions still go to them.
+	//
+	//  SELECT p.subject, p.body, u.email, cp.display_name
+	//  FROM promotions p
+	//  CROSS JOIN customer_profiles cp
+	//  JOIN users u ON u.id = cp.user_id
+	//  WHERE p.id = $1
+	//    AND cp.user_id = $2
+	//    AND cp.marketing_consent_at IS NOT NULL
+	//    AND u.deleted_at IS NULL
+	//    AND u.email_verified_at IS NOT NULL
+	//    AND u.role = 'customer'::user_role
+	GetPromotionDelivery(ctx context.Context, arg GetPromotionDeliveryParams) (GetPromotionDeliveryRow, error)
+	//GetPromotionStatus
+	//
+	//  SELECT status
+	//  FROM promotions
+	//  WHERE id = $1
+	GetPromotionStatus(ctx context.Context, id uuid.UUID) (PromotionStatus, error)
 	// Where a review stands and who wrote it, held until the transaction ends.
 	//
 	//  SELECT status, user_id
@@ -1587,6 +1645,34 @@ type Querier interface {
 	//    AND deleted_at IS NULL
 	//  ORDER BY product_id, option_group, sort_order
 	ListProductOptions(ctx context.Context, productIds []uuid.UUID) ([]ListProductOptionsRow, error)
+	// A page of the customers promotions go to, by id after after_id: open
+	// accounts with a confirmed address whose holder agreed to promotions.
+	//
+	//  SELECT cp.user_id
+	//  FROM customer_profiles cp
+	//  JOIN users u ON u.id = cp.user_id
+	//  WHERE cp.marketing_consent_at IS NOT NULL
+	//    AND u.deleted_at IS NULL
+	//    AND u.email_verified_at IS NOT NULL
+	//    AND u.role = 'customer'::user_role
+	//    AND ($1::uuid IS NULL OR cp.user_id > $1::uuid)
+	//  ORDER BY cp.user_id
+	//  LIMIT $2
+	ListPromotionRecipients(ctx context.Context, arg ListPromotionRecipientsParams) ([]uuid.UUID, error)
+	// A page of the promotions sent, latest first, with the manager who sent each.
+	//
+	//  SELECT
+	//    p.id,
+	//    p.subject,
+	//    p.status,
+	//    p.recipient_count,
+	//    p.created_at,
+	//    sp.full_name AS sender_name
+	//  FROM promotions p
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = p.created_by
+	//  ORDER BY p.created_at DESC, p.id DESC
+	//  LIMIT $2 OFFSET $1
+	ListPromotions(ctx context.Context, arg ListPromotionsParams) ([]ListPromotionsRow, error)
 	// A page of a product's published reviews, latest first: the latest, or those
 	// written before the review before_id names.
 	//
@@ -2039,6 +2125,15 @@ type Querier interface {
 	//  WHERE id = ANY($1::uuid[])
 	//    AND published_at IS NULL
 	MarkOutboxEventsPublished(ctx context.Context, ids []uuid.UUID) error
+	// Records how many customers a promotion was queued for, once.
+	//
+	//  UPDATE promotions
+	//  SET status = 'sent'::promotion_status,
+	//      recipient_count = $1,
+	//      updated_at = now()
+	//  WHERE id = $2
+	//    AND status = 'sending'::promotion_status
+	MarkPromotionSent(ctx context.Context, arg MarkPromotionSentParams) (int64, error)
 	// Publishes or hides a review, and returns it as the moderation list shows it.
 	//
 	//  WITH moderated AS (
@@ -2778,14 +2873,19 @@ type Querier interface {
 	//    AND deleted_at IS NULL
 	//  RETURNING id, name, slug, price_cents, image_url, starts_at, ends_at, is_active, created_at, updated_at, deleted_at
 	UpdateCombo(ctx context.Context, arg UpdateComboParams) (Combo, error)
-	//UpdateCustomerProfileByUserID
+	// Agreement to promotions changes only when asked, judged on the row as it is
+	// now: given, it keeps the moment it was first given; withdrawn, it is cleared.
 	//
 	//  UPDATE customer_profiles
-	//  SET display_name = $2,
-	//      phone = $3,
+	//  SET display_name = $1,
+	//      phone = $2,
+	//      marketing_consent_at = CASE
+	//        WHEN $3::boolean IS NULL THEN marketing_consent_at
+	//        WHEN $3::boolean THEN COALESCE(marketing_consent_at, now())
+	//      END,
 	//      updated_at = now()
-	//  WHERE user_id = $1
-	//  RETURNING user_id, display_name, phone, created_at, updated_at
+	//  WHERE user_id = $4
+	//  RETURNING user_id, display_name, phone, marketing_consent_at, created_at, updated_at
 	UpdateCustomerProfileByUserID(ctx context.Context, arg UpdateCustomerProfileByUserIDParams) (CustomerProfile, error)
 	//UpdateDiscountCode
 	//
@@ -2939,6 +3039,14 @@ type Querier interface {
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (int64, error)
+	//WithdrawMarketingConsent
+	//
+	//  UPDATE customer_profiles
+	//  SET marketing_consent_at = NULL,
+	//      updated_at = now()
+	//  WHERE user_id = $1
+	//    AND marketing_consent_at IS NOT NULL
+	WithdrawMarketingConsent(ctx context.Context, userID uuid.UUID) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

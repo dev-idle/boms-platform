@@ -18,6 +18,7 @@ export {
   RegisterForm,
   ResetPasswordForm,
   StaffGate,
+  UnsubscribeView,
   VerifyEmailView,
 } from "./components";
 export { useLogout } from "./hooks";

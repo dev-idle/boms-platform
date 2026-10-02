@@ -3,7 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import { BRAND } from "@/constants/brand";
 import { USER_ROLE } from "@/constants/roles";
+import { CheckboxField } from "@/components/ui/checkbox-field";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import { FieldControl } from "@/components/ui/field-control";
@@ -49,6 +51,10 @@ function CustomerAccountProfileFormBody({
       {
         display_name: payload.display_name,
         phone: payload.phone,
+        // Sent only when changed here: a box ticked when the page opened must not
+        // undo an unsubscribe made since from an email.
+        marketing_opt_in:
+          payload.marketing_opt_in === initialValues.marketing_opt_in ? undefined : payload.marketing_opt_in,
       },
       {
         onError: (error) => {
@@ -101,6 +107,25 @@ function CustomerAccountProfileFormBody({
                 <PhoneInput {...field} />
               </FieldControl>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="marketing_opt_in"
+          render={({ field }) => (
+            <FormItem>
+              <CheckboxField
+                checked={field.value}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                onChange={(event) => field.onChange(event.target.checked)}
+              >
+                Email me promotions from {BRAND.name}: new bakes and offers, now and then. You can stop them at any
+                time.
+              </CheckboxField>
             </FormItem>
           )}
         />

@@ -12,29 +12,46 @@ import (
 )
 
 const createCustomerProfile = `-- name: CreateCustomerProfile :one
-INSERT INTO customer_profiles (user_id, display_name, phone)
-VALUES ($1, $2, $3)
-RETURNING user_id, display_name, phone, created_at, updated_at
+INSERT INTO customer_profiles (user_id, display_name, phone, marketing_consent_at)
+VALUES (
+  $1,
+  $2,
+  $3,
+  CASE WHEN $4::boolean THEN now() END
+)
+RETURNING user_id, display_name, phone, marketing_consent_at, created_at, updated_at
 `
 
 type CreateCustomerProfileParams struct {
-	UserID      uuid.UUID `json:"userId"`
-	DisplayName *string   `json:"displayName"`
-	Phone       *string   `json:"phone"`
+	UserID         uuid.UUID `json:"userId"`
+	DisplayName    *string   `json:"displayName"`
+	Phone          *string   `json:"phone"`
+	MarketingOptIn bool      `json:"marketingOptIn"`
 }
 
-// CreateCustomerProfile
+// A customer who agrees to promotions as they sign up agrees now.
 //
-//	INSERT INTO customer_profiles (user_id, display_name, phone)
-//	VALUES ($1, $2, $3)
-//	RETURNING user_id, display_name, phone, created_at, updated_at
+//	INSERT INTO customer_profiles (user_id, display_name, phone, marketing_consent_at)
+//	VALUES (
+//	  $1,
+//	  $2,
+//	  $3,
+//	  CASE WHEN $4::boolean THEN now() END
+//	)
+//	RETURNING user_id, display_name, phone, marketing_consent_at, created_at, updated_at
 func (q *Queries) CreateCustomerProfile(ctx context.Context, arg CreateCustomerProfileParams) (CustomerProfile, error) {
-	row := q.db.QueryRow(ctx, createCustomerProfile, arg.UserID, arg.DisplayName, arg.Phone)
+	row := q.db.QueryRow(ctx, createCustomerProfile,
+		arg.UserID,
+		arg.DisplayName,
+		arg.Phone,
+		arg.MarketingOptIn,
+	)
 	var i CustomerProfile
 	err := row.Scan(
 		&i.UserID,
 		&i.DisplayName,
 		&i.Phone,
+		&i.MarketingConsentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -62,15 +79,18 @@ const eraseCustomerProfile = `-- name: EraseCustomerProfile :exec
 UPDATE customer_profiles
 SET display_name = NULL,
     phone = NULL,
+    marketing_consent_at = NULL,
     updated_at = now()
 WHERE user_id = $1
 `
 
-// Clears what a customer told us about themselves; the row stays, empty.
+// Clears what a customer told us about themselves and the promotions they
+// agreed to; the row stays, empty.
 //
 //	UPDATE customer_profiles
 //	SET display_name = NULL,
 //	    phone = NULL,
+//	    marketing_consent_at = NULL,
 //	    updated_at = now()
 //	WHERE user_id = $1
 func (q *Queries) EraseCustomerProfile(ctx context.Context, userID uuid.UUID) error {
@@ -79,14 +99,14 @@ func (q *Queries) EraseCustomerProfile(ctx context.Context, userID uuid.UUID) er
 }
 
 const getCustomerProfileByUserID = `-- name: GetCustomerProfileByUserID :one
-SELECT user_id, display_name, phone, created_at, updated_at
+SELECT user_id, display_name, phone, marketing_consent_at, created_at, updated_at
 FROM customer_profiles
 WHERE user_id = $1
 `
 
 // GetCustomerProfileByUserID
 //
-//	SELECT user_id, display_name, phone, created_at, updated_at
+//	SELECT user_id, display_name, phone, marketing_consent_at, created_at, updated_at
 //	FROM customer_profiles
 //	WHERE user_id = $1
 func (q *Queries) GetCustomerProfileByUserID(ctx context.Context, userID uuid.UUID) (CustomerProfile, error) {
@@ -96,6 +116,7 @@ func (q *Queries) GetCustomerProfileByUserID(ctx context.Context, userID uuid.UU
 		&i.UserID,
 		&i.DisplayName,
 		&i.Phone,
+		&i.MarketingConsentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -104,36 +125,75 @@ func (q *Queries) GetCustomerProfileByUserID(ctx context.Context, userID uuid.UU
 
 const updateCustomerProfileByUserID = `-- name: UpdateCustomerProfileByUserID :one
 UPDATE customer_profiles
-SET display_name = $2,
-    phone = $3,
+SET display_name = $1,
+    phone = $2,
+    marketing_consent_at = CASE
+      WHEN $3::boolean IS NULL THEN marketing_consent_at
+      WHEN $3::boolean THEN COALESCE(marketing_consent_at, now())
+    END,
     updated_at = now()
-WHERE user_id = $1
-RETURNING user_id, display_name, phone, created_at, updated_at
+WHERE user_id = $4
+RETURNING user_id, display_name, phone, marketing_consent_at, created_at, updated_at
 `
 
 type UpdateCustomerProfileByUserIDParams struct {
-	UserID      uuid.UUID `json:"userId"`
-	DisplayName *string   `json:"displayName"`
-	Phone       *string   `json:"phone"`
+	DisplayName    *string   `json:"displayName"`
+	Phone          *string   `json:"phone"`
+	MarketingOptIn *bool     `json:"marketingOptIn"`
+	UserID         uuid.UUID `json:"userId"`
 }
 
-// UpdateCustomerProfileByUserID
+// Agreement to promotions changes only when asked, judged on the row as it is
+// now: given, it keeps the moment it was first given; withdrawn, it is cleared.
 //
 //	UPDATE customer_profiles
-//	SET display_name = $2,
-//	    phone = $3,
+//	SET display_name = $1,
+//	    phone = $2,
+//	    marketing_consent_at = CASE
+//	      WHEN $3::boolean IS NULL THEN marketing_consent_at
+//	      WHEN $3::boolean THEN COALESCE(marketing_consent_at, now())
+//	    END,
 //	    updated_at = now()
-//	WHERE user_id = $1
-//	RETURNING user_id, display_name, phone, created_at, updated_at
+//	WHERE user_id = $4
+//	RETURNING user_id, display_name, phone, marketing_consent_at, created_at, updated_at
 func (q *Queries) UpdateCustomerProfileByUserID(ctx context.Context, arg UpdateCustomerProfileByUserIDParams) (CustomerProfile, error) {
-	row := q.db.QueryRow(ctx, updateCustomerProfileByUserID, arg.UserID, arg.DisplayName, arg.Phone)
+	row := q.db.QueryRow(ctx, updateCustomerProfileByUserID,
+		arg.DisplayName,
+		arg.Phone,
+		arg.MarketingOptIn,
+		arg.UserID,
+	)
 	var i CustomerProfile
 	err := row.Scan(
 		&i.UserID,
 		&i.DisplayName,
 		&i.Phone,
+		&i.MarketingConsentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const withdrawMarketingConsent = `-- name: WithdrawMarketingConsent :execrows
+UPDATE customer_profiles
+SET marketing_consent_at = NULL,
+    updated_at = now()
+WHERE user_id = $1
+  AND marketing_consent_at IS NOT NULL
+`
+
+// WithdrawMarketingConsent
+//
+//	UPDATE customer_profiles
+//	SET marketing_consent_at = NULL,
+//	    updated_at = now()
+//	WHERE user_id = $1
+//	  AND marketing_consent_at IS NOT NULL
+func (q *Queries) WithdrawMarketingConsent(ctx context.Context, userID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, withdrawMarketingConsent, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

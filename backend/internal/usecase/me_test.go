@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,7 @@ import (
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
+	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/service/auditlogger"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/usecase"
@@ -55,6 +57,38 @@ func TestMeUsecase_UpdateProfile(t *testing.T) {
 		_, _, err := uc.UpdateProfile(ctx, userID, dto.UpdateMeRequest{DisplayName: &name})
 
 		require.ErrorIs(t, err, apperrors.ErrInternal, "the transaction rolls the change back")
+	})
+
+	t.Run("promotions_change_only_when_asked", func(t *testing.T) {
+		t.Parallel()
+		agreedAt := time.Now()
+		cases := []struct {
+			name   string
+			agreed *time.Time
+			req    dto.UpdateMeRequest
+			want   *bool
+		}{
+			{name: "left_as_it_is_when_left_out", agreed: &agreedAt, req: dto.UpdateMeRequest{DisplayName: &name}},
+			{name: "withdrawn", agreed: &agreedAt, req: dto.UpdateMeRequest{MarketingOptIn: new(false)}, want: new(false)},
+			{name: "given", req: dto.UpdateMeRequest{MarketingOptIn: new(true)}, want: new(true)},
+		}
+		for _, tc := range cases {
+			users := new(mockUserRepo)
+			customers := new(mockCustomerProfileRepo)
+			userID := uuid.New()
+			users.On("GetByID", mock.Anything, userID).Return(&domainuser.User{ID: userID, Role: domainuser.RoleCustomer}, nil)
+			users.On("GetByIDForShare", mock.Anything, userID).Return(&domainuser.User{ID: userID, Role: domainuser.RoleCustomer}, nil)
+			customers.On("GetByUserID", mock.Anything, userID).Return(&domainprofile.Customer{UserID: userID, MarketingConsentAt: tc.agreed}, nil)
+			customers.On("UpdateByUserID", mock.Anything, mock.MatchedBy(func(p port.UpsertCustomerProfileParams) bool {
+				return (p.MarketingOptIn == nil) == (tc.want == nil) && (tc.want == nil || *p.MarketingOptIn == *tc.want)
+			})).Return(&domainprofile.Customer{UserID: userID}, nil)
+			uc := usecase.NewMeUsecase(users, customers, nil, nil, nil, nil, passthroughTxManager{}, nil, auditlogger.NewService(&recordingAuditLogs{}), nil)
+
+			_, _, err := uc.UpdateProfile(ctx, userID, tc.req)
+
+			require.NoError(t, err, tc.name)
+			customers.AssertExpectations(t)
+		}
 	})
 }
 

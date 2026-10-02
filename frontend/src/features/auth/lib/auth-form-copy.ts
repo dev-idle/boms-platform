@@ -22,4 +22,8 @@ export const AUTH_FORM_COPY = {
     description: "Confirming your address lets you order and get updates about your orders.",
     title: PAGE_TITLES.verifyEmail,
   },
+  unsubscribe: {
+    description: "Stopping promotion emails to your address.",
+    title: PAGE_TITLES.unsubscribe,
+  },
 } as const;

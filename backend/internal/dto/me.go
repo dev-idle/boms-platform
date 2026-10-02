@@ -10,6 +10,9 @@ type UpdateMeRequest struct {
 	// is refused rather than written through.
 	FullName     *string `json:"full_name,omitempty" validate:"omitnil,min=1,max=255"`
 	EmployeeCode *string `json:"employee_code,omitempty" validate:"omitempty,max=64"`
+	// MarketingOptIn gives or withdraws a customer's agreement to be emailed
+	// promotions; leaving it out keeps it as it is.
+	MarketingOptIn *bool `json:"marketing_opt_in,omitempty"`
 }
 
 type ChangeMyPasswordRequest struct {
@@ -27,6 +30,9 @@ type MeCustomerProfileResponse struct {
 	Type        string  `json:"type"`
 	DisplayName *string `json:"display_name,omitempty"`
 	Phone       *string `json:"phone,omitempty"`
+	// MarketingConsentAt is when the customer agreed to be emailed
+	// promotions, null while they have not.
+	MarketingConsentAt *time.Time `json:"marketing_consent_at"`
 }
 
 type MeStaffProfileResponse struct {

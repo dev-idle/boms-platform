@@ -123,6 +123,16 @@ function MessagesIcon({ className }: IconProps) {
   );
 }
 
+/** Envelope — promotions emailed to customers. */
+function PromotionsIcon({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <rect height="14" width="18" x="3" y="5" />
+      <path d="m3 7 9 6 9-6" />
+    </IconBase>
+  );
+}
+
 /** Star — what customers rate their pickups. */
 function ReviewsIcon({ className }: IconProps) {
   return (
@@ -194,6 +204,7 @@ const DASHBOARD_NAV_ICONS = {
   prep: PrepIcon,
   products: ProductsIcon,
   profile: ProfileIcon,
+  promotions: PromotionsIcon,
   reviews: ReviewsIcon,
   settings: SettingsIcon,
   users: UsersIcon,

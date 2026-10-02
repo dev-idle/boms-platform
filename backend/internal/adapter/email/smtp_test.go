@@ -152,6 +152,22 @@ func TestSMTPMailer(t *testing.T) {
 		assert.Contains(t, msg, "Message-ID:")
 	})
 
+	t.Run("names_its_unsubscribe_page_only_when_it_has_one", func(t *testing.T) {
+		t.Parallel()
+		server := startFakeSMTP(t, "250 ok", "")
+		promotion := sample
+		promotion.ListUnsubscribe = "https://shop.example/unsubscribe#token=tok"
+
+		mailer := server.mailer(t, config.SMTPTLSNone)
+		require.NoError(t, mailer.Send(ctx, promotion))
+		require.NoError(t, mailer.Send(ctx, sample))
+
+		messages := server.delivered()
+		require.Len(t, messages, 2)
+		assert.Contains(t, messages[0], "List-Unsubscribe: <https://shop.example/unsubscribe#token=tok>")
+		assert.NotContains(t, messages[1], "List-Unsubscribe", "an email the recipient asked for has none")
+	})
+
 	t.Run("a_display_name_is_quoted_not_parsed", func(t *testing.T) {
 		t.Parallel()
 		server := startFakeSMTP(t, "250 ok", "")

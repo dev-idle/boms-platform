@@ -22,6 +22,7 @@ import {
   logout,
   register,
   requestPasswordReset,
+  unsubscribe,
   verifyEmail,
 } from "../api";
 import { endLocalSession, scheduleRefresh } from "@/lib/auth";
@@ -50,6 +51,20 @@ export function useConfirmPasswordReset() {
       endLocalSession();
       queryClient.removeQueries({ queryKey: userQueryKeys.me });
       router.replace(`${ROUTE.login}?reset=1`);
+    },
+  });
+}
+
+/** Stops promotion emails from a link; a signed-in customer's account shows it at once. */
+export function useUnsubscribe() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (token: string) => unsubscribe(token),
+    onSuccess: () => {
+      if (useAuthStore.getState().status === "authenticated") {
+        void queryClient.prefetchQuery({ ...meQueryOptions(), staleTime: 0 });
+      }
     },
   });
 }

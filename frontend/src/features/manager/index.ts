@@ -1,5 +1,5 @@
 /**
- * Manager feature — catalog CRUD and review moderation (manager-only).
+ * Manager feature — catalog CRUD, review moderation and promotions (manager-only).
  *
  * Internal: api/, components/, hooks/, schemas/
  */
@@ -11,7 +11,9 @@ export {
   ManagerCombosTable,
   ManagerDiscountCodesTable,
   ManagerLiveUpdates,
+  ManagerNewPromotion,
   ManagerProductsTable,
+  ManagerPromotionsTable,
   ManagerReviews,
   ProductForm,
 } from "./components";

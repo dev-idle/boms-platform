@@ -40,6 +40,8 @@ export const registerSchema = z.object({
   accept_terms: z
     .boolean()
     .refine((accepted) => accepted, "Accept the terms and the privacy policy to create an account"),
+  /** Agreeing to promotions is the customer's own choice, unticked until they tick it. */
+  marketing_opt_in: z.boolean(),
 });
 
 export const forgotPasswordSchema = z.object({
@@ -57,6 +59,9 @@ export const forgotPasswordSchema = z.object({
 export const linkTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{16,128}$/, "This link is not valid");
 
 export const verifyEmailSchema = z.object({ token: linkTokenSchema });
+
+/** POST /promotions/unsubscribe — the token of a promotion email's link. */
+export const unsubscribeSchema = z.object({ token: linkTokenSchema });
 
 /** POST /auth/password-reset/confirm. */
 export const passwordResetConfirmSchema = z.object({

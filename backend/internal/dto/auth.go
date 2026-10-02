@@ -9,6 +9,9 @@ type RegisterRequest struct {
 	// TermsVersion is the version of the policies the customer accepted; the
 	// usecase refuses any but the current one.
 	TermsVersion string `json:"terms_version" validate:"max=32"`
+	// MarketingOptIn is the customer agreeing to be emailed promotions; only
+	// they can tick it.
+	MarketingOptIn bool `json:"marketing_opt_in"`
 }
 
 // LoginRequest is the JSON body for POST /api/v1/auth/login.

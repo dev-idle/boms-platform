@@ -128,9 +128,10 @@ func (u *MeUsecase) writeProfile(ctx context.Context, userID uuid.UUID, current 
 	switch p := current.(type) {
 	case *domainprofile.Customer:
 		return u.customers.UpdateByUserID(ctx, port.UpsertCustomerProfileParams{
-			UserID:      userID,
-			DisplayName: resolvePatchString(req.DisplayName, p.DisplayName),
-			Phone:       resolvePatchString(req.Phone, p.Phone),
+			UserID:         userID,
+			DisplayName:    resolvePatchString(req.DisplayName, p.DisplayName),
+			Phone:          resolvePatchString(req.Phone, p.Phone),
+			MarketingOptIn: req.MarketingOptIn,
 		})
 	case *domainprofile.Staff:
 		fullName := p.FullName

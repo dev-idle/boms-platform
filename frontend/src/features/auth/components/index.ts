@@ -7,6 +7,7 @@ export { LoginForm } from "./login-form";
 export { MustChangePasswordGate } from "./must-change-password-gate";
 export { RegisterForm } from "./register-form";
 export { ResetPasswordForm } from "./reset-password-form";
+export { UnsubscribeView } from "./unsubscribe-view";
 export { VerifyEmailView } from "./verify-email-view";
 export {
   AdminGate,

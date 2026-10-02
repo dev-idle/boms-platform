@@ -29,6 +29,7 @@ import (
 	"github.com/boms/backend/internal/bootstrap"
 	"github.com/boms/backend/internal/config"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpromotion "github.com/boms/backend/internal/domain/promotion"
 	"github.com/boms/backend/internal/infrastructure/logger"
 	"github.com/boms/backend/internal/service/eventdispatch"
 	"github.com/boms/backend/internal/usecase"
@@ -76,7 +77,8 @@ func main() {
 	pgPool.OnCommit(dispatcher.AfterCommit)
 
 	pickupCodes := domainorder.NewPickupCodes(cfg.Order.PickupCodeSecret)
-	stopEmails, err := startEmails(cfg.Mail, cfg.App.SiteURL, pickupCodes, redisClient.RDB(), pgPool, zlog)
+	unsubscribeTokens := domainpromotion.NewUnsubscribeTokens(cfg.Promotion.UnsubscribeSecret)
+	stopEmails, err := startEmails(cfg.Mail, cfg.App.SiteURL, pickupCodes, unsubscribeTokens, redisClient.RDB(), pgPool, zlog)
 	if err != nil {
 		zlog.Fatal("email_init", zap.Error(err))
 	}
@@ -105,6 +107,7 @@ func startEmails(
 	cfg config.MailConfig,
 	siteURL string,
 	codes domainorder.PickupCodes,
+	unsubscribeTokens domainpromotion.UnsubscribeTokens,
 	rdb *redis.Client,
 	pool *postgresrepo.Pool,
 	log *zap.Logger,
@@ -117,14 +120,22 @@ func startEmails(
 	if err != nil {
 		return nil, err
 	}
+	promotionComposer, err := email.NewPromotionComposer(siteURL)
+	if err != nil {
+		return nil, err
+	}
 	mailer := email.NewSMTPMailer(cfg)
 	users := postgresrepo.NewUserRepository(pool)
 	orderEmails := usecase.NewOrderEmailUsecase(postgresrepo.NewOrderRepository(pool), postgresrepo.NewPaymentRepository(pool),
 		orderComposer, mailer, codes, log)
 	accountEmails := usecase.NewAccountEmailUsecase(users, postgresrepo.NewUserTokenRepository(pool), accountComposer, mailer, log)
+	promotions := usecase.NewPromotionEmailUsecase(postgresrepo.NewPromotionRepository(pool), queue.NewEmailQueue(rdb), pool,
+		postgresrepo.NewOutboxRepository(pool), promotionComposer, mailer, unsubscribeTokens, log)
 	server := asynq.NewServerFromRedisClient(rdb, asynq.Config{
 		Concurrency: cfg.Concurrency,
-		Queues:      map[string]int{queue.QueueEmail: 1},
+		Queues:      map[string]int{queue.QueueEmail: 2, queue.QueuePromotion: 1},
+		// A promotion goes out only while no order update or account link waits.
+		StrictPriority: true,
 		// zap's sugared logger has the methods Asynq logs through.
 		Logger: log.Sugar(),
 		ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
@@ -151,6 +162,8 @@ func startEmails(
 	mux := asynq.NewServeMux()
 	mux.Handle(queue.TypeOrderEmail, queue.OrderEmailHandler(orderEmails))
 	mux.Handle(queue.TypeAccountEmail, queue.AccountEmailHandler(accountEmails))
+	mux.Handle(queue.TypePromotion, queue.PromotionHandler(promotions))
+	mux.Handle(queue.TypePromotionEmail, queue.PromotionEmailHandler(promotions))
 	if err := server.Start(mux); err != nil {
 		return nil, fmt.Errorf("start email queue: %w", err)
 	}

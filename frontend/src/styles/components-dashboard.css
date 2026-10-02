@@ -2048,6 +2048,31 @@
     gap: 0.5rem;
   }
 
+  /* A promotion's audience that could not be counted: why, then the retry. */
+  .promotion-form__audience {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  /* Promotions: who sent it, when, how many and the status are fixed; the
+     subject takes the rest, and below that the wrapper scrolls. */
+  .db-table--promotions {
+    min-width: calc(
+      var(--db-table-col-sender) + var(--db-table-col-datetime) + var(--db-table-col-number) +
+        var(--db-table-col-status-pill) + 16rem
+    );
+  }
+
+  .db-table--promotions col.db-table-col-sender {
+    width: var(--db-table-col-sender);
+  }
+
+  .db-table--promotions col.db-table-col-status {
+    width: var(--db-table-col-status-pill);
+  }
+
   /* KPI strip (02-COMPONENTS §11): cells a 1px gap apart over the panel edge,
      so every rule between them is one hairline. Two across below 90rem, where
      the sidebar leaves a cell too narrow for its label (03-PATTERNS §3.6). */

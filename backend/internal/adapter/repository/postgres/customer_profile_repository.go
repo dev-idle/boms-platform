@@ -28,9 +28,10 @@ func (r *CustomerProfileRepository) q(ctx context.Context) *sqlcgen.Queries {
 
 func (r *CustomerProfileRepository) Create(ctx context.Context, params port.UpsertCustomerProfileParams) (*domainprofile.Customer, error) {
 	row, err := r.q(ctx).CreateCustomerProfile(ctx, sqlcgen.CreateCustomerProfileParams{
-		UserID:      params.UserID,
-		DisplayName: params.DisplayName,
-		Phone:       params.Phone,
+		UserID:         params.UserID,
+		DisplayName:    params.DisplayName,
+		Phone:          params.Phone,
+		MarketingOptIn: params.MarketingOptIn != nil && *params.MarketingOptIn,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create customer profile")
@@ -48,9 +49,10 @@ func (r *CustomerProfileRepository) GetByUserID(ctx context.Context, userID uuid
 
 func (r *CustomerProfileRepository) UpdateByUserID(ctx context.Context, params port.UpsertCustomerProfileParams) (*domainprofile.Customer, error) {
 	row, err := r.q(ctx).UpdateCustomerProfileByUserID(ctx, sqlcgen.UpdateCustomerProfileByUserIDParams{
-		UserID:      params.UserID,
-		DisplayName: params.DisplayName,
-		Phone:       params.Phone,
+		UserID:         params.UserID,
+		DisplayName:    params.DisplayName,
+		Phone:          params.Phone,
+		MarketingOptIn: params.MarketingOptIn,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "update customer profile")
@@ -71,12 +73,22 @@ func (r *CustomerProfileRepository) DeleteByUserID(ctx context.Context, userID u
 
 func mapCustomerProfile(row sqlcgen.CustomerProfile) *domainprofile.Customer {
 	return &domainprofile.Customer{
-		UserID:      row.UserID,
-		DisplayName: row.DisplayName,
-		Phone:       row.Phone,
-		CreatedAt:   row.CreatedAt,
-		UpdatedAt:   row.UpdatedAt,
+		UserID:             row.UserID,
+		DisplayName:        row.DisplayName,
+		Phone:              row.Phone,
+		MarketingConsentAt: row.MarketingConsentAt,
+		CreatedAt:          row.CreatedAt,
+		UpdatedAt:          row.UpdatedAt,
 	}
+}
+
+// WithdrawMarketingConsent implements port.CustomerProfileRepository.
+func (r *CustomerProfileRepository) WithdrawMarketingConsent(ctx context.Context, userID uuid.UUID) (bool, error) {
+	n, err := r.q(ctx).WithdrawMarketingConsent(ctx, userID)
+	if err != nil {
+		return false, mapRepoError(err, "withdraw marketing consent")
+	}
+	return n > 0, nil
 }
 
 var _ port.CustomerProfileRepository = (*CustomerProfileRepository)(nil)

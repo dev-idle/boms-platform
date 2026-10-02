@@ -80,6 +80,30 @@ func TestAuthUsecase_RegisterRecordsTheAcceptedTerms(t *testing.T) {
 	assert.Equal(t, domainaccount.PurposeVerifyEmail, purpose)
 }
 
+// A customer agrees to promotions at sign-up only by ticking the box.
+func TestAuthUsecase_RegisterRecordsTheAgreementToPromotions(t *testing.T) {
+	t.Parallel()
+	for _, optIn := range []bool{true, false} {
+		users := new(mockUserRepo)
+		customerProfiles := new(mockCustomerProfileRepo)
+		hasher := new(mockHasher)
+		uc := newAuthUCWith(t, &recordingOutbox{}, users, customerProfiles, new(mockSessionStore), hasher, new(mockSigner))
+		created := &domainuser.User{ID: uuid.New(), Email: "a@b.com", Role: domainuser.RoleCustomer}
+		hasher.On("Hash", "Password1").Return("hash", nil)
+		users.On("Create", mock.Anything, mock.Anything).Return(created, nil)
+		customerProfiles.On("Create", mock.Anything, mock.MatchedBy(func(p port.UpsertCustomerProfileParams) bool {
+			return p.UserID == created.ID && p.MarketingOptIn != nil && *p.MarketingOptIn == optIn
+		})).Return(nil, nil)
+
+		_, err := uc.Register(context.Background(), dto.RegisterRequest{
+			Email: "a@b.com", Password: "Password1", TermsVersion: domainpolicy.TermsVersion, MarketingOptIn: optIn,
+		})
+
+		require.NoError(t, err)
+		customerProfiles.AssertExpectations(t)
+	}
+}
+
 // The account and the request for its confirmation email commit together: a
 // registration that cannot ask for the email fails.
 func TestAuthUsecase_RegisterFailsWithoutItsConfirmationEmail(t *testing.T) {

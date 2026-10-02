@@ -20,7 +20,7 @@ describe.each([
   ["registration", registerSchema],
 ])("%s email", (_, schema) => {
   it("accepts an address with surrounding spaces and submits it trimmed", () => {
-    const result = schema.safeParse({ email: "  mai@example.com ", password: PASSWORD, accept_terms: true });
+    const result = schema.safeParse({ email: "  mai@example.com ", password: PASSWORD, accept_terms: true, marketing_opt_in: false });
     expect(result.success).toBe(true);
     expect(result.success ? result.data.email : undefined).toBe("mai@example.com");
   });
@@ -36,7 +36,7 @@ describe.each([
 
 describe("registration consent", () => {
   it("refuses a sign-up that has not accepted the policies", () => {
-    const result = registerSchema.safeParse({ email: "mai@example.com", password: PASSWORD, accept_terms: false });
+    const result = registerSchema.safeParse({ email: "mai@example.com", password: PASSWORD, accept_terms: false, marketing_opt_in: false });
     expect(result.success ? undefined : result.error.issues[0]?.message).toBe(
       "Accept the terms and the privacy policy to create an account",
     );
@@ -44,7 +44,7 @@ describe("registration consent", () => {
 
   it("takes a sign-up that has", () => {
     expect(
-      registerSchema.safeParse({ email: "mai@example.com", password: PASSWORD, accept_terms: true }).success,
+      registerSchema.safeParse({ email: "mai@example.com", password: PASSWORD, accept_terms: true, marketing_opt_in: false }).success,
     ).toBe(true);
   });
 });

@@ -11,6 +11,9 @@ type UpsertCustomerProfileParams struct {
 	UserID      uuid.UUID
 	DisplayName *string
 	Phone       *string
+	// MarketingOptIn gives (true) or withdraws (false) the customer's agreement
+	// to promotions; nil leaves it as it is, and a new profile without it.
+	MarketingOptIn *bool
 }
 
 type CustomerProfileRepository interface {
@@ -20,4 +23,6 @@ type CustomerProfileRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*domainprofile.Customer, error)
 	UpdateByUserID(ctx context.Context, params UpsertCustomerProfileParams) (*domainprofile.Customer, error)
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
+	// WithdrawMarketingConsent reports whether the customer had agreed to promotions.
+	WithdrawMarketingConsent(ctx context.Context, userID uuid.UUID) (bool, error)
 }

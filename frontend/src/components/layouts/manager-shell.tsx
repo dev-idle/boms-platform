@@ -30,6 +30,7 @@ const MANAGER_NAV_ITEMS: readonly DashboardNavItem[] = [
     label: "Discount Codes",
     match: "prefix",
   },
+  { href: ROUTE.manager.promotions, icon: "promotions", label: "Promotions", match: "prefix" },
   { href: ROUTE.manager.reviews, icon: "reviews", label: "Reviews", match: "prefix" },
 ] as const;
 

@@ -53,6 +53,10 @@ export function PrivacyPolicy() {
             your orders.
           </li>
           <li>
+            <strong>Promotions:</strong> whether you agreed to receive promotion emails, and when; we
+            keep a record each time you agree or stop them.
+          </li>
+          <li>
             <strong>Reviews:</strong> the rating and comment you give a product you picked up, and
             whether we published it.
           </li>
@@ -81,8 +85,11 @@ export function PrivacyPolicy() {
           <li>To take, make and hand over your orders — the agreement you make with us.</li>
           <li>To keep accounts secure and stop abuse, such as repeated failed sign-ins.</li>
           <li>To keep the sales records the law requires of a business.</li>
+          <li>
+            To email you promotions — only if you agreed, when you signed up or on your account page.
+          </li>
         </ul>
-        <p>We do not sell your data and we do not send you marketing.</p>
+        <p>We do not sell your data, and we send marketing only to customers who asked for it.</p>
       </PolicySection>
 
       <PolicySection id="privacy-who-sees" title="4. Who sees it">
@@ -117,8 +124,8 @@ export function PrivacyPolicy() {
       <PolicySection id="privacy-how-long" title="5. How long we keep it">
         <ul>
           <li>
-            Your account, profile, cart, favorites, wishlist, reviews and the messages about your
-            orders, until you delete your account. Deleting it erases your name, phone number and
+            Your account, profile, cart, favorites, wishlist, reviews, your agreement to promotions and
+            the messages about your orders, until you delete your account. Deleting it erases your name, phone number and
             email, empties your cart and your lists, erases those messages and your reviews and removes
             your personal details from the record of changes; you are signed out everywhere and the
             account cannot be restored.
@@ -153,8 +160,9 @@ export function PrivacyPolicy() {
             still waiting to be made or collected; your personal details are erased at once.
           </li>
           <li>
-            <strong>Withdraw consent or object:</strong> write to us and we stop any use that relies
-            on it.
+            <strong>Withdraw consent or object:</strong> stop promotion emails on your account page or
+            with the link in any of them; for anything else, write to us and we stop any use that
+            relies on it.
           </li>
           <li>
             <strong>Complain:</strong> tell us first, and you can also contact the data protection

@@ -15,6 +15,12 @@ describe("managerQueryKeysForEvent", () => {
     ]);
   });
 
+  it("refreshes the promotions when one is sent or done sending", () => {
+    for (const type of ["promotion.created", "promotion.sent"]) {
+      expect(managerQueryKeysForEvent({ type, data: { promotion_id: "p-1" } })).toEqual([managerQueryKeys.promotionsRoot]);
+    }
+  });
+
   it("ignores events it does not know", () => {
     expect(managerQueryKeysForEvent({ type: "order.created", data: { order_id: "o-1" } })).toEqual([]);
   });

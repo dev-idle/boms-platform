@@ -18,6 +18,7 @@ import (
 	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainproduct "github.com/boms/backend/internal/domain/product"
+	domainpromotion "github.com/boms/backend/internal/domain/promotion"
 	domainreview "github.com/boms/backend/internal/domain/review"
 	domainsaved "github.com/boms/backend/internal/domain/saved"
 	domainstore "github.com/boms/backend/internal/domain/store"
@@ -87,6 +88,7 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "email_not_verified", err: domainuser.ErrEmailNotVerified, wantStatus: 422, wantCode: "email_not_verified"},
 		{name: "email_already_verified", err: domainuser.ErrEmailAlreadyVerified, wantStatus: 409, wantCode: "email_already_verified"},
 		{name: "invalid_link", err: domainaccount.ErrLinkInvalid, wantStatus: 422, wantCode: "invalid_link"},
+		{name: "unsubscribe_link", err: domainpromotion.ErrInvalidUnsubscribeToken, wantStatus: 422, wantCode: "invalid_link"},
 		{name: "discount_used_up", err: domaindiscount.ErrUsedUpByCustomer, wantStatus: 422, wantCode: "discount_used_up"},
 		{name: "order_not_payable", err: domainpayment.ErrNotPayable, wantStatus: 422, wantCode: "order_not_payable"},
 		{name: "payment_not_completed", err: domainpayment.ErrNotCompleted, wantStatus: 422, wantCode: "payment_not_completed"},
@@ -114,6 +116,8 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "review_unavailable", err: domainreview.ErrNotReviewable, wantStatus: 422, wantCode: "review_unavailable"},
 		{name: "review_exists", err: domainreview.ErrExists, wantStatus: 409, wantCode: "review_exists"},
 		{name: "review_not_found", err: domainreview.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
+		{name: "promotion_subject", err: domainpromotion.ErrInvalidSubject, wantStatus: 400, wantCode: "validation_error"},
+		{name: "promotion_body", err: domainpromotion.ErrInvalidBody, wantStatus: 400, wantCode: "validation_error"},
 		{name: "closed_date_exists", err: domainstore.ErrClosedDateExists, wantStatus: 409, wantCode: "closed_date_exists"},
 		{name: "closed_date_not_found", err: domainstore.ErrClosedDateNotFound, wantStatus: 404, wantCode: "not_found"},
 	}
