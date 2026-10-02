@@ -69,9 +69,12 @@ type Capture struct {
 var (
 	// ErrNotPayable refuses to take payment for an order that does not await one.
 	ErrNotPayable = errors.New("order is not awaiting payment")
-	// ErrNotCompleted: the buyer did not approve, or the provider declined the
-	// funding they chose; approving again with another one may work.
+	// ErrNotCompleted: the buyer has not approved the payment, or it was
+	// refused; paying again may work.
 	ErrNotCompleted = errors.New("payment not completed")
+	// ErrDeclined: the provider declined the funding the buyer chose. Nothing
+	// was captured: the payment is refused, and paying again starts over.
+	ErrDeclined = errors.New("payment declined")
 	// ErrAmountMismatch: the provider took an amount other than the order's.
 	ErrAmountMismatch = errors.New("captured amount does not match the order")
 	// ErrWebhookInvalid refuses a webhook delivery the provider did not sign.

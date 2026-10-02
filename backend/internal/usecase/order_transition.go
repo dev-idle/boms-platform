@@ -6,6 +6,7 @@ import (
 
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainstore "github.com/boms/backend/internal/domain/store"
+	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 )
@@ -63,8 +64,9 @@ func (t orderTransitions) applyInTx(
 }
 
 // recordInTx follows an order's move from one status to its current one, in the
-// transaction that made it: its history, the change notice and, for an order
-// that will not be made, its tickets, pickup slot, discount use and payment.
+// transaction that made it: its history, the change notice, the incident the
+// move is, if any, and, for an order that will not be made, its tickets, pickup
+// slot, discount use and payment.
 // actor is nil for the system.
 func (t orderTransitions) recordInTx(
 	txCtx context.Context,
@@ -84,6 +86,14 @@ func (t orderTransitions) recordInTx(
 	}
 	if err := t.events.Add(txCtx, domainorder.StatusChangedEvent(from, order)); err != nil {
 		return err
+	}
+	byStaff := actor != nil && actor.Role == domainuser.RoleStaff
+	if incidentType, ok := domainorder.MoveIncident(from, order.Status, byStaff); ok {
+		if _, err := recordIncident(txCtx, t.orders, t.events, port.AddOrderIncidentParams{
+			OrderID: order.ID, Type: incidentType, Actor: actor,
+		}); err != nil {
+			return err
+		}
 	}
 	if !order.Status.Dropped() {
 		return nil

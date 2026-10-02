@@ -31,6 +31,7 @@ import { StaffCancelOrderDialog } from "./staff-cancel-order-dialog";
 import { StaffHandoffDialog } from "./staff-handoff-dialog";
 import { StaffOrderHistory } from "./staff-order-history";
 import { StaffOrderTickets } from "./staff-order-tickets";
+import { StaffReportIncidentDialog } from "./staff-report-incident-dialog";
 
 /** An order staff took is paid when collected: its cash is due until then. */
 const CASH_DUE_STATUSES: ReadonlySet<OrderStatus> = new Set(["confirmed", "in_production", "ready"]);
@@ -68,6 +69,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
   const patchStatus = usePatchStaffOrderStatus(orderId);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [handoffOpen, setHandoffOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   if (!isValidId) {
     return <p className="text-sm text-muted">Invalid order link.</p>;
@@ -205,33 +207,34 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
             ) : null}
           </div>
 
-          {actions.length > 0 ? (
-            <div className="dashboard-profile-form-actions">
-              {actions.map((action) => (
-                <Button
-                  key={action.status}
-                  disabled={patchStatus.isPending}
-                  type="button"
-                  variant={action.status === "cancelled" ? "outline" : "default"}
-                  onClick={() => {
-                    if (action.status === "cancelled") {
-                      setCancelOpen(true);
-                      return;
-                    }
-                    if (action.status === "fulfilled") {
-                      setHandoffOpen(true);
-                      return;
-                    }
-                    patchStatus.mutate({ status: action.status });
-                  }}
-                >
-                  {isApplyingOrderStatus(patchStatus, action.status)
-                    ? "Updating…"
-                    : action.label}
-                </Button>
-              ))}
-            </div>
-          ) : null}
+          <div className="dashboard-profile-form-actions">
+            {actions.map((action) => (
+              <Button
+                key={action.status}
+                disabled={patchStatus.isPending}
+                type="button"
+                variant={action.status === "cancelled" ? "outline" : "default"}
+                onClick={() => {
+                  if (action.status === "cancelled") {
+                    setCancelOpen(true);
+                    return;
+                  }
+                  if (action.status === "fulfilled") {
+                    setHandoffOpen(true);
+                    return;
+                  }
+                  patchStatus.mutate({ status: action.status });
+                }}
+              >
+                {isApplyingOrderStatus(patchStatus, action.status)
+                  ? "Updating…"
+                  : action.label}
+              </Button>
+            ))}
+            <Button type="button" variant="outline" onClick={() => setReportOpen(true)}>
+              Report issue
+            </Button>
+          </div>
         </div>
       </DashboardProfileSection>
 
@@ -253,6 +256,8 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
         orderId={order.id}
         onClose={() => setHandoffOpen(false)}
       />
+
+      <StaffReportIncidentDialog open={reportOpen} orderId={order.id} onClose={() => setReportOpen(false)} />
     </div>
   );
 }

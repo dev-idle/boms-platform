@@ -130,8 +130,10 @@ func (c *Client) Capture(ctx context.Context, providerOrderID string) (domainpay
 	err := c.call(ctx, http.MethodPost, "/v2/checkout/orders/"+url.PathEscape(providerOrderID)+"/capture",
 		"capture-"+providerOrderID, struct{}{}, &order)
 	var apiErr *apiError
-	if errors.As(err, &apiErr) && apiErr.status == http.StatusUnprocessableEntity && buyerCanRetry(apiErr.issue) {
-		return domainpayment.Capture{}, domainpayment.ErrNotCompleted
+	if errors.As(err, &apiErr) && apiErr.status == http.StatusUnprocessableEntity {
+		if refusal := captureRefusal(apiErr.issue); refusal != nil {
+			return domainpayment.Capture{}, refusal
+		}
 	}
 	if err != nil {
 		return domainpayment.Capture{}, fmt.Errorf("capture paypal order: %w", err)
@@ -191,14 +193,17 @@ func (c *Client) Refund(ctx context.Context, captureID string) (string, error) {
 	return refund.ID, nil
 }
 
-// buyerCanRetry reports the capture refusals that approving again fixes: the
-// buyer has not approved, or the funding they chose was declined.
-func buyerCanRetry(issue string) bool {
+// captureRefusal is what a capture PayPal refused with issue means for the
+// buyer: the funding they chose was declined, or they have not approved the
+// payment yet; nil for any other refusal.
+func captureRefusal(issue string) error {
 	switch issue {
-	case "ORDER_NOT_APPROVED", "PAYER_ACTION_REQUIRED", "INSTRUMENT_DECLINED":
-		return true
+	case "INSTRUMENT_DECLINED":
+		return domainpayment.ErrDeclined
+	case "ORDER_NOT_APPROVED", "PAYER_ACTION_REQUIRED":
+		return domainpayment.ErrNotCompleted
 	default:
-		return false
+		return nil
 	}
 }
 

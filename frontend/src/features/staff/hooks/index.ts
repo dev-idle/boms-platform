@@ -41,6 +41,7 @@ import {
   patchStaffConversation,
   patchStaffOrderStatus,
   postStaffOrderMessage,
+  reportOrderIncident,
 } from "../api";
 import {
   staffInboxFilterSchema,
@@ -53,6 +54,7 @@ import {
   type StaffOrderItemInput,
   type StaffProductsFilterInput,
   type PatchStaffOrderStatusInput,
+  type ReportIncidentInput,
   type StaffOrdersListFilterInput,
   type StaffPickupsFilterInput,
   type StaffInboxFilterInput,
@@ -99,6 +101,16 @@ export function useStaffOrder(id: string) {
     queryFn: () => getStaffOrder(id),
     enabled: isValidId,
     retry: false,
+  });
+}
+
+/** Reports what went wrong with an order; the dialog shows a failure itself. */
+export function useReportOrderIncident(orderId: string) {
+  return useMutation({
+    mutationFn: (input: ReportIncidentInput) => reportOrderIncident(orderId, input),
+    onSuccess: () => {
+      toast.success("Issue reported to the manager");
+    },
   });
 }
 

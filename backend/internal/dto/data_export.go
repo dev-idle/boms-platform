@@ -100,6 +100,7 @@ type DataExportOrderResponse struct {
 	Items                []OrderItemResponse          `json:"items"`
 	Timeline             []OrderTimelineEntryResponse `json:"timeline"`
 	Messages             []MessageResponse            `json:"messages"`
+	Incidents            []OrderIncidentResponse      `json:"incidents"`
 	CreatedAt            time.Time                    `json:"created_at"`
 	UpdatedAt            time.Time                    `json:"updated_at"`
 }

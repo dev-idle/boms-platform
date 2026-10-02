@@ -6,6 +6,7 @@ import type {
   CategoryListFilterInput,
   ComboListFilterInput,
   DiscountCodeListFilterInput,
+  IncidentListFilterInput,
   ProductListFilterInput,
   PromotionListFilterInput,
   ReviewListFilterInput,
@@ -41,15 +42,23 @@ export const managerQueryKeys = {
   promotions: (filter: PromotionListFilterInput) =>
     [...managerQueryKeys.promotionsRoot, filter] as const,
   promotionAudience: ["manager", "promotions", "audience"] as const,
+  incidentsRoot: ["manager", "incidents"] as const,
+  incidents: (filter: IncidentListFilterInput) => [...managerQueryKeys.incidentsRoot, filter] as const,
+  incidentSummary: (week: string) => [...managerQueryKeys.incidentsRoot, "summary", week] as const,
 };
 
 /** Everything pushed events can change in a manager tab, refetched after a gap. */
-export const managerLiveQueryKeys: readonly QueryKey[] = [managerQueryKeys.reviewsRoot, managerQueryKeys.promotionsRoot];
+export const managerLiveQueryKeys: readonly QueryKey[] = [
+  managerQueryKeys.reviewsRoot,
+  managerQueryKeys.promotionsRoot,
+  managerQueryKeys.incidentsRoot,
+];
 
 /**
  * Queries a pushed event makes stale in a manager tab: a review written, or
  * published or hidden in another tab, changes the reviews and their summary; a
- * promotion sent, or done sending, changes the promotions.
+ * promotion sent, or done sending, changes the promotions; an incident recorded
+ * changes the incident log and its counts.
  */
 export function managerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -58,6 +67,8 @@ export function managerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
     case REALTIME_EVENT_TYPE.promotionCreated:
     case REALTIME_EVENT_TYPE.promotionSent:
       return [managerQueryKeys.promotionsRoot];
+    case REALTIME_EVENT_TYPE.incidentRecorded:
+      return [managerQueryKeys.incidentsRoot];
     default:
       return [];
   }

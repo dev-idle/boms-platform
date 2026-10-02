@@ -103,6 +103,8 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "closed_date_out_of_range", err: domainstore.ErrClosedDateOutOfRange, wantStatus: 400, wantCode: "validation_error"},
 		{name: "closed_date_reason", err: domainstore.ErrInvalidClosedDateReason, wantStatus: 400, wantCode: "validation_error"},
 		{name: "cancel_reason", err: domainorder.ErrInvalidCancelReason, wantStatus: 400, wantCode: "validation_error"},
+		{name: "incident_type", err: domainorder.ErrInvalidIncidentType, wantStatus: 400, wantCode: "validation_error"},
+		{name: "incident_note", err: domainorder.ErrInvalidIncidentNote, wantStatus: 400, wantCode: "validation_error"},
 		{name: "pickup_code_invalid", err: domainorder.ErrPickupCodeInvalid, wantStatus: 422, wantCode: "pickup_code_invalid"},
 		{name: "pickup_code_locked", err: domainorder.ErrPickupCodeLocked, wantStatus: 429, wantCode: "pickup_code_locked"},
 		{name: "message_body", err: domainconversation.ErrInvalidBody, wantStatus: 400, wantCode: "validation_error"},

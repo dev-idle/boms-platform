@@ -16,7 +16,10 @@ import {
   comboListFilterSchema,
   discountCodeFormSchema,
   discountCodeListFilterSchema,
+  incidentListFilterSchema,
+  incidentSummarySchema,
   managerComboSchema,
+  managerIncidentSchema,
   managerDiscountCodeSchema,
   managerPromotionSchema,
   managerReviewSchema,
@@ -37,6 +40,10 @@ import {
   type DiscountCodeFormInput,
   type DiscountCodeListFilterInput,
   type DiscountCodesListResult,
+  type IncidentListFilterInput,
+  type IncidentSummary,
+  type IncidentsListResult,
+  type ManagerIncident,
   type ManagerCategory,
   type ManagerCombo,
   type ManagerDiscountCode,
@@ -367,6 +374,30 @@ export async function moderateReview(id: string, status: ReviewModeration): Prom
     method: "PATCH",
     schema: managerReviewSchema,
     json: { status: reviewModerationSchema.parse(status) },
+  });
+}
+
+/** A page of a week's incidents, latest first, narrowed to one type when one is given. */
+export async function listIncidents(input: IncidentListFilterInput): Promise<IncidentsListResult> {
+  const filter = incidentListFilterSchema.parse(input);
+  const params = new URLSearchParams({ week: filter.week, page: String(filter.page), page_size: String(filter.page_size) });
+  if (filter.type) {
+    params.set("type", filter.type);
+  }
+  const result = await browserRequestWithMeta<ManagerIncident[]>(`/api/v1/manager/incidents?${params.toString()}`, {
+    method: "GET",
+    schema: z.array(managerIncidentSchema),
+  });
+  const parsed = parsePaginatedList(result.data, result.meta, { page: filter.page, page_size: filter.page_size });
+  return { incidents: parsed.items, pagination: parsed.pagination };
+}
+
+/** How many incidents of each type the week starting on the Monday `week` holds. */
+export async function getIncidentSummary(week: string): Promise<IncidentSummary> {
+  const params = new URLSearchParams({ week: z.iso.date().parse(week) });
+  return browserRequest<IncidentSummary>(`/api/v1/manager/incidents/summary?${params.toString()}`, {
+    method: "GET",
+    schema: incidentSummarySchema,
   });
 }
 

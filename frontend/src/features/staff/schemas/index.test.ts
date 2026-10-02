@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  INCIDENT_NOTE_MAX_LENGTH,
   createStaffOrderInputSchema,
   patchStaffOrderStatusInputSchema,
+  reportIncidentInputSchema,
   staffOrderSchema,
   staffPickupsSchema,
 } from "./index";
@@ -173,5 +175,28 @@ describe("orders staff take", () => {
       items: [{ product_id: "00000000-0000-4000-8000-000000000003", quantity: 2 }],
     });
     expect(noPhone.success).toBe(false);
+  });
+});
+
+describe("reportIncidentInputSchema", () => {
+  it("takes a type staff report and trims the note", () => {
+    expect(reportIncidentInputSchema.parse({ type: "custom_mismatch", note: "  Wrote Mai, not May. " })).toEqual({
+      type: "custom_mismatch",
+      note: "Wrote Mai, not May.",
+    });
+  });
+
+  it("asks what went wrong and refuses a type the system records", () => {
+    const missing = reportIncidentInputSchema.safeParse({ note: "Box crushed" });
+    expect(missing.success).toBe(false);
+    expect(missing.error?.issues[0]?.message).toBe("Choose what went wrong");
+    expect(reportIncidentInputSchema.safeParse({ type: "no_show", note: "Box crushed" }).success).toBe(false);
+  });
+
+  it("counts the note's characters as the API does, an emoji as one", () => {
+    const longest = "🎂".repeat(INCIDENT_NOTE_MAX_LENGTH);
+    expect(reportIncidentInputSchema.safeParse({ type: "other", note: longest }).success).toBe(true);
+    expect(reportIncidentInputSchema.safeParse({ type: "other", note: `${longest}a` }).success).toBe(false);
+    expect(reportIncidentInputSchema.safeParse({ type: "other", note: " \n " }).success).toBe(false);
   });
 });

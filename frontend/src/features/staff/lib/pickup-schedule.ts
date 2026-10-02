@@ -36,10 +36,3 @@ export function isLatePickup(pickup: StaffPickup, slotMinutes: number, now: Date
     Date.parse(pickup.pickup_at) + slotMinutes * 60_000 <= now.getTime()
   );
 }
-
-/** The day (YYYY-MM-DD) `days` after `day`. */
-export function shiftDay(day: string, days: number): string {
-  const date = new Date(`${day}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}

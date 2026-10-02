@@ -118,7 +118,10 @@ func TestClient_Capture(t *testing.T) {
 		assert.Equal(t, domainpayment.StatusPending, capture.Status)
 	})
 
-	for _, issue := range []string{"INSTRUMENT_DECLINED", "ORDER_NOT_APPROVED"} {
+	for issue, want := range map[string]error{
+		"INSTRUMENT_DECLINED": domainpayment.ErrDeclined,
+		"ORDER_NOT_APPROVED":  domainpayment.ErrNotCompleted,
+	} {
 		t.Run("the_buyer_can_retry_after_"+issue, func(t *testing.T) {
 			t.Parallel()
 			client, _ := fakePayPal(t, func(w http.ResponseWriter, _ *http.Request) {
@@ -128,7 +131,7 @@ func TestClient_Capture(t *testing.T) {
 
 			_, err := client.Capture(ctx, "PAYPAL-ORDER")
 
-			require.ErrorIs(t, err, domainpayment.ErrNotCompleted)
+			require.ErrorIs(t, err, want)
 		})
 	}
 

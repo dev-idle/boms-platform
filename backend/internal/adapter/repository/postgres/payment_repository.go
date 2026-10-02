@@ -88,10 +88,15 @@ func (r *PaymentRepository) Restart(ctx context.Context, orderID uuid.UUID, prov
 
 // RecordCapture implements port.PaymentRepository.
 func (r *PaymentRepository) RecordCapture(ctx context.Context, paymentID uuid.UUID, capture domainpayment.Capture) (*domainpayment.Payment, error) {
+	// A declined card is refused without a capture.
+	var captureID *string
+	if capture.ID != "" {
+		captureID = &capture.ID
+	}
 	row, err := r.q(ctx).RecordPaymentCapture(ctx, sqlcgen.RecordPaymentCaptureParams{
 		ID:        paymentID,
 		Status:    sqlcgen.PaymentStatus(capture.Status),
-		CaptureID: &capture.ID,
+		CaptureID: captureID,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "record payment capture")

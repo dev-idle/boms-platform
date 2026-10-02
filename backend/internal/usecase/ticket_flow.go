@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -105,7 +106,8 @@ func (f ticketFlow) advance(
 }
 
 // followTickets moves a locked order to the status its tickets now call for,
-// recording the move as made by the actor whose ticket caused it.
+// recording the move as made by the actor whose ticket caused it; an order
+// ready only after its pickup time is an incident.
 func (f ticketFlow) followTickets(txCtx context.Context, actor ticketActor, order domainorder.Order) (domainorder.Order, error) {
 	tickets, err := f.tickets.ListByOrder(txCtx, order.ID)
 	if err != nil {
@@ -132,6 +134,13 @@ func (f ticketFlow) followTickets(txCtx context.Context, actor ticketActor, orde
 	}
 	if err := f.events.Add(txCtx, domainorder.StatusChangedEvent(order.Status, *moved)); err != nil {
 		return domainorder.Order{}, err
+	}
+	if moved.ReadyLate(time.Now()) {
+		if _, err := recordIncident(txCtx, f.orders, f.events, port.AddOrderIncidentParams{
+			OrderID: moved.ID, Type: domainorder.IncidentReadyLate,
+		}); err != nil {
+			return domainorder.Order{}, err
+		}
 	}
 	return *moved, nil
 }

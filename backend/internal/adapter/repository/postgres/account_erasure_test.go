@@ -75,6 +75,12 @@ func TestAccountErasure_Integration(t *testing.T) {
 			Type: domainorder.TypeInstant, SubtotalCents: 300, TotalCents: 300,
 		})
 		require.NoError(t, err)
+		clerk := f.newWorker(t, domainuser.RoleStaff)
+		note := "Mai said the box was crushed"
+		reported, err := f.orders.AddIncident(ctx, port.AddOrderIncidentParams{
+			OrderID: collected.ID, Type: domainorder.IncidentOther, Note: &note, Actor: &port.OrderActor{ID: clerk, Role: domainuser.RoleStaff},
+		})
+		require.NoError(t, err)
 		admin := f.newWorker(t, domainuser.RoleAdmin)
 		ownIP, adminIP := "198.51.100.4", "192.0.2.9"
 		require.NoError(t, audit.Create(ctx, port.CreateAuditLogParams{
@@ -109,6 +115,11 @@ func TestAccountErasure_Integration(t *testing.T) {
 		kept, err := f.orders.GetByIDForUser(ctx, customer, collected.ID)
 		require.NoError(t, err)
 		assert.Equal(t, collected.Code, kept.Code, "the sale stays on record")
+		incidents, err := f.orders.ListIncidentsByOrderIDs(ctx, []uuid.UUID{collected.ID})
+		require.NoError(t, err)
+		require.Len(t, incidents[collected.ID], 1, "the incident stays in the log")
+		assert.Equal(t, reported.ID, incidents[collected.ID][0].ID)
+		assert.Nil(t, incidents[collected.ID][0].Note, "what staff wrote about the customer goes")
 
 		trail, err := audit.ListForSubject(ctx, customer, nil, 100)
 		require.NoError(t, err)

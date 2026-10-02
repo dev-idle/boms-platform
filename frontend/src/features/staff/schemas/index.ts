@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
 import { USER_ROLE } from "@/constants/roles";
+import { incidentTypeSchema, REPORTED_INCIDENT_TYPES } from "@/lib/schemas/incident";
 import { messageSchema } from "@/lib/schemas/message";
 import {
   fulfillmentSchema,
@@ -114,6 +115,29 @@ export const patchStaffOrderStatusInputSchema = z.union([
 ]);
 
 export const cancelOrderFormSchema = z.object({ reason: cancelReasonSchema });
+
+/**
+ * The most characters a reported incident's note holds — mirrors backend
+ * `order.maxIncidentNoteLength`, which counts characters (code points).
+ */
+export const INCIDENT_NOTE_MAX_LENGTH = 500;
+
+export const reportedIncidentTypeSchema = incidentTypeSchema.extract(REPORTED_INCIDENT_TYPES, {
+  error: "Choose what went wrong",
+});
+
+/** What staff report about an order; the API trims the note and checks its characters again. */
+export const reportIncidentInputSchema = z.object({
+  type: reportedIncidentTypeSchema,
+  note: z
+    .string()
+    .trim()
+    .min(1, "Say what went wrong")
+    .refine(
+      (note) => [...note].length <= INCIDENT_NOTE_MAX_LENGTH,
+      `A note holds up to ${INCIDENT_NOTE_MAX_LENGTH} characters`,
+    ),
+});
 
 export const handoffFormSchema = z.object({ pickup_code: pickupCodeSchema });
 
@@ -238,6 +262,7 @@ export type StaffOrder = z.infer<typeof staffOrderSchema>;
 export type StaffOrdersListFilterInput = z.infer<typeof staffOrdersListFilterSchema>;
 export type PatchStaffOrderStatusInput = z.infer<typeof patchStaffOrderStatusInputSchema>;
 export type CancelOrderFormInput = z.input<typeof cancelOrderFormSchema>;
+export type ReportIncidentInput = z.infer<typeof reportIncidentInputSchema>;
 export type HandoffFormInput = z.input<typeof handoffFormSchema>;
 export type StaffPickupsFilterInput = z.input<typeof staffPickupsFilterSchema>;
 type StaffPickups = z.infer<typeof staffPickupsSchema>;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { productOptionGroupSchema } from "@/lib/schemas/catalog";
+import { incidentTypeSchema, orderIncidentSchema } from "@/lib/schemas/incident";
 import { orderCodeSchema } from "@/lib/schemas/order";
 import { averageRatingSchema, MAX_RATING, ratingSchema, reviewStatusSchema } from "@/lib/schemas/review";
 import { stationSchema } from "@/lib/schemas/ticket";
@@ -364,6 +365,26 @@ export const reviewSummarySchema = z.object({
   ),
 });
 
+/** GET /manager/incidents — an incident with its order and who recorded it, null when the system did. */
+export const managerIncidentSchema = orderIncidentSchema.extend({
+  order_code: orderCodeSchema,
+  pickup_at: apiDateTimeSchema.nullable(),
+  actor_name: z.string().nullable(),
+});
+
+/** A page of the incidents of the bakery week starting on the Monday `week`, narrowed to one type when one is given. */
+export const incidentListFilterSchema = z.object({
+  week: z.iso.date(),
+  type: incidentTypeSchema.optional(),
+  page: z.number().int().min(1).default(1),
+  page_size: z.number().int().min(1).max(100).default(20),
+});
+
+/** GET /manager/incidents/summary — how many incidents of each type a week holds; a type with none is left out. */
+export const incidentSummarySchema = z.object({
+  types: z.array(z.object({ type: incidentTypeSchema, count: z.number().int().min(1) })),
+});
+
 /** The most characters a promotion's subject and message hold — mirrors backend `promotion.MaxSubjectLength` and `MaxBodyLength` (code points). */
 export const PROMOTION_SUBJECT_MAX_LENGTH = 120;
 export const PROMOTION_BODY_MAX_LENGTH = 5000;
@@ -421,6 +442,19 @@ export type DiscountCodeFormValues = z.input<typeof discountCodeFormSchema>;
 export type DiscountCodeListFilterInput = z.infer<
   typeof discountCodeListFilterSchema
 >;
+
+export type ManagerIncident = z.infer<typeof managerIncidentSchema>;
+export type IncidentListFilterInput = z.input<typeof incidentListFilterSchema>;
+export type IncidentSummary = z.infer<typeof incidentSummarySchema>;
+export type IncidentsListResult = {
+  incidents: ManagerIncident[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+  };
+};
 
 export type ManagerPromotion = z.infer<typeof managerPromotionSchema>;
 export type PromotionListFilterInput = z.infer<typeof promotionListFilterSchema>;

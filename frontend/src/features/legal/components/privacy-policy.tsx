@@ -44,6 +44,13 @@ export function PrivacyPolicy() {
             accepted with it.
           </li>
           <li>
+            <strong>Problems with your orders:</strong> what went wrong with an order and when — a
+            cancellation by us, an order ready after its pickup time or not collected, a refund, a
+            payment that failed or was not made in time — and what our staff noted about it. When
+            three of your payment attempts fail or run out of time within a day, we flag it for a
+            manager.
+          </li>
+          <li>
             <strong>Orders taken at the counter or by phone:</strong> if you order there without an
             account, the name and phone number you give us, so we can hand the order over and reach
             you about it.
@@ -84,6 +91,10 @@ export function PrivacyPolicy() {
         <ul>
           <li>To take, make and hand over your orders — the agreement you make with us.</li>
           <li>To keep accounts secure and stop abuse, such as repeated failed sign-ins.</li>
+          <li>
+            To find and fix what goes wrong with orders, and to notice payments being misused, such as
+            one card declined after another. A flag changes nothing by itself: a manager looks into it.
+          </li>
           <li>To keep the sales records the law requires of a business.</li>
           <li>
             To email you promotions — only if you agreed, when you signed up or on your account page.
@@ -103,8 +114,9 @@ export function PrivacyPolicy() {
             look, reference photo included — never how to contact you.
           </li>
           <li>
-            Managers see sales figures, and the reviews you write with their order and the name on
-            your profile, so they can tell real reviews from fake ones — not your contact details.
+            Managers see sales figures; the reviews you write with their order and the name on your
+            profile, so they can tell real reviews from fake ones; and the problems with your orders by
+            order number — not your contact details.
           </li>
           <li>
             Anyone visiting our shop sees a review we published: its rating, comment and date, never
@@ -138,6 +150,10 @@ export function PrivacyPolicy() {
           <li>
             Your orders, as part of our sales records, for as long as accounting law requires — after
             you delete your account, without your name or contact details.
+          </li>
+          <li>
+            The problems with your orders, with those orders; deleting your account erases what our
+            staff noted about them.
           </li>
           <li>
             The name and phone number given for an order taken without an account, with that order in

@@ -21,9 +21,12 @@ import (
 // transitionOrders implements only what a status move uses; any other call panics.
 type transitionOrders struct {
 	port.OrderRepository
-	updated    *domainorder.Order
-	discount   *uuid.UUID
-	history    []port.AddOrderStatusEventParams
+	updated   *domainorder.Order
+	discount  *uuid.UUID
+	history   []port.AddOrderStatusEventParams
+	incidents []port.AddOrderIncidentParams
+	// flags makes every payment problem flag its customer.
+	flags      bool
 	err        error
 	historyErr error
 }
@@ -46,6 +49,18 @@ func (f *transitionOrders) AddStatusEvent(_ context.Context, params port.AddOrde
 	}
 	f.history = append(f.history, params)
 	return nil
+}
+
+func (f *transitionOrders) AddIncident(_ context.Context, params port.AddOrderIncidentParams) (*domainorder.Incident, error) {
+	f.incidents = append(f.incidents, params)
+	return &domainorder.Incident{ID: uuid.New(), OrderID: params.OrderID, Type: params.Type, Note: params.Note}, nil
+}
+
+func (f *transitionOrders) FlagPaymentAnomaly(_ context.Context, orderID uuid.UUID, _ time.Duration, _ int32) (*domainorder.Incident, error) {
+	if !f.flags {
+		return nil, nil
+	}
+	return &domainorder.Incident{ID: uuid.New(), OrderID: orderID, Type: domainorder.IncidentPaymentAnomaly}, nil
 }
 
 // cancelledTickets cancels the tickets of an order; any other call panics.
@@ -147,7 +162,8 @@ func TestOrderTransitions_Apply(t *testing.T) {
 			tx: inlineTx{}, orders: orders, tickets: tickets, discounts: codes, payments: refunds, events: outbox,
 		}
 
-		_, err := transitions.apply(context.Background(), &port.OrderActor{ID: uuid.New(), Role: domainuser.RoleStaff}, port.UpdateOrderStatusParams{
+		staff := &port.OrderActor{ID: uuid.New(), Role: domainuser.RoleStaff}
+		_, err := transitions.apply(context.Background(), staff, port.UpdateOrderStatusParams{
 			OrderID: orderID, FromStatus: domainorder.StatusInProduction, ToStatus: domainorder.StatusCancelled,
 		}, "The oven broke down")
 
@@ -156,20 +172,26 @@ func TestOrderTransitions_Apply(t *testing.T) {
 		assert.Equal(t, []uuid.UUID{orderID}, refunds.orders, "a paid order is refunded in full")
 		assert.Empty(t, codes.released, "a code used on an order already being made is not given back")
 		assert.Equal(t, orderID, tickets.orderID, "the tickets of the cancelled order")
-		require.Len(t, outbox.added, 3)
+		assert.Equal(t, []port.AddOrderIncidentParams{{
+			OrderID: orderID, Type: domainorder.IncidentBakeryCancelled, Actor: staff,
+		}}, orders.incidents, "the bakery cancelling an order it accepted is an incident; its reason stays in the history")
+		require.Len(t, outbox.added, 4)
 		assert.Equal(t, domainorder.TopicOrderStatusChanged, outbox.added[0].Topic)
-		assert.Equal(t, domainorder.TopicTicketChanged, outbox.added[1].Topic)
-		assert.Contains(t, outbox.added[1].Audience.Roles, domainuser.RoleBaker, "the kitchen hears its ticket is off")
-		assert.Equal(t, domainorder.TopicSlotsChanged, outbox.added[2].Topic)
-		assert.Equal(t, "2026-07-10", outbox.added[2].Data["date"], "the bakery day of the freed slot")
+		assert.Equal(t, domainorder.TopicIncidentRecorded, outbox.added[1].Topic)
+		assert.Equal(t, []domainuser.Role{domainuser.RoleManager}, outbox.added[1].Audience.Roles)
+		assert.Equal(t, domainorder.TopicTicketChanged, outbox.added[2].Topic)
+		assert.Contains(t, outbox.added[2].Audience.Roles, domainuser.RoleBaker, "the kitchen hears its ticket is off")
+		assert.Equal(t, domainorder.TopicSlotsChanged, outbox.added[3].Topic)
+		assert.Equal(t, "2026-07-10", outbox.added[3].Data["date"], "the bakery day of the freed slot")
 	})
 
 	t.Run("an_order_dropped_before_it_was_made_gives_its_discount_use_back", func(t *testing.T) {
 		t.Parallel()
 		code := uuid.New()
+		orders := &transitionOrders{discount: &code}
 		refunds, codes := &refundRequests{}, &codeReleases{}
 		transitions := orderTransitions{
-			tx: inlineTx{}, orders: &transitionOrders{discount: &code}, tickets: &cancelledTickets{},
+			tx: inlineTx{}, orders: orders, tickets: &cancelledTickets{},
 			discounts: codes, payments: refunds, events: &recordingOutbox{},
 		}
 
@@ -180,21 +202,46 @@ func TestOrderTransitions_Apply(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []uuid.UUID{code}, codes.released)
 		assert.Len(t, refunds.orders, 1)
+		assert.Empty(t, orders.incidents, "a customer changing their mind is no incident")
 	})
 
 	t.Run("a_missed_pickup_keeps_its_slot_payment_and_discount", func(t *testing.T) {
 		t.Parallel()
 		code := uuid.New()
-		outbox := &recordingOutbox{}
-		transitions := orderTransitions{tx: inlineTx{}, orders: &transitionOrders{discount: &code}, events: outbox}
+		orders, outbox := &transitionOrders{discount: &code}, &recordingOutbox{}
+		transitions := orderTransitions{tx: inlineTx{}, orders: orders, events: outbox}
 
 		_, err := transitions.apply(context.Background(), nil, port.UpdateOrderStatusParams{
 			OrderID: uuid.New(), FromStatus: domainorder.StatusReady, ToStatus: domainorder.StatusNoShow,
 		}, "")
 
 		require.NoError(t, err, "no ticket, discount or payment repository is touched")
-		require.Len(t, outbox.added, 1)
+		require.Len(t, outbox.added, 2)
 		assert.Equal(t, "no_show", outbox.added[0].Data["status"])
+		require.Len(t, orders.incidents, 1)
+		assert.Equal(t, domainorder.IncidentNoShow, orders.incidents[0].Type)
+		assert.Nil(t, orders.incidents[0].Actor, "the system records it")
+	})
+
+	t.Run("an_expiry_that_is_one_too_many_flags_the_customer", func(t *testing.T) {
+		t.Parallel()
+		orders, outbox := &transitionOrders{flags: true}, &recordingOutbox{}
+		transitions := orderTransitions{tx: inlineTx{}, orders: orders, tickets: &cancelledTickets{}, events: outbox}
+
+		_, err := transitions.apply(context.Background(), nil, port.UpdateOrderStatusParams{
+			OrderID: uuid.New(), FromStatus: domainorder.StatusAwaitingPayment, ToStatus: domainorder.StatusExpired,
+		}, "")
+
+		require.NoError(t, err)
+		require.Len(t, orders.incidents, 1)
+		assert.Equal(t, domainorder.IncidentPaymentExpired, orders.incidents[0].Type)
+		var recorded []string
+		for _, event := range outbox.added {
+			if event.Topic == domainorder.TopicIncidentRecorded {
+				recorded = append(recorded, event.Data["type"])
+			}
+		}
+		assert.Equal(t, []string{"payment_expired", "payment_anomaly"}, recorded, "managers hear of the expiry and of the flag")
 	})
 
 	t.Run("reports_a_move_someone_else_made_first_as_invalid", func(t *testing.T) {

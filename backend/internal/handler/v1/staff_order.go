@@ -87,6 +87,31 @@ func (h *StaffOrderHandler) PatchStatus(c fiber.Ctx) error {
 	return response.OK(c, out)
 }
 
+// ReportIncident records what staff found wrong with an order.
+func (h *StaffOrderHandler) ReportIncident(c fiber.Ctx) error {
+	response.EnsureRequestID(c)
+	actorID, actorRole, err := actorFromCtx(c)
+	if err != nil {
+		return err
+	}
+	orderID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid order id"))
+	}
+	var req dto.ReportOrderIncidentRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
+	}
+	if err := sharevalidator.Struct(&req); err != nil {
+		return writeValidationError(c, err)
+	}
+	out, err := h.usecase.ReportIncident(c.Context(), actorID, actorRole, orderID, req)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.Created(c, out)
+}
+
 // Create takes an order at the counter or on the phone. Every request carries
 // an Idempotency-Key: a retry with the same key returns the order it took.
 func (h *StaffOrderHandler) Create(c fiber.Ctx) error {

@@ -133,6 +133,16 @@ function PromotionsIcon({ className }: IconProps) {
   );
 }
 
+/** Warning triangle — what went wrong with orders. */
+function IncidentsIcon({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <path d="M12 3.5 21.5 20h-19L12 3.5Z" />
+      <path d="M12 10v4.5M12 17.25v.01" />
+    </IconBase>
+  );
+}
+
 /** Star — what customers rate their pickups. */
 function ReviewsIcon({ className }: IconProps) {
   return (
@@ -197,6 +207,7 @@ const DASHBOARD_NAV_ICONS = {
   combos: CombosIcon,
   dashboard: DashboardIcon,
   discounts: DiscountsIcon,
+  incidents: IncidentsIcon,
   messages: MessagesIcon,
   orders: OrdersIcon,
   password: PasswordIcon,

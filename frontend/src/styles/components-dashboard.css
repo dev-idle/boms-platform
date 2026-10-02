@@ -419,6 +419,7 @@
   .dashboard-page-header-actions {
     flex-shrink: 0;
     margin-left: auto;
+    max-width: 100%;
   }
 
   @media (max-width: 640px) {
@@ -635,6 +636,12 @@
   .dashboard-profile-section--plain .dashboard-profile-section-desc {
     color: var(--color-ink-2);
     line-height: 1.7;
+  }
+
+  .dashboard-profile-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--db-space-3);
   }
 
   .dashboard-profile-section--plain .dashboard-profile-form-actions {
@@ -1912,7 +1919,8 @@
     flex-wrap: nowrap;
   }
 
-  /* Pickups: the day picker and its steps sit together on the toolbar's left. */
+  /* A day or week picker and its steps sit together: on the pickups toolbar's
+     left, and in the incidents header. */
   .db-table-day {
     align-items: center;
     display: flex;
@@ -2071,6 +2079,17 @@
 
   .db-table--promotions col.db-table-col-status {
     width: var(--db-table-col-status-pill);
+  }
+
+  /* Incidents: the time is fixed; the incident and its order (code over the
+     pickup time) take three tenths of the rest each, the note what is left. */
+  .db-table--incidents {
+    min-width: calc(var(--db-table-col-datetime) + 36rem);
+  }
+
+  .db-table--incidents col.db-table-col-incident,
+  .db-table--incidents col.db-table-col-order {
+    width: calc((100% - var(--db-table-col-datetime)) * 0.3);
   }
 
   /* KPI strip (02-COMPONENTS §11): cells a 1px gap apart over the panel edge,

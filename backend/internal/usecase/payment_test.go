@@ -21,13 +21,24 @@ import (
 
 // paymentOrders holds one order; a status move succeeds only from the status
 // it is in, as the guarded UPDATE does. overdue puts it past its due time and
-// the grace after it. Any other call panics.
+// the grace after it. It records the incidents and flags none. Any other call
+// panics.
 type paymentOrders struct {
 	port.OrderRepository
-	order   domainorder.Order
-	overdue bool
-	history []domainorder.Status
-	actors  []*port.OrderActor
+	order     domainorder.Order
+	overdue   bool
+	history   []domainorder.Status
+	actors    []*port.OrderActor
+	incidents []domainorder.IncidentType
+}
+
+func (f *paymentOrders) AddIncident(_ context.Context, params port.AddOrderIncidentParams) (*domainorder.Incident, error) {
+	f.incidents = append(f.incidents, params.Type)
+	return &domainorder.Incident{ID: uuid.New(), OrderID: params.OrderID, Type: params.Type}, nil
+}
+
+func (f *paymentOrders) FlagPaymentAnomaly(context.Context, uuid.UUID, time.Duration, int32) (*domainorder.Incident, error) {
+	return nil, nil
 }
 
 // HasCustomItems holds no custom items: these orders go straight to the bakery.
@@ -391,7 +402,7 @@ func TestPaymentUsecase_Capture(t *testing.T) {
 		assert.Equal(t, domainpayment.StatusCaptured, status)
 	})
 
-	t.Run("a_declined_funding_lets_the_buyer_try_again", func(t *testing.T) {
+	t.Run("a_payment_not_approved_yet_lets_the_buyer_try_again", func(t *testing.T) {
 		t.Parallel()
 		f := newPaymentFixture()
 		f.started(domainpayment.StatusCreated)
@@ -401,11 +412,32 @@ func TestPaymentUsecase_Capture(t *testing.T) {
 
 		require.ErrorIs(t, err, domainpayment.ErrNotCompleted)
 		assert.Equal(t, domainpayment.StatusCreated, f.payments.payment.Status)
+		assert.Empty(t, f.orders.incidents, "a buyer who has not approved has not failed to pay")
 
 		denied := newPaymentFixture()
 		denied.started(domainpayment.StatusDenied)
 		_, err = denied.usecase().Capture(ctx, denied.customer, denied.orderID)
 		require.ErrorIs(t, err, domainpayment.ErrNotCompleted, "a denied payment starts over through Start")
+	})
+
+	t.Run("a_declined_card_is_refused_once_and_starts_over", func(t *testing.T) {
+		t.Parallel()
+		f := newPaymentFixture()
+		f.started(domainpayment.StatusCreated)
+		f.gateway.captureErr = domainpayment.ErrDeclined
+
+		_, err := f.usecase().Capture(ctx, f.customer, f.orderID)
+		require.ErrorIs(t, err, domainpayment.ErrNotCompleted)
+		_, err = f.usecase().Capture(ctx, f.customer, f.orderID)
+		require.ErrorIs(t, err, domainpayment.ErrNotCompleted, "asking again answers the same")
+
+		assert.Equal(t, domainpayment.StatusDenied, f.payments.payment.Status)
+		assert.Equal(t, 1, f.gateway.captures, "PayPal is not asked again")
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentPaymentFailed}, f.orders.incidents,
+			"the decline counts once towards a flag")
+		_, err = f.usecase().Start(ctx, f.customer, f.orderID)
+		require.NoError(t, err)
+		assert.Equal(t, 1, f.gateway.created, "paying again starts a new PayPal order")
 	})
 
 	t.Run("a_capture_paypal_refuses_lets_the_buyer_start_over", func(t *testing.T) {
@@ -418,6 +450,7 @@ func TestPaymentUsecase_Capture(t *testing.T) {
 
 		require.ErrorIs(t, err, domainpayment.ErrNotCompleted)
 		assert.Equal(t, domainpayment.StatusDenied, f.payments.payment.Status)
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentPaymentFailed}, f.orders.incidents)
 		_, err = f.usecase().Start(ctx, f.customer, f.orderID)
 		require.NoError(t, err)
 		assert.Equal(t, 1, f.gateway.created, "a new PayPal order")
@@ -525,9 +558,12 @@ func TestPaymentUsecase_HandleWebhook(t *testing.T) {
 		f.gateway.event = notice(domainpayment.StatusDenied)
 
 		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
 
 		assert.Equal(t, domainpayment.StatusDenied, f.payments.payment.Status)
 		assert.Equal(t, domainorder.StatusAwaitingPayment, f.orders.order.Status)
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentPaymentFailed}, f.orders.incidents,
+			"a notice delivered again records no second failure")
 	})
 
 	t.Run("an_unsigned_delivery_is_refused", func(t *testing.T) {
@@ -579,6 +615,7 @@ func TestPaymentUsecase_ExpireOverdue(t *testing.T) {
 		assert.Equal(t, []uuid.UUID{*f.orders.order.DiscountCodeID}, f.codes.released)
 		require.NotEmpty(t, f.outbox.events)
 		assert.Equal(t, "expired", f.outbox.events[0].Data["status"], "the customer is told")
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentPaymentExpired}, f.orders.incidents)
 	})
 
 	t.Run("a_buyer_who_paid_after_all_is_confirmed_instead", func(t *testing.T) {
@@ -622,6 +659,8 @@ func TestPaymentUsecase_ExpireOverdue(t *testing.T) {
 		assert.Equal(t, 1, expired)
 		assert.Equal(t, domainpayment.StatusDenied, f.payments.payment.Status)
 		assert.Equal(t, domainorder.StatusExpired, f.orders.order.Status)
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentPaymentFailed, domainorder.IncidentPaymentExpired},
+			f.orders.incidents, "the refusal PayPal had not told us of, then the expiry")
 	})
 
 	t.Run("a_failure_is_reported_and_expires_nothing", func(t *testing.T) {
@@ -663,13 +702,16 @@ func TestPaymentUsecase_RefundDue(t *testing.T) {
 		assert.Equal(t, domainpayment.StatusRefunded, f.payments.payment.Status)
 		require.NotNil(t, f.payments.refundID)
 		assert.Equal(t, "REFUND-1", *f.payments.refundID)
-		require.Len(t, f.outbox.events, 1)
+		require.Len(t, f.outbox.events, 2)
 		assert.Equal(t, domainorder.TopicOrderRefunded, f.outbox.events[0].Topic)
+		assert.Equal(t, domainorder.TopicIncidentRecorded, f.outbox.events[1].Topic)
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentRefunded}, f.orders.incidents)
 
 		again, err := f.usecase().RefundDue(ctx)
 		require.NoError(t, err)
 		assert.Zero(t, again, "a refund is made once")
 		assert.Equal(t, 1, f.gateway.refunds)
+		assert.Len(t, f.orders.incidents, 1)
 	})
 
 	t.Run("a_capture_refunded_from_paypal_is_recorded_as_refunded", func(t *testing.T) {
@@ -697,5 +739,6 @@ func TestPaymentUsecase_RefundDue(t *testing.T) {
 		assert.Zero(t, refunded)
 		assert.Equal(t, domainpayment.StatusCaptured, f.payments.payment.Status, "still due")
 		assert.Empty(t, f.outbox.events)
+		assert.Empty(t, f.orders.incidents, "nothing went back yet")
 	})
 }

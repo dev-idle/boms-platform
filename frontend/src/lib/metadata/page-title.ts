@@ -49,6 +49,7 @@ export const PAGE_TITLES = {
   reviews: "Reviews",
   promotions: "Promotions",
   newPromotion: "New Promotion",
+  incidents: "Incidents",
   breadcrumbDetail: "Detail",
   breadcrumbNew: "New",
 } as const;

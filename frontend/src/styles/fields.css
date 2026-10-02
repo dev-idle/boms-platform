@@ -662,8 +662,8 @@ textarea.field-chrome {
   border-bottom-color: var(--field-border);
 }
 
-/* The pickup day sits in a row with its steps, at its own width. Unlayered, so
-   it outranks `.field-chrome` and the `w-full` utility. */
+/* A day or week field sits in a row with its steps, at its own width.
+   Unlayered, so it outranks `.field-chrome` and the `w-full` utility. */
 .db-table-day .field-chrome {
   width: auto;
 }
@@ -901,6 +901,11 @@ textarea.field-chrome {
 .field-select {
   position: relative;
   width: 100%;
+}
+
+/* A select filter in a table toolbar sits at the right at most 18rem wide. */
+.db-table-filters .field-select {
+  width: min(100%, 18rem);
 }
 
 .field-select-trigger.field-chrome--select[data-state="open"] {

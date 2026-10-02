@@ -220,6 +220,10 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "1 to 5000 plain characters"))
 	case errors.Is(err, domainorder.ErrInvalidCancelReason):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 plain characters"))
+	case errors.Is(err, domainorder.ErrInvalidIncidentType):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("type", "must be wrong_items, custom_mismatch or other"))
+	case errors.Is(err, domainorder.ErrInvalidIncidentNote):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("note", "must be 1 to 500 plain characters"))
 	case errors.Is(err, domainstore.ErrInvalidClosedDateReason):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 characters"))
 	case errors.Is(err, domainstore.ErrClosedDateExists):

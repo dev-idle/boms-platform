@@ -6,6 +6,7 @@ import {
   browserRequestWithMeta,
 } from "@/lib/browser-api-client";
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
+import { orderIncidentSchema, type OrderIncident } from "@/lib/schemas/incident";
 import { messageInputSchema, messageSchema, type Message, type MessageInput } from "@/lib/schemas/message";
 import {
   patchTicketStatusInputSchema,
@@ -24,6 +25,7 @@ import {
   createStaffOrderInputSchema,
   moveTicketInputSchema,
   patchStaffOrderStatusInputSchema,
+  reportIncidentInputSchema,
   staffCustomerSchema,
   staffOrderItemInputSchema,
   staffOrderQuoteSchema,
@@ -49,6 +51,7 @@ import {
   type StaffProductsFilterInput,
   type StaffProductsListResult,
   type PatchStaffOrderStatusInput,
+  type ReportIncidentInput,
   type StaffOrder,
   type StaffOrdersListFilterInput,
   type StaffOrdersListResult,
@@ -114,6 +117,16 @@ export async function getStaffOrder(id: string): Promise<StaffOrder> {
   return browserRequest<StaffOrder>(`/api/v1/staff/orders/${parsedId}`, {
     method: "GET",
     schema: staffOrderSchema,
+  });
+}
+
+/** Records what staff found wrong with an order; managers see it in the incident log. */
+export async function reportOrderIncident(id: string, input: ReportIncidentInput): Promise<OrderIncident> {
+  const parsedId = z.uuid().parse(id);
+  return browserRequest<OrderIncident>(`/api/v1/staff/orders/${parsedId}/incidents`, {
+    method: "POST",
+    schema: orderIncidentSchema,
+    json: reportIncidentInputSchema.parse(input),
   });
 }
 

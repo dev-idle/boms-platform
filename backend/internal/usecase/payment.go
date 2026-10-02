@@ -168,6 +168,11 @@ func (u *PaymentUsecase) Capture(ctx context.Context, userID, orderID uuid.UUID)
 		return "", domainpayment.ErrNotPayable
 	}
 	capture, err := u.gateway.Capture(ctx, p.ProviderOrderID)
+	if errors.Is(err, domainpayment.ErrDeclined) {
+		// Nothing was captured: the payment is refused as one the provider
+		// denies is, so the decline counts once and paying again starts over.
+		capture, err = domainpayment.Capture{Status: domainpayment.StatusDenied, AmountCents: p.AmountCents, Currency: p.Currency}, nil
+	}
 	if err != nil {
 		return "", err
 	}
@@ -288,7 +293,8 @@ func (u *PaymentUsecase) settle(ctx context.Context, orderID uuid.UUID) (domainp
 
 // record keeps the provider's answer to a capture and, when the money is
 // taken, moves the order on in the same transaction — to the bakery, or to
-// staff review for a custom order: the two exist together or not at all.
+// staff review for a custom order: the two exist together or not at all. A
+// refusal is an incident.
 func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment, capture domainpayment.Capture) error {
 	if capture.Currency != p.Currency || capture.AmountCents != p.AmountCents {
 		return apperrors.Errorf("payment %s: captured %d %s for an order of %d %s: %w",
@@ -298,6 +304,12 @@ func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment,
 		if errors.Is(err, apperrors.ErrNotFound) {
 			return nil
 		}
+		return err
+	}
+	if capture.Status == domainpayment.StatusDenied {
+		_, err := recordIncident(txCtx, u.orders, u.transitions.events, port.AddOrderIncidentParams{
+			OrderID: p.OrderID, Type: domainorder.IncidentPaymentFailed,
+		})
 		return err
 	}
 	if capture.Status != domainpayment.StatusCaptured {
@@ -348,8 +360,8 @@ func (u *PaymentUsecase) RefundDue(ctx context.Context) (int, error) {
 	return refunded, errors.Join(failures...)
 }
 
-// refund returns a payment's capture to the buyer, records it and tells the
-// customer and the counter.
+// refund returns a payment's capture to the buyer, records it with its
+// incident and tells the customer and the counter.
 func (u *PaymentUsecase) refund(ctx context.Context, p *domainpayment.Payment) error {
 	var refundID *string
 	id, err := u.gateway.Refund(ctx, *p.CaptureID)
@@ -373,6 +385,12 @@ func (u *PaymentUsecase) refund(ctx context.Context, p *domainpayment.Payment) e
 		if err != nil {
 			return err
 		}
-		return u.transitions.events.Add(txCtx, domainorder.RefundedEvent(*order))
+		if err := u.transitions.events.Add(txCtx, domainorder.RefundedEvent(*order)); err != nil {
+			return err
+		}
+		_, err = recordIncident(txCtx, u.orders, u.transitions.events, port.AddOrderIncidentParams{
+			OrderID: order.ID, Type: domainorder.IncidentRefunded,
+		})
+		return err
 	})
 }

@@ -182,6 +182,56 @@ func (ns NullOrderChannel) Value() (driver.Value, error) {
 	return string(ns.OrderChannel), nil
 }
 
+type OrderIncidentType string
+
+const (
+	OrderIncidentTypeBakeryCancelled OrderIncidentType = "bakery_cancelled"
+	OrderIncidentTypeReadyLate       OrderIncidentType = "ready_late"
+	OrderIncidentTypeNoShow          OrderIncidentType = "no_show"
+	OrderIncidentTypePaymentFailed   OrderIncidentType = "payment_failed"
+	OrderIncidentTypePaymentExpired  OrderIncidentType = "payment_expired"
+	OrderIncidentTypeRefunded        OrderIncidentType = "refunded"
+	OrderIncidentTypePaymentAnomaly  OrderIncidentType = "payment_anomaly"
+	OrderIncidentTypeWrongItems      OrderIncidentType = "wrong_items"
+	OrderIncidentTypeCustomMismatch  OrderIncidentType = "custom_mismatch"
+	OrderIncidentTypeOther           OrderIncidentType = "other"
+)
+
+func (e *OrderIncidentType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrderIncidentType(s)
+	case string:
+		*e = OrderIncidentType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrderIncidentType: %T", src)
+	}
+	return nil
+}
+
+type NullOrderIncidentType struct {
+	OrderIncidentType OrderIncidentType `json:"orderIncidentType"`
+	Valid             bool              `json:"valid"` // Valid is true if OrderIncidentType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrderIncidentType) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrderIncidentType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrderIncidentType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrderIncidentType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrderIncidentType), nil
+}
+
 type OrderStatus string
 
 const (
@@ -810,6 +860,16 @@ type Order struct {
 type OrderDayCounter struct {
 	Day        time.Time `json:"day"`
 	LastNumber int32     `json:"lastNumber"`
+}
+
+type OrderIncident struct {
+	ID        uuid.UUID         `json:"id"`
+	OrderID   uuid.UUID         `json:"orderId"`
+	Type      OrderIncidentType `json:"type"`
+	Note      *string           `json:"note"`
+	ActorID   *uuid.UUID        `json:"actorId"`
+	ActorRole *UserRole         `json:"actorRole"`
+	CreatedAt time.Time         `json:"createdAt"`
 }
 
 type OrderItem struct {

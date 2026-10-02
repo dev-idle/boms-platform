@@ -15,6 +15,7 @@ import {
   pickupOrderType,
   pickupProblem,
   pickupSlotsOfDay,
+  shiftDay,
   type PickupProblem,
   type PickupWindow,
 } from "./pickup";
@@ -155,5 +156,12 @@ describe("earliestPickupLocalValue", () => {
   it("is empty when the booking window holds no open slot", () => {
     const evening = pickupInstantFromLocalInput("2026-07-12T17:00")!;
     expect(earliestPickupLocalValue({ ...WINDOW, maxAdvanceDays: 1 }, evening, KITCHEN)).toBe("");
+  });
+});
+
+describe("shiftDay", () => {
+  it("moves across months and years", () => {
+    expect(shiftDay("2026-10-01", -1)).toBe("2026-09-30");
+    expect(shiftDay("2026-12-31", 1)).toBe("2027-01-01");
   });
 });

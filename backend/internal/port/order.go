@@ -124,6 +124,7 @@ type UpdateOrderStatusParams struct {
 }
 
 type OrderRepository interface {
+	OrderIncidentRepository
 	Create(ctx context.Context, params CreateOrderParams) (*domainorder.Order, error)
 	GetByIDForUser(ctx context.Context, userID, orderID uuid.UUID) (*domainorder.Order, error)
 	// GetByCheckoutKey returns the customer's order placed by the checkout

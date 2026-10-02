@@ -74,7 +74,8 @@ type PaymentGateway interface {
 	CreateOrder(ctx context.Context, req PaymentOrderRequest) (providerOrderID, approveURL string, err error)
 	// Capture takes the money the buyer approved. Asking again for the same
 	// provider order returns the first answer. An order the buyer did not
-	// approve, or whose funding was declined, is domainpayment.ErrNotCompleted.
+	// approve is domainpayment.ErrNotCompleted; one whose funding was
+	// declined, domainpayment.ErrDeclined.
 	Capture(ctx context.Context, providerOrderID string) (domainpayment.Capture, error)
 	// Lookup reads what the provider captured on its order: nil when nothing
 	// was or the provider no longer has the order; a refused capture comes

@@ -388,6 +388,23 @@ type Querier interface {
 	//    AND pickup_at < $3::timestamptz
 	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 	CountCustomerOrdersBetween(ctx context.Context, arg CountCustomerOrdersBetweenParams) (int64, error)
+	//CountOrderIncidents
+	//
+	//  SELECT count(*)::bigint
+	//  FROM order_incidents
+	//  WHERE created_at >= $1
+	//    AND created_at < $2
+	//    AND ($3::order_incident_type IS NULL OR type = $3::order_incident_type)
+	CountOrderIncidents(ctx context.Context, arg CountOrderIncidentsParams) (int64, error)
+	//CountOrderIncidentsByType
+	//
+	//  SELECT type, count(*)::bigint AS count
+	//  FROM order_incidents
+	//  WHERE created_at >= $1
+	//    AND created_at < $2
+	//  GROUP BY type
+	//  ORDER BY type
+	CountOrderIncidentsByType(ctx context.Context, arg CountOrderIncidentsByTypeParams) ([]CountOrderIncidentsByTypeRow, error)
 	//CountOrdersByPickupTime
 	//
 	//  SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
@@ -634,6 +651,18 @@ type Querier interface {
 	//    guest_name,
 	//    guest_phone
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
+	//CreateOrderIncident
+	//
+	//  INSERT INTO order_incidents (order_id, type, note, actor_id, actor_role)
+	//  VALUES (
+	//    $1,
+	//    $2::order_incident_type,
+	//    $3,
+	//    $4,
+	//    $5::user_role
+	//  )
+	//  RETURNING id, order_id, type, note, actor_id, actor_role, created_at
+	CreateOrderIncident(ctx context.Context, arg CreateOrderIncidentParams) (OrderIncident, error)
 	// One round trip for every checkout line: the items arrive as a JSON array and
 	// Postgres casts each field to the column type (constraints still apply per row).
 	//
@@ -852,6 +881,13 @@ type Querier interface {
 	//      updated_at = now()
 	//  WHERE user_id = $1
 	EraseCustomerProfile(ctx context.Context, userID uuid.UUID) error
+	//EraseOrderIncidentNotes
+	//
+	//  UPDATE order_incidents
+	//  SET note = NULL
+	//  WHERE note IS NOT NULL
+	//    AND order_id IN (SELECT id FROM orders WHERE user_id = $1::uuid)
+	EraseOrderIncidentNotes(ctx context.Context, userID uuid.UUID) error
 	// Erases an account's personal details at its owner's request and closes it.
 	// The email becomes a placeholder nobody can sign in with or receive mail at
 	// (RFC 2606 reserves .invalid), freeing the address, and the password can no
@@ -909,6 +945,25 @@ type Querier interface {
 	//    guest_name,
 	//    guest_phone
 	ExpireOrder(ctx context.Context, arg ExpireOrderParams) (Order, error)
+	// Flags the customer of an order when their orders' payments failed or expired
+	// threshold times within the window, unless a flag within it already covers
+	// them; no row when it records none. An order without a customer flags nobody.
+	//
+	//  WITH recent AS (
+	//    SELECT i.type
+	//    FROM order_incidents i
+	//    JOIN orders o ON o.id = i.order_id
+	//    JOIN orders flagged ON flagged.user_id = o.user_id
+	//    WHERE flagged.id = $1
+	//      AND i.type IN ('payment_failed', 'payment_expired', 'payment_anomaly')
+	//      AND i.created_at > now() - make_interval(secs => $3::double precision)
+	//  )
+	//  INSERT INTO order_incidents (order_id, type)
+	//  SELECT $1, 'payment_anomaly'::order_incident_type
+	//  WHERE (SELECT count(*) FROM recent WHERE type <> 'payment_anomaly') >= $2::int
+	//    AND NOT EXISTS (SELECT 1 FROM recent WHERE type = 'payment_anomaly')
+	//  RETURNING id, order_id, type, note, actor_id, actor_role, created_at
+	FlagPaymentAnomaly(ctx context.Context, arg FlagPaymentAnomalyParams) (OrderIncident, error)
 	//GetAdminProfileByUserID
 	//
 	//  SELECT user_id, full_name, phone, created_at, updated_at
@@ -1440,6 +1495,41 @@ type Querier interface {
 	//  ORDER BY pickup_at
 	//  LIMIT $2::int
 	ListMissedPickups(ctx context.Context, arg ListMissedPickupsParams) ([]uuid.UUID, error)
+	// A page of the incidents recorded in [from_at, to_at), latest first, with
+	// each order's code and pickup time, the staff member who recorded it and, for
+	// a bakery cancellation, the reason the customer was given (an order is
+	// cancelled once).
+	//
+	//  SELECT
+	//    i.id,
+	//    i.order_id,
+	//    i.type,
+	//    i.note,
+	//    i.created_at,
+	//    o.code AS order_code,
+	//    o.pickup_at,
+	//    sp.full_name AS actor_name,
+	//    cancelled.reason AS cancel_reason
+	//  FROM order_incidents i
+	//  JOIN orders o ON o.id = i.order_id
+	//  LEFT JOIN staff_profiles sp ON sp.user_id = i.actor_id
+	//  LEFT JOIN order_status_events cancelled
+	//    ON i.type = 'bakery_cancelled'
+	//    AND cancelled.order_id = i.order_id
+	//    AND cancelled.to_status = 'cancelled'
+	//  WHERE i.created_at >= $1
+	//    AND i.created_at < $2
+	//    AND ($3::order_incident_type IS NULL OR i.type = $3::order_incident_type)
+	//  ORDER BY i.created_at DESC, i.id DESC
+	//  LIMIT $5 OFFSET $4
+	ListOrderIncidents(ctx context.Context, arg ListOrderIncidentsParams) ([]ListOrderIncidentsRow, error)
+	// The incidents of many orders in one round trip, as a data export reads them.
+	//
+	//  SELECT id, order_id, type, note, actor_id, actor_role, created_at
+	//  FROM order_incidents
+	//  WHERE order_id = ANY($1::uuid[])
+	//  ORDER BY order_id, created_at ASC, id ASC
+	ListOrderIncidentsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]OrderIncident, error)
 	//ListOrderItemsByOrderID
 	//
 	//  SELECT
@@ -1838,6 +1928,15 @@ type Querier interface {
 	//
 	//  SELECT pg_advisory_xact_lock($1::int, hashtext($2::uuid::text))
 	LockCustomerBookings(ctx context.Context, arg LockCustomerBookingsParams) error
+	// Holds the flags of the order's customer until the transaction ends, so two
+	// of their payments failing at once both count. The key is the customer, under
+	// a namespace of its own; an order without a customer locks nothing.
+	//
+	//  SELECT pg_advisory_xact_lock($1::int, hashtext(user_id::text))
+	//  FROM orders
+	//  WHERE id = $2
+	//    AND user_id IS NOT NULL
+	LockCustomerIncidents(ctx context.Context, arg LockCustomerIncidentsParams) error
 	// Holds the order row until the transaction ends: every ticket move takes it
 	// first, and the order's own status moves take the same row lock through their
 	// guarded UPDATE, so its status is derived from tickets no one else is moving.

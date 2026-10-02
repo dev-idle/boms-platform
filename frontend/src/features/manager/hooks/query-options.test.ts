@@ -21,6 +21,18 @@ describe("managerQueryKeysForEvent", () => {
     }
   });
 
+  it("refreshes the incident log and its counts when one is recorded", () => {
+    expect(managerQueryKeysForEvent({ type: "incident.recorded", data: { incident_id: "i-1", type: "no_show" } })).toEqual([
+      managerQueryKeys.incidentsRoot,
+    ]);
+  });
+
+  it("holds a week's counts under the incidents they add up", () => {
+    expect(managerQueryKeys.incidentSummary("2026-09-28").slice(0, managerQueryKeys.incidentsRoot.length)).toEqual([
+      ...managerQueryKeys.incidentsRoot,
+    ]);
+  });
+
   it("ignores events it does not know", () => {
     expect(managerQueryKeysForEvent({ type: "order.created", data: { order_id: "o-1" } })).toEqual([]);
   });

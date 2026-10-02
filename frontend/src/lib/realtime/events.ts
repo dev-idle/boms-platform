@@ -3,6 +3,7 @@ import { z } from "zod";
 /** Event types the API pushes — mirrors the topics in the backend domain `event.go` files. */
 export const REALTIME_EVENT_TYPE = {
   conversationChanged: "conversation.changed",
+  incidentRecorded: "incident.recorded",
   messageCreated: "message.created",
   orderCreated: "order.created",
   orderStatusChanged: "order.status_changed",

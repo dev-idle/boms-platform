@@ -145,6 +145,9 @@ func (u *AccountErasureUsecase) erase(txCtx context.Context, user *domainuser.Us
 	if err := u.conversations.EraseForCustomer(txCtx, user.ID); err != nil {
 		return err
 	}
+	if err := u.orders.EraseIncidentNotes(txCtx, user.ID); err != nil {
+		return err
+	}
 	if err := u.saved.RemoveAll(txCtx, user.ID); err != nil {
 		return err
 	}

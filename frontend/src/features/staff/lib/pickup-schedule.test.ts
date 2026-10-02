@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { StaffPickup } from "../schemas";
-import { groupPickupsBySlot, isLatePickup, shiftDay } from "./pickup-schedule";
+import { groupPickupsBySlot, isLatePickup } from "./pickup-schedule";
 
 const pickup = (id: number, pickupAt: string, status: StaffPickup["status"] = "confirmed"): StaffPickup => ({
   id: `00000000-0000-4000-8000-00000000000${id}`,
@@ -45,12 +45,5 @@ describe("isLatePickup", () => {
     expect(isLatePickup(pickup(1, "2026-10-01T09:00:00+07:00", "ready"), 60, now)).toBe(false);
     expect(isLatePickup(pickup(1, "2026-10-01T09:00:00+07:00", "fulfilled"), 30, now)).toBe(false);
     expect(isLatePickup(pickup(1, "2026-10-01T09:00:00+07:00", "no_show"), 30, now)).toBe(false);
-  });
-});
-
-describe("shiftDay", () => {
-  it("moves across months and years", () => {
-    expect(shiftDay("2026-10-01", -1)).toBe("2026-09-30");
-    expect(shiftDay("2026-12-31", 1)).toBe("2027-01-01");
   });
 });

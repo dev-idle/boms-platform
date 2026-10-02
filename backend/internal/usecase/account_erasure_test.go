@@ -42,12 +42,20 @@ func (c *erasureCarts) DeleteAllItems(context.Context, uuid.UUID) error {
 
 func (c *erasureCarts) ClearDiscountCode(context.Context, uuid.UUID) error { return nil }
 
+// erasureOrders says whether the customer has an open order and records whose
+// incident notes were erased.
 type erasureOrders struct {
 	port.OrderRepository
-	open bool
+	open   bool
+	erased []uuid.UUID
 }
 
 func (o *erasureOrders) HasOpen(context.Context, uuid.UUID) (bool, error) { return o.open, nil }
+
+func (o *erasureOrders) EraseIncidentNotes(_ context.Context, userID uuid.UUID) error {
+	o.erased = append(o.erased, userID)
+	return nil
+}
 
 // erasureMessages records whose messages were erased.
 type erasureMessages struct {
@@ -141,6 +149,7 @@ func (f *erasureFixture) nothingErased(t *testing.T) {
 	t.Helper()
 	assert.False(t, f.carts.emptied, "the cart is kept")
 	assert.Empty(t, f.messages.erased, "the messages are kept")
+	assert.Empty(t, f.orders.erased, "the incident notes are kept")
 	assert.Empty(t, f.saved.emptied, "the saved lists are kept")
 	assert.Empty(t, f.reviews.erased, "the reviews are kept")
 	f.customers.AssertNotCalled(t, "Erase", mock.Anything, mock.Anything)
@@ -162,6 +171,7 @@ func TestAccountErasureUsecase_Erase(t *testing.T) {
 
 		assert.True(t, f.carts.emptied, "the cart is emptied")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.messages.erased, "the messages about their orders go")
+		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.orders.erased, "what staff wrote about their orders goes")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.saved.emptied, "their favorites and wishlist go")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.reviews.erased, "what they wrote in reviews goes")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.tokens.deleted, "no emailed link outlives the account")

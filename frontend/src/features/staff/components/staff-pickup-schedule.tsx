@@ -20,10 +20,10 @@ import { ROUTE } from "@/constants/routes";
 import { useNow } from "@/lib/hooks/use-now";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import type { OrderStatus } from "@/lib/schemas/order";
-import { bakeryDayOf, formatPickupWallTime } from "@/lib/validation/pickup";
+import { bakeryDayOf, formatPickupWallTime, shiftDay } from "@/lib/validation/pickup";
 
 import { useStaffPickups } from "../hooks";
-import { groupPickupsBySlot, isLatePickup, shiftDay } from "../lib/pickup-schedule";
+import { groupPickupsBySlot, isLatePickup } from "../lib/pickup-schedule";
 import type { StaffPickup } from "../schemas";
 import { StaffCustomerCell } from "./staff-customer-cell";
 import { StaffHandoffDialog } from "./staff-handoff-dialog";

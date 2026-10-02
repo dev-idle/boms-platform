@@ -1759,7 +1759,7 @@ table "payments" {
     expr = "currency ~ '^[A-Z]{3}$'"
   }
   check "payments_capture_check" {
-    expr = "provider <> 'paypal' OR ((status = 'created') = (capture_id IS NULL))"
+    expr = "provider <> 'paypal' OR status = 'denied' OR ((status = 'created') = (capture_id IS NULL))"
   }
   check "payments_provider_check" {
     expr = "(provider = 'paypal') = (provider_order_id IS NOT NULL AND approve_url IS NOT NULL)"
@@ -2173,5 +2173,79 @@ table "promotions" {
   }
   check "promotions_recipient_count_check" {
     expr = "recipient_count >= 0"
+  }
+}
+
+enum "order_incident_type" {
+  schema = schema.public
+  values = ["bakery_cancelled", "ready_late", "no_show", "payment_failed", "payment_expired", "refunded", "payment_anomaly", "wrong_items", "custom_mismatch", "other"]
+}
+
+// Something that went wrong with an order: the system records the first seven
+// types as they happen, staff report the last three.
+table "order_incidents" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "order_id" {
+    type = uuid
+    null = false
+  }
+  column "type" {
+    type = enum.order_incident_type
+    null = false
+  }
+  // What staff wrote reporting it; cleared when the customer erases their
+  // account. A bakery cancellation's reason stays in the order's history.
+  column "note" {
+    type = text
+    null = true
+  }
+  // Both empty: the system recorded it.
+  column "actor_id" {
+    type = uuid
+    null = true
+  }
+  column "actor_role" {
+    type = enum.user_role
+    null = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "order_incidents_order_id_fkey" {
+    columns     = [column.order_id]
+    ref_columns = [table.orders.column.id]
+    on_delete   = CASCADE
+  }
+  foreign_key "order_incidents_actor_id_fkey" {
+    columns     = [column.actor_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  // The incidents of a week, latest first.
+  index "order_incidents_created_at_idx" {
+    columns = [column.created_at]
+  }
+  // An order's incidents, and a customer's recent ones through their orders.
+  index "order_incidents_order_created_idx" {
+    columns = [column.order_id, column.created_at]
+  }
+  check "order_incidents_actor_check" {
+    expr = "(actor_id IS NULL) = (actor_role IS NULL)"
+  }
+  check "order_incidents_reported_check" {
+    expr = "type NOT IN ('wrong_items', 'custom_mismatch', 'other') OR actor_id IS NOT NULL"
+  }
+  check "order_incidents_note_check" {
+    expr = "note IS NULL OR (char_length(note) BETWEEN 1 AND 500 AND type IN ('wrong_items', 'custom_mismatch', 'other'))"
   }
 }

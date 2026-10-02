@@ -28,7 +28,7 @@ const dataExportPage int32 = 100
 // download (the right of access): their account and profile, the policies they
 // accepted, their sign-in sessions, the changes recorded to their account and,
 // for a customer, their cart, their favorites and wishlist, their reviews, and
-// every order with its lines, history and messages.
+// every order with its lines, history, messages and incidents.
 type DataExportUsecase struct {
 	users         port.UserRepository
 	profiles      *profilesvc.Service
@@ -155,7 +155,7 @@ func (u *DataExportUsecase) Export(ctx context.Context, userID uuid.UUID) (*Data
 }
 
 // exportOrders reads every order the customer placed, newest first, by keyset,
-// with each page's lines, histories and messages read at once.
+// with each page's lines, histories, messages and incidents read at once.
 func (u *DataExportUsecase) exportOrders(ctx context.Context, userID uuid.UUID) ([]dto.DataExportOrderResponse, error) {
 	out := make([]dto.DataExportOrderResponse, 0)
 	var before *port.PageCursor
@@ -188,6 +188,7 @@ func (u *DataExportUsecase) exportOrderPage(ctx context.Context, orders []domain
 	var items map[uuid.UUID][]domainorder.Item
 	var timelines map[uuid.UUID][]domainorder.StatusEvent
 	var messages map[uuid.UUID][]domainconversation.Message
+	var incidents map[uuid.UUID][]domainorder.Incident
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
 		var err error
@@ -202,6 +203,11 @@ func (u *DataExportUsecase) exportOrderPage(ctx context.Context, orders []domain
 	group.Go(func() error {
 		var err error
 		messages, err = u.conversations.ListMessagesByOrderIDs(groupCtx, ids)
+		return err
+	})
+	group.Go(func() error {
+		var err error
+		incidents, err = u.orders.ListIncidentsByOrderIDs(groupCtx, ids)
 		return err
 	})
 	if err := group.Wait(); err != nil {
@@ -223,6 +229,7 @@ func (u *DataExportUsecase) exportOrderPage(ctx context.Context, orders []domain
 			Items:                mapOrderItemsToDTO(items[order.ID]),
 			Timeline:             mapOrderTimelineToDTO(timelines[order.ID]),
 			Messages:             toMessageResponses(messages[order.ID], false),
+			Incidents:            toOrderIncidentResponses(incidents[order.ID]),
 			CreatedAt:            order.CreatedAt,
 			UpdatedAt:            order.UpdatedAt,
 		})

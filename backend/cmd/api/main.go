@@ -148,6 +148,7 @@ func main() {
 	reviewUC := usecase.NewReviewUsecase(userRepo, orderRepo, reviewRepo, pgPool, outboxRepo)
 	managerReviewUC := usecase.NewManagerReviewUsecase(reviewRepo, pgPool, outboxRepo, auditLogger, zlog)
 	managerPromotionUC := usecase.NewManagerPromotionUsecase(promotionRepo, pgPool, outboxRepo, auditLogger, zlog)
+	managerIncidentUC := usecase.NewManagerIncidentUsecase(orderRepo)
 	unsubscribeUC := usecase.NewUnsubscribeUsecase(userRepo, customerProfileRepo, pgPool, auditLogger,
 		domainpromotion.NewUnsubscribeTokens(cfg.Promotion.UnsubscribeSecret))
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
@@ -184,6 +185,7 @@ func main() {
 	reviewHandler := v1.NewReviewHandler(reviewUC)
 	managerReviewHandler := v1.NewManagerReviewHandler(managerReviewUC)
 	managerPromotionHandler := v1.NewManagerPromotionHandler(managerPromotionUC)
+	managerIncidentHandler := v1.NewManagerIncidentHandler(managerIncidentUC)
 	unsubscribeHandler := v1.NewUnsubscribeHandler(unsubscribeUC)
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
@@ -363,6 +365,8 @@ func main() {
 	managerRead.Get("/reviews/summary", managerReviewHandler.Summary)
 	managerRead.Get("/promotions", managerPromotionHandler.List)
 	managerRead.Get("/promotions/audience", managerPromotionHandler.Audience)
+	managerRead.Get("/incidents", managerIncidentHandler.List)
+	managerRead.Get("/incidents/summary", managerIncidentHandler.Summary)
 	managerRead.Get(
 		"/media/cloudinary-signature",
 		middleware.ManagerMediaRateLimit(rdb, cfg.RateRedis),
@@ -404,6 +408,7 @@ func main() {
 	staffOrders.Get("/pickups", staffOrderHandler.Pickups)
 	staffOrders.Get("/orders/:id", staffOrderHandler.Get)
 	staffOrders.Patch("/orders/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.PatchStatus)
+	staffOrders.Post("/orders/:id/incidents", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.ReportIncident)
 	staffOrders.Get("/tickets", staffTicketHandler.List)
 	staffOrders.Patch("/tickets/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.PatchStatus)
 	staffOrders.Patch("/tickets/:id/station", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.Move)

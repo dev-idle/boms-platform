@@ -101,6 +101,8 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, f.fillCart(customer, []uuid.UUID{f.cake}, nil))
 		f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
+		_, err = f.orders.AddIncident(ctx, port.AddOrderIncidentParams{OrderID: uuid.MustParse(first.ID), Type: domainorder.IncidentPaymentExpired})
+		require.NoError(t, err)
 
 		admin := f.newWorker(t, domainuser.RoleAdmin)
 		ownIP, adminIP := "198.51.100.4", "192.0.2.9"
@@ -122,6 +124,9 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 		assert.NotNil(t, export.Profile, "the profile they gave")
 		require.Len(t, export.Orders, 2, "their orders and nobody else's")
 		assert.Equal(t, []string{second.ID, first.ID}, []string{export.Orders[0].ID, export.Orders[1].ID}, "newest first")
+		assert.Empty(t, export.Orders[0].Incidents)
+		require.Len(t, export.Orders[1].Incidents, 1, "what went wrong with their order")
+		assert.Equal(t, "payment_expired", export.Orders[1].Incidents[0].Type)
 		for _, order := range export.Orders {
 			assert.Len(t, order.Items, 2)
 			assert.Equal(t, "awaiting_payment", order.Timeline[0].Status)

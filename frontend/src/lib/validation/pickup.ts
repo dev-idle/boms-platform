@@ -85,6 +85,13 @@ export function bakeryDayOf(date: Date): string {
   return formatPickupLocalInputValue(date).slice(0, 10);
 }
 
+/** The day (YYYY-MM-DD) `days` after `day`. */
+export function shiftDay(day: string, days: number): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 /** Serializes a bakery-local `datetime-local` value to an RFC3339 instant. */
 export function bakeryPickupISOFromLocalInput(localValue: string): string {
   return `${localValue}:00${bakeryOffsetSuffix()}`;

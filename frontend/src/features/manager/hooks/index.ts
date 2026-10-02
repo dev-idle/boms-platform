@@ -22,12 +22,14 @@ import {
   getCategoryById,
   getComboById,
   getDiscountCodeById,
+  getIncidentSummary,
   getProductById,
   getPromotionAudience,
   getReviewSummary,
   listCategories,
   listCombos,
   listDiscountCodes,
+  listIncidents,
   listProducts,
   listPromotions,
   listReviews,
@@ -42,6 +44,7 @@ import {
   categoryListFilterSchema,
   comboListFilterSchema,
   discountCodeListFilterSchema,
+  incidentListFilterSchema,
   productListFilterSchema,
   promotionListFilterSchema,
   reviewListFilterSchema,
@@ -51,6 +54,7 @@ import {
   type ComboListFilterInput,
   type DiscountCodeFormInput,
   type DiscountCodeListFilterInput,
+  type IncidentListFilterInput,
   type ProductFormInput,
   type ProductListFilterInput,
   type PromotionFormInput,
@@ -306,6 +310,26 @@ export function useModerateReview() {
     onError: (error) => {
       toast.error(isApiError(error) ? error.message : "Failed to update the review");
     },
+  });
+}
+
+/** A page of a week's incidents; refreshed live as they are recorded. */
+export function useIncidents(input: IncidentListFilterInput) {
+  const filter = incidentListFilterSchema.parse(input);
+  return useQuery({
+    queryKey: managerQueryKeys.incidents(filter),
+    queryFn: () => listIncidents(filter),
+    placeholderData: keepPreviousData,
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
+  });
+}
+
+/** How many incidents of each type a week holds. */
+export function useIncidentSummary(week: string) {
+  return useQuery({
+    queryKey: managerQueryKeys.incidentSummary(week),
+    queryFn: () => getIncidentSummary(week),
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
   });
 }
 

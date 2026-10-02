@@ -9,6 +9,7 @@
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/reviews, /manager/promotions, /manager/promotions/new,
+ *               /manager/incidents,
  *               /manager/account/*
  *   - Admin:    /admin, /admin/users, /admin/settings, /admin/account/*
  */
@@ -79,6 +80,7 @@ export const ROUTE = {
     reviews: "/manager/reviews",
     promotions: "/manager/promotions",
     promotionsNew: "/manager/promotions/new",
+    incidents: "/manager/incidents",
     account: {
       root: "/manager/account",
       profile: "/manager/account/profile",

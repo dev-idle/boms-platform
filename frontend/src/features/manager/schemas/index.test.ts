@@ -5,6 +5,8 @@ import {
   categoryFormSchema,
   comboFormSchema,
   discountCodeFormSchema,
+  incidentSummarySchema,
+  managerIncidentSchema,
   managerPromotionSchema,
   productFormSchema,
   promotionFormSchema,
@@ -201,5 +203,44 @@ describe("managerPromotionSchema", () => {
     };
     expect(managerPromotionSchema.safeParse(sending).success).toBe(true);
     expect(managerPromotionSchema.safeParse({ ...sending, status: "draft" }).success).toBe(false);
+  });
+});
+
+describe("managerIncidentSchema", () => {
+  const reported = {
+    id: "5f0c2b8e-7a4d-4c1e-9b3f-6d8e2a1c4b70",
+    type: "wrong_items",
+    source: "manual",
+    note: "Two croissants short",
+    created_at: "2026-10-02T10:15:00+07:00",
+    order_code: "CH-261002-004",
+    pickup_at: "2026-10-02T10:00:00+07:00",
+    actor_name: "Lan Tran",
+  };
+
+  it("reads what staff reported and what the system recorded", () => {
+    expect(managerIncidentSchema.safeParse(reported).success).toBe(true);
+    expect(
+      managerIncidentSchema.safeParse({
+        ...reported,
+        type: "payment_anomaly",
+        source: "auto",
+        note: null,
+        pickup_at: null,
+        actor_name: null,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("refuses a type or source the API does not send", () => {
+    expect(managerIncidentSchema.safeParse({ ...reported, type: "late" }).success).toBe(false);
+    expect(managerIncidentSchema.safeParse({ ...reported, source: "staff" }).success).toBe(false);
+  });
+});
+
+describe("incidentSummarySchema", () => {
+  it("counts each type a week holds; a type with none is left out", () => {
+    expect(incidentSummarySchema.safeParse({ types: [{ type: "no_show", count: 2 }] }).success).toBe(true);
+    expect(incidentSummarySchema.safeParse({ types: [{ type: "no_show", count: 0 }] }).success).toBe(false);
   });
 });

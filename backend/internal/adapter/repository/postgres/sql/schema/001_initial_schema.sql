@@ -478,7 +478,7 @@ CREATE TABLE "payments" (
   PRIMARY KEY ("id"),
   CONSTRAINT "payments_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE RESTRICT,
   CONSTRAINT "payments_amount_cents_check" CHECK (amount_cents > 0),
-  CONSTRAINT "payments_capture_check" CHECK ((provider <> 'paypal'::payment_provider) OR ((status = 'created'::payment_status) = (capture_id IS NULL))),
+  CONSTRAINT "payments_capture_check" CHECK ((provider <> 'paypal'::payment_provider) OR (status = 'denied'::payment_status) OR ((status = 'created'::payment_status) = (capture_id IS NULL))),
   CONSTRAINT "payments_provider_check" CHECK ((provider = 'paypal'::payment_provider) = ((provider_order_id IS NOT NULL) AND (approve_url IS NOT NULL))),
   CONSTRAINT "payments_cash_check" CHECK ((provider <> 'cash'::payment_provider) OR ((capture_id IS NULL) AND (status = ANY (ARRAY['created'::payment_status, 'captured'::payment_status])) AND (refund_requested_at IS NULL))),
   CONSTRAINT "payments_captured_at_check" CHECK ((status = ANY (ARRAY['captured'::payment_status, 'refunded'::payment_status])) = (captured_at IS NOT NULL)),
@@ -593,3 +593,23 @@ CREATE TABLE "promotions" (
   CONSTRAINT "promotions_subject_check" CHECK ((char_length(subject) >= 1) AND (char_length(subject) <= 120))
 );
 CREATE INDEX "promotions_created_at_idx" ON "promotions" ("created_at");
+
+CREATE TYPE "order_incident_type" AS ENUM ('bakery_cancelled', 'ready_late', 'no_show', 'payment_failed', 'payment_expired', 'refunded', 'payment_anomaly', 'wrong_items', 'custom_mismatch', 'other');
+
+CREATE TABLE "order_incidents" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "order_id" uuid NOT NULL,
+  "type" "order_incident_type" NOT NULL,
+  "note" text NULL,
+  "actor_id" uuid NULL,
+  "actor_role" "user_role" NULL,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("id"),
+  CONSTRAINT "order_incidents_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
+  CONSTRAINT "order_incidents_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE CASCADE,
+  CONSTRAINT "order_incidents_actor_check" CHECK ((actor_id IS NULL) = (actor_role IS NULL)),
+  CONSTRAINT "order_incidents_note_check" CHECK ((note IS NULL) OR (((char_length(note) >= 1) AND (char_length(note) <= 500)) AND (type = ANY (ARRAY['wrong_items'::order_incident_type, 'custom_mismatch'::order_incident_type, 'other'::order_incident_type])))),
+  CONSTRAINT "order_incidents_reported_check" CHECK ((type <> ALL (ARRAY['wrong_items'::order_incident_type, 'custom_mismatch'::order_incident_type, 'other'::order_incident_type])) OR (actor_id IS NOT NULL))
+);
+CREATE INDEX "order_incidents_created_at_idx" ON "order_incidents" ("created_at");
+CREATE INDEX "order_incidents_order_created_idx" ON "order_incidents" ("order_id", "created_at");

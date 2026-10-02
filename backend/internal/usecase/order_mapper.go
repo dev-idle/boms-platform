@@ -100,3 +100,22 @@ func mapStaffOrderTimelineToDTO(events []domainorder.StatusEvent) []dto.StaffOrd
 	}
 	return out
 }
+
+// toOrderIncidentResponses maps an order's incidents, an empty list for none.
+func toOrderIncidentResponses(incidents []domainorder.Incident) []dto.OrderIncidentResponse {
+	out := make([]dto.OrderIncidentResponse, 0, len(incidents))
+	for _, incident := range incidents {
+		out = append(out, toOrderIncidentResponse(incident))
+	}
+	return out
+}
+
+func toOrderIncidentResponse(incident domainorder.Incident) dto.OrderIncidentResponse {
+	return dto.OrderIncidentResponse{
+		ID:        incident.ID.String(),
+		Type:      string(incident.Type),
+		Source:    string(incident.Type.Source()),
+		Note:      incident.Note,
+		CreatedAt: incident.CreatedAt,
+	}
+}

@@ -23,4 +23,6 @@ var (
 	ErrInvalidCancelReason     = errors.New("a cancellation needs a reason of 1 to 200 plain characters")
 	ErrPickupCodeInvalid       = errors.New("the pickup code does not match the order")
 	ErrPickupCodeLocked        = errors.New("too many wrong pickup codes for the order")
+	ErrInvalidIncidentType     = errors.New("staff report wrong items, a custom cake made unlike asked, or another problem")
+	ErrInvalidIncidentNote     = errors.New("an incident needs a note of 1 to 500 plain characters")
 )
