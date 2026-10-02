@@ -102,6 +102,7 @@ func (r *SavedProductRepository) ListForExport(ctx context.Context, userID uuid.
 		out = append(out, port.SavedProductEntry{
 			List:        domainsaved.List(row.List),
 			SavedAt:     row.SavedAt,
+			RemovedAt:   row.RemovedAt,
 			ProductID:   row.ID,
 			ProductName: row.Name,
 		})

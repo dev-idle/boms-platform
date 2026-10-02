@@ -127,6 +127,8 @@ func TestSavedProducts_Integration(t *testing.T) {
 		customer := f.newCustomer(t, nil, nil)
 		require.NoError(t, saved.Save(ctx, customer, "favorite", f.pastry))
 		require.NoError(t, saved.Save(ctx, customer, "wishlist", f.cake))
+		require.NoError(t, saved.Save(ctx, customer, "favorite", f.cake))
+		require.NoError(t, saved.Remove(ctx, customer, "favorite", f.cake))
 		customerProfiles := postgresadapter.NewCustomerProfileRepository(f.pool)
 		audit := postgresadapter.NewAuditLogRepository(f.pool)
 		conversations := postgresadapter.NewConversationRepository(f.pool)
@@ -135,11 +137,12 @@ func TestSavedProducts_Integration(t *testing.T) {
 			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, savedRepo, postgresadapter.NewReviewRepository(f.pool), f.carts, fixedSessions{}, audit,
 		).Export(ctx, customer)
 		require.NoError(t, err)
-		require.Len(t, export.Saved, 2)
-		assert.ElementsMatch(t, []string{"favorite:Croissant", "wishlist:Matcha cake"}, []string{
-			export.Saved[0].List + ":" + export.Saved[0].ProductName,
-			export.Saved[1].List + ":" + export.Saved[1].ProductName,
-		})
+		held := make([]string, 0, len(export.Saved))
+		for _, item := range export.Saved {
+			held = append(held, fmt.Sprintf("%s:%s:%t", item.List, item.ProductName, item.RemovedAt != nil))
+		}
+		assert.ElementsMatch(t, []string{"favorite:Croissant:false", "favorite:Matcha cake:true", "wishlist:Matcha cake:false"}, held,
+			"a product taken off a list is still held, with when")
 
 		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, savedRepo, postgresadapter.NewReviewRepository(f.pool), audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})

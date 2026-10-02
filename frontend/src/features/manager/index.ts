@@ -1,5 +1,5 @@
 /**
- * Manager feature — catalog CRUD, review moderation, promotions and the incident log (manager-only).
+ * Manager feature — catalog CRUD, review moderation, promotions, the incident log and the engagement report (manager-only).
  *
  * Internal: api/, components/, hooks/, schemas/
  */
@@ -10,6 +10,7 @@ export {
   ManagerCategoriesTable,
   ManagerCombosTable,
   ManagerDiscountCodesTable,
+  ManagerEngagement,
   ManagerIncidents,
   ManagerLiveUpdates,
   ManagerNewPromotion,

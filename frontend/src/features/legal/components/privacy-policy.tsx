@@ -36,7 +36,8 @@ export function PrivacyPolicy() {
             <strong>Your cart:</strong> the items you added and have not ordered yet.
           </li>
           <li>
-            <strong>Your favorites and wishlist:</strong> the products you keep on them, and when.
+            <strong>Your favorites and wishlist:</strong> the products you save to them, and when; one
+            you take off stays on record as once saved, with when you took it off.
           </li>
           <li>
             <strong>Your orders:</strong> what you ordered, the prices and any discount code, your
@@ -95,6 +96,10 @@ export function PrivacyPolicy() {
             To find and fix what goes wrong with orders, and to notice payments being misused, such as
             one card declined after another. A flag changes nothing by itself: a manager looks into it.
           </li>
+          <li>
+            To count, without naming anyone, how many customers use reviews, favorites, the wishlist,
+            messages and promotion emails, so we know which of them are worth keeping.
+          </li>
           <li>To keep the sales records the law requires of a business.</li>
           <li>
             To email you promotions — only if you agreed, when you signed up or on your account page.
@@ -115,8 +120,8 @@ export function PrivacyPolicy() {
           </li>
           <li>
             Managers see sales figures; the reviews you write with their order and the name on your
-            profile, so they can tell real reviews from fake ones; and the problems with your orders by
-            order number — not your contact details.
+            profile, so they can tell real reviews from fake ones; the problems with your orders by order
+            number; and how many customers use each feature — not your contact details.
           </li>
           <li>
             Anyone visiting our shop sees a review we published: its rating, comment and date, never

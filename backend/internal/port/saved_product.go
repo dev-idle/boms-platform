@@ -20,7 +20,8 @@ type SavedProductRepository interface {
 	// ListByUser returns the products on sale on both of the customer's
 	// lists, latest first.
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]SavedProduct, error)
-	// ListForExport returns every product on the customer's lists, on sale or not.
+	// ListForExport returns every product the customer saved to a list, on
+	// sale or not, taken off or not.
 	ListForExport(ctx context.Context, userID uuid.UUID) ([]SavedProductEntry, error)
 	// RemoveAll empties the customer's lists.
 	RemoveAll(ctx context.Context, userID uuid.UUID) error
@@ -35,8 +36,10 @@ type SavedProduct struct {
 
 // SavedProductEntry is what a customer's list holds about one product.
 type SavedProductEntry struct {
-	List        domainsaved.List
-	SavedAt     time.Time
+	List    domainsaved.List
+	SavedAt time.Time
+	// RemovedAt is when the customer took it off the list; nil while on it.
+	RemovedAt   *time.Time
 	ProductID   uuid.UUID
 	ProductName string
 }

@@ -22,6 +22,7 @@ import {
   getCategoryById,
   getComboById,
   getDiscountCodeById,
+  getEngagementReport,
   getIncidentSummary,
   getProductById,
   getPromotionAudience,
@@ -310,6 +311,15 @@ export function useModerateReview() {
     onError: (error) => {
       toast.error(isApiError(error) ? error.message : "Failed to update the review");
     },
+  });
+}
+
+/** How customers use the engagement features. */
+export function useEngagementReport() {
+  return useQuery({
+    queryKey: managerQueryKeys.engagementReport,
+    queryFn: getEngagementReport,
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
   });
 }
 

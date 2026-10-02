@@ -149,6 +149,7 @@ func main() {
 	managerReviewUC := usecase.NewManagerReviewUsecase(reviewRepo, pgPool, outboxRepo, auditLogger, zlog)
 	managerPromotionUC := usecase.NewManagerPromotionUsecase(promotionRepo, pgPool, outboxRepo, auditLogger, zlog)
 	managerIncidentUC := usecase.NewManagerIncidentUsecase(orderRepo)
+	managerEngagementUC := usecase.NewManagerEngagementUsecase(postgresrepo.NewEngagementRepository(pgPool))
 	unsubscribeUC := usecase.NewUnsubscribeUsecase(userRepo, customerProfileRepo, pgPool, auditLogger,
 		domainpromotion.NewUnsubscribeTokens(cfg.Promotion.UnsubscribeSecret))
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
@@ -186,6 +187,7 @@ func main() {
 	managerReviewHandler := v1.NewManagerReviewHandler(managerReviewUC)
 	managerPromotionHandler := v1.NewManagerPromotionHandler(managerPromotionUC)
 	managerIncidentHandler := v1.NewManagerIncidentHandler(managerIncidentUC)
+	managerEngagementHandler := v1.NewManagerEngagementHandler(managerEngagementUC)
 	unsubscribeHandler := v1.NewUnsubscribeHandler(unsubscribeUC)
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
@@ -367,6 +369,7 @@ func main() {
 	managerRead.Get("/promotions/audience", managerPromotionHandler.Audience)
 	managerRead.Get("/incidents", managerIncidentHandler.List)
 	managerRead.Get("/incidents/summary", managerIncidentHandler.Summary)
+	managerRead.Get("/engagement", managerEngagementHandler.Report)
 	managerRead.Get(
 		"/media/cloudinary-signature",
 		middleware.ManagerMediaRateLimit(rdb, cfg.RateRedis),

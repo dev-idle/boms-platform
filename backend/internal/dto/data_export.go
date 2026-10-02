@@ -59,10 +59,11 @@ type DataExportCartItemResponse struct {
 // DataExportSavedProductResponse is a product on the customer's favorites or
 // wishlist.
 type DataExportSavedProductResponse struct {
-	List        string    `json:"list"`
-	ProductID   string    `json:"product_id"`
-	ProductName string    `json:"product_name"`
-	SavedAt     time.Time `json:"saved_at"`
+	List        string     `json:"list"`
+	ProductID   string     `json:"product_id"`
+	ProductName string     `json:"product_name"`
+	SavedAt     time.Time  `json:"saved_at"`
+	RemovedAt   *time.Time `json:"removed_at"`
 }
 
 // DataExportReviewResponse is a review the customer wrote of a product on one

@@ -133,6 +133,15 @@ function PromotionsIcon({ className }: IconProps) {
   );
 }
 
+/** Heart — how customers take to the shop's features. */
+function EngagementIcon({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <path d="M12 20s-7.5-4.6-7.5-10.1A4.15 4.15 0 0 1 12 7.4a4.15 4.15 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z" />
+    </IconBase>
+  );
+}
+
 /** Warning triangle — what went wrong with orders. */
 function IncidentsIcon({ className }: IconProps) {
   return (
@@ -207,6 +216,7 @@ const DASHBOARD_NAV_ICONS = {
   combos: CombosIcon,
   dashboard: DashboardIcon,
   discounts: DiscountsIcon,
+  engagement: EngagementIcon,
   incidents: IncidentsIcon,
   messages: MessagesIcon,
   orders: OrdersIcon,

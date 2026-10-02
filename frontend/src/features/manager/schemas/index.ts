@@ -385,6 +385,21 @@ export const incidentSummarySchema = z.object({
   types: z.array(z.object({ type: incidentTypeSchema, count: z.number().int().min(1) })),
 });
 
+/** An engagement feature a customer may use — mirrors the backend engagement report. */
+const engagementFeatureSchema = z.enum(["reviews", "favorites", "wishlist", "messages", "promotions"]);
+
+/**
+ * GET /manager/engagement — the open customer accounts, how many used none,
+ * one, or two or more of the engagement features, and how many used each.
+ */
+export const engagementReportSchema = z.object({
+  customers: z.number().int().min(0),
+  used_none: z.number().int().min(0),
+  used_one: z.number().int().min(0),
+  used_two_or_more: z.number().int().min(0),
+  features: z.array(z.object({ feature: engagementFeatureSchema, customers: z.number().int().min(0) })),
+});
+
 /** The most characters a promotion's subject and message hold — mirrors backend `promotion.MaxSubjectLength` and `MaxBodyLength` (code points). */
 export const PROMOTION_SUBJECT_MAX_LENGTH = 120;
 export const PROMOTION_BODY_MAX_LENGTH = 5000;
@@ -443,6 +458,8 @@ export type DiscountCodeListFilterInput = z.infer<
   typeof discountCodeListFilterSchema
 >;
 
+export type EngagementFeature = z.infer<typeof engagementFeatureSchema>;
+export type EngagementReport = z.infer<typeof engagementReportSchema>;
 export type ManagerIncident = z.infer<typeof managerIncidentSchema>;
 export type IncidentListFilterInput = z.input<typeof incidentListFilterSchema>;
 export type IncidentSummary = z.infer<typeof incidentSummarySchema>;

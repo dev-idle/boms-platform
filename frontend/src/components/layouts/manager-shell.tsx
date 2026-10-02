@@ -33,6 +33,7 @@ const MANAGER_NAV_ITEMS: readonly DashboardNavItem[] = [
   { href: ROUTE.manager.promotions, icon: "promotions", label: "Promotions", match: "prefix" },
   { href: ROUTE.manager.reviews, icon: "reviews", label: "Reviews", match: "prefix" },
   { href: ROUTE.manager.incidents, icon: "incidents", label: "Incidents", match: "prefix" },
+  { href: ROUTE.manager.engagement, icon: "engagement", label: "Engagement", match: "prefix" },
 ] as const;
 
 type ManagerShellProps = {

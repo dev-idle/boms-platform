@@ -59,17 +59,18 @@ WHERE s.user_id = sqlc.arg('user_id')
 ORDER BY s.list, s.saved_at DESC, s.id DESC;
 
 -- name: ListSavedProductsForExport :many
--- Every product on the customer's lists, shown or not, for a personal data
--- export: what is held about them, whatever the bakery does with the product.
+-- Every product the customer saved to a list, shown or not, taken off or not
+-- (with when), for a personal data export: what is held about them, whatever
+-- the bakery does with the product.
 SELECT
   s.list,
   s.saved_at,
+  s.deleted_at AS removed_at,
   p.id,
   p.name
 FROM saved_products s
 JOIN products p ON p.id = s.product_id
 WHERE s.user_id = sqlc.arg('user_id')
-  AND s.deleted_at IS NULL
 ORDER BY s.list, s.saved_at DESC, s.id DESC;
 
 -- name: RemoveAllSavedProducts :exec

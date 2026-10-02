@@ -331,6 +331,7 @@ func mapExportSavedProducts(saved []port.SavedProductEntry) []dto.DataExportSave
 			ProductID:   item.ProductID.String(),
 			ProductName: item.ProductName,
 			SavedAt:     item.SavedAt,
+			RemovedAt:   item.RemovedAt,
 		})
 	}
 	return out

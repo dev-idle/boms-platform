@@ -16,6 +16,7 @@ import {
   comboListFilterSchema,
   discountCodeFormSchema,
   discountCodeListFilterSchema,
+  engagementReportSchema,
   incidentListFilterSchema,
   incidentSummarySchema,
   managerComboSchema,
@@ -40,6 +41,7 @@ import {
   type DiscountCodeFormInput,
   type DiscountCodeListFilterInput,
   type DiscountCodesListResult,
+  type EngagementReport,
   type IncidentListFilterInput,
   type IncidentSummary,
   type IncidentsListResult,
@@ -374,6 +376,14 @@ export async function moderateReview(id: string, status: ReviewModeration): Prom
     method: "PATCH",
     schema: managerReviewSchema,
     json: { status: reviewModerationSchema.parse(status) },
+  });
+}
+
+/** How customers use the engagement features. */
+export async function getEngagementReport(): Promise<EngagementReport> {
+  return browserRequest<EngagementReport>("/api/v1/manager/engagement", {
+    method: "GET",
+    schema: engagementReportSchema,
   });
 }
 

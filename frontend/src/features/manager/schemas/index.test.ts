@@ -5,6 +5,7 @@ import {
   categoryFormSchema,
   comboFormSchema,
   discountCodeFormSchema,
+  engagementReportSchema,
   incidentSummarySchema,
   managerIncidentSchema,
   managerPromotionSchema,
@@ -242,5 +243,29 @@ describe("incidentSummarySchema", () => {
   it("counts each type a week holds; a type with none is left out", () => {
     expect(incidentSummarySchema.safeParse({ types: [{ type: "no_show", count: 2 }] }).success).toBe(true);
     expect(incidentSummarySchema.safeParse({ types: [{ type: "no_show", count: 0 }] }).success).toBe(false);
+  });
+});
+
+describe("engagementReportSchema", () => {
+  const report = {
+    customers: 4,
+    used_none: 1,
+    used_one: 1,
+    used_two_or_more: 2,
+    features: [
+      { feature: "reviews", customers: 1 },
+      { feature: "promotions", customers: 0 },
+    ],
+  };
+
+  it("reads the customers, their spread and each feature", () => {
+    expect(engagementReportSchema.safeParse(report).success).toBe(true);
+    expect(engagementReportSchema.safeParse({ ...report, customers: 0, used_none: 0, used_one: 0, used_two_or_more: 0 }).success).toBe(true);
+  });
+
+  it("refuses a feature the API does not report", () => {
+    expect(
+      engagementReportSchema.safeParse({ ...report, features: [{ feature: "chatbot", customers: 1 }] }).success,
+    ).toBe(false);
   });
 });

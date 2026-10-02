@@ -140,34 +140,36 @@ const listSavedProductsForExport = `-- name: ListSavedProductsForExport :many
 SELECT
   s.list,
   s.saved_at,
+  s.deleted_at AS removed_at,
   p.id,
   p.name
 FROM saved_products s
 JOIN products p ON p.id = s.product_id
 WHERE s.user_id = $1
-  AND s.deleted_at IS NULL
 ORDER BY s.list, s.saved_at DESC, s.id DESC
 `
 
 type ListSavedProductsForExportRow struct {
-	List    SavedList `json:"list"`
-	SavedAt time.Time `json:"savedAt"`
-	ID      uuid.UUID `json:"id"`
-	Name    string    `json:"name"`
+	List      SavedList  `json:"list"`
+	SavedAt   time.Time  `json:"savedAt"`
+	RemovedAt *time.Time `json:"removedAt"`
+	ID        uuid.UUID  `json:"id"`
+	Name      string     `json:"name"`
 }
 
-// Every product on the customer's lists, shown or not, for a personal data
-// export: what is held about them, whatever the bakery does with the product.
+// Every product the customer saved to a list, shown or not, taken off or not
+// (with when), for a personal data export: what is held about them, whatever
+// the bakery does with the product.
 //
 //	SELECT
 //	  s.list,
 //	  s.saved_at,
+//	  s.deleted_at AS removed_at,
 //	  p.id,
 //	  p.name
 //	FROM saved_products s
 //	JOIN products p ON p.id = s.product_id
 //	WHERE s.user_id = $1
-//	  AND s.deleted_at IS NULL
 //	ORDER BY s.list, s.saved_at DESC, s.id DESC
 func (q *Queries) ListSavedProductsForExport(ctx context.Context, userID uuid.UUID) ([]ListSavedProductsForExportRow, error) {
 	rows, err := q.db.Query(ctx, listSavedProductsForExport, userID)
@@ -181,6 +183,7 @@ func (q *Queries) ListSavedProductsForExport(ctx context.Context, userID uuid.UU
 		if err := rows.Scan(
 			&i.List,
 			&i.SavedAt,
+			&i.RemovedAt,
 			&i.ID,
 			&i.Name,
 		); err != nil {
