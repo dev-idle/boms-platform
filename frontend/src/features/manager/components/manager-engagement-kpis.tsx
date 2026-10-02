@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 
 import { useEngagementReport } from "../hooks";
-import { shareOf } from "../lib/engagement";
+import { shareOf } from "../lib/share";
 import type { EngagementReport } from "../schemas";
 
 const KPIS: ReadonlyArray<{ label: string; value: (report: EngagementReport) => string }> = [

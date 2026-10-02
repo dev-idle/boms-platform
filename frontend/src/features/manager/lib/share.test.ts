@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { shareOf } from "./engagement";
+import { shareOf } from "./share";
 
 describe("shareOf", () => {
   it("rounds down to a whole percentage", () => {

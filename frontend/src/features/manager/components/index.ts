@@ -11,4 +11,5 @@ export { ManagerNewPromotion } from "./manager-new-promotion";
 export { ManagerProductsTable } from "./manager-products-table";
 export { ManagerPromotionsTable } from "./manager-promotions-table";
 export { ManagerReviews } from "./manager-reviews";
+export { ManagerSalesReport } from "./manager-sales-report";
 export { ProductForm } from "./product-form";

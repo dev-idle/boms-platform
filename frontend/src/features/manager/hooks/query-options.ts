@@ -10,6 +10,7 @@ import type {
   ProductListFilterInput,
   PromotionListFilterInput,
   ReviewListFilterInput,
+  SalesReportFilterInput,
 } from "../schemas";
 
 /** List queries: align with global default; explicit for manager catalog tables. */
@@ -43,6 +44,7 @@ export const managerQueryKeys = {
     [...managerQueryKeys.promotionsRoot, filter] as const,
   promotionAudience: ["manager", "promotions", "audience"] as const,
   engagementReport: ["manager", "engagement"] as const,
+  salesReport: (filter: SalesReportFilterInput) => ["manager", "sales-report", filter] as const,
   incidentsRoot: ["manager", "incidents"] as const,
   incidents: (filter: IncidentListFilterInput) => [...managerQueryKeys.incidentsRoot, filter] as const,
   incidentSummary: (week: string) => [...managerQueryKeys.incidentsRoot, "summary", week] as const,

@@ -6,7 +6,7 @@ import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 
 import { useEngagementReport } from "../hooks";
-import { shareOf } from "../lib/engagement";
+import { shareOf } from "../lib/share";
 import type { EngagementFeature } from "../schemas";
 
 const COLUMN_COUNT = 3;

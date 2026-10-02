@@ -385,6 +385,69 @@ export const incidentSummarySchema = z.object({
   types: z.array(z.object({ type: incidentTypeSchema, count: z.number().int().min(1) })),
 });
 
+const cents = z.number().int();
+const count = z.number().int().min(0);
+
+/** The bakery days a sales report covers, and the periods it adds up by. */
+export const salesReportFilterSchema = z.object({
+  from: z.iso.date(),
+  to: z.iso.date(),
+  group: z.enum(["day", "week", "month"]),
+});
+
+/**
+ * GET /manager/reports/sales — the money taken and given back in the range,
+ * in total and by period; what the orders kept (paid in it and not
+ * cancelled) sold by item and category, and the discounts they used; and how
+ * long orders took to make. Amounts in cents; a refund-heavy period nets
+ * below zero.
+ */
+export const salesReportSchema = z.object({
+  from: z.iso.date(),
+  to: z.iso.date(),
+  group: salesReportFilterSchema.shape.group,
+  totals: z.object({
+    orders: count,
+    gross_cents: cents,
+    refunds_cents: cents,
+    net_cents: cents,
+    average_order_cents: cents.nullable(),
+  }),
+  periods: z.array(
+    z.object({
+      start: z.iso.date(),
+      orders: count,
+      gross_cents: cents,
+      refunds_cents: cents,
+      net_cents: cents,
+    }),
+  ),
+  items: z.array(
+    z.object({
+      kind: z.enum(["product", "combo"]),
+      id: z.uuid(),
+      name: z.string().min(1),
+      quantity: count,
+      sales_cents: cents,
+    }),
+  ),
+  categories: z.array(
+    z.object({
+      category_id: z.uuid().nullable(),
+      name: z.string().min(1).nullable(),
+      quantity: count,
+      sales_cents: cents,
+    }),
+  ),
+  discounts: z.object({
+    orders: count,
+    discounted_orders: count,
+    discount_cents: cents,
+    codes: z.array(z.object({ code: z.string().min(1), orders: count, discount_cents: cents })),
+  }),
+  production: z.object({ orders: count, average_minutes: count.nullable() }),
+});
+
 /** An engagement feature a customer may use — mirrors the backend engagement report. */
 const engagementFeatureSchema = z.enum(["reviews", "favorites", "wishlist", "messages", "promotions"]);
 
@@ -459,6 +522,8 @@ export type DiscountCodeListFilterInput = z.infer<
 >;
 
 export type EngagementFeature = z.infer<typeof engagementFeatureSchema>;
+export type SalesReportFilterInput = z.infer<typeof salesReportFilterSchema>;
+export type SalesReport = z.infer<typeof salesReportSchema>;
 export type EngagementReport = z.infer<typeof engagementReportSchema>;
 export type ManagerIncident = z.infer<typeof managerIncidentSchema>;
 export type IncidentListFilterInput = z.input<typeof incidentListFilterSchema>;

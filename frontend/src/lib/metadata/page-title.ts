@@ -51,6 +51,7 @@ export const PAGE_TITLES = {
   newPromotion: "New Promotion",
   incidents: "Incidents",
   engagement: "Engagement",
+  sales: "Sales",
   breadcrumbDetail: "Detail",
   breadcrumbNew: "New",
 } as const;

@@ -27,6 +27,7 @@ import {
   getProductById,
   getPromotionAudience,
   getReviewSummary,
+  getSalesReport,
   listCategories,
   listCombos,
   listDiscountCodes,
@@ -49,6 +50,7 @@ import {
   productListFilterSchema,
   promotionListFilterSchema,
   reviewListFilterSchema,
+  salesReportFilterSchema,
   type CategoryFormInput,
   type CategoryListFilterInput,
   type ComboFormInput,
@@ -62,6 +64,7 @@ import {
   type PromotionListFilterInput,
   type ReviewListFilterInput,
   type ReviewModeration,
+  type SalesReportFilterInput,
 } from "../schemas";
 import { managerQueryKeys, MANAGER_LIST_STALE_TIME_MS } from "./query-options";
 
@@ -311,6 +314,16 @@ export function useModerateReview() {
     onError: (error) => {
       toast.error(isApiError(error) ? error.message : "Failed to update the review");
     },
+  });
+}
+
+/** What the bakery sold over a range; a new range loads afresh, so no figure of the last one stays on screen. */
+export function useSalesReport(input: SalesReportFilterInput) {
+  const filter = salesReportFilterSchema.parse(input);
+  return useQuery({
+    queryKey: managerQueryKeys.salesReport(filter),
+    queryFn: () => getSalesReport(filter),
+    staleTime: MANAGER_LIST_STALE_TIME_MS,
   });
 }
 

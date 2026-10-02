@@ -133,6 +133,15 @@ function PromotionsIcon({ className }: IconProps) {
   );
 }
 
+/** Bars over a baseline — what the bakery sold. */
+function SalesIcon({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />
+    </IconBase>
+  );
+}
+
 /** Heart — how customers take to the shop's features. */
 function EngagementIcon({ className }: IconProps) {
   return (
@@ -227,6 +236,7 @@ const DASHBOARD_NAV_ICONS = {
   profile: ProfileIcon,
   promotions: PromotionsIcon,
   reviews: ReviewsIcon,
+  sales: SalesIcon,
   settings: SettingsIcon,
   users: UsersIcon,
 } as const;

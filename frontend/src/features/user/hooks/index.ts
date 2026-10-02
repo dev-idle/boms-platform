@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
 import { endLocalSession } from "@/lib/auth";
-import { saveJsonFile } from "@/lib/dom/save-json-file";
+import { saveFile } from "@/lib/dom/save-file";
 import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -115,7 +115,7 @@ export function useDownloadMyData() {
   return useMutation({
     mutationFn: () => exportMyData(),
     onSuccess: (data) => {
-      saveJsonFile(dataExportFileName(new Date(data.exported_at)), data);
+      saveFile(dataExportFileName(new Date(data.exported_at)), JSON.stringify(data, null, 2), "application/json");
       toast.success("Your data is downloading");
     },
     onError: (error) => {

@@ -32,6 +32,8 @@ import {
   reviewListFilterSchema,
   reviewModerationSchema,
   reviewSummarySchema,
+  salesReportFilterSchema,
+  salesReportSchema,
   type CategoriesListResult,
   type CategoryFormInput,
   type CategoryListFilterInput,
@@ -63,6 +65,8 @@ import {
   type ReviewModeration,
   type ReviewsListResult,
   type ReviewSummary,
+  type SalesReport,
+  type SalesReportFilterInput,
 } from "../schemas";
 
 function categoriesPath(filter: CategoryListFilterInput): string {
@@ -376,6 +380,16 @@ export async function moderateReview(id: string, status: ReviewModeration): Prom
     method: "PATCH",
     schema: managerReviewSchema,
     json: { status: reviewModerationSchema.parse(status) },
+  });
+}
+
+/** What the bakery sold over a range of bakery days, by period. */
+export async function getSalesReport(input: SalesReportFilterInput): Promise<SalesReport> {
+  const filter = salesReportFilterSchema.parse(input);
+  const params = new URLSearchParams({ from: filter.from, to: filter.to, group: filter.group });
+  return browserRequest<SalesReport>(`/api/v1/manager/reports/sales?${params.toString()}`, {
+    method: "GET",
+    schema: salesReportSchema,
   });
 }
 

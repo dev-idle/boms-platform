@@ -1919,13 +1919,26 @@
     flex-wrap: nowrap;
   }
 
-  /* A day or week picker and its steps sit together: on the pickups toolbar's
-     left, and in the incidents header. */
+  /* A day, week or range picker and its steps sit together: on the pickups
+     toolbar's left, and in the incidents and sales headers. */
   .db-table-day {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
     gap: var(--db-space-2);
+  }
+
+  /* A range: each label stays with its field, the pairs and the grouping
+     twice as far apart as a label from its field. */
+  .db-table-day--range {
+    gap: var(--db-space-3) var(--db-space-5);
+  }
+
+  .db-range-field {
+    align-items: center;
+    display: inline-flex;
+    gap: var(--db-field-label-gap);
+    white-space: nowrap;
   }
 
   /* Pickups: code, items, status and two actions are fixed; the customer takes
@@ -2081,6 +2094,69 @@
     width: var(--db-table-col-status-pill);
   }
 
+  /* Report tables: the first column keeps 10rem beside two, three or four
+     fixed figure columns; below that the wrapper scrolls. */
+  .db-table--figures-2 {
+    min-width: calc(2 * var(--db-table-col-number) + 10rem);
+  }
+
+  .db-table--figures-3 {
+    min-width: calc(3 * var(--db-table-col-number) + 10rem);
+  }
+
+  .db-table--figures-4 {
+    min-width: calc(4 * var(--db-table-col-number) + 10rem);
+  }
+
+  /* Sales chart: one bar per period over a baseline, stretched to the width;
+     the scale and the first and last periods are HTML, so they keep their size. */
+  .db-chart {
+    display: grid;
+    gap: var(--db-space-2);
+    margin: 0;
+  }
+
+  .db-chart__scale,
+  .db-chart__labels {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+  }
+
+  .db-chart__labels {
+    display: flex;
+    gap: var(--db-space-3);
+    justify-content: space-between;
+  }
+
+  /* The baseline at the foot of the plot is drawn half outside it. */
+  .db-chart__plot {
+    block-size: 10rem;
+    display: block;
+    inline-size: 100%;
+    overflow: visible;
+  }
+
+  /* The chart's place while it loads: the scale, the plot and the labels. */
+  .db-chart__skeleton {
+    block-size: calc(10rem + 2 * (1.25rem + var(--db-space-2)));
+  }
+
+  .db-chart__bar {
+    fill: var(--color-matcha-500);
+  }
+
+  .db-chart__bar--negative {
+    fill: var(--color-danger);
+  }
+
+  .db-chart__baseline {
+    stroke: var(--color-line-strong);
+    stroke-width: 1;
+  }
+
   /* Incidents: the time is fixed; the incident and its order (code over the
      pickup time) take three tenths of the rest each, the note what is left. */
   .db-table--incidents {
@@ -2134,6 +2210,11 @@
     letter-spacing: -0.02em;
     line-height: 1;
     margin: 0;
+  }
+
+  /* Money in the money accent (02-COMPONENTS §11); after the base rule it overrides. */
+  .db-kpi__value--money {
+    color: var(--color-matcha-500);
   }
 
   .db-kpi__skeleton {

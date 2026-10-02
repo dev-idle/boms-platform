@@ -11,6 +11,7 @@ import {
   managerPromotionSchema,
   productFormSchema,
   promotionFormSchema,
+  salesReportSchema,
 } from "./index";
 
 /** The shape a valid product form submits, so each case changes one field. */
@@ -267,5 +268,29 @@ describe("engagementReportSchema", () => {
     expect(
       engagementReportSchema.safeParse({ ...report, features: [{ feature: "chatbot", customers: 1 }] }).success,
     ).toBe(false);
+  });
+});
+
+describe("salesReportSchema", () => {
+  const report = {
+    from: "2026-09-01",
+    to: "2026-09-14",
+    group: "week",
+    totals: { orders: 4, gross_cents: 9250, refunds_cents: 4600, net_cents: 4650, average_order_cents: 2313 },
+    periods: [{ start: "2026-09-07", orders: 1, gross_cents: 0, refunds_cents: 4600, net_cents: -4600 }],
+    items: [{ kind: "combo", id: "0b6c8f5e-3c1d-4a8e-9f0a-2d7e6c5b4a39", name: "Tea set", quantity: 1, sales_cents: 4600 }],
+    categories: [{ category_id: null, name: null, quantity: 1, sales_cents: 4600 }],
+    discounts: { orders: 3, discounted_orders: 1, discount_cents: 450, codes: [{ code: "TEN", orders: 1, discount_cents: 450 }] },
+    production: { orders: 0, average_minutes: null },
+  };
+
+  it("reads a report, a period that nets below zero and the combos row included", () => {
+    expect(salesReportSchema.safeParse(report).success).toBe(true);
+    expect(salesReportSchema.safeParse({ ...report, totals: { ...report.totals, average_order_cents: null } }).success).toBe(true);
+  });
+
+  it("refuses a grouping or an item kind the API does not send", () => {
+    expect(salesReportSchema.safeParse({ ...report, group: "year" }).success).toBe(false);
+    expect(salesReportSchema.safeParse({ ...report, items: [{ ...report.items[0], kind: "gift" }] }).success).toBe(false);
   });
 });

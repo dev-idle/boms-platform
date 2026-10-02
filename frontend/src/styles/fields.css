@@ -662,7 +662,7 @@ textarea.field-chrome {
   border-bottom-color: var(--field-border);
 }
 
-/* A day or week field sits in a row with its steps, at its own width.
+/* A day, week or range field sits in a row with its steps, at its own width.
    Unlayered, so it outranks `.field-chrome` and the `w-full` utility. */
 .db-table-day .field-chrome {
   width: auto;

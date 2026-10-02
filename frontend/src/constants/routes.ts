@@ -9,7 +9,7 @@
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/reviews, /manager/promotions, /manager/promotions/new,
- *               /manager/incidents, /manager/engagement,
+ *               /manager/incidents, /manager/engagement, /manager/reports,
  *               /manager/account/*
  *   - Admin:    /admin, /admin/users, /admin/settings, /admin/account/*
  */
@@ -82,6 +82,7 @@ export const ROUTE = {
     promotionsNew: "/manager/promotions/new",
     incidents: "/manager/incidents",
     engagement: "/manager/engagement",
+    reports: "/manager/reports",
     account: {
       root: "/manager/account",
       profile: "/manager/account/profile",
