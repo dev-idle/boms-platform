@@ -78,6 +78,7 @@ const nextConfig = {
   reactStrictMode: true,
   reactCompiler: true,
   cacheComponents: true,
+  partialPrefetching: true,
   poweredByHeader: false,
   compress: true,
   productionBrowserSourceMaps: false,

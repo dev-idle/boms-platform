@@ -1,26 +1,23 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-**Stack:** Node **24+** (see `.node-version`), [pnpm](https://pnpm.io/) **11** via [`packageManager`](https://nodejs.org/api/packages.html#packagemanager) in `package.json` — turn on [Corepack](https://nodejs.org/api/corepack.html) once (`corepack enable`) so `pnpm` matches that pin. pnpm 11 settings (`allowBuilds`, etc.) live in [`pnpm-workspace.yaml`](https://pnpm.io/pnpm-workspace_yaml).
+**Stack:** Node **26+** (see `.node-version`), [pnpm](https://pnpm.io/) **12** pinned by [`packageManager`](https://nodejs.org/api/packages.html#packagemanager) in `package.json`. pnpm settings (`allowBuilds`, `overrides`, etc.) live in [`pnpm-workspace.yaml`](https://pnpm.io/pnpm-workspace_yaml).
 
 ## Getting Started
 
 From this directory:
 
 ```bash
-corepack enable   # optional if pnpm is already on PATH at 11.2.2
 pnpm install
 pnpm dev
 ```
 
-If `corepack enable` fails on Windows (permissions under `Program Files`), use `npx pnpm@11.2.2 install` or install pnpm from [pnpm.io/installation](https://pnpm.io/installation).
-
-If the shell says **`pnpm` is not recognized** (Windows), install the CLI once (same major as `packageManager`), then restart the terminal:
+Node 26 no longer ships Corepack, so install the pnpm CLI once at the `packageManager` version, then restart the terminal:
 
 ```bash
-npm install -g pnpm@11.2.2
+npm install -g pnpm@12.23.0
 ```
 
-Node’s installer normally puts `%AppData%\npm` on your user `PATH`. If the error persists, add that folder in **Settings → System → About → Advanced system settings → Environment Variables**. As a one-off without PATH changes, from `frontend` you can run `npx pnpm@11.2.2 dev`.
+Node’s installer normally puts `%AppData%\npm` on your user `PATH`. If the error persists, add that folder in **Settings → System → About → Advanced system settings → Environment Variables**. As a one-off without PATH changes, from `frontend` you can run `npx pnpm@12.23.0 dev`.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
