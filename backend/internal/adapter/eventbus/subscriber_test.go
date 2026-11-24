@@ -15,7 +15,6 @@ import (
 
 	domainevent "github.com/boms/backend/internal/domain/event"
 	domainorder "github.com/boms/backend/internal/domain/order"
-	domainuser "github.com/boms/backend/internal/domain/user"
 )
 
 type delivery struct {
@@ -53,16 +52,23 @@ func TestSubscribe(t *testing.T) {
 	event := domainorder.StatusChangedEvent(domainorder.StatusPending, order)
 	require.NoError(t, NewRedisPublisher(rdb).Publish(context.Background(), []domainevent.Event{event}))
 
+	want := []string{UserChannel(customer)}
+	for _, role := range event.Audience.Roles {
+		want = append(want, RoleChannel(role))
+	}
 	require.Eventually(t, func() bool {
 		mu.Lock()
 		defer mu.Unlock()
-		return len(got) == 2
+		return len(got) == len(want)
 	}, 5*time.Second, 10*time.Millisecond)
 	mu.Lock()
-	channels := []string{got[0].channel, got[1].channel}
+	channels := make([]string, 0, len(got))
+	for _, d := range got {
+		channels = append(channels, d.channel)
+	}
 	payload := got[0].payload
 	mu.Unlock()
-	assert.ElementsMatch(t, []string{UserChannel(customer), RoleChannel(domainuser.RoleStaff)}, channels)
+	assert.ElementsMatch(t, want, channels)
 	assert.Contains(t, payload, `"type":"order.status_changed"`)
 
 	cancel()
