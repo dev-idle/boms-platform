@@ -3,14 +3,14 @@
 import type { ReactNode } from "react";
 import { z } from "zod";
 
-import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
+import { Button } from "@/components/ui/button";
 import { InlineLoadingState } from "@/components/ui/loading-state";
-import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { formatVietnamPhone } from "@/lib/validation/phone";
 
 import { useStaffOrder } from "../hooks";
 import { StaffChatOrder } from "./staff-chat-order";
+import { StaffChatState } from "./staff-chat-state";
 import { StaffChatThread } from "./staff-chat-thread";
 
 type StaffChatConversationProps = {
@@ -31,13 +31,17 @@ export function StaffChatConversation({ orderId = "" }: StaffChatConversationPro
   } else if (orderQuery.isPending) {
     state = <InlineLoadingState />;
   } else if (orderQuery.isError || !order) {
-    state = (
-      <p className="text-sm text-error">
-        {isApiError(orderQuery.error) && orderQuery.error.status === 404
-          ? "Order not found."
-          : "The order could not be loaded."}
-      </p>
-    );
+    state =
+      isApiError(orderQuery.error) && orderQuery.error.status === 404 ? (
+        <p className="text-sm text-error">Order not found.</p>
+      ) : (
+        <>
+          <p className="text-sm text-error">The order could not be loaded.</p>
+          <Button size="sm" type="button" variant="outline" onClick={() => void orderQuery.refetch()}>
+            Try again
+          </Button>
+        </>
+      );
   } else if (order.customer.email === null) {
     const phone = formatVietnamPhone(order.customer.phone);
     state = (
@@ -49,25 +53,16 @@ export function StaffChatConversation({ orderId = "" }: StaffChatConversationPro
   } else {
     return (
       <>
-        <StaffChatThread customerEmail={order.customer.email} order={order} />
+        <StaffChatThread
+          customerEmail={order.customer.email}
+          customerName={order.customer.display_name ?? null}
+          order={{ id: order.id, code: order.code }}
+          thread={{ kind: "order", id: order.id }}
+        />
         <StaffChatOrder customerEmail={order.customer.email} order={order} />
       </>
     );
   }
 
-  return (
-    <section aria-label="Conversation" className="staff-chat__thread">
-      <div className="staff-chat__state">
-        {orderId === "" ? null : (
-          <DashboardTableActionLink
-            className="staff-chat__back"
-            href={ROUTE.staff.chat}
-            label="Back to all messages"
-            text="← All messages"
-          />
-        )}
-        {state}
-      </div>
-    </section>
-  );
+  return <StaffChatState back={orderId !== ""}>{state}</StaffChatState>;
 }

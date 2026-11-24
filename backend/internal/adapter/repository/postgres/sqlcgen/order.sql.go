@@ -652,6 +652,90 @@ func (q *Queries) GetOrderByCheckoutKey(ctx context.Context, arg GetOrderByCheck
 	return i, err
 }
 
+const getOrderByCodeForUser = `-- name: GetOrderByCodeForUser :one
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
+FROM orders
+WHERE code = $1 AND user_id = $2::uuid
+`
+
+type GetOrderByCodeForUserParams struct {
+	Code   string    `json:"code"`
+	UserID uuid.UUID `json:"userId"`
+}
+
+// One of the customer's orders, by the code they read on it.
+//
+//	SELECT
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  pickup_at,
+//	  created_at,
+//	  updated_at,
+//	  code,
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
+//	FROM orders
+//	WHERE code = $1 AND user_id = $2::uuid
+func (q *Queries) GetOrderByCodeForUser(ctx context.Context, arg GetOrderByCodeForUserParams) (Order, error) {
+	row := q.db.QueryRow(ctx, getOrderByCodeForUser, arg.Code, arg.UserID)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.PickupAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
+	)
+	return i, err
+}
+
 const getOrderByIDForUser = `-- name: GetOrderByIDForUser :one
 SELECT
   id,

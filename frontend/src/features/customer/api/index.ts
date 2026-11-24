@@ -237,6 +237,30 @@ export async function markOrderMessagesRead(orderId: string): Promise<void> {
   await browserRequestVoid(`/api/v1/orders/${id}/messages/read`, { method: "POST" });
 }
 
+/** A page of the customer's general conversation with the counter, about none of their orders. */
+export async function getGeneralMessages(before?: string): Promise<OrderThread> {
+  const query = before ? `?before=${z.uuid().parse(before)}` : "";
+  return browserRequest<OrderThread>(`/api/v1/conversation/messages${query}`, {
+    method: "GET",
+    schema: orderThreadSchema,
+  });
+}
+
+/** Writes the customer's message to the counter in their general conversation. */
+export async function postGeneralMessage(input: MessageInput): Promise<Message> {
+  const body = messageInputSchema.parse(input);
+  return browserRequest<Message>("/api/v1/conversation/messages", {
+    method: "POST",
+    schema: messageSchema,
+    json: body,
+  });
+}
+
+/** Records that the customer read their general conversation. */
+export async function markGeneralMessagesRead(): Promise<void> {
+  await browserRequestVoid("/api/v1/conversation/messages/read", { method: "POST" });
+}
+
 /** The customer's reviews of the products on their order. */
 export async function listOrderReviews(orderId: string): Promise<OrderReview[]> {
   const id = z.uuid().parse(orderId);

@@ -2,12 +2,11 @@ package email
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	"github.com/boms/backend/internal/port"
+	"github.com/boms/backend/internal/shared/utils"
 )
 
 // pickupLayout reads as "Tuesday, September 30 at 11:00 AM", in the bakery's
@@ -196,8 +195,8 @@ func (c *OrderComposer) view(words orderCopy, msg port.OrderEmail) orderView {
 		Code:       order.Code,
 		PickupCode: msg.PickupCode,
 		Receipt:    words.receipt,
-		Subtotal:   money(order.SubtotalCents),
-		Total:      money(order.TotalCents),
+		Subtotal:   utils.Dollars(order.SubtotalCents),
+		Total:      utils.Dollars(order.TotalCents),
 	}
 	if msg.CustomerName != "" {
 		view.Greeting = "Hi " + msg.CustomerName + ","
@@ -209,7 +208,7 @@ func (c *OrderComposer) view(words orderCopy, msg port.OrderEmail) orderView {
 		view.Pickup = order.PickupAt.In(domainstore.Location).Format(pickupLayout)
 	}
 	if order.DiscountCents > 0 {
-		view.Discount = "−" + money(order.DiscountCents)
+		view.Discount = "−" + utils.Dollars(order.DiscountCents)
 		if order.DiscountCodeSnapshot != nil {
 			view.DiscountCode = *order.DiscountCodeSnapshot
 		}
@@ -219,7 +218,7 @@ func (c *OrderComposer) view(words orderCopy, msg port.OrderEmail) orderView {
 		view.Lines = append(view.Lines, orderLine{
 			Name:     item.Name,
 			Quantity: item.Quantity,
-			Total:    money(item.LineTotalCents),
+			Total:    utils.Dollars(item.LineTotalCents),
 		})
 	}
 	return view
@@ -232,24 +231,10 @@ func cancelledLead(msg port.OrderEmail) []string {
 		lead = []string{"We are sorry: we had to cancel your order, and it will not be made.", "Our reason: " + msg.Reason}
 	}
 	if msg.RefundCents > 0 {
-		lead = append(lead, "We are returning "+money(msg.RefundCents)+
+		lead = append(lead, "We are returning "+utils.Dollars(msg.RefundCents)+
 			" to your PayPal account. When it arrives is up to PayPal and your bank.")
 	}
 	return append(lead, "If you did not expect this, reply to this email or call us and we will help.")
-}
-
-// money writes cents as US dollars, the currency the bakery prices in, the way
-// the storefront does: $1,234.50.
-func money(cents int64) string {
-	dollars := strconv.FormatInt(cents/100, 10)
-	var grouped strings.Builder
-	for i, digit := range dollars {
-		if i > 0 && (len(dollars)-i)%3 == 0 {
-			grouped.WriteByte(',')
-		}
-		grouped.WriteRune(digit)
-	}
-	return fmt.Sprintf("$%s.%02d", grouped.String(), cents%100)
 }
 
 var _ port.OrderEmailComposer = (*OrderComposer)(nil)

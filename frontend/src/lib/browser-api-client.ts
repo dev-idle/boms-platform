@@ -37,12 +37,19 @@ function buildUrl(path: string): string {
   return normalized;
 }
 
-async function executeRequest<T>(
+/**
+ * Sends the request with the access token, and once more after a refresh when
+ * the API turned that token away. The timeout covers the wait for the
+ * response's headers, not the reading of its body.
+ */
+async function send(
   path: string,
   init: BrowserRequestInit,
   isRetry: boolean,
-): Promise<T> {
-  const { json, schema, skipAuth, skipRefreshRetry, withMeta, ...rest } = init;
+): Promise<Response> {
+  const { json, skipAuth, skipRefreshRetry, ...rest } = init;
+  delete rest.schema;
+  delete rest.withMeta;
   const headers = new Headers(rest.headers);
 
   if (!headers.has("Accept")) {
@@ -92,10 +99,16 @@ async function executeRequest<T>(
       const { refreshNow } = await import("@/lib/auth");
       // Refresh only if no other tab has replaced the token this request carried.
       await refreshNow({ redirectOnFailure: false, staleToken: sentToken });
-      return executeRequest<T>(path, init, true);
+      return send(path, init, true);
     }
     throw error;
   }
+  return response;
+}
+
+async function executeRequest<T>(path: string, init: BrowserRequestInit): Promise<T> {
+  const { schema, withMeta } = init;
+  const response = await send(path, init, false);
 
   if (response.status === 204) {
     return undefined as T;
@@ -155,26 +168,43 @@ export async function browserRequest<T>(
   path: string,
   init: BrowserRequestInit = {},
 ): Promise<T> {
-  return executeRequest<T>(path, init, false);
+  return executeRequest<T>(path, init);
 }
 
 export async function browserRequestVoid(
   path: string,
   init: BrowserRequestInit = {},
 ): Promise<void> {
-  await executeRequest<void>(path, init, false);
+  await executeRequest<void>(path, init);
+}
+
+/**
+ * Opens a stream of server-sent events. A request the API refuses before the
+ * stream starts throws its error, as browserRequest does; the caller reads
+ * the events and ends them with init.signal.
+ */
+export async function browserEventStream(
+  path: string,
+  init: BrowserRequestInit = {},
+): Promise<ReadableStream<Uint8Array>> {
+  const headers = new Headers(init.headers);
+  headers.set("Accept", "text/event-stream");
+  const response = await send(path, { ...init, headers }, false);
+  if (!response.ok) {
+    throw apiErrorFromPayload(response.status, await parseResponseBody(response));
+  }
+  if (!response.body) {
+    throw new ApiError(502, { code: ApiErrorCode.InvalidResponse, message: "The stream has no body" });
+  }
+  return response.body;
 }
 
 export async function browserRequestWithMeta<T>(
   path: string,
   init: BrowserRequestInit = {},
 ): Promise<BrowserRequestWithMetaResult<T>> {
-  return executeRequest<BrowserRequestWithMetaResult<T>>(
-    path,
-    {
-      ...init,
-      withMeta: true,
-    },
-    false,
-  );
+  return executeRequest<BrowserRequestWithMetaResult<T>>(path, {
+    ...init,
+    withMeta: true,
+  });
 }

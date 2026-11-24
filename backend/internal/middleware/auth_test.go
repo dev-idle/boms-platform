@@ -283,6 +283,106 @@ func TestOptionalAuth(t *testing.T) {
 	})
 }
 
+func TestGuestOrSession(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	sid := uuid.New()
+	route := func(signer *mockTokenSigner, sessions *mockSessionStore, signedIn *bool) *fiber.App {
+		app := fiber.New()
+		app.Get("/", middleware.GuestOrSession(signer, sessions), func(c fiber.Ctx) error {
+			_, *signedIn = middleware.GetUserID(c)
+			return c.SendStatus(fiber.StatusOK)
+		})
+		return app
+	}
+
+	t.Run("no_token_passes_as_a_guest", func(t *testing.T) {
+		t.Parallel()
+		var signedIn bool
+		withTestResponse(t, route(new(mockTokenSigner), new(mockSessionStore), &signedIn), testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.False(t, signedIn)
+		})
+	})
+
+	t.Run("a_live_session_signs_in", func(t *testing.T) {
+		t.Parallel()
+		signer := new(mockTokenSigner)
+		sessions := new(mockSessionStore)
+		signer.On("ParseAccess", "tok").Return(port.AccessTokenClaims{
+			Subject: uid.String(), Role: "customer", SessionID: sid.String(), JTI: "j",
+		}, nil)
+		sessions.On("Get", mock.Anything, uid.String(), sid.String()).Return(domainsession.SessionMeta{RefreshJTI: "j"}, nil)
+		var signedIn bool
+		req := testGet(t, "/")
+		req.Header.Set(fiber.HeaderAuthorization, "Bearer tok")
+		withTestResponse(t, route(signer, sessions, &signedIn), req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.True(t, signedIn)
+		})
+	})
+
+	t.Run("a_bad_token_is_refused_not_read_as_a_guest", func(t *testing.T) {
+		t.Parallel()
+		signer := new(mockTokenSigner)
+		signer.On("ParseAccess", "expired").Return(port.AccessTokenClaims{}, apperrors.ErrUnauthorized)
+		var signedIn bool
+		req := testGet(t, "/")
+		req.Header.Set(fiber.HeaderAuthorization, "Bearer expired")
+		withTestResponse(t, route(signer, new(mockSessionStore), &signedIn), req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		})
+	})
+
+	t.Run("a_revoked_session_is_refused", func(t *testing.T) {
+		t.Parallel()
+		signer := new(mockTokenSigner)
+		sessions := new(mockSessionStore)
+		signer.On("ParseAccess", "tok").Return(port.AccessTokenClaims{
+			Subject: uid.String(), Role: "customer", SessionID: sid.String(), JTI: "j",
+		}, nil)
+		sessions.On("Get", mock.Anything, uid.String(), sid.String()).Return(domainsession.SessionMeta{}, apperrors.ErrNotFound)
+		var signedIn bool
+		req := testGet(t, "/")
+		req.Header.Set(fiber.HeaderAuthorization, "Bearer tok")
+		withTestResponse(t, route(signer, sessions, &signedIn), req, func(t *testing.T, resp *http.Response) {
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		})
+	})
+}
+
+func TestGuestOrRole(t *testing.T) {
+	t.Parallel()
+	route := func(role domainuser.Role) *fiber.App {
+		app := fiber.New()
+		app.Get("/", func(c fiber.Ctx) error {
+			if role != "" {
+				c.Locals("auth_role", role)
+			}
+			return c.Next()
+		}, middleware.GuestOrRole(domainuser.RoleCustomer), func(c fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusOK)
+		})
+		return app
+	}
+
+	for name, tc := range map[string]struct {
+		role domainuser.Role
+		want int
+	}{
+		"a_guest_passes":      {want: http.StatusOK},
+		"the_role_passes":     {role: domainuser.RoleCustomer, want: http.StatusOK},
+		"another_role_is_not": {role: domainuser.RoleStaff, want: http.StatusForbidden},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			withTestResponse(t, route(tc.role), testGet(t, "/"), func(t *testing.T, resp *http.Response) {
+				assert.Equal(t, tc.want, resp.StatusCode)
+			})
+		})
+	}
+}
+
 func TestRequireRole(t *testing.T) {
 	t.Parallel()
 

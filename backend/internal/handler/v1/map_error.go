@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	domainaccount "github.com/boms/backend/internal/domain/account"
+	domainassistant "github.com/boms/backend/internal/domain/assistant"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
@@ -198,6 +199,8 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrMessagingUnavailable)
 	case errors.Is(err, domainconversation.ErrNotFound):
 		return writeAppError(c, apperrors.ErrNotFound)
+	case errors.Is(err, domainassistant.ErrInvalidQuestion):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("question", "a question of 1 to 500 plain characters"))
 	case errors.Is(err, domainsaved.ErrInvalidList):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("list", "must be favorite or wishlist"))
 	case errors.Is(err, domainsaved.ErrListFull):

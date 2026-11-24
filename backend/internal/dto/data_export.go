@@ -7,17 +7,34 @@ import (
 
 // DataExportResponse is everything the bakery holds about one person, as they
 // download it from their account: the account and profile, the policies they
-// accepted at sign-up, the reviews they wrote and every order they placed.
+// accepted at sign-up, the reviews they wrote, every order they placed, their
+// general conversation with the counter and their conversations with the
+// assistant.
 type DataExportResponse struct {
-	ExportedAt      time.Time                        `json:"exported_at"`
-	Account         MeResponse                       `json:"account"`
-	TermsAcceptance *TermsAcceptanceResponse         `json:"terms_acceptance"`
-	Sessions        []DataExportSessionResponse      `json:"sessions"`
-	AccountActivity []AccountActivityResponse        `json:"account_activity"`
-	Cart            []DataExportCartItemResponse     `json:"cart"`
-	SavedProducts   []DataExportSavedProductResponse `json:"saved_products"`
-	Reviews         []DataExportReviewResponse       `json:"reviews"`
-	Orders          []DataExportOrderResponse        `json:"orders"`
+	ExportedAt      time.Time                            `json:"exported_at"`
+	Account         MeResponse                           `json:"account"`
+	TermsAcceptance *TermsAcceptanceResponse             `json:"terms_acceptance"`
+	Sessions        []DataExportSessionResponse          `json:"sessions"`
+	AccountActivity []AccountActivityResponse            `json:"account_activity"`
+	Cart            []DataExportCartItemResponse         `json:"cart"`
+	SavedProducts   []DataExportSavedProductResponse     `json:"saved_products"`
+	Reviews         []DataExportReviewResponse           `json:"reviews"`
+	Orders          []DataExportOrderResponse            `json:"orders"`
+	Messages        []MessageResponse                    `json:"messages"`
+	Assistant       []DataExportAssistantSessionResponse `json:"assistant_conversations"`
+}
+
+// DataExportAssistantSessionResponse is one conversation with the assistant.
+type DataExportAssistantSessionResponse struct {
+	StartedAt time.Time                         `json:"started_at"`
+	Turns     []DataExportAssistantTurnResponse `json:"turns"`
+}
+
+// DataExportAssistantTurnResponse is one question ("you") or answer ("assistant").
+type DataExportAssistantTurnResponse struct {
+	From string    `json:"from"`
+	Body string    `json:"body"`
+	At   time.Time `json:"at"`
 }
 
 // DataExportSessionResponse is one place the person is signed in: since when,

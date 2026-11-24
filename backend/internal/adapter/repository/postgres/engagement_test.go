@@ -38,9 +38,9 @@ func TestEngagement_Integration(t *testing.T) {
 		f.pay(t, customer, order.ID)
 		return uuid.MustParse(order.ID)
 	}
-	write := func(t *testing.T, orderID, authorID uuid.UUID, role domainuser.Role, body string) {
+	write := func(t *testing.T, customer, orderID, authorID uuid.UUID, role domainuser.Role, body string) {
 		t.Helper()
-		conversationID, err := conversations.OpenForCustomerMessage(ctx, orderID)
+		conversationID, err := conversations.OpenForCustomerMessage(ctx, port.ConversationThread{CustomerID: customer, OrderID: &orderID})
 		require.NoError(t, err)
 		_, err = conversations.CreateMessage(ctx, conversationID, authorID, role, body)
 		require.NoError(t, err)
@@ -63,8 +63,8 @@ func TestEngagement_Integration(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, saved.Remove(ctx, writer, f.cake, domainsaved.ListWishlist))
 	asked := paidOrder(t, writer, 10)
-	write(t, asked, writer, domainuser.RoleCustomer, "Is it ready?")
-	write(t, asked, f.newWorker(t, domainuser.RoleStaff), domainuser.RoleStaff, "Yes, at the counter.")
+	write(t, writer, asked, writer, domainuser.RoleCustomer, "Is it ready?")
+	write(t, writer, asked, f.newWorker(t, domainuser.RoleStaff), domainuser.RoleStaff, "Yes, at the counter.")
 
 	// Promotion emails only: one feature.
 	subscriber := f.newCustomer(t, nil, nil)
@@ -73,6 +73,13 @@ func TestEngagement_Integration(t *testing.T) {
 		UserID: subscriber, MarketingOptIn: &agreed,
 	})
 	require.NoError(t, err)
+
+	// The assistant only: one feature. A visitor who was not signed in counts
+	// as no customer.
+	asker := f.newCustomer(t, nil, nil)
+	assistant := postgresadapter.NewAssistantRepository(f.pool)
+	require.NoError(t, assistant.SaveTurn(ctx, uuid.New(), &asker, "When do you open?", "At 07:00."))
+	require.NoError(t, assistant.SaveTurn(ctx, uuid.New(), nil, "Do you sell bread?", "Yes."))
 
 	// Nothing used.
 	f.newCustomer(t, nil, nil)
@@ -87,9 +94,9 @@ func TestEngagement_Integration(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, &dto.EngagementReportResponse{
-		Customers:     4,
+		Customers:     5,
 		UsedNone:      1,
-		UsedOne:       1,
+		UsedOne:       2,
 		UsedTwoOrMore: 2,
 		Features: []dto.EngagementFeatureResponse{
 			{Feature: "reviews", Customers: 1},
@@ -97,6 +104,7 @@ func TestEngagement_Integration(t *testing.T) {
 			{Feature: "wishlist", Customers: 1},
 			{Feature: "messages", Customers: 1},
 			{Feature: "promotions", Customers: 1},
+			{Feature: "assistant", Customers: 1},
 		},
 	}, out)
 }

@@ -16,6 +16,7 @@ export const customerQueryKeys = {
   order: (id: string) => [...customerQueryKeys.orderRoot, id] as const,
   messagesRoot: ["customer", "messages"] as const,
   messages: (orderId: string) => [...customerQueryKeys.messagesRoot, orderId] as const,
+  generalMessages: ["customer", "general-messages"] as const,
   reviewsRoot: ["customer", "reviews"] as const,
   reviews: (orderId: string) => [...customerQueryKeys.reviewsRoot, orderId] as const,
   saved: ["customer", "saved"] as const,
@@ -29,6 +30,7 @@ export const customerLiveQueryKeys: readonly QueryKey[] = [
   customerQueryKeys.ordersRoot,
   customerQueryKeys.orderRoot,
   customerQueryKeys.messagesRoot,
+  customerQueryKeys.generalMessages,
   customerQueryKeys.reviewsRoot,
 ];
 
@@ -41,8 +43,9 @@ export const customerLiveQueryKeys: readonly QueryKey[] = [
  * a ticket moving changes only its order's detail, where the preparation shows.
  * A product running out today, or coming back, changes the days the cart can
  * be collected on. A message arriving, or read in another tab, changes the
- * order's thread and the unread marks on the order list. A review written in
- * another tab, or published or hidden by a manager, changes the order's reviews.
+ * order's thread and the unread marks on the order list — or, about no order,
+ * the general conversation. A review written in another tab, or published or
+ * hidden by a manager, changes the order's reviews.
  */
 export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -68,10 +71,9 @@ export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
     case REALTIME_EVENT_TYPE.messageCreated:
     case REALTIME_EVENT_TYPE.conversationChanged: {
       const orderId = event.data.order_id;
-      return [
-        customerQueryKeys.ordersRoot,
-        orderId ? customerQueryKeys.messages(orderId) : customerQueryKeys.messagesRoot,
-      ];
+      return orderId
+        ? [customerQueryKeys.ordersRoot, customerQueryKeys.messages(orderId)]
+        : [customerQueryKeys.generalMessages];
     }
     case REALTIME_EVENT_TYPE.reviewChanged:
       return [customerQueryKeys.reviewsRoot];

@@ -127,6 +127,8 @@ type OrderRepository interface {
 	OrderIncidentRepository
 	Create(ctx context.Context, params CreateOrderParams) (*domainorder.Order, error)
 	GetByIDForUser(ctx context.Context, userID, orderID uuid.UUID) (*domainorder.Order, error)
+	// GetByCodeForUser returns one of the customer's orders by its code.
+	GetByCodeForUser(ctx context.Context, userID uuid.UUID, code string) (*domainorder.Order, error)
 	// GetByCheckoutKey returns the customer's order placed by the checkout
 	// with that Idempotency-Key.
 	GetByCheckoutKey(ctx context.Context, userID, checkoutKey uuid.UUID) (*domainorder.Order, error)

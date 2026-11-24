@@ -16,14 +16,16 @@ import {
   useMarkStaffMessagesRead,
   usePostStaffMessage,
   useSetConversationStatus,
-  useStaffOrderMessages,
+  useStaffMessages,
 } from "../hooks";
-import type { StaffOrder } from "../schemas";
+import type { StaffThreadRef } from "../schemas";
 
 type StaffChatThreadProps = {
-  /** An order placed from an account: a guest has none to write to. */
-  order: StaffOrder;
+  thread: StaffThreadRef;
+  customerName: string | null;
   customerEmail: string;
+  /** The order it is about; none for a customer's general conversation. */
+  order: { id: string; code: string } | null;
 };
 
 /** Who at the counter wrote each staff message; the customer's need no name. */
@@ -31,18 +33,18 @@ function authorOf(message: Message): string | null {
   return message.from === "staff" ? message.author_name : null;
 }
 
-/** One order's conversation at the counter: read on arrival, answered, resolved. */
-export function StaffChatThread({ order, customerEmail }: StaffChatThreadProps) {
-  const thread = useStaffOrderMessages(order.id);
-  const post = usePostStaffMessage(order.id);
-  const setStatus = useSetConversationStatus(order.id);
-  const { mutate: markRead } = useMarkStaffMessagesRead(order.id);
+/** One conversation at the counter: read on arrival, answered, resolved. */
+export function StaffChatThread({ thread: ref, customerName, customerEmail, order }: StaffChatThreadProps) {
+  const thread = useStaffMessages(ref);
+  const post = usePostStaffMessage(ref);
+  const setStatus = useSetConversationStatus(ref);
+  const { mutate: markRead } = useMarkStaffMessagesRead(ref);
   const pages = thread.data?.pages ?? [];
   const conversation = pages[0]?.conversation ?? null;
   const messages = [...pages].reverse().flatMap((page) => page.messages);
   const unread = conversation?.unread ?? 0;
   const latestId = messages.at(-1)?.id;
-  const name = order.customer.display_name || customerEmail;
+  const name = customerName || customerEmail;
   const resolved = conversation?.status === "closed";
   const visible = usePageVisible();
 
@@ -64,7 +66,7 @@ export function StaffChatThread({ order, customerEmail }: StaffChatThreadProps) 
         />
         <div className="staff-chat__who">
           <span aria-hidden="true" className="staff-chat__avatar staff-chat__avatar--subject">
-            {initialsOf(order.customer.display_name, customerEmail)}
+            {initialsOf(customerName, customerEmail)}
           </span>
           <span className="staff-chat__who-text">
             <h2 className="staff-chat__thread-name">{name}</h2>
@@ -76,13 +78,15 @@ export function StaffChatThread({ order, customerEmail }: StaffChatThreadProps) 
           </span>
         </div>
         <div className="staff-chat__thread-actions">
-          <DashboardTableActionLink
-            className="staff-chat__order-link"
-            href={ROUTE.staff.orderDetail(order.id)}
-            label={`Open order ${order.code}`}
-            showArrow
-            text="Open order"
-          />
+          {order ? (
+            <DashboardTableActionLink
+              className="staff-chat__order-link"
+              href={ROUTE.staff.orderDetail(order.id)}
+              label={`Open order ${order.code}`}
+              showArrow
+              text="Open order"
+            />
+          ) : null}
           <Button
             aria-busy={setStatus.isPending || undefined}
             disabled={!conversation || setStatus.isPending}
@@ -111,9 +115,9 @@ export function StaffChatThread({ order, customerEmail }: StaffChatThreadProps) 
       ) : (
         <MessageThread
           authorOf={authorOf}
-          emptyText={`No messages yet. Write to ${name} about ${order.code}.`}
+          emptyText={order ? `No messages yet. Write to ${name} about ${order.code}.` : "No messages yet."}
           hasMore={thread.hasNextPage}
-          label={`Messages about ${order.code}`}
+          label={order ? `Messages about ${order.code}` : `Messages with ${name}`}
           loadingMore={thread.isFetchingNextPage}
           messages={messages}
           otherName={name}

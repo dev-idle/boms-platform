@@ -6,6 +6,7 @@
 export {
   CartView,
   CustomerLiveUpdates,
+  GeneralMessages,
   OrderDetail,
   OrderList,
   PickupSlotPicker,

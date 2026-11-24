@@ -3202,6 +3202,15 @@
     font-size: 0.6875rem;
   }
 
+  /* A conversation about no order: a micro-label where an order code would be. */
+  .staff-chat__general {
+    color: var(--color-muted);
+    font-size: var(--label-size-sm);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking);
+    text-transform: uppercase;
+  }
+
   /* A count, not a dot: triage needs to know how many wait. */
   .staff-chat__unread {
     align-items: center;
@@ -3421,6 +3430,11 @@
   @media (min-width: 90rem) {
     .staff-chat {
       grid-template-columns: 19.75rem minmax(0, 1fr) 18.5rem;
+    }
+
+    /* A general conversation has no order to set beside it. */
+    .staff-chat--general {
+      grid-template-columns: 19.75rem minmax(0, 1fr);
     }
 
     .staff-chat__rail {

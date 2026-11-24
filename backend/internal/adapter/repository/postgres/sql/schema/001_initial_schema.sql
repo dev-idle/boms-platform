@@ -496,7 +496,8 @@ CREATE TYPE "conversation_status" AS ENUM ('open', 'closed');
 
 CREATE TABLE "conversations" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-  "order_id" uuid NOT NULL,
+  "customer_id" uuid NOT NULL,
+  "order_id" uuid NULL,
   "status" "conversation_status" NOT NULL DEFAULT 'open',
   "assigned_staff_id" uuid NULL,
   "unread_by_customer" integer NOT NULL DEFAULT 0,
@@ -506,10 +507,12 @@ CREATE TABLE "conversations" (
   "updated_at" timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY ("id"),
   CONSTRAINT "conversations_assigned_staff_id_fkey" FOREIGN KEY ("assigned_staff_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
+  CONSTRAINT "conversations_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "conversations_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE RESTRICT,
   CONSTRAINT "conversations_unread_check" CHECK ((unread_by_customer >= 0) AND (unread_by_staff >= 0))
 );
 CREATE UNIQUE INDEX "conversations_order_id_idx" ON "conversations" ("order_id");
+CREATE UNIQUE INDEX "conversations_customer_general_idx" ON "conversations" ("customer_id") WHERE (order_id IS NULL);
 CREATE INDEX "conversations_status_last_message_idx" ON "conversations" ("status", "last_message_at");
 
 CREATE TABLE "messages" (
@@ -527,6 +530,31 @@ CREATE TABLE "messages" (
   CONSTRAINT "messages_body_check" CHECK (CASE WHEN (deleted_at IS NULL) THEN ((char_length(body) >= 1) AND (char_length(body) <= 2000)) ELSE (body = ''::text) END)
 );
 CREATE INDEX "messages_conversation_created_idx" ON "messages" ("conversation_id", "created_at", "id");
+
+CREATE TYPE "assistant_message_role" AS ENUM ('visitor', 'assistant');
+
+CREATE TABLE "assistant_sessions" (
+  "id" uuid NOT NULL,
+  "user_id" uuid NULL,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "last_message_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("id"),
+  CONSTRAINT "assistant_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT
+);
+CREATE INDEX "assistant_sessions_user_idx" ON "assistant_sessions" ("user_id") WHERE (user_id IS NOT NULL);
+CREATE INDEX "assistant_sessions_last_message_idx" ON "assistant_sessions" ("last_message_at");
+
+CREATE TABLE "assistant_messages" (
+  "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+  "session_id" uuid NOT NULL,
+  "role" "assistant_message_role" NOT NULL,
+  "body" text NOT NULL,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("id"),
+  CONSTRAINT "assistant_messages_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "assistant_sessions" ("id") ON DELETE CASCADE,
+  CONSTRAINT "assistant_messages_body_check" CHECK ((char_length(body) >= 1) AND (char_length(body) <= 2000))
+);
+CREATE INDEX "assistant_messages_session_created_idx" ON "assistant_messages" ("session_id", "created_at", "id");
 
 CREATE TYPE "saved_list" AS ENUM ('favorite', 'wishlist');
 

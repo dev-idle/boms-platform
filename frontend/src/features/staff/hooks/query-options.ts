@@ -9,6 +9,7 @@ import type {
   StaffOrdersListFilterInput,
   StaffPickupsFilterInput,
   StaffProductsFilterInput,
+  StaffThreadRef,
 } from "../schemas";
 
 export const staffQueryKeys = {
@@ -30,7 +31,7 @@ export const staffQueryKeys = {
   conversations: (filter: StaffInboxFilterInput) => [...staffQueryKeys.conversationsRoot, filter] as const,
   conversationCounts: ["staff", "conversations", "counts"] as const,
   messagesRoot: ["staff", "messages"] as const,
-  messages: (orderId: string) => [...staffQueryKeys.messagesRoot, orderId] as const,
+  messages: (thread: StaffThreadRef) => [...staffQueryKeys.messagesRoot, thread.kind, thread.id] as const,
 };
 
 /** Everything pushed events can change in a staff tab, refetched after a gap. */
@@ -51,7 +52,8 @@ export const staffLiveQueryKeys: readonly QueryKey[] = [
  * a ticket moves. A ticket also changes its order's detail. An order taken at
  * the counter arrives confirmed, as one paid does. A product running out, or
  * coming back, changes the availability list. A message arriving, or a
- * conversation read or resolved, changes the inbox, its counts and the thread.
+ * conversation read or resolved, changes the inbox, its counts and the thread
+ * — an order's, or a customer's general conversation.
  */
 export function staffQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
@@ -63,11 +65,14 @@ export function staffQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
       return [staffQueryKeys.productsRoot];
     case REALTIME_EVENT_TYPE.messageCreated:
     case REALTIME_EVENT_TYPE.conversationChanged: {
-      const orderId = event.data.order_id;
-      return [
-        staffQueryKeys.conversationsRoot,
-        orderId ? staffQueryKeys.messages(orderId) : staffQueryKeys.messagesRoot,
-      ];
+      const { order_id: orderId, customer_id: customerId } = event.data;
+      if (orderId) {
+        return [staffQueryKeys.conversationsRoot, staffQueryKeys.messages({ kind: "order", id: orderId })];
+      }
+      if (customerId) {
+        return [staffQueryKeys.conversationsRoot, staffQueryKeys.messages({ kind: "customer", id: customerId })];
+      }
+      return [staffQueryKeys.conversationsRoot, staffQueryKeys.messagesRoot];
     }
     case REALTIME_EVENT_TYPE.orderRefunded:
       return [staffQueryKeys.ordersRoot];

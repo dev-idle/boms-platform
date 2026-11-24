@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	domainaccount "github.com/boms/backend/internal/domain/account"
+	domainassistant "github.com/boms/backend/internal/domain/assistant"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
@@ -110,6 +111,7 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "message_body", err: domainconversation.ErrInvalidBody, wantStatus: 400, wantCode: "validation_error"},
 		{name: "messaging_unavailable", err: domainconversation.ErrUnavailable, wantStatus: 422, wantCode: "messaging_unavailable"},
 		{name: "conversation_not_found", err: domainconversation.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
+		{name: "assistant_question", err: domainassistant.ErrInvalidQuestion, wantStatus: 400, wantCode: "validation_error"},
 		{name: "saved_list_invalid", err: domainsaved.ErrInvalidList, wantStatus: 400, wantCode: "validation_error"},
 		{name: "saved_list_full", err: domainsaved.ErrListFull, wantStatus: 422, wantCode: "saved_list_full"},
 		{name: "review_rating", err: domainreview.ErrInvalidRating, wantStatus: 400, wantCode: "validation_error"},

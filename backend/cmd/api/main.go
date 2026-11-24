@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/boms/backend/internal/adapter/eventbus"
+	"github.com/boms/backend/internal/adapter/llm"
 	"github.com/boms/backend/internal/adapter/paypal"
 	"github.com/boms/backend/internal/adapter/realtime"
 	postgresrepo "github.com/boms/backend/internal/adapter/repository/postgres"
@@ -123,11 +124,13 @@ func main() {
 	savedProductRepo := postgresrepo.NewSavedProductRepository(pgPool)
 	reviewRepo := postgresrepo.NewReviewRepository(pgPool)
 	promotionRepo := postgresrepo.NewPromotionRepository(pgPool)
+	assistantRepo := postgresrepo.NewAssistantRepository(pgPool)
 	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC, pickupCodes,
 		conversationRepo)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	accountErasureUC := usecase.NewAccountErasureUsecase(
-		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, conversationRepo, savedProductRepo, reviewRepo, auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
+		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, conversationRepo, assistantRepo, savedProductRepo, reviewRepo, auditLogRepo, userTokenRepo, sessionStore,
+		auditLogger, hasher,
 	)
 	emailVerificationUC := usecase.NewEmailVerificationUsecase(pgPool, userRepo, userTokenRepo, outboxRepo, auditLogger)
 	passwordResetUC := usecase.NewPasswordResetUsecase(
@@ -136,7 +139,8 @@ func main() {
 		auditLogger, zlog,
 	)
 	dataExportUC := usecase.NewDataExportUsecase(
-		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, conversationRepo, savedProductRepo, reviewRepo, cartRepo, sessionStore, auditLogRepo,
+		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, conversationRepo, assistantRepo, savedProductRepo, reviewRepo, cartRepo, sessionStore,
+		auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
 	staffOrderUC := usecase.NewStaffOrderUsecase(userRepo, orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC,
@@ -144,6 +148,9 @@ func main() {
 	staffProductUC := usecase.NewStaffProductUsecase(productRepo, pgPool, outboxRepo, auditLogger, zlog)
 	conversationUC := usecase.NewConversationUsecase(userRepo, orderRepo, conversationRepo, pgPool, outboxRepo)
 	staffConversationUC := usecase.NewStaffConversationUsecase(userRepo, orderRepo, conversationRepo, pgPool, outboxRepo)
+	assistantUC := usecase.NewAssistantUsecase(
+		llm.New(cfg.Assistant), assistantRepo, userRepo, productRepo, storeSettingsRepo, orderRepo, conversationUC, pgPool,
+	)
 	savedProductUC := usecase.NewSavedProductUsecase(userRepo, savedProductRepo, pgPool)
 	reviewUC := usecase.NewReviewUsecase(userRepo, orderRepo, reviewRepo, pgPool, outboxRepo)
 	managerReviewUC := usecase.NewManagerReviewUsecase(reviewRepo, pgPool, outboxRepo, auditLogger, zlog)
@@ -184,6 +191,7 @@ func main() {
 	staffTicketHandler := v1.NewStaffTicketHandler(staffTicketUC)
 	staffProductHandler := v1.NewStaffProductHandler(staffProductUC)
 	conversationHandler := v1.NewConversationHandler(conversationUC)
+	assistantHandler := v1.NewAssistantHandler(assistantUC, cfg.Assistant.ReplyTimeout, zlog)
 	staffConversationHandler := v1.NewStaffConversationHandler(staffConversationUC)
 	savedProductHandler := v1.NewSavedProductHandler(savedProductUC)
 	reviewHandler := v1.NewReviewHandler(reviewUC)
@@ -341,11 +349,26 @@ func main() {
 	customerOrders.Post("/:id/payment/capture", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), paymentHandler.Capture)
 	customerOrders.Post("/:id/cancel", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), orderHandler.Cancel)
 	customerOrders.Patch("/:id/pickup", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), orderHandler.Reschedule)
-	customerOrders.Get("/:id/messages", conversationHandler.Thread)
-	customerOrders.Post("/:id/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), conversationHandler.Post)
-	customerOrders.Post("/:id/messages/read", conversationHandler.MarkRead)
+	customerOrders.Get("/:id/messages", conversationHandler.Thread(v1.OrderConversation))
+	customerOrders.Post("/:id/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), conversationHandler.Post(v1.OrderConversation))
+	customerOrders.Post("/:id/messages/read", conversationHandler.MarkRead(v1.OrderConversation))
 	customerOrders.Get("/:id/reviews", reviewHandler.ListByOrder)
 	customerOrders.Post("/:id/reviews", middleware.ReviewWriteRateLimit(rdb, cfg.RateRedis), reviewHandler.Create)
+
+	customerConversation := customerSessionGroup(apiV1, "/conversation", tokenSigner, sessionStore, passwordChanged)
+	customerConversation.Get("/messages", conversationHandler.Thread(v1.GeneralConversation))
+	customerConversation.Post("/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), conversationHandler.Post(v1.GeneralConversation))
+	customerConversation.Post("/messages/read", conversationHandler.MarkRead(v1.GeneralConversation))
+
+	// A guest asks about the catalogue and the opening hours; a signed-in
+	// customer also about their orders, and may be passed to the counter.
+	assistant := apiV1.Group(
+		"/assistant",
+		middleware.GuestOrSession(tokenSigner, sessionStore),
+		passwordChanged,
+		middleware.GuestOrRole(domainuser.RoleCustomer),
+	)
+	assistant.Post("/messages", middleware.AssistantRateLimit(rdb, cfg.RateRedis), assistantHandler.Ask)
 
 	customerSaved := customerSessionGroup(apiV1, "/saved-products", tokenSigner, sessionStore, passwordChanged)
 	customerSaved.Get("", savedProductHandler.List)
@@ -426,10 +449,14 @@ func main() {
 	staffOrders.Patch("/products/:id/sold-out", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffProductHandler.PatchSoldOut)
 	staffOrders.Get("/conversations", staffConversationHandler.List)
 	staffOrders.Get("/conversations/counts", staffConversationHandler.Counts)
-	staffOrders.Get("/orders/:id/messages", staffConversationHandler.Thread)
-	staffOrders.Post("/orders/:id/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), staffConversationHandler.Post)
-	staffOrders.Post("/orders/:id/messages/read", staffConversationHandler.MarkRead)
-	staffOrders.Patch("/orders/:id/conversation", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffConversationHandler.PatchStatus)
+	staffOrders.Get("/orders/:id/messages", staffConversationHandler.Thread(v1.StaffOrderConversation))
+	staffOrders.Post("/orders/:id/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), staffConversationHandler.Post(v1.StaffOrderConversation))
+	staffOrders.Post("/orders/:id/messages/read", staffConversationHandler.MarkRead(v1.StaffOrderConversation))
+	staffOrders.Patch("/orders/:id/conversation", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffConversationHandler.PatchStatus(v1.StaffOrderConversation))
+	staffOrders.Get("/customers/:id/messages", staffConversationHandler.Thread(v1.StaffGeneralConversation))
+	staffOrders.Post("/customers/:id/messages", middleware.MessageWriteRateLimit(rdb, cfg.RateRedis), staffConversationHandler.Post(v1.StaffGeneralConversation))
+	staffOrders.Post("/customers/:id/messages/read", staffConversationHandler.MarkRead(v1.StaffGeneralConversation))
+	staffOrders.Patch("/customers/:id/conversation", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffConversationHandler.PatchStatus(v1.StaffGeneralConversation))
 
 	bakerTickets := apiV1.Group(
 		"/baker",
@@ -453,6 +480,7 @@ func main() {
 		}
 	}()
 	stopRealtime := startRealtime(rootCtx, cfg, rdb, realtimeTickets, sessionStore, zlog)
+	go warmUpAssistant(rootCtx, assistantUC, zlog)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -529,6 +557,19 @@ func customerSessionGroup(
 		middleware.RequireRole(domainuser.RoleCustomer),
 		passwordChanged,
 	)
+}
+
+// warmUpAssistant loads the assistant's model before the first question: a
+// model served locally takes seconds to load after a restart. The API serves
+// without it; a question then waits for the load, or fails if the model is down.
+func warmUpAssistant(ctx context.Context, assistant *usecase.AssistantUsecase, zlog *zap.Logger) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	if err := assistant.WarmUp(ctx); err != nil {
+		zlog.Warn("assistant_warm_up", zap.Error(err))
+		return
+	}
+	zlog.Info("assistant_warm_up")
 }
 
 // realtimeMaxHeaderBytes bounds a WebSocket handshake. Browsers send the site's

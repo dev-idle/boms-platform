@@ -185,6 +185,17 @@ func ReviewWriteRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) 
 	}, cfg.ReviewWriteMax, cfg.ReviewWriteWindow, true)
 }
 
+// AssistantRateLimit limits how many questions one customer, or one address
+// for visitors not signed in, asks the assistant: each runs the language model.
+func AssistantRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		if uid, ok := GetUserID(c); ok {
+			return "rl:user:" + uid.String() + ":assistant"
+		}
+		return "rl:ip:" + ClientIP(c) + ":assistant"
+	}, cfg.AssistantMax, cfg.AssistantWindow, true)
+}
+
 // RealtimeTicketRateLimit limits how often one user may ask for a realtime
 // ticket. Each ticket costs a Redis write and, once redeemed, a socket.
 func RealtimeTicketRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {

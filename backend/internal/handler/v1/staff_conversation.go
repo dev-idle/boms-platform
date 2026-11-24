@@ -12,6 +12,29 @@ import (
 	"github.com/google/uuid"
 )
 
+// StaffConversationParam reads which conversation a counter route names.
+type StaffConversationParam func(c fiber.Ctx) (usecase.StaffThreadKey, *apperrors.AppError)
+
+// StaffOrderConversation is the conversation about the order the route's :id
+// names.
+func StaffOrderConversation(c fiber.Ctx) (usecase.StaffThreadKey, *apperrors.AppError) {
+	orderID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return usecase.StaffThreadKey{}, apperrors.ErrValidation.WithDetail("id", "invalid order id")
+	}
+	return usecase.OrderThread(orderID), nil
+}
+
+// StaffGeneralConversation is the general conversation of the customer the
+// route's :id names.
+func StaffGeneralConversation(c fiber.Ctx) (usecase.StaffThreadKey, *apperrors.AppError) {
+	customerID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return usecase.StaffThreadKey{}, apperrors.ErrValidation.WithDetail("id", "invalid customer id")
+	}
+	return usecase.GeneralThread(customerID), nil
+}
+
 // StaffConversationHandler is the counter's inbox and its replies.
 type StaffConversationHandler struct {
 	usecase *usecase.StaffConversationUsecase
@@ -46,79 +69,87 @@ func (h *StaffConversationHandler) Counts(c fiber.Ctx) error {
 	return response.OK(c, out)
 }
 
-// Thread returns a page of the messages on an order (?before=<message id>).
-func (h *StaffConversationHandler) Thread(c fiber.Ctx) error {
-	response.EnsureRequestID(c)
-	orderID, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid order id"))
+// Thread returns a page of a conversation's messages (?before=<message id>).
+func (h *StaffConversationHandler) Thread(param StaffConversationParam) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		response.EnsureRequestID(c)
+		key, appErr := param(c)
+		if appErr != nil {
+			return writeAppError(c, appErr)
+		}
+		beforeID, appErr := parseBeforeID(c, "message")
+		if appErr != nil {
+			return writeAppError(c, appErr)
+		}
+		out, err := h.usecase.Thread(c.Context(), key, beforeID)
+		if err != nil {
+			return writeMapUsecaseError(c, err)
+		}
+		return response.OK(c, out)
 	}
-	beforeID, appErr := parseBeforeID(c, "message")
-	if appErr != nil {
-		return writeAppError(c, appErr)
-	}
-	out, err := h.usecase.Thread(c.Context(), orderID, beforeID)
-	if err != nil {
-		return writeMapUsecaseError(c, err)
-	}
-	return response.OK(c, out)
 }
 
-// Post writes a staff member's message on an order.
-func (h *StaffConversationHandler) Post(c fiber.Ctx) error {
-	response.EnsureRequestID(c)
-	actorID, ok := middleware.GetUserID(c)
-	if !ok {
-		return writeAppError(c, apperrors.ErrUnauthorized)
+// Post writes a staff member's message on a conversation.
+func (h *StaffConversationHandler) Post(param StaffConversationParam) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		response.EnsureRequestID(c)
+		actorID, ok := middleware.GetUserID(c)
+		if !ok {
+			return writeAppError(c, apperrors.ErrUnauthorized)
+		}
+		key, appErr := param(c)
+		if appErr != nil {
+			return writeAppError(c, appErr)
+		}
+		var req dto.PostMessageRequest
+		if err := c.Bind().Body(&req); err != nil {
+			return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
+		}
+		if err := sharevalidator.Struct(&req); err != nil {
+			return writeValidationError(c, err)
+		}
+		out, err := h.usecase.Post(c.Context(), actorID, key, req)
+		if err != nil {
+			return writeMapUsecaseError(c, err)
+		}
+		return response.Created(c, out)
 	}
-	orderID, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid order id"))
-	}
-	var req dto.PostMessageRequest
-	if err := c.Bind().Body(&req); err != nil {
-		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
-	}
-	if err := sharevalidator.Struct(&req); err != nil {
-		return writeValidationError(c, err)
-	}
-	out, err := h.usecase.Post(c.Context(), actorID, orderID, req)
-	if err != nil {
-		return writeMapUsecaseError(c, err)
-	}
-	return response.Created(c, out)
 }
 
-// MarkRead records that the counter read the messages on an order.
-func (h *StaffConversationHandler) MarkRead(c fiber.Ctx) error {
-	response.EnsureRequestID(c)
-	orderID, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid order id"))
+// MarkRead records that the counter read a conversation's messages.
+func (h *StaffConversationHandler) MarkRead(param StaffConversationParam) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		response.EnsureRequestID(c)
+		key, appErr := param(c)
+		if appErr != nil {
+			return writeAppError(c, appErr)
+		}
+		if err := h.usecase.MarkRead(c.Context(), key); err != nil {
+			return writeMapUsecaseError(c, err)
+		}
+		return response.NoContent(c)
 	}
-	if err := h.usecase.MarkRead(c.Context(), orderID); err != nil {
-		return writeMapUsecaseError(c, err)
-	}
-	return response.NoContent(c)
 }
 
-// PatchStatus resolves an order's conversation, or opens it again.
-func (h *StaffConversationHandler) PatchStatus(c fiber.Ctx) error {
-	response.EnsureRequestID(c)
-	orderID, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return writeAppError(c, apperrors.ErrValidation.WithDetail("id", "invalid order id"))
+// PatchStatus resolves a conversation, or opens it again.
+func (h *StaffConversationHandler) PatchStatus(param StaffConversationParam) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		response.EnsureRequestID(c)
+		key, appErr := param(c)
+		if appErr != nil {
+			return writeAppError(c, appErr)
+		}
+		var req dto.PatchConversationRequest
+		if err := c.Bind().Body(&req); err != nil {
+			return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
+		}
+		if err := sharevalidator.Struct(&req); err != nil {
+			return writeValidationError(c, err)
+		}
+		out, err := h.usecase.SetStatus(c.Context(), key, req)
+		if err != nil {
+			return writeMapUsecaseError(c, err)
+		}
+		return response.OK(c, out)
 	}
-	var req dto.PatchConversationRequest
-	if err := c.Bind().Body(&req); err != nil {
-		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
-	}
-	if err := sharevalidator.Struct(&req); err != nil {
-		return writeValidationError(c, err)
-	}
-	out, err := h.usecase.SetStatus(c.Context(), orderID, req)
-	if err != nil {
-		return writeMapUsecaseError(c, err)
-	}
-	return response.OK(c, out)
 }

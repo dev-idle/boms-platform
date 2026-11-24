@@ -24,17 +24,22 @@ export const messageSchema = z.object({
 
 export type Message = z.infer<typeof messageSchema>;
 
-/** A message as written; the API trims it and checks its characters again. */
-export const messageInputSchema = z.object({
-  body: z
-    .string()
-    .trim()
-    .min(1, "Write a message first")
-    .refine(
-      (body) => [...body].length <= MESSAGE_MAX_LENGTH,
-      `A message holds up to ${MESSAGE_MAX_LENGTH} characters`,
-    ),
-});
+/**
+ * A message as written, of up to maxLength characters counted as the API
+ * counts them; the API trims it and checks its characters again.
+ */
+export function messageInputSchemaOf(maxLength: number) {
+  return z.object({
+    body: z
+      .string()
+      .trim()
+      .min(1, "Write a message first")
+      .refine((body) => [...body].length <= maxLength, `A message holds up to ${maxLength} characters`),
+  });
+}
+
+/** A message to the counter as written. */
+export const messageInputSchema = messageInputSchemaOf(MESSAGE_MAX_LENGTH);
 
 export type MessageInput = z.infer<typeof messageInputSchema>;
 

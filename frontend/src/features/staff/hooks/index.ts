@@ -27,20 +27,20 @@ import {
   findStaffCustomer,
   getStaffConversationCounts,
   getStaffOrder,
-  getStaffOrderMessages,
+  getStaffMessages,
   listCounterTickets,
   listStaffOrders,
   listStaffPickups,
   listStaffConversations,
   listStaffProducts,
-  markStaffOrderMessagesRead,
+  markStaffMessagesRead,
   moveTicket,
   patchProductSoldOut,
   quoteStaffOrder,
   patchCounterTicketStatus,
   patchStaffConversation,
   patchStaffOrderStatus,
-  postStaffOrderMessage,
+  postStaffMessage,
   reportOrderIncident,
 } from "../api";
 import {
@@ -58,6 +58,7 @@ import {
   type StaffOrdersListFilterInput,
   type StaffPickupsFilterInput,
   type StaffInboxFilterInput,
+  type StaffThreadRef,
 } from "../schemas";
 import { staffQueryKeys } from "./query-options";
 
@@ -284,24 +285,24 @@ export function useStaffConversationCounts() {
   });
 }
 
-/** The messages on an order, the latest page first; each older page starts before the oldest loaded. */
-export function useStaffOrderMessages(orderId: string) {
+/** A conversation's messages, the latest page first; each older page starts before the oldest loaded. */
+export function useStaffMessages(thread: StaffThreadRef) {
   return useInfiniteQuery({
-    queryKey: staffQueryKeys.messages(orderId),
-    queryFn: ({ pageParam }) => getStaffOrderMessages(orderId, pageParam),
+    queryKey: staffQueryKeys.messages(thread),
+    queryFn: ({ pageParam }) => getStaffMessages(thread, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => (page.has_more ? page.messages[0]?.id : undefined),
     retry: false,
   });
 }
 
-/** Writes a staff member's message to the order's customer. */
-export function usePostStaffMessage(orderId: string) {
+/** Writes a staff member's message to the conversation's customer. */
+export function usePostStaffMessage(thread: StaffThreadRef) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: MessageInput) => postStaffOrderMessage(orderId, input),
+    mutationFn: (input: MessageInput) => postStaffMessage(thread, input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.messages(orderId) });
+      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.messages(thread) });
       void queryClient.invalidateQueries({ queryKey: staffQueryKeys.conversationsRoot });
     },
     onError: (error) => {
@@ -314,25 +315,25 @@ export function usePostStaffMessage(orderId: string) {
   });
 }
 
-/** Records that the counter read the messages on an order. */
-export function useMarkStaffMessagesRead(orderId: string) {
+/** Records that the counter read a conversation's messages. */
+export function useMarkStaffMessagesRead(thread: StaffThreadRef) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => markStaffOrderMessagesRead(orderId),
+    mutationFn: () => markStaffMessagesRead(thread),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.messages(orderId) });
+      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.messages(thread) });
       void queryClient.invalidateQueries({ queryKey: staffQueryKeys.conversationsRoot });
     },
   });
 }
 
-/** Resolves an order's conversation, or opens it again. */
-export function useSetConversationStatus(orderId: string) {
+/** Resolves a conversation, or opens it again. */
+export function useSetConversationStatus(thread: StaffThreadRef) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (status: ConversationStatus) => patchStaffConversation(orderId, status),
+    mutationFn: (status: ConversationStatus) => patchStaffConversation(thread, status),
     onSuccess: (conversation) => {
-      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.messages(orderId) });
+      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.messages(thread) });
       void queryClient.invalidateQueries({ queryKey: staffQueryKeys.conversationsRoot });
       toast.success(conversation.status === "closed" ? "Conversation resolved" : "Conversation opened again");
     },

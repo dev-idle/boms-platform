@@ -13,6 +13,48 @@ import (
 	"github.com/google/uuid"
 )
 
+type AssistantMessageRole string
+
+const (
+	AssistantMessageRoleVisitor   AssistantMessageRole = "visitor"
+	AssistantMessageRoleAssistant AssistantMessageRole = "assistant"
+)
+
+func (e *AssistantMessageRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AssistantMessageRole(s)
+	case string:
+		*e = AssistantMessageRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AssistantMessageRole: %T", src)
+	}
+	return nil
+}
+
+type NullAssistantMessageRole struct {
+	AssistantMessageRole AssistantMessageRole `json:"assistantMessageRole"`
+	Valid                bool                 `json:"valid"` // Valid is true if AssistantMessageRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAssistantMessageRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.AssistantMessageRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AssistantMessageRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAssistantMessageRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AssistantMessageRole), nil
+}
+
 type ConversationStatus string
 
 const (

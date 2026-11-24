@@ -39,6 +39,7 @@ type Config struct {
 	Seed       SeedConfig
 	Cloudinary CloudinaryConfig
 	PayPal     PayPalConfig
+	Assistant  AssistantConfig
 }
 
 type AppConfig struct {
@@ -94,6 +95,8 @@ type RateLimitRedisConfig struct {
 	MessageWriteWindow    time.Duration
 	ReviewWriteMax        int
 	ReviewWriteWindow     time.Duration
+	AssistantMax          int
+	AssistantWindow       time.Duration
 	SelfWriteMax          int
 	SelfWriteWindow       time.Duration
 	ManagerMediaMax       int
@@ -436,6 +439,8 @@ func load() (*Config, error) {
 			MessageWriteWindow:         v.GetDuration("rate_limit.redis.message_write_window"),
 			ReviewWriteMax:             v.GetInt("rate_limit.redis.review_write_max"),
 			ReviewWriteWindow:          v.GetDuration("rate_limit.redis.review_write_window"),
+			AssistantMax:               v.GetInt("rate_limit.redis.assistant_max"),
+			AssistantWindow:            v.GetDuration("rate_limit.redis.assistant_window"),
 			SelfWriteMax:               v.GetInt("rate_limit.redis.self_write_max"),
 			SelfWriteWindow:            v.GetDuration("rate_limit.redis.self_write_window"),
 			ManagerMediaMax:            v.GetInt("rate_limit.redis.manager_media_max"),
@@ -576,6 +581,13 @@ func load() (*Config, error) {
 			ClientSecret: v.GetString("paypal.client_secret"),
 			WebhookID:    strings.TrimSpace(v.GetString("paypal.webhook_id")),
 		},
+		Assistant: AssistantConfig{
+			BaseURL:         strings.TrimSpace(v.GetString("assistant.base_url")),
+			Model:           strings.TrimSpace(v.GetString("assistant.model")),
+			ReasoningEffort: strings.TrimSpace(v.GetString("assistant.reasoning_effort")),
+			ReplyTimeout:    v.GetDuration("assistant.reply_timeout"),
+			Retention:       v.GetDuration("assistant.retention"),
+		},
 	}
 	return cfg, nil
 }
@@ -619,6 +631,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.redis.message_write_window", time.Minute)
 	v.SetDefault("rate_limit.redis.review_write_max", 20)
 	v.SetDefault("rate_limit.redis.review_write_window", time.Hour)
+	v.SetDefault("rate_limit.redis.assistant_max", 10)
+	v.SetDefault("rate_limit.redis.assistant_window", time.Minute)
 	v.SetDefault("rate_limit.redis.self_write_max", 10)
 	v.SetDefault("rate_limit.redis.self_write_window", time.Minute)
 	v.SetDefault("rate_limit.redis.manager_media_max", 20)
@@ -740,6 +754,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("paypal.client_id", "")
 	v.SetDefault("paypal.client_secret", "")
 	v.SetDefault("paypal.webhook_id", "")
+
+	v.SetDefault("assistant.base_url", "http://127.0.0.1:11434/v1")
+	v.SetDefault("assistant.model", "qwen3.5:9b")
+	v.SetDefault("assistant.reasoning_effort", "none")
+	v.SetDefault("assistant.reply_timeout", 20*time.Second)
+	v.SetDefault("assistant.retention", 60*24*time.Hour)
 }
 
 // Validate enforces production-safe constraints. Call after Load.
@@ -760,6 +780,9 @@ func (c *Config) ValidateWorker() error {
 		return err
 	}
 	if err := c.Promotion.validate(); err != nil {
+		return err
+	}
+	if err := c.Assistant.validateRetention(); err != nil {
 		return err
 	}
 	// Before an overdue order expires, the worker asks PayPal whether it was paid.
@@ -848,6 +871,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Realtime.validate(c.App.Env); err != nil {
+		return err
+	}
+	if err := c.Assistant.validate(c.App.Env, c.HTTP.WriteTimeout); err != nil {
 		return err
 	}
 	if c.JWT.AccessTTL <= 0 {
@@ -1102,6 +1128,7 @@ func (c RateLimitRedisConfig) validate() error {
 		{"rate_limit.redis.order_write", c.OrderWriteMax, c.OrderWriteWindow},
 		{"rate_limit.redis.message_write", c.MessageWriteMax, c.MessageWriteWindow},
 		{"rate_limit.redis.review_write", c.ReviewWriteMax, c.ReviewWriteWindow},
+		{"rate_limit.redis.assistant", c.AssistantMax, c.AssistantWindow},
 		{"rate_limit.redis.self_write", c.SelfWriteMax, c.SelfWriteWindow},
 		{"rate_limit.redis.manager_media", c.ManagerMediaMax, c.ManagerMediaWindow},
 		{"rate_limit.redis.reference_upload", c.ReferenceUploadMax, c.ReferenceUploadWindow},

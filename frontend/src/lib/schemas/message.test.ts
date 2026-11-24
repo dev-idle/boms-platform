@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { MESSAGE_MAX_LENGTH, messageInputSchema, messageSchema } from "./message";
+import { MESSAGE_MAX_LENGTH, messageInputSchema, messageInputSchemaOf, messageSchema } from "./message";
 
 describe("messageInputSchema", () => {
   it("counts characters as the API does, an emoji as one", () => {
     const longest = "🎂".repeat(MESSAGE_MAX_LENGTH);
     expect(messageInputSchema.safeParse({ body: longest }).success).toBe(true);
     expect(messageInputSchema.safeParse({ body: `${longest}a` }).success).toBe(false);
+  });
+
+  it("holds a shorter limit where one is set", () => {
+    const question = messageInputSchemaOf(5);
+    expect(question.safeParse({ body: "🎂🎂🎂🎂🎂" }).success).toBe(true);
+    expect(question.safeParse({ body: "Hello!" }).success).toBe(false);
   });
 
   it("trims what is written and refuses an empty message", () => {

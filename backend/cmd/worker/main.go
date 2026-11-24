@@ -91,7 +91,7 @@ func main() {
 		zap.Duration("order_job_interval", cfg.Order.JobInterval),
 		zap.Int("email_concurrency", cfg.Mail.Concurrency),
 	)
-	run(ctx, dispatcher, orderJobs, cfg, zlog)
+	run(ctx, dispatcher, postgresrepo.NewAssistantRepository(pgPool), orderJobs, cfg, zlog)
 	// A delivery is a publish and a mark, each within the dispatch timeout.
 	waitCtx, cancel := context.WithTimeout(context.Background(), 2*cfg.Outbox.DispatchTimeout)
 	defer cancel()
@@ -176,6 +176,12 @@ type outboxJobs interface {
 	Prune(ctx context.Context, retention time.Duration) (int64, error)
 }
 
+// assistantSessions is the assistant's conversations, deleted once they pass
+// their retention.
+type assistantSessions interface {
+	DeleteIdle(ctx context.Context, retention time.Duration) (int64, error)
+}
+
 // orderJob is order work the worker runs on every order tick; run returns how
 // many orders it moved.
 type orderJob struct {
@@ -205,7 +211,14 @@ func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, codes domainorder
 
 // run sweeps, prunes and runs the order jobs on their intervals until ctx is
 // cancelled.
-func run(ctx context.Context, jobs outboxJobs, orders []orderJob, cfg *config.Config, log *zap.Logger) {
+func run(
+	ctx context.Context,
+	jobs outboxJobs,
+	assistant assistantSessions,
+	orders []orderJob,
+	cfg *config.Config,
+	log *zap.Logger,
+) {
 	// A restarted worker recovers at once instead of one interval later.
 	sweep(ctx, jobs, cfg.Outbox, log)
 
@@ -234,15 +247,23 @@ func run(ctx context.Context, jobs outboxJobs, orders []orderJob, cfg *config.Co
 				}
 			}
 		case <-pruneTicker.C:
-			deleted, err := jobs.Prune(ctx, cfg.Outbox.Retention)
-			if err != nil {
-				log.Error("outbox_prune_failed", zap.Error(err))
-				continue
-			}
-			if deleted > 0 {
-				log.Info("outbox_pruned", zap.Int64("events", deleted))
-			}
+			prune(ctx, jobs, assistant, cfg, log)
 		}
+	}
+}
+
+// prune deletes what has passed its retention: delivered outbox events, and
+// conversations with the assistant idle longer than the privacy policy keeps them.
+func prune(ctx context.Context, jobs outboxJobs, assistant assistantSessions, cfg *config.Config, log *zap.Logger) {
+	if deleted, err := jobs.Prune(ctx, cfg.Outbox.Retention); err != nil {
+		log.Error("outbox_prune_failed", zap.Error(err))
+	} else if deleted > 0 {
+		log.Info("outbox_pruned", zap.Int64("events", deleted))
+	}
+	if deleted, err := assistant.DeleteIdle(ctx, cfg.Assistant.Retention); err != nil {
+		log.Error("assistant_prune_failed", zap.Error(err))
+	} else if deleted > 0 {
+		log.Info("assistant_pruned", zap.Int64("sessions", deleted))
 	}
 }
 

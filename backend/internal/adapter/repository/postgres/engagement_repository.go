@@ -38,6 +38,7 @@ func (r *EngagementRepository) CountEngagement(ctx context.Context) (port.Engage
 		Wishlist:      row.Wishlist,
 		Messages:      row.Messages,
 		Promotions:    row.Promotions,
+		Assistant:     row.Assistant,
 		UsedNone:      row.UsedNone,
 		UsedOne:       row.UsedOne,
 		UsedTwoOrMore: row.UsedTwoOrMore,

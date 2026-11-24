@@ -57,8 +57,13 @@ export function PrivacyPolicy() {
             you about it.
           </li>
           <li>
-            <strong>Messages:</strong> what you and our counter staff write to each other about one of
-            your orders.
+            <strong>Messages:</strong> what you and our counter staff write to each other, about one of
+            your orders or about anything else.
+          </li>
+          <li>
+            <strong>Questions to the assistant:</strong> what you ask the automated assistant on our
+            shop and its answers, signed in or not. When it passes your question to our staff, the
+            questions you asked it go to them as your message.
           </li>
           <li>
             <strong>Promotions:</strong> whether you agreed to receive promotion emails, and when; we
@@ -98,7 +103,11 @@ export function PrivacyPolicy() {
           </li>
           <li>
             To count, without naming anyone, how many customers use reviews, favorites, the wishlist,
-            messages and promotion emails, so we know which of them are worth keeping.
+            messages, promotion emails and the assistant, so we know which of them are worth keeping.
+          </li>
+          <li>
+            To answer your questions through the assistant, from what our shop and your own orders
+            show, and to pass to our staff what it cannot answer.
           </li>
           <li>To keep the sales records the law requires of a business.</li>
           <li>
@@ -111,8 +120,8 @@ export function PrivacyPolicy() {
       <PolicySection id="privacy-who-sees" title="4. Who sees it">
         <ul>
           <li>
-            Counter staff see your name, email and phone, to arrange and hand over your pickup, and the
-            messages about your orders, to answer them.
+            Counter staff see your name, email and phone, to arrange and hand over your pickup, and
+            your messages, to answer them — those the assistant passed to them included.
           </li>
           <li>
             The kitchen sees what to make, when, your display name, and how you asked a custom cake to
@@ -136,18 +145,26 @@ export function PrivacyPolicy() {
           Our database is hosted by Neon, reference photos are stored by Cloudinary, and payments
           are processed by PayPal. They handle your data only to provide those services to us.
         </p>
+        <p>
+          The assistant&apos;s answers are written by a language model that runs on our own server:
+          your questions are not sent to any other company, and they are not used to train it. Its
+          answers are automated and can be wrong; our staff can help with anything it cannot.
+        </p>
       </PolicySection>
 
       <PolicySection id="privacy-how-long" title="5. How long we keep it">
         <ul>
           <li>
             Your account, profile, cart, favorites, wishlist, reviews, your agreement to promotions and
-            the messages about your orders, until you delete your account. Deleting it erases your name, phone number and
-            email, empties your cart and your lists, erases those messages and your reviews and removes
-            your personal details from the record of changes; you are signed out everywhere and the
-            account cannot be restored.
+            your messages with our staff, until you delete your account. Deleting it erases your name,
+            phone number and email, empties your cart and your lists, erases those messages, your
+            reviews and your conversations with the assistant, and removes your personal details from
+            the record of changes; you are signed out everywhere and the account cannot be restored.
           </li>
           <li>Your sign-in sessions, until you sign out or they expire.</li>
+          <li>
+            A conversation with the assistant, for 60 days after its last message; then it is deleted.
+          </li>
           <li>
             A reference photo, as long as the order it was made for; one you uploaded without ordering
             stays stored until you ask us to delete it.

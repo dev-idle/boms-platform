@@ -4203,8 +4203,10 @@
     border-top-color: transparent;
   }
 
+  /* The bottom clears the assistant's launcher, fixed in the corner (1.5rem
+     from the edge, 2.75rem tall), so the last links stay reachable. */
   .storefront-footer__inner {
-    padding-block: 4.5rem 2.5rem;
+    padding-block: 4.5rem 5.25rem;
   }
 
   .storefront-footer__grid {

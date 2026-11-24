@@ -17,6 +17,8 @@ type MessageThreadProps = {
   otherName: string;
   label: string;
   emptyText: string;
+  /** True while the last message is still being written: it is read out once whole. */
+  busy?: boolean;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
@@ -38,8 +40,8 @@ function dayLabel(iso: string, now: Date): string {
 
 /**
  * A conversation read top to bottom, a rule between days. It keeps the latest
- * message in view as messages arrive; loading older ones leaves the reader
- * where they were.
+ * message in view as messages arrive, or as the last one is written; loading
+ * older ones leaves the reader where they were.
  */
 export function MessageThread({
   messages,
@@ -48,24 +50,26 @@ export function MessageThread({
   otherName,
   label,
   emptyText,
+  busy = false,
   hasMore,
   loadingMore,
   onLoadMore,
 }: MessageThreadProps) {
   const logRef = useRef<HTMLDivElement>(null);
   const latestId = messages.at(-1)?.id;
+  const latestBody = messages.at(-1)?.body;
 
   useEffect(() => {
     const log = logRef.current;
     if (log && latestId) {
       log.scrollTop = log.scrollHeight;
     }
-  }, [latestId]);
+  }, [latestId, latestBody]);
 
   const now = new Date();
   const days = messages.map((message) => dayLabel(message.created_at, now));
   return (
-    <div aria-label={label} className="message-thread" ref={logRef} role="log" tabIndex={0}>
+    <div aria-busy={busy || undefined} aria-label={label} className="message-thread" ref={logRef} role="log" tabIndex={0}>
       {hasMore ? (
         <Button
           aria-busy={loadingMore || undefined}

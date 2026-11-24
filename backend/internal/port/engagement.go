@@ -12,6 +12,7 @@ type EngagementCounts struct {
 	Wishlist      int64
 	Messages      int64
 	Promotions    int64
+	Assistant     int64
 	UsedNone      int64
 	UsedOne       int64
 	UsedTwoOrMore int64

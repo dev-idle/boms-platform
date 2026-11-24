@@ -153,6 +153,17 @@ func (r *OrderRepository) GetByIDForUser(ctx context.Context, userID, orderID uu
 	return mapOrder(row), nil
 }
 
+func (r *OrderRepository) GetByCodeForUser(ctx context.Context, userID uuid.UUID, code string) (*domainorder.Order, error) {
+	row, err := r.q(ctx).GetOrderByCodeForUser(ctx, sqlcgen.GetOrderByCodeForUserParams{
+		Code:   code,
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "get order by code")
+	}
+	return mapOrder(row), nil
+}
+
 func (r *OrderRepository) LockForUpdate(ctx context.Context, orderID uuid.UUID) (*domainorder.Order, error) {
 	if txFromContext(ctx) == nil {
 		return nil, apperrors.Errorf("lock order: requires a transaction")

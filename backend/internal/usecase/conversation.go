@@ -20,7 +20,8 @@ import (
 const threadPageSize int32 = 50
 
 // ConversationUsecase is a customer writing to the counter about one of their
-// orders, once the bakery has taken it.
+// orders, once the bakery has taken it, or about anything else in their
+// general conversation.
 type ConversationUsecase struct {
 	users         port.UserRepository
 	orders        port.OrderRepository
@@ -39,13 +40,19 @@ func NewConversationUsecase(
 	return &ConversationUsecase{users: users, orders: orders, conversations: conversations, tx: tx, events: events}
 }
 
-// Thread returns a page of the messages on the customer's order: the latest,
-// or those before beforeID.
-func (u *ConversationUsecase) Thread(ctx context.Context, userID, orderID uuid.UUID, beforeID *uuid.UUID) (*dto.ThreadResponse, error) {
-	if _, err := u.customerOrder(ctx, userID, orderID); err != nil {
+// Thread returns a page of the customer's messages about their order, or of
+// their general conversation when orderID is nil: the latest, or those
+// before beforeID.
+func (u *ConversationUsecase) Thread(
+	ctx context.Context,
+	userID uuid.UUID,
+	orderID, beforeID *uuid.UUID,
+) (*dto.ThreadResponse, error) {
+	thread, err := u.thread(ctx, userID, orderID, false)
+	if err != nil {
 		return nil, err
 	}
-	conversation, messages, hasMore, err := readThread(ctx, u.conversations, orderID, beforeID)
+	conversation, messages, hasMore, err := readThread(ctx, u.conversations, thread, beforeID)
 	if err != nil {
 		return nil, err
 	}
@@ -56,37 +63,36 @@ func (u *ConversationUsecase) Thread(ctx context.Context, userID, orderID uuid.U
 	return resp, nil
 }
 
-// Post writes the customer's message on their order. The counter hears of it
-// at once, and has read nothing of it yet.
-func (u *ConversationUsecase) Post(ctx context.Context, userID, orderID uuid.UUID, req dto.PostMessageRequest) (*dto.MessageResponse, error) {
+// Post writes the customer's message about their order, or on their general
+// conversation when orderID is nil. The counter hears of it at once, and has
+// read nothing of it yet.
+func (u *ConversationUsecase) Post(
+	ctx context.Context,
+	userID uuid.UUID,
+	orderID *uuid.UUID,
+	req dto.PostMessageRequest,
+) (*dto.MessageResponse, error) {
 	body, err := domainconversation.NewBody(req.Body)
 	if err != nil {
 		return nil, err
 	}
-	order, err := u.customerOrder(ctx, userID, orderID)
+	thread, err := u.thread(ctx, userID, orderID, true)
 	if err != nil {
 		return nil, err
-	}
-	seen, err := seenByStaff(ctx, u.orders, *order)
-	if err != nil {
-		return nil, err
-	}
-	if !seen {
-		return nil, domainconversation.ErrUnavailable
 	}
 	var message *domainconversation.Message
 	err = u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if err := holdCustomer(txCtx, u.users, userID); err != nil {
 			return err
 		}
-		conversationID, err := u.conversations.OpenForCustomerMessage(txCtx, orderID)
+		conversationID, err := u.conversations.OpenForCustomerMessage(txCtx, thread)
 		if err != nil {
 			return err
 		}
 		if message, err = u.conversations.CreateMessage(txCtx, conversationID, userID, domainuser.RoleCustomer, body); err != nil {
 			return err
 		}
-		return u.events.Add(txCtx, domainconversation.MessageCreatedEvent(orderID, userID))
+		return u.events.Add(txCtx, domainconversation.MessageCreatedEvent(userID, orderID))
 	})
 	if err != nil {
 		return nil, err
@@ -95,18 +101,47 @@ func (u *ConversationUsecase) Post(ctx context.Context, userID, orderID uuid.UUI
 	return &resp, nil
 }
 
-// MarkRead records that the customer read every message on their order.
-func (u *ConversationUsecase) MarkRead(ctx context.Context, userID, orderID uuid.UUID) error {
-	if _, err := u.customerOrder(ctx, userID, orderID); err != nil {
+// MarkRead records that the customer read every message about their order,
+// or of their general conversation when orderID is nil.
+func (u *ConversationUsecase) MarkRead(ctx context.Context, userID uuid.UUID, orderID *uuid.UUID) error {
+	thread, err := u.thread(ctx, userID, orderID, false)
+	if err != nil {
 		return err
 	}
 	return u.tx.WithTx(ctx, func(txCtx context.Context) error {
-		read, err := u.conversations.MarkReadByCustomer(txCtx, orderID)
+		read, err := u.conversations.MarkReadByCustomer(txCtx, thread)
 		if err != nil || !read {
 			return err
 		}
-		return u.events.Add(txCtx, domainconversation.ReadByCustomerEvent(orderID, userID))
+		return u.events.Add(txCtx, domainconversation.ReadByCustomerEvent(userID, orderID))
 	})
+}
+
+// thread names the customer's conversation about orderID — one of their
+// orders, which they may write about only once the bakery has taken it — or
+// their general conversation when orderID is nil.
+func (u *ConversationUsecase) thread(
+	ctx context.Context,
+	userID uuid.UUID,
+	orderID *uuid.UUID,
+	writing bool,
+) (port.ConversationThread, error) {
+	thread := port.ConversationThread{CustomerID: userID, OrderID: orderID}
+	if orderID == nil {
+		return thread, nil
+	}
+	order, err := u.customerOrder(ctx, userID, *orderID)
+	if err != nil || !writing {
+		return thread, err
+	}
+	seen, err := seenByStaff(ctx, u.orders, *order)
+	if err != nil {
+		return thread, err
+	}
+	if !seen {
+		return thread, domainconversation.ErrUnavailable
+	}
+	return thread, nil
 }
 
 func (u *ConversationUsecase) customerOrder(ctx context.Context, userID, orderID uuid.UUID) (*domainorder.Order, error) {
@@ -141,13 +176,13 @@ func seenByStaff(ctx context.Context, orders port.OrderRepository, order domaino
 	return domainorder.SeenByStaff(order.Status, history), nil
 }
 
-// readThread reads where the order's conversation stands, nil before its
-// first message, and a page of its messages oldest first, with whether older
-// ones exist.
+// readThread reads where the conversation stands, nil before its first
+// message, and a page of its messages oldest first, with whether older ones
+// exist.
 func readThread(
 	ctx context.Context,
 	conversations port.ConversationRepository,
-	orderID uuid.UUID,
+	thread port.ConversationThread,
 	beforeID *uuid.UUID,
 ) (*domainconversation.Conversation, []domainconversation.Message, bool, error) {
 	var conversation *domainconversation.Conversation
@@ -155,7 +190,7 @@ func readThread(
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
 		var err error
-		conversation, err = conversations.GetByOrderID(groupCtx, orderID)
+		conversation, err = conversations.Get(groupCtx, thread)
 		if errors.Is(err, apperrors.ErrNotFound) {
 			return nil
 		}
@@ -163,7 +198,7 @@ func readThread(
 	})
 	group.Go(func() error {
 		var err error
-		messages, err = conversations.ListMessages(groupCtx, orderID, beforeID, threadPageSize+1)
+		messages, err = conversations.ListMessages(groupCtx, thread, beforeID, threadPageSize+1)
 		return err
 	})
 	if err := group.Wait(); err != nil {

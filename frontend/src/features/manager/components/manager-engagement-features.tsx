@@ -17,6 +17,7 @@ const FEATURE_LABEL: Record<EngagementFeature, string> = {
   wishlist: "Wishlist",
   messages: "Messages",
   promotions: "Promotion emails",
+  assistant: "Assistant",
 };
 
 /** How many registered customers used each feature, and their share. */

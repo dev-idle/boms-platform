@@ -134,7 +134,8 @@ export async function proxyRequestToBackend(
     method,
     headers,
     cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    // A visitor who leaves stops the API's work for them, a stream included.
+    signal: AbortSignal.any([request.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
   };
 
   if (hasBody) {

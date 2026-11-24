@@ -18,7 +18,8 @@ const PAGE_SIZE = 20;
 const PLACEHOLDER_ROWS = 6;
 
 type StaffChatListProps = {
-  activeOrderId: string | undefined;
+  /** The order, or for a general conversation the customer, whose conversation is open. */
+  activeId: string | undefined;
 };
 
 /** Today's messages show their time; older ones their date. */
@@ -28,7 +29,7 @@ function whenLabel(iso: string): string {
 }
 
 /** The counter's inbox: what is unresolved first, or every conversation, latest message first. */
-export function StaffChatList({ activeOrderId }: StaffChatListProps) {
+export function StaffChatList({ activeId }: StaffChatListProps) {
   const [status, setStatus] = useState<ConversationStatus | undefined>("open");
   const [page, setPage] = useState(1);
   const listQuery = useStaffConversations({ page, page_size: PAGE_SIZE, status });
@@ -98,12 +99,17 @@ export function StaffChatList({ activeOrderId }: StaffChatListProps) {
             {conversations.map((conversation) => {
               const name = conversation.customer_name ?? conversation.customer_email;
               const unread = conversation.unread > 0;
+              const id = conversation.order_id ?? conversation.customer_id;
               return (
-                <li key={conversation.order_id}>
+                <li key={id}>
                   <Link
-                    aria-current={conversation.order_id === activeOrderId ? "true" : undefined}
+                    aria-current={id === activeId ? "true" : undefined}
                     className={unread ? "staff-chat__row staff-chat__row--unread" : "staff-chat__row"}
-                    href={ROUTE.staff.chatThread(conversation.order_id)}
+                    href={
+                      conversation.order_id
+                        ? ROUTE.staff.chatThread(conversation.order_id)
+                        : ROUTE.staff.chatGeneral(conversation.customer_id)
+                    }
                   >
                     <span aria-hidden="true" className="staff-chat__avatar">
                       {initialsOf(conversation.customer_name, conversation.customer_email)}
@@ -117,7 +123,11 @@ export function StaffChatList({ activeOrderId }: StaffChatListProps) {
                       </span>
                       <span className="staff-chat__preview">{conversation.preview}</span>
                       <span className="staff-chat__row-meta">
-                        <span className="text-order-code">{conversation.order_code}</span>
+                        {conversation.order_code ? (
+                          <span className="text-order-code">{conversation.order_code}</span>
+                        ) : (
+                          <span className="staff-chat__general">General</span>
+                        )}
                         {unread ? (
                           <span className="staff-chat__unread">
                             {conversation.unread}

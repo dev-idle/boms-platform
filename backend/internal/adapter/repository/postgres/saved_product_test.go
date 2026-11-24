@@ -134,7 +134,8 @@ func TestSavedProducts_Integration(t *testing.T) {
 		conversations := postgresadapter.NewConversationRepository(f.pool)
 
 		export, err := usecase.NewDataExportUsecase(f.users, customerProfiles, postgresadapter.NewStaffProfileRepository(f.pool),
-			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, savedRepo, postgresadapter.NewReviewRepository(f.pool), f.carts, fixedSessions{}, audit,
+			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, postgresadapter.NewAssistantRepository(f.pool), savedRepo,
+			postgresadapter.NewReviewRepository(f.pool), f.carts, fixedSessions{}, audit,
 		).Export(ctx, customer)
 		require.NoError(t, err)
 		held := make([]string, 0, len(export.Saved))
@@ -144,7 +145,8 @@ func TestSavedProducts_Integration(t *testing.T) {
 		assert.ElementsMatch(t, []string{"favorite:Croissant:false", "favorite:Matcha cake:true", "wishlist:Matcha cake:false"}, held,
 			"a product taken off a list is still held, with when")
 
-		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, savedRepo, postgresadapter.NewReviewRepository(f.pool), audit,
+		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, postgresadapter.NewAssistantRepository(f.pool), savedRepo,
+			postgresadapter.NewReviewRepository(f.pool), audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})
 		require.NoError(t, erasure.Erase(ctx, customer, fixturePassword))
 

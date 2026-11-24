@@ -15,11 +15,13 @@ import (
 )
 
 type fakeJobs struct {
-	mu      sync.Mutex
-	batches []int
-	sweeps  int
-	prunes  int
-	err     error
+	mu        sync.Mutex
+	batches   []int
+	sweeps    int
+	prunes    int
+	purges    int
+	err       error
+	retention time.Duration
 }
 
 func (f *fakeJobs) Sweep(context.Context, time.Duration, int32) (int, error) {
@@ -44,10 +46,24 @@ func (f *fakeJobs) Prune(context.Context, time.Duration) (int64, error) {
 	return 0, nil
 }
 
+func (f *fakeJobs) DeleteIdle(_ context.Context, retention time.Duration) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.purges++
+	f.retention = retention
+	return 0, nil
+}
+
 func (f *fakeJobs) counts() (sweeps, prunes int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.sweeps, f.prunes
+}
+
+func (f *fakeJobs) purged() (int, time.Duration) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.purges, f.retention
 }
 
 func TestSweep_DrainsABacklogInOneTick(t *testing.T) {
@@ -70,7 +86,7 @@ func TestSweep_StopsOnError(t *testing.T) {
 	assert.Equal(t, 1, sweeps)
 }
 
-func TestRun_SweepsPrunesAndExpiresUntilStopped(t *testing.T) {
+func TestRun_SweepsPrunesPurgesAndExpiresUntilStopped(t *testing.T) {
 	t.Parallel()
 	jobs := &fakeJobs{}
 	var orderRuns atomic.Int32
@@ -81,21 +97,25 @@ func TestRun_SweepsPrunesAndExpiresUntilStopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		run(ctx, jobs, orders, &config.Config{
+		run(ctx, jobs, jobs, orders, &config.Config{
 			Outbox: config.OutboxConfig{
 				SweepInterval: 5 * time.Millisecond,
 				PruneInterval: 5 * time.Millisecond,
 				SweepBatch:    10,
 			},
-			Order: config.OrderConfig{JobInterval: 5 * time.Millisecond},
+			Order:     config.OrderConfig{JobInterval: 5 * time.Millisecond},
+			Assistant: config.AssistantConfig{Retention: 60 * 24 * time.Hour},
 		}, zap.NewNop())
 		close(done)
 	}()
 
 	assert.Eventually(t, func() bool {
 		sweeps, prunes := jobs.counts()
-		return sweeps > 0 && prunes > 0 && orderRuns.Load() > 0
+		purges, _ := jobs.purged()
+		return sweeps > 0 && prunes > 0 && purges > 0 && orderRuns.Load() > 0
 	}, 5*time.Second, 5*time.Millisecond)
+	_, retention := jobs.purged()
+	assert.Equal(t, 60*24*time.Hour, retention, "the assistant's conversations are kept as long as the policy says")
 
 	cancel()
 	select {

@@ -1791,7 +1791,9 @@ enum "conversation_status" {
   values = ["open", "closed"]
 }
 
-// A customer and the counter writing to each other about one order. What each
+// A customer and the counter writing to each other about one of the
+// customer's orders, or — with no order — about anything else: one
+// conversation per order, and one general conversation per customer. What each
 // side has not read yet is counted on the row, so the inbox and the order list
 // read it without counting messages. The counter shares one inbox: a message
 // one staff member reads is read for all of them.
@@ -1802,9 +1804,13 @@ table "conversations" {
     null    = false
     default = sql("gen_random_uuid()")
   }
-  column "order_id" {
+  column "customer_id" {
     type = uuid
     null = false
+  }
+  column "order_id" {
+    type = uuid
+    null = true
   }
   // Closed once the counter has resolved it; the next message opens it again.
   column "status" {
@@ -1844,6 +1850,11 @@ table "conversations" {
   primary_key {
     columns = [column.id]
   }
+  foreign_key "conversations_customer_id_fkey" {
+    columns     = [column.customer_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
   foreign_key "conversations_order_id_fkey" {
     columns     = [column.order_id]
     ref_columns = [table.orders.column.id]
@@ -1857,6 +1868,12 @@ table "conversations" {
   index "conversations_order_id_idx" {
     unique  = true
     columns = [column.order_id]
+  }
+  // A customer's general conversation, found by the customer.
+  index "conversations_customer_general_idx" {
+    unique  = true
+    columns = [column.customer_id]
+    where   = "order_id IS NULL"
   }
   // The inbox: latest message first, within a status.
   index "conversations_status_last_message_idx" {
@@ -1923,6 +1940,94 @@ table "messages" {
   }
   check "messages_body_check" {
     expr = "CASE WHEN deleted_at IS NULL THEN char_length(body) BETWEEN 1 AND 2000 ELSE body = '' END"
+  }
+}
+
+enum "assistant_message_role" {
+  schema = schema.public
+  values = ["visitor", "assistant"]
+}
+
+// A visitor's questions to the assistant and its answers, signed in (user_id)
+// or not. Kept for the retention the privacy policy states, then deleted by
+// the worker; erasing an account deletes its sessions.
+table "assistant_sessions" {
+  schema = schema.public
+  column "id" {
+    type = uuid
+    null = false
+  }
+  column "user_id" {
+    type = uuid
+    null = true
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "last_message_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "assistant_sessions_user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  // An account's sessions: export, erasure and the engagement report.
+  index "assistant_sessions_user_idx" {
+    columns = [column.user_id]
+    where   = "user_id IS NOT NULL"
+  }
+  // Sessions past their retention, found by the worker.
+  index "assistant_sessions_last_message_idx" {
+    columns = [column.last_message_at]
+  }
+}
+
+// One turn of a session: the visitor's question or the assistant's answer.
+table "assistant_messages" {
+  schema = schema.public
+  column "id" {
+    type    = uuid
+    null    = false
+    default = sql("gen_random_uuid()")
+  }
+  column "session_id" {
+    type = uuid
+    null = false
+  }
+  column "role" {
+    type = enum.assistant_message_role
+    null = false
+  }
+  column "body" {
+    type = text
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "assistant_messages_session_id_fkey" {
+    columns     = [column.session_id]
+    ref_columns = [table.assistant_sessions.column.id]
+    on_delete   = CASCADE
+  }
+  index "assistant_messages_session_created_idx" {
+    columns = [column.session_id, column.created_at, column.id]
+  }
+  check "assistant_messages_body_check" {
+    expr = "char_length(body) BETWEEN 1 AND 2000"
   }
 }
 

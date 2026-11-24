@@ -56,6 +56,7 @@ export const ApiErrorCode = {
   PickupCodeInvalid: "pickup_code_invalid",
   PickupCodeLocked: "pickup_code_locked",
   MessagingUnavailable: "messaging_unavailable",
+  AssistantUnavailable: "assistant_unavailable",
   SavedListFull: "saved_list_full",
   ReviewUnavailable: "review_unavailable",
   ReviewExists: "review_exists",

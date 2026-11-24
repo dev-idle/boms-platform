@@ -1,5 +1,6 @@
 // Package conversation is a customer and the counter writing to each other
-// about one of the customer's orders.
+// about one of the customer's orders, or about anything else in the
+// customer's general conversation.
 package conversation
 
 import (
@@ -23,7 +24,7 @@ const (
 	StatusClosed Status = "closed"
 )
 
-// Conversation is where an order's conversation stands. AssignedStaffName is
+// Conversation is where a conversation stands. AssignedStaffName is
 // the staff member who replied last, nil until the counter answers.
 type Conversation struct {
 	Status            Status

@@ -36,6 +36,7 @@ func (u *ManagerEngagementUsecase) Report(ctx context.Context) (*dto.EngagementR
 			{Feature: "wishlist", Customers: counts.Wishlist},
 			{Feature: "messages", Customers: counts.Messages},
 			{Feature: "promotions", Customers: counts.Promotions},
+			{Feature: "assistant", Customers: counts.Assistant},
 		},
 	}, nil
 }

@@ -8,18 +8,13 @@ import { MessageComposer } from "@/components/ui/message-composer";
 import { MessageThread } from "@/components/ui/message-thread";
 import { BRAND } from "@/constants/brand";
 import { usePageVisible } from "@/lib/hooks/use-page-visible";
-import type { Message } from "@/lib/schemas/message";
 
 import { useMarkOrderMessagesRead, useOrderMessages, usePostOrderMessage } from "../hooks";
+import { bakeryAuthor } from "../lib/messages";
 
 type OrderMessagesProps = {
   orderId: string;
 };
-
-/** The counter's messages read as the bakery's: who at the counter wrote one is theirs to keep. */
-function authorOf(message: Message): string | null {
-  return message.from === "staff" ? BRAND.name : null;
-}
 
 /** The customer and the counter writing to each other about an order the bakery took. */
 export function OrderMessages({ orderId }: OrderMessagesProps) {
@@ -58,7 +53,7 @@ export function OrderMessages({ orderId }: OrderMessagesProps) {
         </div>
       ) : (
         <MessageThread
-          authorOf={authorOf}
+          authorOf={bakeryAuthor}
           emptyText="No messages yet."
           hasMore={thread.hasNextPage}
           label="Messages about this order"

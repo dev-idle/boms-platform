@@ -84,6 +84,31 @@ func OptionalAuth(signer port.TokenSigner) fiber.Handler {
 	}
 }
 
+// GuestOrSession lets a visitor who sends no bearer token through as a guest.
+// One who sends a token is held to RequireAuthWithSession, so an expired or
+// revoked token is refused — and refreshed by the client — rather than read
+// as a guest.
+func GuestOrSession(signer port.TokenSigner, sessions port.SessionStore) fiber.Handler {
+	withSession := RequireAuthWithSession(signer, sessions)
+	return func(c fiber.Ctx) error {
+		if _, ok := bearerToken(c); !ok {
+			return c.Next()
+		}
+		return withSession(c)
+	}
+}
+
+// GuestOrRole lets a guest through and holds a signed-in caller to role.
+// Chain after GuestOrSession.
+func GuestOrRole(role domainuser.Role) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		if actual, ok := GetRole(c); ok && actual != role {
+			return forbidden(c)
+		}
+		return c.Next()
+	}
+}
+
 // RequireRole ensures the authenticated user has the expected role.
 // Pass exactly one role per call. Chain after RequireAuth or RequireAuthWithSession.
 func RequireRole(role domainuser.Role) fiber.Handler {

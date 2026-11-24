@@ -217,14 +217,16 @@ func TestReviews_Integration(t *testing.T) {
 		conversations := postgresadapter.NewConversationRepository(f.pool)
 		savedRepo := postgresadapter.NewSavedProductRepository(f.pool)
 		export, err := usecase.NewDataExportUsecase(f.users, customerProfiles, postgresadapter.NewStaffProfileRepository(f.pool),
-			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, savedRepo, reviewRepo, f.carts, fixedSessions{}, audit,
+			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, postgresadapter.NewAssistantRepository(f.pool), savedRepo, reviewRepo, f.carts,
+			fixedSessions{}, audit,
 		).Export(ctx, customer)
 		require.NoError(t, err)
 		require.Len(t, export.Reviews, 1)
 		assert.Equal(t, "A little dry", *export.Reviews[0].Comment)
 		assert.Equal(t, "published", export.Reviews[0].Status)
 
-		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, savedRepo, reviewRepo, audit,
+		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, postgresadapter.NewAssistantRepository(f.pool), savedRepo,
+			reviewRepo, audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})
 		require.NoError(t, erasure.Erase(ctx, customer, fixturePassword))
 

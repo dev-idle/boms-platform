@@ -68,6 +68,17 @@ func (m *erasureMessages) EraseForCustomer(_ context.Context, userID uuid.UUID) 
 	return nil
 }
 
+// erasureAssistant records whose conversations with the assistant were deleted.
+type erasureAssistant struct {
+	port.AssistantRepository
+	deleted []uuid.UUID
+}
+
+func (a *erasureAssistant) DeleteForUser(_ context.Context, userID uuid.UUID) error {
+	a.deleted = append(a.deleted, userID)
+	return nil
+}
+
 // erasureSaved records whose saved lists were emptied.
 type erasureSaved struct {
 	port.SavedProductRepository
@@ -97,6 +108,7 @@ type erasureFixture struct {
 	carts     *erasureCarts
 	orders    *erasureOrders
 	messages  *erasureMessages
+	assistant *erasureAssistant
 	saved     *erasureSaved
 	reviews   *erasureReviews
 	audit     *recordingAuditLogs
@@ -116,6 +128,7 @@ func newErasureFixture() *erasureFixture {
 		carts:     &erasureCarts{cart: &domaincart.Cart{ID: uuid.New(), UserID: customer.ID}},
 		orders:    &erasureOrders{},
 		messages:  &erasureMessages{},
+		assistant: &erasureAssistant{},
 		saved:     &erasureSaved{},
 		reviews:   &erasureReviews{},
 		audit:     &recordingAuditLogs{},
@@ -132,8 +145,8 @@ func newErasureFixture() *erasureFixture {
 
 func (f *erasureFixture) usecase() *usecase.AccountErasureUsecase {
 	return usecase.NewAccountErasureUsecase(
-		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.messages, f.saved, f.reviews, f.audit, f.tokens, f.sessions,
-		auditlogger.NewService(f.audit), f.hasher,
+		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.messages, f.assistant, f.saved, f.reviews, f.audit, f.tokens,
+		f.sessions, auditlogger.NewService(f.audit), f.hasher,
 	)
 }
 
@@ -149,6 +162,7 @@ func (f *erasureFixture) nothingErased(t *testing.T) {
 	t.Helper()
 	assert.False(t, f.carts.emptied, "the cart is kept")
 	assert.Empty(t, f.messages.erased, "the messages are kept")
+	assert.Empty(t, f.assistant.deleted, "the conversations with the assistant are kept")
 	assert.Empty(t, f.orders.erased, "the incident notes are kept")
 	assert.Empty(t, f.saved.emptied, "the saved lists are kept")
 	assert.Empty(t, f.reviews.erased, "the reviews are kept")
@@ -170,7 +184,8 @@ func TestAccountErasureUsecase_Erase(t *testing.T) {
 		require.NoError(t, f.usecase().Erase(ctx, f.customer.ID, erasurePassword))
 
 		assert.True(t, f.carts.emptied, "the cart is emptied")
-		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.messages.erased, "the messages about their orders go")
+		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.messages.erased, "their messages with the counter go")
+		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.assistant.deleted, "their conversations with the assistant go")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.orders.erased, "what staff wrote about their orders goes")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.saved.emptied, "their favorites and wishlist go")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.reviews.erased, "what they wrote in reviews goes")

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
+	domainassistant "github.com/boms/backend/internal/domain/assistant"
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainconversation "github.com/boms/backend/internal/domain/conversation"
 	domainorder "github.com/boms/backend/internal/domain/order"
@@ -27,13 +28,15 @@ const dataExportPage int32 = 100
 // DataExportUsecase gathers what the bakery holds about one person for them to
 // download (the right of access): their account and profile, the policies they
 // accepted, their sign-in sessions, the changes recorded to their account and,
-// for a customer, their cart, their favorites and wishlist, their reviews, and
-// every order with its lines, history, messages and incidents.
+// for a customer, their cart, their favorites and wishlist, their reviews,
+// every order with its lines, history, messages and incidents, their general
+// conversation with the counter and their conversations with the assistant.
 type DataExportUsecase struct {
 	users         port.UserRepository
 	profiles      *profilesvc.Service
 	orders        port.OrderRepository
 	conversations port.ConversationRepository
+	assistant     port.AssistantRepository
 	saved         port.SavedProductRepository
 	reviews       port.ReviewRepository
 	carts         port.CartRepository
@@ -48,6 +51,7 @@ func NewDataExportUsecase(
 	admins port.AdminProfileRepository,
 	orders port.OrderRepository,
 	conversations port.ConversationRepository,
+	assistant port.AssistantRepository,
 	saved port.SavedProductRepository,
 	reviews port.ReviewRepository,
 	carts port.CartRepository,
@@ -59,6 +63,7 @@ func NewDataExportUsecase(
 		profiles:      profilesvc.NewService(customers, staff, admins),
 		orders:        orders,
 		conversations: conversations,
+		assistant:     assistant,
 		saved:         saved,
 		reviews:       reviews,
 		carts:         carts,
@@ -79,6 +84,9 @@ type DataExport struct {
 	Saved    []dto.DataExportSavedProductResponse
 	Reviews  []dto.DataExportReviewResponse
 	Orders   []dto.DataExportOrderResponse
+	Messages []dto.MessageResponse
+	// Assistant is the conversations with the assistant still kept.
+	Assistant []dto.DataExportAssistantSessionResponse
 }
 
 // Export reads the person's data, every part at once; like listWithTotal it
@@ -96,11 +104,13 @@ func (u *DataExportUsecase) Export(ctx context.Context, userID uuid.UUID) (*Data
 		return nil, err
 	}
 	out := &DataExport{
-		User:    user,
-		Cart:    []dto.DataExportCartItemResponse{},
-		Saved:   []dto.DataExportSavedProductResponse{},
-		Reviews: []dto.DataExportReviewResponse{},
-		Orders:  []dto.DataExportOrderResponse{},
+		User:      user,
+		Cart:      []dto.DataExportCartItemResponse{},
+		Saved:     []dto.DataExportSavedProductResponse{},
+		Reviews:   []dto.DataExportReviewResponse{},
+		Orders:    []dto.DataExportOrderResponse{},
+		Messages:  []dto.MessageResponse{},
+		Assistant: []dto.DataExportAssistantSessionResponse{},
 	}
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
@@ -145,6 +155,16 @@ func (u *DataExportUsecase) Export(ctx context.Context, userID uuid.UUID) (*Data
 		group.Go(func() error {
 			orders, err := u.exportOrders(groupCtx, user.ID)
 			out.Orders = orders
+			return err
+		})
+		group.Go(func() error {
+			messages, err := u.conversations.ListGeneralMessages(groupCtx, user.ID)
+			out.Messages = toMessageResponses(messages, false)
+			return err
+		})
+		group.Go(func() error {
+			sessions, err := u.assistant.ListForUser(groupCtx, user.ID)
+			out.Assistant = mapExportAssistantSessions(sessions)
 			return err
 		})
 	}
@@ -235,6 +255,24 @@ func (u *DataExportUsecase) exportOrderPage(ctx context.Context, orders []domain
 		})
 	}
 	return out, nil
+}
+
+// mapExportAssistantSessions writes each conversation with the assistant as
+// the customer had it: their questions and its answers, oldest first.
+func mapExportAssistantSessions(sessions []domainassistant.Session) []dto.DataExportAssistantSessionResponse {
+	out := make([]dto.DataExportAssistantSessionResponse, 0, len(sessions))
+	for _, session := range sessions {
+		turns := make([]dto.DataExportAssistantTurnResponse, 0, len(session.Turns))
+		for _, turn := range session.Turns {
+			from := dto.AccountActivityByYou
+			if turn.Role == domainassistant.RoleAssistant {
+				from = string(domainassistant.RoleAssistant)
+			}
+			turns = append(turns, dto.DataExportAssistantTurnResponse{From: from, Body: turn.Body, At: turn.At})
+		}
+		out = append(out, dto.DataExportAssistantSessionResponse{StartedAt: session.StartedAt, Turns: turns})
+	}
+	return out
 }
 
 // exportActivity reads every change recorded to the account, newest first, by

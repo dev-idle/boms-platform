@@ -467,7 +467,7 @@ export const operationsSchema = z.object({
 });
 
 /** An engagement feature a customer may use — mirrors the backend engagement report. */
-const engagementFeatureSchema = z.enum(["reviews", "favorites", "wishlist", "messages", "promotions"]);
+const engagementFeatureSchema = z.enum(["reviews", "favorites", "wishlist", "messages", "promotions", "assistant"]);
 
 /**
  * GET /manager/engagement — the open customer accounts, how many used none,

@@ -49,7 +49,7 @@ func TestConversations_Integration(t *testing.T) {
 	}
 	write := func(t *testing.T, customer, orderID uuid.UUID, body string) {
 		t.Helper()
-		_, err := customerSide.Post(ctx, customer, orderID, dto.PostMessageRequest{Body: body})
+		_, err := customerSide.Post(ctx, customer, &orderID, dto.PostMessageRequest{Body: body})
 		require.NoError(t, err)
 	}
 	inboxRow := func(t *testing.T, orderID uuid.UUID) (dto.StaffInboxConversationResponse, bool) {
@@ -57,7 +57,7 @@ func TestConversations_Integration(t *testing.T) {
 		rows, _, _, _, err := counter.List(ctx, 1, 100, "")
 		require.NoError(t, err)
 		for _, row := range rows {
-			if row.OrderID == orderID.String() {
+			if row.OrderID != nil && *row.OrderID == orderID.String() {
 				return row, true
 			}
 		}
@@ -69,7 +69,7 @@ func TestConversations_Integration(t *testing.T) {
 		before, err := counter.Counts(ctx)
 		require.NoError(t, err)
 
-		asked, err := customerSide.Post(ctx, customer, orderID, dto.PostMessageRequest{Body: "  Could the box say Happy birthday?\r\nThank you  "})
+		asked, err := customerSide.Post(ctx, customer, &orderID, dto.PostMessageRequest{Body: "  Could the box say Happy birthday?\r\nThank you  "})
 		require.NoError(t, err)
 		assert.Equal(t, "Could the box say Happy birthday?\nThank you", asked.Body)
 		assert.Equal(t, string(domainuser.RoleCustomer), asked.From)
@@ -85,12 +85,12 @@ func TestConversations_Integration(t *testing.T) {
 		assert.Equal(t, before.Open+1, counts.Open)
 		assert.Equal(t, before.Unread+1, counts.Unread)
 
-		answer, err := counter.Post(ctx, f.clerk, orderID, dto.PostMessageRequest{Body: "Of course, we will write it in white chocolate."})
+		answer, err := counter.Post(ctx, f.clerk, usecase.OrderThread(orderID), dto.PostMessageRequest{Body: "Of course, we will write it in white chocolate."})
 		require.NoError(t, err)
 		assert.Equal(t, string(domainuser.RoleStaff), answer.From)
 		assert.Equal(t, "Linh Tran", *answer.AuthorName)
 
-		atCounter, err := counter.Thread(ctx, orderID, nil)
+		atCounter, err := counter.Thread(ctx, usecase.OrderThread(orderID), nil)
 		require.NoError(t, err)
 		require.NotNil(t, atCounter.Conversation)
 		assert.Zero(t, atCounter.Conversation.Unread, "answering reads what came before")
@@ -98,7 +98,7 @@ func TestConversations_Integration(t *testing.T) {
 		require.Len(t, atCounter.Messages, 2)
 		assert.Equal(t, asked.ID, atCounter.Messages[0].ID, "oldest first")
 
-		mine, err := customerSide.Thread(ctx, customer, orderID, nil)
+		mine, err := customerSide.Thread(ctx, customer, &orderID, nil)
 		require.NoError(t, err)
 		assert.Equal(t, int32(1), mine.Unread)
 		require.Len(t, mine.Messages, 2)
@@ -108,8 +108,8 @@ func TestConversations_Integration(t *testing.T) {
 		require.Len(t, orders, 1)
 		assert.Equal(t, int32(1), orders[0].UnreadMessages)
 
-		require.NoError(t, customerSide.MarkRead(ctx, customer, orderID))
-		mine, err = customerSide.Thread(ctx, customer, orderID, nil)
+		require.NoError(t, customerSide.MarkRead(ctx, customer, &orderID))
+		mine, err = customerSide.Thread(ctx, customer, &orderID, nil)
 		require.NoError(t, err)
 		assert.Zero(t, mine.Unread)
 
@@ -117,21 +117,21 @@ func TestConversations_Integration(t *testing.T) {
 			"message.created:customer+staff",
 			"message.created:customer+staff",
 			"conversation.changed:customer",
-		}, conversationNotices(t, f, orderID, customer))
+		}, conversationNotices(t, f, orderID.String(), customer))
 	})
 
 	t.Run("resolving_reads_it_and_the_next_message_opens_it_again", func(t *testing.T) {
 		customer, orderID := confirmedOrder(t, 10)
 		write(t, customer, orderID, "Is it nut free?")
 
-		resolved, err := counter.SetStatus(ctx, orderID, dto.PatchConversationRequest{Status: "closed"})
+		resolved, err := counter.SetStatus(ctx, usecase.OrderThread(orderID), dto.PatchConversationRequest{Status: "closed"})
 		require.NoError(t, err)
 		assert.Equal(t, string(domainconversation.StatusClosed), resolved.Status)
 		assert.Zero(t, resolved.Unread)
-		reopened, err := counter.SetStatus(ctx, orderID, dto.PatchConversationRequest{Status: "open"})
+		reopened, err := counter.SetStatus(ctx, usecase.OrderThread(orderID), dto.PatchConversationRequest{Status: "open"})
 		require.NoError(t, err)
 		assert.Equal(t, string(domainconversation.StatusOpen), reopened.Status)
-		_, err = counter.SetStatus(ctx, orderID, dto.PatchConversationRequest{Status: "closed"})
+		_, err = counter.SetStatus(ctx, usecase.OrderThread(orderID), dto.PatchConversationRequest{Status: "closed"})
 		require.NoError(t, err)
 
 		write(t, customer, orderID, "One more question")
@@ -143,7 +143,7 @@ func TestConversations_Integration(t *testing.T) {
 		closed, _, _, _, err := counter.List(ctx, 1, 100, "closed")
 		require.NoError(t, err)
 		for _, row := range closed {
-			assert.NotEqual(t, orderID.String(), row.OrderID, "open again, it leaves the resolved")
+			assert.NotEqual(t, new(orderID.String()), row.OrderID, "open again, it leaves the resolved")
 		}
 	})
 
@@ -151,8 +151,8 @@ func TestConversations_Integration(t *testing.T) {
 		customer, orderID := confirmedOrder(t, 17)
 		write(t, customer, orderID, "Hello")
 
-		require.NoError(t, counter.MarkRead(ctx, orderID))
-		require.NoError(t, counter.MarkRead(ctx, orderID))
+		require.NoError(t, counter.MarkRead(ctx, usecase.OrderThread(orderID)))
+		require.NoError(t, counter.MarkRead(ctx, usecase.OrderThread(orderID)))
 
 		row, listed := inboxRow(t, orderID)
 		require.True(t, listed)
@@ -160,7 +160,7 @@ func TestConversations_Integration(t *testing.T) {
 		assert.Equal(t, []string{
 			"message.created:customer+staff",
 			"conversation.changed:staff",
-		}, conversationNotices(t, f, orderID, customer), "reading again, with nothing to read, tells no one")
+		}, conversationNotices(t, f, orderID.String(), customer), "reading again, with nothing to read, tells no one")
 	})
 
 	t.Run("an_unknown_status_is_refused", func(t *testing.T) {
@@ -170,7 +170,7 @@ func TestConversations_Integration(t *testing.T) {
 		_, _, _, _, err := counter.List(ctx, 1, 20, "archived")
 		require.ErrorAs(t, err, &appErr)
 		assert.Equal(t, "validation_error", appErr.Code)
-		_, err = counter.SetStatus(ctx, orderID, dto.PatchConversationRequest{Status: "archived"})
+		_, err = counter.SetStatus(ctx, usecase.OrderThread(orderID), dto.PatchConversationRequest{Status: "archived"})
 		require.ErrorAs(t, err, &appErr)
 		assert.Equal(t, "validation_error", appErr.Code)
 	})
@@ -178,7 +178,7 @@ func TestConversations_Integration(t *testing.T) {
 	t.Run("a_conversation_resolved_before_its_first_message_is_not_found", func(t *testing.T) {
 		_, orderID := confirmedOrder(t, 11)
 
-		_, err := counter.SetStatus(ctx, orderID, dto.PatchConversationRequest{Status: "closed"})
+		_, err := counter.SetStatus(ctx, usecase.OrderThread(orderID), dto.PatchConversationRequest{Status: "closed"})
 
 		require.ErrorIs(t, err, domainconversation.ErrNotFound)
 	})
@@ -189,13 +189,13 @@ func TestConversations_Integration(t *testing.T) {
 			write(t, customer, orderID, fmt.Sprintf("Message %d", i))
 		}
 
-		latest, err := counter.Thread(ctx, orderID, nil)
+		latest, err := counter.Thread(ctx, usecase.OrderThread(orderID), nil)
 		require.NoError(t, err)
 		require.Len(t, latest.Messages, 50)
 		assert.True(t, latest.HasMore)
 		assert.Equal(t, "Message 50", latest.Messages[49].Body)
 
-		older, err := counter.Thread(ctx, orderID, new(uuid.MustParse(latest.Messages[0].ID)))
+		older, err := counter.Thread(ctx, usecase.OrderThread(orderID), new(uuid.MustParse(latest.Messages[0].ID)))
 		require.NoError(t, err)
 		require.Len(t, older.Messages, 1)
 		assert.Equal(t, "Message 0", older.Messages[0].Body)
@@ -208,9 +208,9 @@ func TestConversations_Integration(t *testing.T) {
 		require.NoError(t, err)
 		orderID := uuid.MustParse(unpaid.ID)
 
-		_, err = customerSide.Post(ctx, customer, orderID, dto.PostMessageRequest{Body: "Hello"})
+		_, err = customerSide.Post(ctx, customer, &orderID, dto.PostMessageRequest{Body: "Hello"})
 		require.ErrorIs(t, err, domainconversation.ErrUnavailable)
-		_, err = counter.Thread(ctx, orderID, nil)
+		_, err = counter.Thread(ctx, usecase.OrderThread(orderID), nil)
 		require.ErrorIs(t, err, domainorder.ErrNotFound, "the counter does not see it")
 		assert.False(t, unpaid.CanMessage)
 	})
@@ -225,7 +225,7 @@ func TestConversations_Integration(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		_, err = counter.Post(ctx, f.clerk, uuid.MustParse(guestOrder.ID), dto.PostMessageRequest{Body: "Your order is ready"})
+		_, err = counter.Post(ctx, f.clerk, usecase.OrderThread(uuid.MustParse(guestOrder.ID)), dto.PostMessageRequest{Body: "Your order is ready"})
 
 		require.ErrorIs(t, err, domainconversation.ErrUnavailable)
 	})
@@ -234,25 +234,77 @@ func TestConversations_Integration(t *testing.T) {
 		_, orderID := confirmedOrder(t, 15)
 		stranger := f.newCustomer(t, nil, nil)
 
-		_, err := customerSide.Post(ctx, stranger, orderID, dto.PostMessageRequest{Body: "Hello"})
+		_, err := customerSide.Post(ctx, stranger, &orderID, dto.PostMessageRequest{Body: "Hello"})
 		require.ErrorIs(t, err, domainorder.ErrNotFound)
-		_, err = customerSide.Thread(ctx, stranger, orderID, nil)
+		_, err = customerSide.Thread(ctx, stranger, &orderID, nil)
 		require.ErrorIs(t, err, domainorder.ErrNotFound)
+	})
+
+	t.Run("a_customer_writes_about_no_order_and_the_counter_answers", func(t *testing.T) {
+		customer := f.newCustomer(t, nil, nil)
+		_, err := counter.Thread(ctx, usecase.GeneralThread(customer), nil)
+		require.ErrorIs(t, err, domainconversation.ErrNotFound, "the counter answers a general conversation; the customer starts it")
+
+		asked, err := customerSide.Post(ctx, customer, nil, dto.PostMessageRequest{Body: "Do you bake on public holidays?"})
+		require.NoError(t, err)
+		_, err = customerSide.Post(ctx, customer, nil, dto.PostMessageRequest{Body: "And can I order for the 2nd?"})
+		require.NoError(t, err)
+
+		rows, _, _, _, err := counter.List(ctx, 1, 100, "")
+		require.NoError(t, err)
+		var row *dto.StaffInboxConversationResponse
+		for i := range rows {
+			if rows[i].CustomerID == customer.String() {
+				row = &rows[i]
+			}
+		}
+		require.NotNil(t, row, "the inbox lists it")
+		assert.Nil(t, row.OrderID)
+		assert.Nil(t, row.OrderCode)
+		assert.Equal(t, int32(2), row.Unread, "both messages are one conversation")
+
+		atCounter, err := counter.Thread(ctx, usecase.GeneralThread(customer), nil)
+		require.NoError(t, err)
+		require.NotNil(t, atCounter.Customer, "it names who it is with")
+		require.Len(t, atCounter.Messages, 2)
+		assert.Equal(t, asked.ID, atCounter.Messages[0].ID)
+		_, err = counter.Post(ctx, f.clerk, usecase.GeneralThread(customer), dto.PostMessageRequest{Body: "We are open every day but the closed dates."})
+		require.NoError(t, err)
+
+		mine, err := customerSide.Thread(ctx, customer, nil, nil)
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), mine.Unread)
+		require.Len(t, mine.Messages, 3)
+		require.NoError(t, customerSide.MarkRead(ctx, customer, nil))
+		resolved, err := counter.SetStatus(ctx, usecase.GeneralThread(customer), dto.PatchConversationRequest{Status: "closed"})
+		require.NoError(t, err)
+		assert.Equal(t, string(domainconversation.StatusClosed), resolved.Status)
+
+		assert.Equal(t, []string{
+			"message.created:customer+staff",
+			"message.created:customer+staff",
+			"message.created:customer+staff",
+			"conversation.changed:customer",
+			"conversation.changed:staff",
+		}, conversationNotices(t, f, customer.String(), customer))
 	})
 
 	t.Run("the_export_carries_the_messages_and_erasure_takes_them", func(t *testing.T) {
 		customer, orderID := confirmedOrder(t, 16)
 		write(t, customer, orderID, "Please cancel, I am travelling")
-		_, err := counter.Post(ctx, f.clerk, orderID, dto.PostMessageRequest{Body: "Done, the refund is on its way"})
+		_, err := counter.Post(ctx, f.clerk, usecase.OrderThread(orderID), dto.PostMessageRequest{Body: "Done, the refund is on its way"})
 		require.NoError(t, err)
 		_, err = f.orderUC.Cancel(ctx, customer, orderID)
 		require.NoError(t, err)
 		write(t, customer, orderID, "Thank you")
+		_, err = customerSide.Post(ctx, customer, nil, dto.PostMessageRequest{Body: "Do you sell gift cards?"})
+		require.NoError(t, err)
 
 		customerProfiles := postgresadapter.NewCustomerProfileRepository(f.pool)
 		audit := postgresadapter.NewAuditLogRepository(f.pool)
 		export, err := usecase.NewDataExportUsecase(f.users, customerProfiles, postgresadapter.NewStaffProfileRepository(f.pool),
-			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, postgresadapter.NewSavedProductRepository(f.pool),
+			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, postgresadapter.NewAssistantRepository(f.pool),
+			postgresadapter.NewSavedProductRepository(f.pool),
 			postgresadapter.NewReviewRepository(f.pool), f.carts, fixedSessions{}, audit,
 		).Export(ctx, customer)
 		require.NoError(t, err)
@@ -261,17 +313,22 @@ func TestConversations_Integration(t *testing.T) {
 		require.Len(t, messages, 3)
 		assert.Equal(t, string(domainuser.RoleStaff), messages[1].From)
 		assert.Nil(t, messages[1].AuthorName, "the staff member's name is theirs, not the customer's")
+		require.Len(t, export.Messages, 1, "the general conversation is exported too")
+		assert.Equal(t, "Do you sell gift cards?", export.Messages[0].Body)
 
 		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations,
-			postgresadapter.NewSavedProductRepository(f.pool), postgresadapter.NewReviewRepository(f.pool), audit,
+			postgresadapter.NewAssistantRepository(f.pool), postgresadapter.NewSavedProductRepository(f.pool), postgresadapter.NewReviewRepository(f.pool), audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})
 		require.NoError(t, erasure.Erase(ctx, customer, fixturePassword))
 
-		_, err = customerSide.Post(ctx, customer, orderID, dto.PostMessageRequest{Body: "Still there?"})
+		_, err = customerSide.Post(ctx, customer, &orderID, dto.PostMessageRequest{Body: "Still there?"})
 		require.ErrorIs(t, err, domainorder.ErrNotFound, "a message waits for the erasure, then finds no account")
 		left, err := conversations.ListMessagesByOrderIDs(ctx, []uuid.UUID{orderID})
 		require.NoError(t, err)
 		assert.Empty(t, left, "every message on the order is erased")
+		general, err := conversations.ListGeneralMessages(ctx, customer)
+		require.NoError(t, err)
+		assert.Empty(t, general, "and in the general conversation")
 		_, listed := inboxRow(t, orderID)
 		assert.False(t, listed, "nor is the conversation in the inbox")
 		raw, err := pgxpool.New(ctx, f.connStr)
@@ -285,9 +342,10 @@ func TestConversations_Integration(t *testing.T) {
 	})
 }
 
-// conversationNotices lists the outbox's conversation events about an order,
-// oldest first, as topic:audience — "customer" when it reaches customer.
-func conversationNotices(t *testing.T, f *ticketFixture, orderID, customer uuid.UUID) []string {
+// conversationNotices lists the outbox's events about one conversation —
+// thread is its order's id, or its customer's for a general one — oldest
+// first, as topic:audience, "customer" when it reaches customer.
+func conversationNotices(t *testing.T, f *ticketFixture, thread string, customer uuid.UUID) []string {
 	t.Helper()
 	var events []domainevent.Event
 	require.NoError(t, f.pool.WithTx(context.Background(), func(txCtx context.Context) error {
@@ -297,7 +355,7 @@ func conversationNotices(t *testing.T, f *ticketFixture, orderID, customer uuid.
 	}))
 	var notices []string
 	for _, e := range events {
-		if e.Data["order_id"] != orderID.String() ||
+		if (e.Data["order_id"] != thread && e.Data["customer_id"] != thread) ||
 			(e.Topic != domainconversation.TopicMessageCreated && e.Topic != domainconversation.TopicConversationChanged) {
 			continue
 		}

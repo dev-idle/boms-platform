@@ -34,6 +34,7 @@ func TestValidate_ProductionRequiresTLSWhenSSLModeSet(t *testing.T) {
 		Outbox:    defaultOutbox(),
 		Mail:      defaultMail(),
 		Realtime:  defaultRealtime(),
+		Assistant: defaultAssistant(),
 		Postgres: config.PostgresConfig{
 			URL:                "postgres://host/db?sslmode=disable",
 			MaxConns:           5,
@@ -166,6 +167,18 @@ func defaultRateRedis() config.RateLimitRedisConfig {
 		PasswordResetAccountMax: 3, PasswordResetAccountWindow: time.Hour,
 		VerificationResendMax: 3, VerificationResendWindow: time.Hour,
 		PaymentWebhookMax: 60, PaymentWebhookWindow: time.Minute,
+		AssistantMax: 10, AssistantWindow: time.Minute,
+	}
+}
+
+// defaultAssistant answers well within minimalDevConfig's one-second write timeout.
+func defaultAssistant() config.AssistantConfig {
+	return config.AssistantConfig{
+		BaseURL:         "http://127.0.0.1:11434/v1",
+		Model:           "qwen3.5:9b",
+		ReasoningEffort: "none",
+		ReplyTimeout:    500 * time.Millisecond,
+		Retention:       60 * 24 * time.Hour,
 	}
 }
 
@@ -212,6 +225,7 @@ func minimalDevConfig() *config.Config {
 		Promotion: config.PromotionConfig{UnsubscribeSecret: strings.Repeat("u", 32)},
 		Mail:      defaultMail(),
 		Realtime:  defaultRealtime(),
+		Assistant: defaultAssistant(),
 		Postgres: config.PostgresConfig{
 			URL:      "postgres://host/db?sslmode=require",
 			MaxConns: 5, MinConns: 0,
@@ -351,6 +365,59 @@ func TestValidateWorker_OrderJobs(t *testing.T) {
 	if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), "order.job_interval") {
 		t.Fatalf("expected order.job_interval error, got: %v", err)
 	}
+}
+
+func TestValidateWorker_AssistantRetention(t *testing.T) {
+	t.Parallel()
+	cfg := minimalDevConfig()
+	cfg.Assistant.Retention = 0
+	if err := cfg.ValidateWorker(); err == nil || !strings.Contains(err.Error(), "assistant.retention") {
+		t.Fatalf("expected assistant.retention error, got: %v", err)
+	}
+}
+
+func TestValidate_Assistant(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		breakIt func(*config.Config)
+		want    string
+	}{
+		"no_base_url":           {breakIt: func(c *config.Config) { c.Assistant.BaseURL = "" }, want: "assistant.base_url"},
+		"not_http":              {breakIt: func(c *config.Config) { c.Assistant.BaseURL = "ftp://127.0.0.1/v1" }, want: "assistant.base_url"},
+		"credentials_in_url":    {breakIt: func(c *config.Config) { c.Assistant.BaseURL = "https://user:pass@llm.example.com/v1" }, want: "assistant.base_url"},
+		"no_model":              {breakIt: func(c *config.Config) { c.Assistant.Model = " " }, want: "assistant.model"},
+		"no_reply_timeout":      {breakIt: func(c *config.Config) { c.Assistant.ReplyTimeout = 0 }, want: "assistant.reply_timeout"},
+		"outlasts_the_response": {breakIt: func(c *config.Config) { c.Assistant.ReplyTimeout = c.HTTP.WriteTimeout }, want: "below http.write_timeout"},
+		"plain_http_to_another_machine_in_production": {breakIt: func(c *config.Config) {
+			c.App.Env = "production"
+			c.Assistant.BaseURL = "http://10.0.0.5:11434/v1"
+		}, want: "must use https://"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cfg := minimalDevConfig()
+			if strings.Contains(name, "production") {
+				cfg = minimalProductionConfig()
+			}
+			tc.breakIt(cfg)
+			if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %q error, got: %v", tc.want, err)
+			}
+		})
+	}
+
+	t.Run("production_takes_a_model_on_the_same_machine_or_over_https", func(t *testing.T) {
+		t.Parallel()
+		for _, base := range []string{"http://127.0.0.1:11434/v1", "http://localhost:11434/v1", "https://llm.choux.vn/v1"} {
+			cfg := minimalProductionConfig()
+			cfg.Cloudinary = config.CloudinaryConfig{CloudName: "demo", APIKey: "key", APISecret: "secret"}
+			cfg.Assistant.BaseURL = base
+			if err := cfg.Validate(); err != nil {
+				t.Fatalf("%s: unexpected error: %v", base, err)
+			}
+		}
+	})
 }
 
 func TestValidate_PickupCodeSecret(t *testing.T) {

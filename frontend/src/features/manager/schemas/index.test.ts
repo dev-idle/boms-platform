@@ -257,6 +257,7 @@ describe("engagementReportSchema", () => {
     features: [
       { feature: "reviews", customers: 1 },
       { feature: "promotions", customers: 0 },
+      { feature: "assistant", customers: 1 },
     ],
   };
 

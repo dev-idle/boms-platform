@@ -3,6 +3,8 @@
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { cn } from "@/lib/utils";
+
 import { StaffChatList } from "./staff-chat-list";
 
 type StaffChatProps = {
@@ -16,10 +18,11 @@ type StaffChatProps = {
  * to the next.
  */
 export function StaffChat({ children }: StaffChatProps) {
-  const { orderId } = useParams<{ orderId?: string }>();
+  const { orderId, customerId } = useParams<{ orderId?: string; customerId?: string }>();
+  const activeId = orderId ?? customerId;
   return (
-    <div className={orderId ? "staff-chat staff-chat--open" : "staff-chat"}>
-      <StaffChatList activeOrderId={orderId} />
+    <div className={cn("staff-chat", activeId && "staff-chat--open", customerId && "staff-chat--general")}>
+      <StaffChatList activeId={activeId} />
       {children}
     </div>
   );

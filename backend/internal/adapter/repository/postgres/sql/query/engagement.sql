@@ -3,7 +3,8 @@
 -- engagement feature, and how many used none, one, or two or more. Reviews
 -- and messages count what the customer wrote; favorites and wishlist count
 -- every product ever saved, removed ones included; promotions count those
--- agreeing to them now. The usage is worked out once per customer
+-- agreeing to them now; the assistant counts those with a conversation with
+-- it still kept. The usage is worked out once per customer
 -- (MATERIALIZED, so the counts below do not repeat it), each feature's
 -- customers read once as a distinct set.
 WITH usage AS MATERIALIZED (
@@ -12,7 +13,8 @@ WITH usage AS MATERIALIZED (
     u.id IN (SELECT DISTINCT user_id FROM saved_products WHERE list = 'favorite') AS favorites,
     u.id IN (SELECT DISTINCT user_id FROM saved_products WHERE list = 'wishlist') AS wishlist,
     u.id IN (SELECT DISTINCT author_id FROM messages WHERE author_role = 'customer' AND deleted_at IS NULL) AS messages,
-    u.id IN (SELECT user_id FROM customer_profiles WHERE marketing_consent_at IS NOT NULL) AS promotions
+    u.id IN (SELECT user_id FROM customer_profiles WHERE marketing_consent_at IS NOT NULL) AS promotions,
+    u.id IN (SELECT DISTINCT user_id FROM assistant_sessions WHERE user_id IS NOT NULL) AS assistant
   FROM users u
   WHERE u.role = 'customer'
     AND u.deleted_at IS NULL
@@ -20,7 +22,7 @@ WITH usage AS MATERIALIZED (
 features AS (
   SELECT
     usage.*,
-    reviews::int + favorites::int + wishlist::int + messages::int + promotions::int AS used
+    reviews::int + favorites::int + wishlist::int + messages::int + promotions::int + assistant::int AS used
   FROM usage
 )
 SELECT
@@ -30,6 +32,7 @@ SELECT
   count(*) FILTER (WHERE wishlist)::bigint AS wishlist,
   count(*) FILTER (WHERE messages)::bigint AS messages,
   count(*) FILTER (WHERE promotions)::bigint AS promotions,
+  count(*) FILTER (WHERE assistant)::bigint AS assistant,
   count(*) FILTER (WHERE used = 0)::bigint AS used_none,
   count(*) FILTER (WHERE used = 1)::bigint AS used_one,
   count(*) FILTER (WHERE used >= 2)::bigint AS used_two_or_more

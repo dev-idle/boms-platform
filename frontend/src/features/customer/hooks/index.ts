@@ -25,6 +25,7 @@ import {
   checkoutCart,
   createReview,
   getCart,
+  getGeneralMessages,
   getOrder,
   getOrderMessages,
   getPickupRules,
@@ -32,7 +33,9 @@ import {
   listOrderReviews,
   listOrders,
   listSavedProducts,
+  markGeneralMessagesRead,
   markOrderMessagesRead,
+  postGeneralMessage,
   postOrderMessage,
   removeCartDiscount,
   removeCartItem,
@@ -375,6 +378,19 @@ export function useOrderMessages(orderId: string) {
   });
 }
 
+/** Why a message to the counter was not sent, as the customer reads it. */
+function toastMessageError(error: Error): void {
+  if (isApiError(error) && error.isRateLimited()) {
+    toast.error("You are sending messages quickly. Wait a moment, then try again.");
+    return;
+  }
+  if (isApiError(error) && error.hasValidationDetails()) {
+    toast.error(MESSAGE_REFUSED_TEXT);
+    return;
+  }
+  toast.error(cartMutationErrorMessage(error, "We could not send your message. Please try again."));
+}
+
 /** Writes the customer's message to the counter about their order. */
 export function usePostOrderMessage(orderId: string) {
   const queryClient = useQueryClient();
@@ -383,17 +399,7 @@ export function usePostOrderMessage(orderId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.messages(orderId) });
     },
-    onError: (error) => {
-      if (isApiError(error) && error.isRateLimited()) {
-        toast.error("You are sending messages quickly. Wait a moment, then try again.");
-        return;
-      }
-      if (isApiError(error) && error.hasValidationDetails()) {
-        toast.error(MESSAGE_REFUSED_TEXT);
-        return;
-      }
-      toast.error(cartMutationErrorMessage(error, "We could not send your message. Please try again."));
-    },
+    onError: toastMessageError,
   });
 }
 
@@ -405,6 +411,43 @@ export function useMarkOrderMessagesRead(orderId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.messages(orderId) });
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
+    },
+  });
+}
+
+/**
+ * The customer's general conversation with the counter, the latest page
+ * first; each older page starts before the oldest message loaded.
+ */
+export function useGeneralMessages() {
+  return useInfiniteQuery({
+    queryKey: customerQueryKeys.generalMessages,
+    queryFn: ({ pageParam }) => getGeneralMessages(pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => (page.has_more ? page.messages[0]?.id : undefined),
+    retry: false,
+  });
+}
+
+/** Writes the customer's message to the counter in their general conversation. */
+export function usePostGeneralMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MessageInput) => postGeneralMessage(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.generalMessages });
+    },
+    onError: toastMessageError,
+  });
+}
+
+/** Records that the customer read their general conversation. */
+export function useMarkGeneralMessagesRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: markGeneralMessagesRead,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: customerQueryKeys.generalMessages });
     },
   });
 }

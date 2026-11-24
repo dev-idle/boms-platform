@@ -2,6 +2,7 @@ export {
   StaffAvailability,
   StaffChat,
   StaffChatConversation,
+  StaffChatGeneral,
   StaffLiveUpdates,
   StaffNewOrder,
   StaffOrderDetail,

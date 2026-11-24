@@ -212,10 +212,14 @@ export const staffProductsFilterSchema = z.object({
 /** Whether a conversation still waits on the counter — mirrors backend `conversation.Status`. */
 export const conversationStatusSchema = z.enum(["open", "closed"]);
 
-/** One conversation in the counter's inbox, with the start of its last message. */
+/**
+ * One conversation in the counter's inbox, with the start of its last
+ * message: about an order, or — no order — the customer's general one.
+ */
 export const staffInboxConversationSchema = z.object({
-  order_id: z.uuid(),
-  order_code: orderCodeSchema,
+  customer_id: z.uuid(),
+  order_id: z.uuid().nullable(),
+  order_code: orderCodeSchema.nullable(),
   status: conversationStatusSchema,
   unread: z.number().int().min(0),
   last_message_at: apiDateTimeSchema,
@@ -237,19 +241,31 @@ export const staffConversationCountsSchema = z.object({
   unread: z.number().int().min(0),
 });
 
-/** Where an order's conversation stands at the counter. */
+/** Where a conversation stands at the counter. */
 export const staffConversationSchema = z.object({
   status: conversationStatusSchema,
   unread: z.number().int().min(0),
   assigned_staff_name: z.string().nullable(),
 });
 
-/** GET /staff/orders/:id/messages — a page of the order's messages; no conversation before the first. */
+/**
+ * A page of a conversation's messages; no conversation before an order's
+ * first message. `customer` is who a general conversation is with.
+ */
 export const staffThreadSchema = z.object({
   conversation: staffConversationSchema.nullable(),
+  customer: z
+    .object({
+      display_name: z.string().nullable(),
+      email: z.string().min(1),
+    })
+    .nullable(),
   messages: z.array(messageSchema),
   has_more: z.boolean(),
 });
+
+/** A conversation the counter opens: about an order, or a customer's general one. */
+export type StaffThreadRef = { kind: "order" | "customer"; id: string };
 
 /** Hand a ticket nobody started to the other station. */
 export const moveTicketInputSchema = z.object({

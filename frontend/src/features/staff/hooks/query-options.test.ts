@@ -48,11 +48,15 @@ describe("staffQueryKeysForEvent", () => {
     ]);
   });
 
-  it("refreshes the inbox and the order's thread when a message arrives or a conversation changes", () => {
+  it("refreshes the inbox and the thread when a message arrives or a conversation changes", () => {
     for (const type of ["message.created", "conversation.changed"]) {
       expect(staffQueryKeysForEvent({ type, data: { order_id: "o-1" } })).toEqual([
         staffQueryKeys.conversationsRoot,
-        staffQueryKeys.messages("o-1"),
+        staffQueryKeys.messages({ kind: "order", id: "o-1" }),
+      ]);
+      expect(staffQueryKeysForEvent({ type, data: { customer_id: "c-1" } })).toEqual([
+        staffQueryKeys.conversationsRoot,
+        staffQueryKeys.messages({ kind: "customer", id: "c-1" }),
       ]);
     }
     expect(staffQueryKeysForEvent({ type: "conversation.changed", data: {} })).toEqual([

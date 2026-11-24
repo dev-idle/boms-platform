@@ -6,21 +6,29 @@ import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { messageInputSchema, type MessageInput } from "@/lib/schemas/message";
+import { MESSAGE_MAX_LENGTH, messageInputSchemaOf, type MessageInput } from "@/lib/schemas/message";
 
 type MessageComposerProps = {
   /** Names the box for assistive tech; it has no visible label. */
   label: string;
   placeholder: string;
   pending: boolean;
+  /** The most characters it takes; a message to the counter by default. */
+  maxLength?: number;
   /** Sends the message; `sent` clears the box once it is delivered. */
   onSend: (input: MessageInput, sent: () => void) => void;
 };
 
 /** Writes a message: Enter sends it, Shift + Enter breaks the line. */
-export function MessageComposer({ label, placeholder, pending, onSend }: MessageComposerProps) {
+export function MessageComposer({
+  label,
+  placeholder,
+  pending,
+  maxLength = MESSAGE_MAX_LENGTH,
+  onSend,
+}: MessageComposerProps) {
   const form = useForm<MessageInput>({
-    resolver: zodResolver(messageInputSchema),
+    resolver: zodResolver(messageInputSchemaOf(maxLength)),
     defaultValues: { body: "" },
   });
   const hintId = useId();

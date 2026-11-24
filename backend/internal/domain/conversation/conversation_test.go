@@ -45,17 +45,21 @@ func TestEventAudiences(t *testing.T) {
 	t.Parallel()
 	orderID, customerID := uuid.New(), uuid.New()
 
-	created := MessageCreatedEvent(orderID, customerID)
+	created := MessageCreatedEvent(customerID, &orderID)
 	assert.Equal(t, TopicMessageCreated, created.Topic)
 	assert.Equal(t, []uuid.UUID{customerID}, created.Audience.UserIDs)
 	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff}, created.Audience.Roles)
-	assert.Equal(t, orderID.String(), created.Data["order_id"])
+	assert.Equal(t, map[string]string{"order_id": orderID.String()}, created.Data)
 
-	read := ReadByCustomerEvent(orderID, customerID)
+	read := ReadByCustomerEvent(customerID, &orderID)
 	assert.Equal(t, []uuid.UUID{customerID}, read.Audience.UserIDs)
 	assert.Empty(t, read.Audience.Roles, "the counter sees no read receipts")
 
-	counter := ChangedAtCounterEvent(orderID)
+	counter := ChangedAtCounterEvent(customerID, &orderID)
 	assert.Empty(t, counter.Audience.UserIDs, "the customer does not see the inbox")
 	assert.Equal(t, []domainuser.Role{domainuser.RoleStaff}, counter.Audience.Roles)
+
+	general := MessageCreatedEvent(customerID, nil)
+	assert.Equal(t, map[string]string{"customer_id": customerID.String()}, general.Data,
+		"a general conversation is named by its customer")
 }

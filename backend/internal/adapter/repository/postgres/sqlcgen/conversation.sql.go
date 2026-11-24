@@ -13,27 +13,23 @@ import (
 )
 
 const closeCustomerConversations = `-- name: CloseCustomerConversations :exec
-UPDATE conversations c
+UPDATE conversations
 SET status = 'closed',
     unread_by_customer = 0,
     unread_by_staff = 0,
     updated_at = now()
-FROM orders o
-WHERE o.id = c.order_id
-  AND o.user_id = $1::uuid
+WHERE customer_id = $1::uuid
 `
 
 // Closes the customer's conversations as their account is erased: nothing in
 // them is left to read.
 //
-//	UPDATE conversations c
+//	UPDATE conversations
 //	SET status = 'closed',
 //	    unread_by_customer = 0,
 //	    unread_by_staff = 0,
 //	    updated_at = now()
-//	FROM orders o
-//	WHERE o.id = c.order_id
-//	  AND o.user_id = $1::uuid
+//	WHERE customer_id = $1::uuid
 func (q *Queries) CloseCustomerConversations(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, closeCustomerConversations, userID)
 	return err
@@ -108,29 +104,27 @@ UPDATE messages m
 SET body = '',
     deleted_at = now()
 FROM conversations c
-JOIN orders o ON o.id = c.order_id
 WHERE m.conversation_id = c.id
-  AND o.user_id = $1::uuid
+  AND c.customer_id = $1::uuid
   AND m.deleted_at IS NULL
 `
 
-// Erases the text of every message on the customer's orders, theirs and the
-// counter's: what was said is about them.
+// Erases the text of every message of the customer's conversations, theirs
+// and the counter's: what was said is about them.
 //
 //	UPDATE messages m
 //	SET body = '',
 //	    deleted_at = now()
 //	FROM conversations c
-//	JOIN orders o ON o.id = c.order_id
 //	WHERE m.conversation_id = c.id
-//	  AND o.user_id = $1::uuid
+//	  AND c.customer_id = $1::uuid
 //	  AND m.deleted_at IS NULL
 func (q *Queries) EraseCustomerMessages(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, eraseCustomerMessages, userID)
 	return err
 }
 
-const getConversationByOrderID = `-- name: GetConversationByOrderID :one
+const getConversation = `-- name: GetConversation :one
 SELECT
   c.status,
   c.unread_by_customer,
@@ -138,17 +132,24 @@ SELECT
   sp.full_name AS assigned_staff_name
 FROM conversations c
 LEFT JOIN staff_profiles sp ON sp.user_id = c.assigned_staff_id
-WHERE c.order_id = $1
+WHERE c.customer_id = $1
+  AND (c.order_id = $2 OR ($2::uuid IS NULL AND c.order_id IS NULL))
 `
 
-type GetConversationByOrderIDRow struct {
+type GetConversationParams struct {
+	CustomerID uuid.UUID  `json:"customerId"`
+	OrderID    *uuid.UUID `json:"orderId"`
+}
+
+type GetConversationRow struct {
 	Status            ConversationStatus `json:"status"`
 	UnreadByCustomer  int32              `json:"unreadByCustomer"`
 	UnreadByStaff     int32              `json:"unreadByStaff"`
 	AssignedStaffName *string            `json:"assignedStaffName"`
 }
 
-// GetConversationByOrderID
+// The customer's conversation about the order, or their general one when
+// order_id is null.
 //
 //	SELECT
 //	  c.status,
@@ -157,10 +158,11 @@ type GetConversationByOrderIDRow struct {
 //	  sp.full_name AS assigned_staff_name
 //	FROM conversations c
 //	LEFT JOIN staff_profiles sp ON sp.user_id = c.assigned_staff_id
-//	WHERE c.order_id = $1
-func (q *Queries) GetConversationByOrderID(ctx context.Context, orderID uuid.UUID) (GetConversationByOrderIDRow, error) {
-	row := q.db.QueryRow(ctx, getConversationByOrderID, orderID)
-	var i GetConversationByOrderIDRow
+//	WHERE c.customer_id = $1
+//	  AND (c.order_id = $2 OR ($2::uuid IS NULL AND c.order_id IS NULL))
+func (q *Queries) GetConversation(ctx context.Context, arg GetConversationParams) (GetConversationRow, error) {
+	row := q.db.QueryRow(ctx, getConversation, arg.CustomerID, arg.OrderID)
+	var i GetConversationRow
 	err := row.Scan(
 		&i.Status,
 		&i.UnreadByCustomer,
@@ -170,7 +172,100 @@ func (q *Queries) GetConversationByOrderID(ctx context.Context, orderID uuid.UUI
 	return i, err
 }
 
-const listMessagesByOrderID = `-- name: ListMessagesByOrderID :many
+const getGeneralConversationCustomer = `-- name: GetGeneralConversationCustomer :one
+SELECT
+  cp.display_name AS customer_name,
+  u.email AS customer_email
+FROM conversations c
+JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+WHERE c.customer_id = $1
+  AND c.order_id IS NULL
+`
+
+type GetGeneralConversationCustomerRow struct {
+	CustomerName  *string `json:"customerName"`
+	CustomerEmail string  `json:"customerEmail"`
+}
+
+// Who a general conversation is with, while their account is open.
+//
+//	SELECT
+//	  cp.display_name AS customer_name,
+//	  u.email AS customer_email
+//	FROM conversations c
+//	JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+//	WHERE c.customer_id = $1
+//	  AND c.order_id IS NULL
+func (q *Queries) GetGeneralConversationCustomer(ctx context.Context, customerID uuid.UUID) (GetGeneralConversationCustomerRow, error) {
+	row := q.db.QueryRow(ctx, getGeneralConversationCustomer, customerID)
+	var i GetGeneralConversationCustomerRow
+	err := row.Scan(&i.CustomerName, &i.CustomerEmail)
+	return i, err
+}
+
+const listGeneralMessages = `-- name: ListGeneralMessages :many
+SELECT
+  m.id,
+  m.author_role,
+  m.body,
+  m.created_at
+FROM messages m
+JOIN conversations c ON c.id = m.conversation_id
+WHERE c.customer_id = $1
+  AND c.order_id IS NULL
+  AND m.deleted_at IS NULL
+ORDER BY m.created_at, m.id
+`
+
+type ListGeneralMessagesRow struct {
+	ID         uuid.UUID `json:"id"`
+	AuthorRole UserRole  `json:"authorRole"`
+	Body       string    `json:"body"`
+	CreatedAt  time.Time `json:"createdAt"`
+}
+
+// Every message of the customer's general conversation, oldest first, for a
+// personal data export.
+//
+//	SELECT
+//	  m.id,
+//	  m.author_role,
+//	  m.body,
+//	  m.created_at
+//	FROM messages m
+//	JOIN conversations c ON c.id = m.conversation_id
+//	WHERE c.customer_id = $1
+//	  AND c.order_id IS NULL
+//	  AND m.deleted_at IS NULL
+//	ORDER BY m.created_at, m.id
+func (q *Queries) ListGeneralMessages(ctx context.Context, customerID uuid.UUID) ([]ListGeneralMessagesRow, error) {
+	rows, err := q.db.Query(ctx, listGeneralMessages, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGeneralMessagesRow{}
+	for rows.Next() {
+		var i ListGeneralMessagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorRole,
+			&i.Body,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMessages = `-- name: ListMessages :many
 SELECT
   m.id,
   m.author_role,
@@ -180,26 +275,28 @@ SELECT
 FROM messages m
 JOIN conversations c ON c.id = m.conversation_id
 LEFT JOIN staff_profiles sp ON sp.user_id = m.author_id AND m.author_role = 'staff'::user_role
-WHERE c.order_id = $1
+WHERE c.customer_id = $1
+  AND (c.order_id = $2 OR ($2::uuid IS NULL AND c.order_id IS NULL))
   AND m.deleted_at IS NULL
   AND (
-    $2::uuid IS NULL
+    $3::uuid IS NULL
     OR (m.created_at, m.id) < (
       SELECT b.created_at, b.id FROM messages b
-      WHERE b.id = $2::uuid AND b.conversation_id = c.id
+      WHERE b.id = $3::uuid AND b.conversation_id = c.id
     )
   )
 ORDER BY m.created_at DESC, m.id DESC
-LIMIT $3
+LIMIT $4
 `
 
-type ListMessagesByOrderIDParams struct {
-	OrderID  uuid.UUID  `json:"orderId"`
-	BeforeID *uuid.UUID `json:"beforeId"`
-	Limit    int32      `json:"limit"`
+type ListMessagesParams struct {
+	CustomerID uuid.UUID  `json:"customerId"`
+	OrderID    *uuid.UUID `json:"orderId"`
+	BeforeID   *uuid.UUID `json:"beforeId"`
+	Limit      int32      `json:"limit"`
 }
 
-type ListMessagesByOrderIDRow struct {
+type ListMessagesRow struct {
 	ID         uuid.UUID `json:"id"`
 	AuthorRole UserRole  `json:"authorRole"`
 	Body       string    `json:"body"`
@@ -207,8 +304,8 @@ type ListMessagesByOrderIDRow struct {
 	AuthorName *string   `json:"authorName"`
 }
 
-// A page of an order's messages, newest first: the latest, or those before
-// the message before_id names. A staff message carries its writer's name.
+// A page of a conversation's messages, newest first: the latest, or those
+// before the message before_id names. A staff message carries its writer's name.
 //
 //	SELECT
 //	  m.id,
@@ -219,26 +316,32 @@ type ListMessagesByOrderIDRow struct {
 //	FROM messages m
 //	JOIN conversations c ON c.id = m.conversation_id
 //	LEFT JOIN staff_profiles sp ON sp.user_id = m.author_id AND m.author_role = 'staff'::user_role
-//	WHERE c.order_id = $1
+//	WHERE c.customer_id = $1
+//	  AND (c.order_id = $2 OR ($2::uuid IS NULL AND c.order_id IS NULL))
 //	  AND m.deleted_at IS NULL
 //	  AND (
-//	    $2::uuid IS NULL
+//	    $3::uuid IS NULL
 //	    OR (m.created_at, m.id) < (
 //	      SELECT b.created_at, b.id FROM messages b
-//	      WHERE b.id = $2::uuid AND b.conversation_id = c.id
+//	      WHERE b.id = $3::uuid AND b.conversation_id = c.id
 //	    )
 //	  )
 //	ORDER BY m.created_at DESC, m.id DESC
-//	LIMIT $3
-func (q *Queries) ListMessagesByOrderID(ctx context.Context, arg ListMessagesByOrderIDParams) ([]ListMessagesByOrderIDRow, error) {
-	rows, err := q.db.Query(ctx, listMessagesByOrderID, arg.OrderID, arg.BeforeID, arg.Limit)
+//	LIMIT $4
+func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]ListMessagesRow, error) {
+	rows, err := q.db.Query(ctx, listMessages,
+		arg.CustomerID,
+		arg.OrderID,
+		arg.BeforeID,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListMessagesByOrderIDRow{}
+	items := []ListMessagesRow{}
 	for rows.Next() {
-		var i ListMessagesByOrderIDRow
+		var i ListMessagesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.AuthorRole,
@@ -271,11 +374,11 @@ ORDER BY c.order_id, m.created_at, m.id
 `
 
 type ListMessagesByOrderIDsRow struct {
-	OrderID    uuid.UUID `json:"orderId"`
-	ID         uuid.UUID `json:"id"`
-	AuthorRole UserRole  `json:"authorRole"`
-	Body       string    `json:"body"`
-	CreatedAt  time.Time `json:"createdAt"`
+	OrderID    *uuid.UUID `json:"orderId"`
+	ID         uuid.UUID  `json:"id"`
+	AuthorRole UserRole   `json:"authorRole"`
+	Body       string     `json:"body"`
+	CreatedAt  time.Time  `json:"createdAt"`
 }
 
 // Every message on the orders given, oldest first, for a personal data export.
@@ -325,8 +428,8 @@ WHERE order_id = ANY($1::uuid[])
 `
 
 type ListUnreadByCustomerRow struct {
-	OrderID          uuid.UUID `json:"orderId"`
-	UnreadByCustomer int32     `json:"unreadByCustomer"`
+	OrderID          *uuid.UUID `json:"orderId"`
+	UnreadByCustomer int32      `json:"unreadByCustomer"`
 }
 
 // What the customer has not read yet on each of the orders given.
@@ -359,19 +462,26 @@ const markConversationReadByCustomer = `-- name: MarkConversationReadByCustomer 
 UPDATE conversations
 SET unread_by_customer = 0,
     updated_at = now()
-WHERE order_id = $1
+WHERE customer_id = $1
+  AND (order_id = $2 OR ($2::uuid IS NULL AND order_id IS NULL))
   AND unread_by_customer > 0
 `
+
+type MarkConversationReadByCustomerParams struct {
+	CustomerID uuid.UUID  `json:"customerId"`
+	OrderID    *uuid.UUID `json:"orderId"`
+}
 
 // MarkConversationReadByCustomer
 //
 //	UPDATE conversations
 //	SET unread_by_customer = 0,
 //	    updated_at = now()
-//	WHERE order_id = $1
+//	WHERE customer_id = $1
+//	  AND (order_id = $2 OR ($2::uuid IS NULL AND order_id IS NULL))
 //	  AND unread_by_customer > 0
-func (q *Queries) MarkConversationReadByCustomer(ctx context.Context, orderID uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, markConversationReadByCustomer, orderID)
+func (q *Queries) MarkConversationReadByCustomer(ctx context.Context, arg MarkConversationReadByCustomerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markConversationReadByCustomer, arg.CustomerID, arg.OrderID)
 	if err != nil {
 		return 0, err
 	}
@@ -382,19 +492,26 @@ const markConversationReadByStaff = `-- name: MarkConversationReadByStaff :execr
 UPDATE conversations
 SET unread_by_staff = 0,
     updated_at = now()
-WHERE order_id = $1
+WHERE customer_id = $1
+  AND (order_id = $2 OR ($2::uuid IS NULL AND order_id IS NULL))
   AND unread_by_staff > 0
 `
+
+type MarkConversationReadByStaffParams struct {
+	CustomerID uuid.UUID  `json:"customerId"`
+	OrderID    *uuid.UUID `json:"orderId"`
+}
 
 // MarkConversationReadByStaff
 //
 //	UPDATE conversations
 //	SET unread_by_staff = 0,
 //	    updated_at = now()
-//	WHERE order_id = $1
+//	WHERE customer_id = $1
+//	  AND (order_id = $2 OR ($2::uuid IS NULL AND order_id IS NULL))
 //	  AND unread_by_staff > 0
-func (q *Queries) MarkConversationReadByStaff(ctx context.Context, orderID uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, markConversationReadByStaff, orderID)
+func (q *Queries) MarkConversationReadByStaff(ctx context.Context, arg MarkConversationReadByStaffParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markConversationReadByStaff, arg.CustomerID, arg.OrderID)
 	if err != nil {
 		return 0, err
 	}
@@ -402,8 +519,8 @@ func (q *Queries) MarkConversationReadByStaff(ctx context.Context, orderID uuid.
 }
 
 const openConversationForCustomerMessage = `-- name: OpenConversationForCustomerMessage :one
-INSERT INTO conversations (order_id, unread_by_staff, last_message_at)
-VALUES ($1, 1, now())
+INSERT INTO conversations (customer_id, order_id, unread_by_staff, last_message_at)
+VALUES ($1, $2, 1, now())
 ON CONFLICT (order_id) DO UPDATE
 SET status = 'open',
     unread_by_staff = conversations.unread_by_staff + 1,
@@ -413,12 +530,17 @@ SET status = 'open',
 RETURNING id
 `
 
+type OpenConversationForCustomerMessageParams struct {
+	CustomerID uuid.UUID  `json:"customerId"`
+	OrderID    *uuid.UUID `json:"orderId"`
+}
+
 // Records that the customer wrote about the order: the conversation starts,
 // or opens again, the counter has one more message to read, and the customer
 // has read everything before their own.
 //
-//	INSERT INTO conversations (order_id, unread_by_staff, last_message_at)
-//	VALUES ($1, 1, now())
+//	INSERT INTO conversations (customer_id, order_id, unread_by_staff, last_message_at)
+//	VALUES ($1, $2, 1, now())
 //	ON CONFLICT (order_id) DO UPDATE
 //	SET status = 'open',
 //	    unread_by_staff = conversations.unread_by_staff + 1,
@@ -426,16 +548,16 @@ RETURNING id
 //	    last_message_at = GREATEST(conversations.last_message_at, now()),
 //	    updated_at = now()
 //	RETURNING id
-func (q *Queries) OpenConversationForCustomerMessage(ctx context.Context, orderID uuid.UUID) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, openConversationForCustomerMessage, orderID)
+func (q *Queries) OpenConversationForCustomerMessage(ctx context.Context, arg OpenConversationForCustomerMessageParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, openConversationForCustomerMessage, arg.CustomerID, arg.OrderID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
 const openConversationForStaffMessage = `-- name: OpenConversationForStaffMessage :one
-INSERT INTO conversations (order_id, assigned_staff_id, unread_by_customer, last_message_at)
-VALUES ($1, $2, 1, now())
+INSERT INTO conversations (customer_id, order_id, assigned_staff_id, unread_by_customer, last_message_at)
+VALUES ($1, $2, $3, 1, now())
 ON CONFLICT (order_id) DO UPDATE
 SET status = 'open',
     assigned_staff_id = EXCLUDED.assigned_staff_id,
@@ -447,16 +569,17 @@ RETURNING id
 `
 
 type OpenConversationForStaffMessageParams struct {
-	OrderID uuid.UUID  `json:"orderId"`
-	StaffID *uuid.UUID `json:"staffId"`
+	CustomerID uuid.UUID  `json:"customerId"`
+	OrderID    *uuid.UUID `json:"orderId"`
+	StaffID    *uuid.UUID `json:"staffId"`
 }
 
 // Records that staff wrote about the order: the conversation starts, or opens
 // again, and passes to the writer; the customer has one more message to read,
 // and the counter has read everything before it.
 //
-//	INSERT INTO conversations (order_id, assigned_staff_id, unread_by_customer, last_message_at)
-//	VALUES ($1, $2, 1, now())
+//	INSERT INTO conversations (customer_id, order_id, assigned_staff_id, unread_by_customer, last_message_at)
+//	VALUES ($1, $2, $3, 1, now())
 //	ON CONFLICT (order_id) DO UPDATE
 //	SET status = 'open',
 //	    assigned_staff_id = EXCLUDED.assigned_staff_id,
@@ -466,7 +589,74 @@ type OpenConversationForStaffMessageParams struct {
 //	    updated_at = now()
 //	RETURNING id
 func (q *Queries) OpenConversationForStaffMessage(ctx context.Context, arg OpenConversationForStaffMessageParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, openConversationForStaffMessage, arg.OrderID, arg.StaffID)
+	row := q.db.QueryRow(ctx, openConversationForStaffMessage, arg.CustomerID, arg.OrderID, arg.StaffID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const openGeneralConversationForCustomerMessage = `-- name: OpenGeneralConversationForCustomerMessage :one
+INSERT INTO conversations (customer_id, unread_by_staff, last_message_at)
+VALUES ($1, 1, now())
+ON CONFLICT (customer_id) WHERE order_id IS NULL DO UPDATE
+SET status = 'open',
+    unread_by_staff = conversations.unread_by_staff + 1,
+    unread_by_customer = 0,
+    last_message_at = GREATEST(conversations.last_message_at, now()),
+    updated_at = now()
+RETURNING id
+`
+
+// The same for the customer's general conversation, about none of their orders.
+//
+//	INSERT INTO conversations (customer_id, unread_by_staff, last_message_at)
+//	VALUES ($1, 1, now())
+//	ON CONFLICT (customer_id) WHERE order_id IS NULL DO UPDATE
+//	SET status = 'open',
+//	    unread_by_staff = conversations.unread_by_staff + 1,
+//	    unread_by_customer = 0,
+//	    last_message_at = GREATEST(conversations.last_message_at, now()),
+//	    updated_at = now()
+//	RETURNING id
+func (q *Queries) OpenGeneralConversationForCustomerMessage(ctx context.Context, customerID uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, openGeneralConversationForCustomerMessage, customerID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const openGeneralConversationForStaffMessage = `-- name: OpenGeneralConversationForStaffMessage :one
+INSERT INTO conversations (customer_id, assigned_staff_id, unread_by_customer, last_message_at)
+VALUES ($1, $2, 1, now())
+ON CONFLICT (customer_id) WHERE order_id IS NULL DO UPDATE
+SET status = 'open',
+    assigned_staff_id = EXCLUDED.assigned_staff_id,
+    unread_by_customer = conversations.unread_by_customer + 1,
+    unread_by_staff = 0,
+    last_message_at = GREATEST(conversations.last_message_at, now()),
+    updated_at = now()
+RETURNING id
+`
+
+type OpenGeneralConversationForStaffMessageParams struct {
+	CustomerID uuid.UUID  `json:"customerId"`
+	StaffID    *uuid.UUID `json:"staffId"`
+}
+
+// The same for a customer's general conversation.
+//
+//	INSERT INTO conversations (customer_id, assigned_staff_id, unread_by_customer, last_message_at)
+//	VALUES ($1, $2, 1, now())
+//	ON CONFLICT (customer_id) WHERE order_id IS NULL DO UPDATE
+//	SET status = 'open',
+//	    assigned_staff_id = EXCLUDED.assigned_staff_id,
+//	    unread_by_customer = conversations.unread_by_customer + 1,
+//	    unread_by_staff = 0,
+//	    last_message_at = GREATEST(conversations.last_message_at, now()),
+//	    updated_at = now()
+//	RETURNING id
+func (q *Queries) OpenGeneralConversationForStaffMessage(ctx context.Context, arg OpenGeneralConversationForStaffMessageParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, openGeneralConversationForStaffMessage, arg.CustomerID, arg.StaffID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
@@ -477,13 +667,15 @@ UPDATE conversations
 SET status = $1,
     unread_by_staff = CASE WHEN $1 = 'closed'::conversation_status THEN 0 ELSE unread_by_staff END,
     updated_at = now()
-WHERE order_id = $2
+WHERE customer_id = $2
+  AND (order_id = $3 OR ($3::uuid IS NULL AND order_id IS NULL))
   AND status <> $1
 `
 
 type SetConversationStatusParams struct {
-	Status  ConversationStatus `json:"status"`
-	OrderID uuid.UUID          `json:"orderId"`
+	Status     ConversationStatus `json:"status"`
+	CustomerID uuid.UUID          `json:"customerId"`
+	OrderID    *uuid.UUID         `json:"orderId"`
 }
 
 // Resolving a conversation reads it for the counter: nothing in it waits on them.
@@ -492,10 +684,11 @@ type SetConversationStatusParams struct {
 //	SET status = $1,
 //	    unread_by_staff = CASE WHEN $1 = 'closed'::conversation_status THEN 0 ELSE unread_by_staff END,
 //	    updated_at = now()
-//	WHERE order_id = $2
+//	WHERE customer_id = $2
+//	  AND (order_id = $3 OR ($3::uuid IS NULL AND order_id IS NULL))
 //	  AND status <> $1
 func (q *Queries) SetConversationStatus(ctx context.Context, arg SetConversationStatusParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setConversationStatus, arg.Status, arg.OrderID)
+	result, err := q.db.Exec(ctx, setConversationStatus, arg.Status, arg.CustomerID, arg.OrderID)
 	if err != nil {
 		return 0, err
 	}
@@ -507,8 +700,7 @@ SELECT
   count(*) FILTER (WHERE c.status = 'open'::conversation_status)::bigint AS open_count,
   count(*) FILTER (WHERE c.unread_by_staff > 0)::bigint AS unread_count
 FROM conversations c
-JOIN orders o ON o.id = c.order_id
-JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL
 `
 
 type StaffConversationCountsRow struct {
@@ -523,8 +715,7 @@ type StaffConversationCountsRow struct {
 //	  count(*) FILTER (WHERE c.status = 'open'::conversation_status)::bigint AS open_count,
 //	  count(*) FILTER (WHERE c.unread_by_staff > 0)::bigint AS unread_count
 //	FROM conversations c
-//	JOIN orders o ON o.id = c.order_id
-//	JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL
 func (q *Queries) StaffConversationCounts(ctx context.Context) (StaffConversationCountsRow, error) {
 	row := q.db.QueryRow(ctx, staffConversationCounts)
 	var i StaffConversationCountsRow
@@ -534,6 +725,7 @@ func (q *Queries) StaffConversationCounts(ctx context.Context) (StaffConversatio
 
 const staffListConversations = `-- name: StaffListConversations :many
 SELECT
+  c.customer_id,
   c.order_id,
   o.code AS order_code,
   c.status,
@@ -543,8 +735,8 @@ SELECT
   u.email AS customer_email,
   left(last.body, 200)::text AS last_body
 FROM conversations c
-JOIN orders o ON o.id = c.order_id
-JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL
+LEFT JOIN orders o ON o.id = c.order_id
 LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 JOIN LATERAL (
   SELECT m.body
@@ -568,8 +760,9 @@ type StaffListConversationsParams struct {
 }
 
 type StaffListConversationsRow struct {
-	OrderID       uuid.UUID          `json:"orderId"`
-	OrderCode     string             `json:"orderCode"`
+	CustomerID    uuid.UUID          `json:"customerId"`
+	OrderID       *uuid.UUID         `json:"orderId"`
+	OrderCode     *string            `json:"orderCode"`
 	Status        ConversationStatus `json:"status"`
 	UnreadByStaff int32              `json:"unreadByStaff"`
 	LastMessageAt time.Time          `json:"lastMessageAt"`
@@ -579,10 +772,11 @@ type StaffListConversationsRow struct {
 }
 
 // The counter's inbox, latest message first: each conversation with its
-// order, its customer and a preview of its last message. A customer whose
-// account is closed is not shown.
+// customer, its order (none for a general one) and a preview of its last
+// message. A customer whose account is closed is not shown.
 //
 //	SELECT
+//	  c.customer_id,
 //	  c.order_id,
 //	  o.code AS order_code,
 //	  c.status,
@@ -592,8 +786,8 @@ type StaffListConversationsRow struct {
 //	  u.email AS customer_email,
 //	  left(last.body, 200)::text AS last_body
 //	FROM conversations c
-//	JOIN orders o ON o.id = c.order_id
-//	JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL
+//	LEFT JOIN orders o ON o.id = c.order_id
 //	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 //	JOIN LATERAL (
 //	  SELECT m.body
@@ -618,6 +812,7 @@ func (q *Queries) StaffListConversations(ctx context.Context, arg StaffListConve
 	for rows.Next() {
 		var i StaffListConversationsRow
 		if err := rows.Scan(
+			&i.CustomerID,
 			&i.OrderID,
 			&i.OrderCode,
 			&i.Status,
@@ -640,8 +835,7 @@ func (q *Queries) StaffListConversations(ctx context.Context, arg StaffListConve
 const staffListConversationsCount = `-- name: StaffListConversationsCount :one
 SELECT count(*)::bigint
 FROM conversations c
-JOIN orders o ON o.id = c.order_id
-JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL
 WHERE (
     $1::conversation_status IS NULL
     OR c.status = $1::conversation_status
@@ -652,8 +846,7 @@ WHERE (
 //
 //	SELECT count(*)::bigint
 //	FROM conversations c
-//	JOIN orders o ON o.id = c.order_id
-//	JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL
 //	WHERE (
 //	    $1::conversation_status IS NULL
 //	    OR c.status = $1::conversation_status

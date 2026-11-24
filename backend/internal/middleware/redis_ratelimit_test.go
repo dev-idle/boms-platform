@@ -32,6 +32,7 @@ func TestPerUserRateLimits(t *testing.T) {
 		MessageWriteMax: 2, MessageWriteWindow: time.Minute,
 		ReviewWriteMax: 2, ReviewWriteWindow: time.Minute,
 		VerificationResendMax: 2, VerificationResendWindow: time.Minute,
+		AssistantMax: 2, AssistantWindow: time.Minute,
 	}
 	limiters := map[string]func(*goredis.Client, config.RateLimitRedisConfig) fiber.Handler{
 		"discount_attempts":    DiscountAttemptRateLimit,
@@ -40,6 +41,7 @@ func TestPerUserRateLimits(t *testing.T) {
 		"message_writes":       MessageWriteRateLimit,
 		"review_writes":        ReviewWriteRateLimit,
 		"verification_resends": VerificationResendRateLimit,
+		"assistant_questions":  AssistantRateLimit,
 	}
 	for name, limiter := range limiters {
 		t.Run(name, func(t *testing.T) {
@@ -111,6 +113,30 @@ func testPerUserRateLimit(t *testing.T, limiter func(*goredis.Client) fiber.Hand
 		assert.Equal(t, fiber.StatusOK, status)
 		assert.Equal(t, "1", header.Get("X-RateLimit-FailOpen"))
 	})
+}
+
+// A visitor who is not signed in asks the assistant from an address, as the
+// BFF stamps it: each address keeps its own count.
+func TestAssistantRateLimit_CountsGuestsByAddress(t *testing.T) {
+	t.Parallel()
+	cfg := config.RateLimitRedisConfig{AssistantMax: 2, AssistantWindow: time.Minute}
+	app := fiber.New()
+	app.Post("/limited", AssistantRateLimit(goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()}), cfg),
+		func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
+	attempt := func(address string) int {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/limited", nil)
+		req.Header.Set(ClientIPHeader, address)
+		resp, err := app.Test(req)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+		return resp.StatusCode
+	}
+
+	attempt("203.0.113.7")
+	attempt("203.0.113.7")
+
+	assert.Equal(t, fiber.StatusTooManyRequests, attempt("203.0.113.7"))
+	assert.Equal(t, fiber.StatusOK, attempt("203.0.113.8"))
 }
 
 // Per-address limiters on the emailed-link endpoints fail closed: each call may

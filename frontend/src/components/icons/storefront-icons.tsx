@@ -202,3 +202,23 @@ export function StarIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function ChatIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={cn("storefront-icon", className)}
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.65"
+      viewBox={STOREFRONT_ICON_VIEWBOX}
+      width="24"
+    >
+      <path d="M4 5h16v11H9l-5 4z" />
+      <path d="M8 9.5h8M8 12.5h5" />
+    </svg>
+  );
+}

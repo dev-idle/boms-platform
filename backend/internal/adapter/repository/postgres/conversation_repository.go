@@ -11,7 +11,8 @@ import (
 	"github.com/boms/backend/internal/port"
 )
 
-// ConversationRepository keeps the conversations about orders.
+// ConversationRepository keeps the conversations between customers and the
+// counter.
 type ConversationRepository struct {
 	queries *sqlcgen.Queries
 }
@@ -28,8 +29,17 @@ func (r *ConversationRepository) q(ctx context.Context) *sqlcgen.Queries {
 }
 
 // OpenForCustomerMessage implements port.ConversationRepository.
-func (r *ConversationRepository) OpenForCustomerMessage(ctx context.Context, orderID uuid.UUID) (uuid.UUID, error) {
-	id, err := r.q(ctx).OpenConversationForCustomerMessage(ctx, orderID)
+func (r *ConversationRepository) OpenForCustomerMessage(ctx context.Context, thread port.ConversationThread) (uuid.UUID, error) {
+	var id uuid.UUID
+	var err error
+	if thread.OrderID == nil {
+		id, err = r.q(ctx).OpenGeneralConversationForCustomerMessage(ctx, thread.CustomerID)
+	} else {
+		id, err = r.q(ctx).OpenConversationForCustomerMessage(ctx, sqlcgen.OpenConversationForCustomerMessageParams{
+			CustomerID: thread.CustomerID,
+			OrderID:    thread.OrderID,
+		})
+	}
 	if err != nil {
 		return uuid.Nil, mapRepoError(err, "open conversation for customer message")
 	}
@@ -37,11 +47,25 @@ func (r *ConversationRepository) OpenForCustomerMessage(ctx context.Context, ord
 }
 
 // OpenForStaffMessage implements port.ConversationRepository.
-func (r *ConversationRepository) OpenForStaffMessage(ctx context.Context, orderID, staffID uuid.UUID) (uuid.UUID, error) {
-	id, err := r.q(ctx).OpenConversationForStaffMessage(ctx, sqlcgen.OpenConversationForStaffMessageParams{
-		OrderID: orderID,
-		StaffID: &staffID,
-	})
+func (r *ConversationRepository) OpenForStaffMessage(
+	ctx context.Context,
+	thread port.ConversationThread,
+	staffID uuid.UUID,
+) (uuid.UUID, error) {
+	var id uuid.UUID
+	var err error
+	if thread.OrderID == nil {
+		id, err = r.q(ctx).OpenGeneralConversationForStaffMessage(ctx, sqlcgen.OpenGeneralConversationForStaffMessageParams{
+			CustomerID: thread.CustomerID,
+			StaffID:    &staffID,
+		})
+	} else {
+		id, err = r.q(ctx).OpenConversationForStaffMessage(ctx, sqlcgen.OpenConversationForStaffMessageParams{
+			CustomerID: thread.CustomerID,
+			OrderID:    thread.OrderID,
+			StaffID:    &staffID,
+		})
+	}
 	if err != nil {
 		return uuid.Nil, mapRepoError(err, "open conversation for staff message")
 	}
@@ -73,11 +97,14 @@ func (r *ConversationRepository) CreateMessage(
 	}, nil
 }
 
-// GetByOrderID implements port.ConversationRepository.
-func (r *ConversationRepository) GetByOrderID(ctx context.Context, orderID uuid.UUID) (*domainconversation.Conversation, error) {
-	row, err := r.q(ctx).GetConversationByOrderID(ctx, orderID)
+// Get implements port.ConversationRepository.
+func (r *ConversationRepository) Get(ctx context.Context, thread port.ConversationThread) (*domainconversation.Conversation, error) {
+	row, err := r.q(ctx).GetConversation(ctx, sqlcgen.GetConversationParams{
+		CustomerID: thread.CustomerID,
+		OrderID:    thread.OrderID,
+	})
 	if err != nil {
-		return nil, mapRepoError(err, "get conversation by order")
+		return nil, mapRepoError(err, "get conversation")
 	}
 	return &domainconversation.Conversation{
 		Status:            domainconversation.Status(row.Status),
@@ -87,17 +114,27 @@ func (r *ConversationRepository) GetByOrderID(ctx context.Context, orderID uuid.
 	}, nil
 }
 
+// GeneralCustomer implements port.ConversationRepository.
+func (r *ConversationRepository) GeneralCustomer(ctx context.Context, customerID uuid.UUID) (*port.ConversationCustomer, error) {
+	row, err := r.q(ctx).GetGeneralConversationCustomer(ctx, customerID)
+	if err != nil {
+		return nil, mapRepoError(err, "get general conversation customer")
+	}
+	return &port.ConversationCustomer{Name: row.CustomerName, Email: row.CustomerEmail}, nil
+}
+
 // ListMessages implements port.ConversationRepository.
 func (r *ConversationRepository) ListMessages(
 	ctx context.Context,
-	orderID uuid.UUID,
+	thread port.ConversationThread,
 	beforeID *uuid.UUID,
 	limit int32,
 ) ([]domainconversation.Message, error) {
-	rows, err := r.q(ctx).ListMessagesByOrderID(ctx, sqlcgen.ListMessagesByOrderIDParams{
-		OrderID:  orderID,
-		BeforeID: beforeID,
-		Limit:    limit,
+	rows, err := r.q(ctx).ListMessages(ctx, sqlcgen.ListMessagesParams{
+		CustomerID: thread.CustomerID,
+		OrderID:    thread.OrderID,
+		BeforeID:   beforeID,
+		Limit:      limit,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "list messages")
@@ -116,8 +153,11 @@ func (r *ConversationRepository) ListMessages(
 }
 
 // MarkReadByCustomer implements port.ConversationRepository.
-func (r *ConversationRepository) MarkReadByCustomer(ctx context.Context, orderID uuid.UUID) (bool, error) {
-	n, err := r.q(ctx).MarkConversationReadByCustomer(ctx, orderID)
+func (r *ConversationRepository) MarkReadByCustomer(ctx context.Context, thread port.ConversationThread) (bool, error) {
+	n, err := r.q(ctx).MarkConversationReadByCustomer(ctx, sqlcgen.MarkConversationReadByCustomerParams{
+		CustomerID: thread.CustomerID,
+		OrderID:    thread.OrderID,
+	})
 	if err != nil {
 		return false, mapRepoError(err, "mark conversation read by customer")
 	}
@@ -125,8 +165,11 @@ func (r *ConversationRepository) MarkReadByCustomer(ctx context.Context, orderID
 }
 
 // MarkReadByStaff implements port.ConversationRepository.
-func (r *ConversationRepository) MarkReadByStaff(ctx context.Context, orderID uuid.UUID) (bool, error) {
-	n, err := r.q(ctx).MarkConversationReadByStaff(ctx, orderID)
+func (r *ConversationRepository) MarkReadByStaff(ctx context.Context, thread port.ConversationThread) (bool, error) {
+	n, err := r.q(ctx).MarkConversationReadByStaff(ctx, sqlcgen.MarkConversationReadByStaffParams{
+		CustomerID: thread.CustomerID,
+		OrderID:    thread.OrderID,
+	})
 	if err != nil {
 		return false, mapRepoError(err, "mark conversation read by staff")
 	}
@@ -134,10 +177,15 @@ func (r *ConversationRepository) MarkReadByStaff(ctx context.Context, orderID uu
 }
 
 // SetStatus implements port.ConversationRepository.
-func (r *ConversationRepository) SetStatus(ctx context.Context, orderID uuid.UUID, status domainconversation.Status) (bool, error) {
+func (r *ConversationRepository) SetStatus(
+	ctx context.Context,
+	thread port.ConversationThread,
+	status domainconversation.Status,
+) (bool, error) {
 	n, err := r.q(ctx).SetConversationStatus(ctx, sqlcgen.SetConversationStatusParams{
-		OrderID: orderID,
-		Status:  sqlcgen.ConversationStatus(status),
+		Status:     sqlcgen.ConversationStatus(status),
+		CustomerID: thread.CustomerID,
+		OrderID:    thread.OrderID,
 	})
 	if err != nil {
 		return false, mapRepoError(err, "set conversation status")
@@ -158,6 +206,7 @@ func (r *ConversationRepository) StaffList(ctx context.Context, params port.Staf
 	out := make([]port.StaffConversation, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, port.StaffConversation{
+			CustomerID:    row.CustomerID,
 			OrderID:       row.OrderID,
 			OrderCode:     row.OrderCode,
 			Status:        domainconversation.Status(row.Status),
@@ -197,7 +246,7 @@ func (r *ConversationRepository) UnreadByCustomer(ctx context.Context, orderIDs 
 	}
 	out := make(map[uuid.UUID]int32, len(rows))
 	for _, row := range rows {
-		out[row.OrderID] = row.UnreadByCustomer
+		out[*row.OrderID] = row.UnreadByCustomer
 	}
 	return out, nil
 }
@@ -213,7 +262,25 @@ func (r *ConversationRepository) ListMessagesByOrderIDs(
 	}
 	out := make(map[uuid.UUID][]domainconversation.Message)
 	for _, row := range rows {
-		out[row.OrderID] = append(out[row.OrderID], domainconversation.Message{
+		out[*row.OrderID] = append(out[*row.OrderID], domainconversation.Message{
+			ID:         row.ID,
+			AuthorRole: domainuser.Role(row.AuthorRole),
+			Body:       row.Body,
+			CreatedAt:  row.CreatedAt,
+		})
+	}
+	return out, nil
+}
+
+// ListGeneralMessages implements port.ConversationRepository.
+func (r *ConversationRepository) ListGeneralMessages(ctx context.Context, customerID uuid.UUID) ([]domainconversation.Message, error) {
+	rows, err := r.q(ctx).ListGeneralMessages(ctx, customerID)
+	if err != nil {
+		return nil, mapRepoError(err, "list general messages")
+	}
+	out := make([]domainconversation.Message, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domainconversation.Message{
 			ID:         row.ID,
 			AuthorRole: domainuser.Role(row.AuthorRole),
 			Body:       row.Body,

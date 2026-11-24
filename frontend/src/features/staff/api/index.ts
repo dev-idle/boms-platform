@@ -62,6 +62,7 @@ import {
   type StaffInboxFilterInput,
   type StaffInboxResult,
   type StaffThread,
+  type StaffThreadRef,
 } from "../schemas";
 
 export async function listStaffOrders(
@@ -268,37 +269,39 @@ export async function getStaffConversationCounts(): Promise<StaffConversationCou
   });
 }
 
-/** A page of the messages on an order: the latest, or those before a message. */
-export async function getStaffOrderMessages(orderId: string, before?: string): Promise<StaffThread> {
-  const id = z.uuid().parse(orderId);
+/** Where the API keeps a conversation: under its order, or its customer for a general one. */
+function threadPath(thread: StaffThreadRef): string {
+  const id = z.uuid().parse(thread.id);
+  return thread.kind === "order" ? `/api/v1/staff/orders/${id}` : `/api/v1/staff/customers/${id}`;
+}
+
+/** A page of a conversation's messages: the latest, or those before a message. */
+export async function getStaffMessages(thread: StaffThreadRef, before?: string): Promise<StaffThread> {
   const query = before ? `?before=${z.uuid().parse(before)}` : "";
-  return browserRequest<StaffThread>(`/api/v1/staff/orders/${id}/messages${query}`, {
+  return browserRequest<StaffThread>(`${threadPath(thread)}/messages${query}`, {
     method: "GET",
     schema: staffThreadSchema,
   });
 }
 
-/** Writes a staff member's message to the order's customer. */
-export async function postStaffOrderMessage(orderId: string, input: MessageInput): Promise<Message> {
-  const id = z.uuid().parse(orderId);
+/** Writes a staff member's message to the conversation's customer. */
+export async function postStaffMessage(thread: StaffThreadRef, input: MessageInput): Promise<Message> {
   const body = messageInputSchema.parse(input);
-  return browserRequest<Message>(`/api/v1/staff/orders/${id}/messages`, {
+  return browserRequest<Message>(`${threadPath(thread)}/messages`, {
     method: "POST",
     schema: messageSchema,
     json: body,
   });
 }
 
-/** Records that the counter read the messages on an order. */
-export async function markStaffOrderMessagesRead(orderId: string): Promise<void> {
-  const id = z.uuid().parse(orderId);
-  await browserRequestVoid(`/api/v1/staff/orders/${id}/messages/read`, { method: "POST" });
+/** Records that the counter read a conversation's messages. */
+export async function markStaffMessagesRead(thread: StaffThreadRef): Promise<void> {
+  await browserRequestVoid(`${threadPath(thread)}/messages/read`, { method: "POST" });
 }
 
-/** Resolves an order's conversation, or opens it again. */
-export async function patchStaffConversation(orderId: string, status: ConversationStatus): Promise<StaffConversation> {
-  const id = z.uuid().parse(orderId);
-  return browserRequest<StaffConversation>(`/api/v1/staff/orders/${id}/conversation`, {
+/** Resolves a conversation, or opens it again. */
+export async function patchStaffConversation(thread: StaffThreadRef, status: ConversationStatus): Promise<StaffConversation> {
+  return browserRequest<StaffConversation>(`${threadPath(thread)}/conversation`, {
     method: "PATCH",
     schema: staffConversationSchema,
     json: { status: conversationStatusSchema.parse(status) },

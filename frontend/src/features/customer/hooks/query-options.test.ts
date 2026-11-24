@@ -55,10 +55,14 @@ describe("customerQueryKeysForEvent", () => {
         customerQueryKeys.messages("o-1"),
       ]);
     }
-    expect(customerQueryKeysForEvent({ type: "message.created", data: {} })).toEqual([
-      customerQueryKeys.ordersRoot,
-      customerQueryKeys.messagesRoot,
-    ]);
+  });
+
+  it("refreshes the general conversation when a message about no order arrives or is read", () => {
+    for (const type of ["message.created", "conversation.changed"]) {
+      expect(customerQueryKeysForEvent({ type, data: { customer_id: "c-1" } })).toEqual([
+        customerQueryKeys.generalMessages,
+      ]);
+    }
   });
 
   it("refreshes the customer's reviews when one is written, published or hidden", () => {
