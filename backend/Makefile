@@ -11,7 +11,7 @@ WORKER_PKG := ./cmd/worker
 # the pinned major — cannot parse, and the linter panics instead of reporting.
 # setup-go resolves this same version from go.mod in CI, so pinning it here gives
 # local and CI one compiler. Keep in step with the `toolchain` line in go.mod.
-GOTOOLCHAIN ?= go1.26.8
+GOTOOLCHAIN ?= go1.27.4
 export GOTOOLCHAIN
 SQLC   := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 ATLAS  ?= atlas

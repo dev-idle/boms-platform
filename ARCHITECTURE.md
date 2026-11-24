@@ -9,7 +9,7 @@ Authoritative reference for backend (Go/Fiber, Hexagonal) and frontend (Next.js 
 ```
 ┌─────────────────────────┐                ┌────────────────────────────┐
 │      Frontend           │  HTTPS         │         Backend            │
-│  Next.js 16 + RSC       │  ───────────▶  │  Go 1.26 + Fiber           │
+│  Next.js 16 + RSC       │  ───────────▶  │  Go 1.27 + Fiber           │
 │  Feature-Sliced         │   /api/v1/*    │  Hexagonal (Ports/Adapters)│
 └────────────┬────────────┘                └──────────────┬─────────────┘
              │                                            │
