@@ -36,6 +36,13 @@ import {
   type UserActivityListResult,
   type UsersListResult,
   userActivityFilterSchema,
+  cancelStrandedFormSchema,
+  cancelStrandedResultSchema,
+  strandedPickupsSchema,
+  strandingChangeSchema,
+  type CancelStrandedFormInput,
+  type StrandedPickups,
+  type StrandingChange,
 } from "../schemas";
 
 function usersPath(filter: ListFilterInput): string {
@@ -201,6 +208,25 @@ export async function createClosedDate(input: ClosedDateFormInput): Promise<Clos
     json: closedDateFormSchema.parse(input),
     schema: closedDateSchema,
   });
+}
+
+/** The orders a closed day or new opening hours would strand. */
+export async function getStrandedPickups(change: StrandingChange): Promise<StrandedPickups> {
+  const params = new URLSearchParams(strandingChangeSchema.parse(change));
+  return browserRequest<StrandedPickups>(`/api/v1/admin/settings/stranded-pickups?${params.toString()}`, {
+    method: "GET",
+    schema: strandedPickupsSchema,
+  });
+}
+
+/** Cancels the orders a change would strand, each refunded and emailed the reason; returns how many. */
+export async function cancelStrandedPickups(change: StrandingChange, input: CancelStrandedFormInput): Promise<number> {
+  const result = await browserRequest<{ cancelled: number }>("/api/v1/admin/settings/stranded-pickups/cancel", {
+    method: "POST",
+    json: { ...strandingChangeSchema.parse(change), ...cancelStrandedFormSchema.parse(input) },
+    schema: cancelStrandedResultSchema,
+  });
+  return result.cancelled;
 }
 
 export async function deleteClosedDate(id: string): Promise<void> {

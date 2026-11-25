@@ -50,6 +50,22 @@ func (r *StoreSettingsRepository) GetSettingsForUpdate(ctx context.Context) (dom
 	return settingsFromRow(sqlcgen.GetStoreSettingsRow(row)), nil
 }
 
+// HoldPickupRules implements port.StoreSettingsRepository.
+func (r *StoreSettingsRepository) HoldPickupRules(ctx context.Context, day time.Time) (port.HeldPickupRules, error) {
+	if txFromContext(ctx) == nil {
+		return port.HeldPickupRules{}, apperrors.Errorf("hold pickup rules: requires a transaction")
+	}
+	row, err := r.q(ctx).HoldPickupRules(ctx, day)
+	if err != nil {
+		return port.HeldPickupRules{}, mapRepoError(err, "hold pickup rules")
+	}
+	return port.HeldPickupRules{
+		OpensAt:   time.Duration(row.OpensAtMinute) * time.Minute,
+		ClosesAt:  time.Duration(row.ClosesAtMinute) * time.Minute,
+		DayClosed: row.Closed,
+	}, nil
+}
+
 func (r *StoreSettingsRepository) UpdateSettings(ctx context.Context, s domainstore.Settings) (domainstore.Settings, error) {
 	params, err := settingsParams(s)
 	if err != nil {

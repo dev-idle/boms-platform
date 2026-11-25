@@ -122,6 +122,65 @@ func (r *OrderRepository) Reschedule(ctx context.Context, params port.Reschedule
 	return mapOrder(row), nil
 }
 
+// ListLeftOpen implements port.OrderRepository.
+func (r *OrderRepository) ListLeftOpen(ctx context.Context, missedBefore time.Time, limit int32) ([]uuid.UUID, error) {
+	ids, err := r.q(ctx).ListLeftOpenOrders(ctx, sqlcgen.ListLeftOpenOrdersParams{MissedBefore: missedBefore, MaxRows: limit})
+	if err != nil {
+		return nil, mapRepoError(err, "list left open orders")
+	}
+	return ids, nil
+}
+
+// StaffReschedule implements port.OrderRepository.
+func (r *OrderRepository) StaffReschedule(ctx context.Context, orderID uuid.UUID, pickupAt time.Time) (*domainorder.Order, error) {
+	row, err := r.q(ctx).StaffRescheduleOrder(ctx, sqlcgen.StaffRescheduleOrderParams{ID: orderID, PickupAt: &pickupAt})
+	if err != nil {
+		return nil, mapRepoError(err, "staff reschedule order")
+	}
+	return mapOrder(row), nil
+}
+
+// ListStrandedPickups implements port.OrderRepository.
+func (r *OrderRepository) ListStrandedPickups(ctx context.Context, params port.StrandedPickupsParams) ([]port.StrandedPickup, error) {
+	rows, err := r.q(ctx).ListStrandedPickups(ctx, sqlcgen.ListStrandedPickupsParams{
+		FromAt: params.From, ToAt: params.To, Zone: domainstore.Location.String(),
+		OpensMinute: params.OpensMinute, ClosesMinute: params.ClosesMinute,
+		AfterPickupAt: params.AfterPickupAt, AfterID: params.AfterID, MaxRows: params.Limit,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "list stranded pickups")
+	}
+	out := make([]port.StrandedPickup, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, port.StrandedPickup{
+			ID: row.ID, Code: row.Code, Status: mapOrderStatusFromSQL(row.Status), PickupAt: row.PickupAt,
+			CustomerDisplayName: row.CustomerDisplayName, CustomerEmail: row.CustomerEmail,
+		})
+	}
+	return out, nil
+}
+
+// CountStrandedPickups implements port.OrderRepository.
+func (r *OrderRepository) CountStrandedPickups(ctx context.Context, params port.StrandedPickupsParams) (int64, error) {
+	count, err := r.q(ctx).CountStrandedPickups(ctx, sqlcgen.CountStrandedPickupsParams{
+		FromAt: params.From, ToAt: params.To, Zone: domainstore.Location.String(),
+		OpensMinute: params.OpensMinute, ClosesMinute: params.ClosesMinute,
+	})
+	if err != nil {
+		return 0, mapRepoError(err, "count stranded pickups")
+	}
+	return count, nil
+}
+
+// IDByCode implements port.OrderRepository.
+func (r *OrderRepository) IDByCode(ctx context.Context, code string) (uuid.UUID, error) {
+	id, err := r.q(ctx).OrderIDByCode(ctx, code)
+	if err != nil {
+		return uuid.Nil, mapRepoError(err, "order id by code")
+	}
+	return id, nil
+}
+
 // ListUnreviewed implements port.OrderRepository.
 func (r *OrderRepository) ListUnreviewed(ctx context.Context, paidBefore time.Time, limit int32) ([]uuid.UUID, error) {
 	ids, err := r.q(ctx).ListUnreviewedOrders(ctx, sqlcgen.ListUnreviewedOrdersParams{PaidBefore: paidBefore, MaxRows: limit})
@@ -243,9 +302,10 @@ func (r *OrderRepository) StaffList(ctx context.Context, params port.StaffListOr
 		return nil, err
 	}
 	rows, err := r.q(ctx).StaffListOrders(ctx, sqlcgen.StaffListOrdersParams{
-		Status: status,
-		Limit:  params.Limit,
-		Offset: params.Offset,
+		Status:     status,
+		OpenBefore: params.OpenBefore,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "staff list orders")
@@ -319,12 +379,12 @@ func (r *OrderRepository) StaffListPickupsCount(ctx context.Context, from, to ti
 	return count, nil
 }
 
-func (r *OrderRepository) StaffListCount(ctx context.Context, status *domainorder.Status) (int64, error) {
+func (r *OrderRepository) StaffListCount(ctx context.Context, status *domainorder.Status, openBefore *time.Time) (int64, error) {
 	statusSQL, err := optionalOrderStatus(status)
 	if err != nil {
 		return 0, err
 	}
-	count, err := r.q(ctx).StaffListOrdersCount(ctx, statusSQL)
+	count, err := r.q(ctx).StaffListOrdersCount(ctx, sqlcgen.StaffListOrdersCountParams{Status: statusSQL, OpenBefore: openBefore})
 	if err != nil {
 		return 0, mapRepoError(err, "staff list orders count")
 	}

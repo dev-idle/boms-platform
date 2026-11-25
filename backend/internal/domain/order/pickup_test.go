@@ -183,6 +183,21 @@ func TestPickupPolicy_Accepts(t *testing.T) {
 		"a pickup already passed")
 }
 
+func TestPickupPolicy_Moves(t *testing.T) {
+	t.Parallel()
+	cases := loadPickupCases(t)
+	policy := policyFromRules(t, cases)
+	now := wallClock(t, cases.Policy.Now)
+
+	require.NoError(t, policy.Moves(wallClock(t, "2026-07-10T10:30"), now), "the notice is the bakery's own call")
+	assert.ErrorIs(t, policy.Moves(wallClock(t, "2026-07-10T10:00"), now), ErrPickupTooSoon, "not a time already passed")
+	assert.ErrorIs(t, policy.Moves(time.Time{}, now), ErrInvalidPickupAt)
+	assert.ErrorIs(t, policy.Moves(wallClock(t, "2026-07-13T12:00"), now), ErrPickupClosedDay)
+	assert.ErrorIs(t, policy.Moves(wallClock(t, "2026-07-10T18:00"), now), ErrPickupOutsideHours)
+	assert.ErrorIs(t, policy.Moves(wallClock(t, "2026-07-10T12:15"), now), ErrPickupOffSlot)
+	assert.ErrorIs(t, policy.Moves(wallClock(t, "2026-07-24T10:30"), now), ErrPickupTooFar)
+}
+
 func TestPickupPolicy_HonoursEditedHours(t *testing.T) {
 	t.Parallel()
 	cases := loadPickupCases(t)

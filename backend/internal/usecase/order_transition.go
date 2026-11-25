@@ -87,8 +87,8 @@ func (t orderTransitions) recordInTx(
 	if err := t.events.Add(txCtx, domainorder.StatusChangedEvent(from, order)); err != nil {
 		return err
 	}
-	byStaff := actor != nil && actor.Role == domainuser.RoleStaff
-	if incidentType, ok := domainorder.MoveIncident(from, order.Status, byStaff); ok {
+	byBakery := actor != nil && actor.Role != domainuser.RoleCustomer
+	if incidentType, ok := domainorder.MoveIncident(from, order.Status, byBakery); ok {
 		if _, err := recordIncident(txCtx, t.orders, t.events, port.AddOrderIncidentParams{
 			OrderID: order.ID, Type: incidentType, Actor: actor,
 		}); err != nil {

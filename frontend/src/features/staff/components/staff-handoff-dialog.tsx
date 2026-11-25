@@ -28,7 +28,7 @@ type StaffHandoffDialogProps = {
   onClose: () => void;
 };
 
-/** Hands a ready order over: an online one once the customer gives its pickup code, one staff took once its cash is paid. */
+/** Hands a ready or missed order over: an online one once the customer gives its pickup code, one staff took once its cash is paid. */
 export function StaffHandoffDialog({ orderId, orderCode, cashDueCents, open, onClose }: StaffHandoffDialogProps) {
   const handOver = useHandOverOrder(orderId);
   const form = useForm<HandoffFormInput>({

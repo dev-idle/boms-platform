@@ -205,6 +205,54 @@ func (q *Queries) CountOrdersInSlot(ctx context.Context, arg CountOrdersInSlotPa
 	return count, err
 }
 
+const countStrandedPickups = `-- name: CountStrandedPickups :one
+SELECT count(*)::bigint AS count
+FROM orders o
+WHERE o.status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status,
+                   'in_production'::order_status, 'ready'::order_status)
+  AND o.pickup_at >= $1::timestamptz
+  AND o.pickup_at < $2::timestamptz
+  AND (
+    $3::int IS NULL
+    OR EXTRACT(EPOCH FROM (o.pickup_at AT TIME ZONE $4::text)::time)::int / 60
+       NOT BETWEEN $3::int AND $5::int - 1
+  )
+`
+
+type CountStrandedPickupsParams struct {
+	FromAt       time.Time `json:"fromAt"`
+	ToAt         time.Time `json:"toAt"`
+	OpensMinute  *int32    `json:"opensMinute"`
+	Zone         string    `json:"zone"`
+	ClosesMinute *int32    `json:"closesMinute"`
+}
+
+// How many orders ListStrandedPickups finds.
+//
+//	SELECT count(*)::bigint AS count
+//	FROM orders o
+//	WHERE o.status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status,
+//	                   'in_production'::order_status, 'ready'::order_status)
+//	  AND o.pickup_at >= $1::timestamptz
+//	  AND o.pickup_at < $2::timestamptz
+//	  AND (
+//	    $3::int IS NULL
+//	    OR EXTRACT(EPOCH FROM (o.pickup_at AT TIME ZONE $4::text)::time)::int / 60
+//	       NOT BETWEEN $3::int AND $5::int - 1
+//	  )
+func (q *Queries) CountStrandedPickups(ctx context.Context, arg CountStrandedPickupsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countStrandedPickups,
+		arg.FromAt,
+		arg.ToAt,
+		arg.OpensMinute,
+		arg.Zone,
+		arg.ClosesMinute,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createOrder = `-- name: CreateOrder :one
 INSERT INTO orders (
   user_id,
@@ -1029,6 +1077,58 @@ func (q *Queries) ListDueUnpaidOrders(ctx context.Context, arg ListDueUnpaidOrde
 	return items, nil
 }
 
+const listLeftOpenOrders = `-- name: ListLeftOpenOrders :many
+SELECT o.id
+FROM orders o
+WHERE o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+  AND o.pickup_at < $1::timestamptz
+  AND NOT EXISTS (
+    SELECT 1 FROM order_incidents i
+    WHERE i.order_id = o.id AND i.type = 'left_open'::order_incident_type
+  )
+ORDER BY o.pickup_at
+LIMIT $2::int
+`
+
+type ListLeftOpenOrdersParams struct {
+	MissedBefore time.Time `json:"missedBefore"`
+	MaxRows      int32     `json:"maxRows"`
+}
+
+// Orders still to accept or make whose pickup falls before missed_before — its
+// day closed — and that no left_open incident records yet, the longest waiting
+// first.
+//
+//	SELECT o.id
+//	FROM orders o
+//	WHERE o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+//	  AND o.pickup_at < $1::timestamptz
+//	  AND NOT EXISTS (
+//	    SELECT 1 FROM order_incidents i
+//	    WHERE i.order_id = o.id AND i.type = 'left_open'::order_incident_type
+//	  )
+//	ORDER BY o.pickup_at
+//	LIMIT $2::int
+func (q *Queries) ListLeftOpenOrders(ctx context.Context, arg ListLeftOpenOrdersParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listLeftOpenOrders, arg.MissedBefore, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMissedPickups = `-- name: ListMissedPickups :many
 SELECT id
 FROM orders
@@ -1612,6 +1712,124 @@ func (q *Queries) ListOrdersByUserCount(ctx context.Context, arg ListOrdersByUse
 	return count, err
 }
 
+const listStrandedPickups = `-- name: ListStrandedPickups :many
+SELECT
+  o.id,
+  o.code,
+  o.status,
+  o.pickup_at::timestamptz AS pickup_at,
+  COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+  u.email AS customer_email
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+WHERE o.status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status,
+                   'in_production'::order_status, 'ready'::order_status)
+  AND o.pickup_at >= $1::timestamptz
+  AND o.pickup_at < $2::timestamptz
+  AND (
+    $3::int IS NULL
+    OR EXTRACT(EPOCH FROM (o.pickup_at AT TIME ZONE $4::text)::time)::int / 60
+       NOT BETWEEN $3::int AND $5::int - 1
+  )
+  -- The page after the last one read, so each order comes up once.
+  AND (
+    $6::timestamptz IS NULL
+    OR (o.pickup_at, o.id) > ($6::timestamptz, $7::uuid)
+  )
+ORDER BY o.pickup_at, o.id
+LIMIT $8::int
+`
+
+type ListStrandedPickupsParams struct {
+	FromAt        time.Time  `json:"fromAt"`
+	ToAt          time.Time  `json:"toAt"`
+	OpensMinute   *int32     `json:"opensMinute"`
+	Zone          string     `json:"zone"`
+	ClosesMinute  *int32     `json:"closesMinute"`
+	AfterPickupAt *time.Time `json:"afterPickupAt"`
+	AfterID       *uuid.UUID `json:"afterId"`
+	MaxRows       int32      `json:"maxRows"`
+}
+
+type ListStrandedPickupsRow struct {
+	ID                  uuid.UUID   `json:"id"`
+	Code                string      `json:"code"`
+	Status              OrderStatus `json:"status"`
+	PickupAt            time.Time   `json:"pickupAt"`
+	CustomerDisplayName *string     `json:"customerDisplayName"`
+	CustomerEmail       *string     `json:"customerEmail"`
+}
+
+// Orders the bakery still has to make or hand over, an unpaid one included,
+// with a pickup in [from_at, to_at) — and, when opens_minute is given, one
+// falling before opens_minute or at or after closes_minute of the bakery's day
+// in zone: the orders a closed day or new opening hours would strand. Soonest
+// pickup first.
+// For the name shown only: an order is stranded whoever placed it.
+//
+//	SELECT
+//	  o.id,
+//	  o.code,
+//	  o.status,
+//	  o.pickup_at::timestamptz AS pickup_at,
+//	  COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+//	  u.email AS customer_email
+//	FROM orders o
+//	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+//	WHERE o.status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status,
+//	                   'in_production'::order_status, 'ready'::order_status)
+//	  AND o.pickup_at >= $1::timestamptz
+//	  AND o.pickup_at < $2::timestamptz
+//	  AND (
+//	    $3::int IS NULL
+//	    OR EXTRACT(EPOCH FROM (o.pickup_at AT TIME ZONE $4::text)::time)::int / 60
+//	       NOT BETWEEN $3::int AND $5::int - 1
+//	  )
+//	  -- The page after the last one read, so each order comes up once.
+//	  AND (
+//	    $6::timestamptz IS NULL
+//	    OR (o.pickup_at, o.id) > ($6::timestamptz, $7::uuid)
+//	  )
+//	ORDER BY o.pickup_at, o.id
+//	LIMIT $8::int
+func (q *Queries) ListStrandedPickups(ctx context.Context, arg ListStrandedPickupsParams) ([]ListStrandedPickupsRow, error) {
+	rows, err := q.db.Query(ctx, listStrandedPickups,
+		arg.FromAt,
+		arg.ToAt,
+		arg.OpensMinute,
+		arg.Zone,
+		arg.ClosesMinute,
+		arg.AfterPickupAt,
+		arg.AfterID,
+		arg.MaxRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStrandedPickupsRow{}
+	for rows.Next() {
+		var i ListStrandedPickupsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Status,
+			&i.PickupAt,
+			&i.CustomerDisplayName,
+			&i.CustomerEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnreviewedOrders = `-- name: ListUnreviewedOrders :many
 SELECT o.id
 FROM orders o
@@ -1828,6 +2046,20 @@ func (q *Queries) OrderHasReferencePhoto(ctx context.Context, orderID uuid.UUID)
 	var has_reference_photo bool
 	err := row.Scan(&has_reference_photo)
 	return has_reference_photo, err
+}
+
+const orderIDByCode = `-- name: OrderIDByCode :one
+SELECT id FROM orders WHERE code = $1
+`
+
+// OrderIDByCode
+//
+//	SELECT id FROM orders WHERE code = $1
+func (q *Queries) OrderIDByCode(ctx context.Context, code string) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, orderIDByCode, code)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const rescheduleOrder = `-- name: RescheduleOrder :one
@@ -2056,19 +2288,26 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
     $1::order_status IS NULL
     OR o.status = $1::order_status
   )
+  -- Left open: still to make or accept after its pickup day closed.
+  AND (
+    $2::timestamptz IS NULL
+    OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+        AND o.pickup_at < $2::timestamptz)
+  )
 ORDER BY
   o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
   CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
     THEN o.pickup_at END ASC NULLS LAST,
   o.pickup_at DESC NULLS LAST,
   o.created_at DESC
-LIMIT $3 OFFSET $2
+LIMIT $4 OFFSET $3
 `
 
 type StaffListOrdersParams struct {
-	Status *OrderStatus `json:"status"`
-	Offset int32        `json:"offset"`
-	Limit  int32        `json:"limit"`
+	Status     *OrderStatus `json:"status"`
+	OpenBefore *time.Time   `json:"openBefore"`
+	Offset     int32        `json:"offset"`
+	Limit      int32        `json:"limit"`
 }
 
 type StaffListOrdersRow struct {
@@ -2128,15 +2367,26 @@ type StaffListOrdersRow struct {
 //	    $1::order_status IS NULL
 //	    OR o.status = $1::order_status
 //	  )
+//	  -- Left open: still to make or accept after its pickup day closed.
+//	  AND (
+//	    $2::timestamptz IS NULL
+//	    OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+//	        AND o.pickup_at < $2::timestamptz)
+//	  )
 //	ORDER BY
 //	  o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
 //	  CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
 //	    THEN o.pickup_at END ASC NULLS LAST,
 //	  o.pickup_at DESC NULLS LAST,
 //	  o.created_at DESC
-//	LIMIT $3 OFFSET $2
+//	LIMIT $4 OFFSET $3
 func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error) {
-	rows, err := q.db.Query(ctx, staffListOrders, arg.Status, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, staffListOrders,
+		arg.Status,
+		arg.OpenBefore,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -2187,7 +2437,18 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
     $1::order_status IS NULL
     OR o.status = $1::order_status
   )
+  -- Left open: still to make or accept after its pickup day closed.
+  AND (
+    $2::timestamptz IS NULL
+    OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+        AND o.pickup_at < $2::timestamptz)
+  )
 `
+
+type StaffListOrdersCountParams struct {
+	Status     *OrderStatus `json:"status"`
+	OpenBefore *time.Time   `json:"openBefore"`
+}
 
 // StaffListOrdersCount
 //
@@ -2204,8 +2465,14 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
 //	    $1::order_status IS NULL
 //	    OR o.status = $1::order_status
 //	  )
-func (q *Queries) StaffListOrdersCount(ctx context.Context, status *OrderStatus) (int64, error) {
-	row := q.db.QueryRow(ctx, staffListOrdersCount, status)
+//	  -- Left open: still to make or accept after its pickup day closed.
+//	  AND (
+//	    $2::timestamptz IS NULL
+//	    OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+//	        AND o.pickup_at < $2::timestamptz)
+//	  )
+func (q *Queries) StaffListOrdersCount(ctx context.Context, arg StaffListOrdersCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, staffListOrdersCount, arg.Status, arg.OpenBefore)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -2408,6 +2675,97 @@ func (q *Queries) StaffListPickupsCount(ctx context.Context, arg StaffListPickup
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const staffRescheduleOrder = `-- name: StaffRescheduleOrder :one
+UPDATE orders
+SET pickup_at  = $1,
+    updated_at = now()
+WHERE id = $2
+  AND status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
+RETURNING
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
+`
+
+type StaffRescheduleOrderParams struct {
+	PickupAt *time.Time `json:"pickupAt"`
+	ID       uuid.UUID  `json:"id"`
+}
+
+// Moves the pickup of an order the bakery still has to hand over; its type
+// stays as the order was prepared.
+//
+//	UPDATE orders
+//	SET pickup_at  = $1,
+//	    updated_at = now()
+//	WHERE id = $2
+//	  AND status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
+//	RETURNING
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  pickup_at,
+//	  created_at,
+//	  updated_at,
+//	  code,
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
+func (q *Queries) StaffRescheduleOrder(ctx context.Context, arg StaffRescheduleOrderParams) (Order, error) {
+	row := q.db.QueryRow(ctx, staffRescheduleOrder, arg.PickupAt, arg.ID)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.PickupAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
+	)
+	return i, err
 }
 
 const sumOrderItemQuantitiesByOrderIDs = `-- name: SumOrderItemQuantitiesByOrderIDs :many

@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 // PickupRulesResponse is what a checkout picker needs to offer valid pickup
 // times: the opening hours (HH:MM, bakery time), the slot length, the notice
 // for pre-orders and for instant orders, the booking window, and the closed
@@ -70,4 +72,40 @@ type ClosedDateResponse struct {
 type CreateClosedDateRequest struct {
 	Date   string `json:"date" validate:"required"`
 	Reason string `json:"reason" validate:"required,max=200"`
+}
+
+// StrandedPickupsQuery names a change to the bakery's days or hours: a day it
+// closes, or new opening and closing times from now on.
+type StrandedPickupsQuery struct {
+	ClosedDate string `json:"closed_date"`
+	OpensAt    string `json:"opens_at"`
+	ClosesAt   string `json:"closes_at"`
+}
+
+// CancelStrandedPickupsRequest cancels the orders a change would strand, with
+// the reason their customers read.
+type CancelStrandedPickupsRequest struct {
+	StrandedPickupsQuery
+	Reason string `json:"reason" validate:"required,max=200"`
+}
+
+// StrandedPickupResponse is an order a change would strand.
+type StrandedPickupResponse struct {
+	ID       string    `json:"id"`
+	Code     string    `json:"code"`
+	Status   string    `json:"status"`
+	PickupAt time.Time `json:"pickup_at"`
+	// Customer is who it is for: a name, else the account's email.
+	Customer *string `json:"customer"`
+}
+
+// StrandedPickupsResponse is the first orders a change would strand, and how many in all.
+type StrandedPickupsResponse struct {
+	Orders []StrandedPickupResponse `json:"orders"`
+	Total  int64                    `json:"total"`
+}
+
+// CancelStrandedPickupsResponse is how many orders were cancelled.
+type CancelStrandedPickupsResponse struct {
+	Cancelled int `json:"cancelled"`
 }

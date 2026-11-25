@@ -5,7 +5,9 @@ import {
   browserRequestVoid,
   browserRequestWithMeta,
 } from "@/lib/browser-api-client";
+import { staffOrderSummarySchema, type StaffOrderSummary } from "@/features/staff";
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
+import { orderCodeSchema } from "@/lib/schemas/order";
 
 import {
   categoryFormSchema,
@@ -69,6 +71,8 @@ import {
   type ReviewSummary,
   type SalesReport,
   type SalesReportFilterInput,
+  managerHandoverInputSchema,
+  type ManagerHandoverInput,
 } from "../schemas";
 
 function categoriesPath(filter: CategoryListFilterInput): string {
@@ -390,6 +394,25 @@ export async function getOperations(): Promise<Operations> {
   return browserRequest<Operations>("/api/v1/manager/operations", {
     method: "GET",
     schema: operationsSchema,
+  });
+}
+
+/** An order the bakery sees, found by its code. */
+export async function lookupOrderByCode(code: string): Promise<StaffOrderSummary> {
+  const params = new URLSearchParams({ code: orderCodeSchema.parse(code) });
+  return browserRequest<StaffOrderSummary>(`/api/v1/manager/orders/lookup?${params.toString()}`, {
+    method: "GET",
+    schema: staffOrderSummarySchema,
+  });
+}
+
+/** Hands a ready or missed online order over without its pickup code. */
+export async function handOverWithoutCode(id: string, input: ManagerHandoverInput): Promise<StaffOrderSummary> {
+  const parsedId = z.uuid().parse(id);
+  return browserRequest<StaffOrderSummary>(`/api/v1/manager/orders/${parsedId}/handover`, {
+    method: "POST",
+    schema: staffOrderSummarySchema,
+    json: managerHandoverInputSchema.parse(input),
   });
 }
 

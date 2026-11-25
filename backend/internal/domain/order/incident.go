@@ -38,6 +38,9 @@ const (
 	IncidentCustomMismatch IncidentType = "custom_mismatch"
 	// IncidentOther is staff reporting any other problem, which the note says.
 	IncidentOther IncidentType = "other"
+	// IncidentLeftOpen is an order the bakery had not got ready when its
+	// pickup day closed, left for staff to settle.
+	IncidentLeftOpen IncidentType = "left_open"
 )
 
 const (
@@ -63,7 +66,7 @@ const (
 func (t IncidentType) Valid() bool {
 	switch t {
 	case IncidentBakeryCancelled, IncidentReadyLate, IncidentNoShow, IncidentPaymentFailed, IncidentPaymentExpired,
-		IncidentRefunded, IncidentPaymentAnomaly, IncidentWrongItems, IncidentCustomMismatch, IncidentOther:
+		IncidentRefunded, IncidentPaymentAnomaly, IncidentWrongItems, IncidentCustomMismatch, IncidentOther, IncidentLeftOpen:
 		return true
 	default:
 		return false
@@ -104,12 +107,12 @@ func NewReportedIncident(incidentType, note string) (IncidentType, string, error
 }
 
 // MoveIncident is the incident an order's move from one status to another
-// records, if any: staff cancelling an order the bakery had accepted, a missed
-// pickup, or an unpaid order expiring. byStaff reports whether staff made the
-// move.
-func MoveIncident(from, to Status, byStaff bool) (IncidentType, bool) {
+// records, if any: the bakery cancelling an order it had accepted, a missed
+// pickup, or an unpaid order expiring. byBakery reports whether someone at the
+// bakery made the move — staff, or an admin closing a day.
+func MoveIncident(from, to Status, byBakery bool) (IncidentType, bool) {
 	switch {
-	case to == StatusCancelled && byStaff && (from == StatusConfirmed || from == StatusInProduction || from == StatusReady):
+	case to == StatusCancelled && byBakery && (from == StatusConfirmed || from == StatusInProduction || from == StatusReady):
 		return IncidentBakeryCancelled, true
 	case to == StatusNoShow:
 		return IncidentNoShow, true

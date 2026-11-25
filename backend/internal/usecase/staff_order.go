@@ -36,6 +36,10 @@ type StaffOrderUsecase struct {
 	log         *zap.Logger
 }
 
+// StaffOrderFilterLeftOpen is the status filter that lists the orders left
+// open: still to accept or make after their pickup day closed.
+const StaffOrderFilterLeftOpen = "left_open"
+
 func NewStaffOrderUsecase(
 	users port.UserRepository,
 	orders port.OrderRepository,
@@ -79,8 +83,20 @@ func (u *StaffOrderUsecase) List(
 ) ([]dto.StaffOrderSummaryResponse, int64, int32, int32, error) {
 	page, pageSize = normalizeOrderListPage(page, pageSize)
 
-	var status *domainorder.Status
-	if trimmed := strings.TrimSpace(statusFilter); trimmed != "" {
+	var (
+		status     *domainorder.Status
+		openBefore *time.Time
+	)
+	switch trimmed := strings.TrimSpace(statusFilter); trimmed {
+	case "":
+	case StaffOrderFilterLeftOpen:
+		settings, err := u.store.GetSettings(ctx)
+		if err != nil {
+			return nil, 0, page, pageSize, err
+		}
+		before := settings.MissedBefore(time.Now())
+		openBefore = &before
+	default:
 		parsed := domainorder.Status(trimmed)
 		if !parsed.Valid() {
 			return nil, 0, page, pageSize, apperrors.ErrValidation.WithDetail("status", "invalid order status")
@@ -91,13 +107,14 @@ func (u *StaffOrderUsecase) List(
 	rows, total, err := listWithTotal(ctx,
 		func(ctx context.Context) ([]port.StaffOrderListRow, error) {
 			return u.orders.StaffList(ctx, port.StaffListOrdersParams{
-				Status: status,
-				Limit:  pageSize,
-				Offset: utils.PageOffset(page, pageSize),
+				Status:     status,
+				OpenBefore: openBefore,
+				Limit:      pageSize,
+				Offset:     utils.PageOffset(page, pageSize),
 			})
 		},
 		func(ctx context.Context) (int64, error) {
-			return u.orders.StaffListCount(ctx, status)
+			return u.orders.StaffListCount(ctx, status, openBefore)
 		},
 	)
 	if err != nil {

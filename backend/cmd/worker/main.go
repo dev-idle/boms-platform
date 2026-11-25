@@ -207,6 +207,7 @@ func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, codes domainorder
 		{name: "cancel_unreviewed", run: orderUC.CancelUnreviewed},
 		{name: "make_refunds", run: payments.RefundDue},
 		{name: "mark_no_shows", run: orderUC.MarkNoShows},
+		{name: "flag_left_open", run: orderUC.FlagLeftOpen},
 	}
 }
 

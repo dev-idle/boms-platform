@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { USER_ROLE } from "@/constants/roles";
 import { clockTimeSchema, clockToMinutes } from "@/lib/validation/clock";
+import { orderCodeSchema, orderStatusSchema } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
 import { reasonSchema } from "@/lib/validation/reason";
 import { vietnamPhoneZodString } from "@/lib/validation/phone";
@@ -251,6 +252,41 @@ export const closedDateFormSchema = z.object({
   reason: reasonSchema("Tell customers why the bakery is closed"),
 });
 
+/**
+ * A change that can strand booked pickups: a day the bakery closes, or new
+ * opening and closing times from now on.
+ */
+export const strandingChangeSchema = z.union([
+  z.object({ closed_date: z.iso.date() }),
+  z.object({ opens_at: clockTimeSchema, closes_at: clockTimeSchema }),
+]);
+
+/** GET /api/v1/admin/settings/stranded-pickups — an order a change would strand. */
+const strandedPickupSchema = z.object({
+  id: z.uuid(),
+  code: orderCodeSchema,
+  status: orderStatusSchema,
+  pickup_at: apiDateTimeSchema,
+  customer: z.string().nullable(),
+});
+
+export const strandedPickupsSchema = z.object({
+  orders: z.array(strandedPickupSchema),
+  total: z.number().int().min(0),
+});
+
+/** The reason the stranded orders' customers read. */
+export const cancelStrandedFormSchema = z.object({
+  reason: reasonSchema("Tell the customers why"),
+});
+
+export const cancelStrandedResultSchema = z.object({
+  cancelled: z.number().int().min(0),
+});
+
+export type StrandingChange = z.infer<typeof strandingChangeSchema>;
+export type StrandedPickups = z.infer<typeof strandedPickupsSchema>;
+export type CancelStrandedFormInput = z.infer<typeof cancelStrandedFormSchema>;
 export type StoreSettings = z.infer<typeof storeSettingsSchema>;
 export type StoreSettingsFormInput = z.infer<typeof storeSettingsFormSchema>;
 export type StoreSettingsPatch = z.infer<typeof storeSettingsPatchSchema>;

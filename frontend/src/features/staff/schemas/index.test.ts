@@ -6,6 +6,7 @@ import {
   patchStaffOrderStatusInputSchema,
   reportIncidentInputSchema,
   staffOrderSchema,
+  staffOrdersListFilterSchema,
   staffPickupsSchema,
 } from "./index";
 
@@ -210,5 +211,13 @@ describe("reportIncidentInputSchema", () => {
     expect(reportIncidentInputSchema.safeParse({ type: "other", note: longest }).success).toBe(true);
     expect(reportIncidentInputSchema.safeParse({ type: "other", note: `${longest}a` }).success).toBe(false);
     expect(reportIncidentInputSchema.safeParse({ type: "other", note: " \n " }).success).toBe(false);
+  });
+});
+
+describe("staffOrdersListFilterSchema", () => {
+  it("takes an order status or left_open", () => {
+    expect(staffOrdersListFilterSchema.parse({ status: "left_open" }).status).toBe("left_open");
+    expect(staffOrdersListFilterSchema.parse({ status: "no_show" }).status).toBe("no_show");
+    expect(staffOrdersListFilterSchema.safeParse({ status: "late" }).success).toBe(false);
   });
 });

@@ -39,10 +39,11 @@ function handoffBlockedReason(status: OrderStatus): string | undefined {
   switch (status) {
     case "ready":
       return undefined;
+    case "no_show":
+      // A missed order is still handed over if its customer comes late.
+      return undefined;
     case "fulfilled":
       return "Already picked up";
-    case "no_show":
-      return "Marked as not collected";
     default:
       return "Not ready yet";
   }

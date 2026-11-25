@@ -1,6 +1,12 @@
-import type { OrderStatus } from "@/lib/schemas/order";
+import type { Fulfillment, OrderStatus } from "@/lib/schemas/order";
 
 import type { StaffPickup } from "../schemas";
+
+/**
+ * Items that ask nothing of the kitchen, so only the counter's own notice
+ * applies: an order not priced yet, or a pickup staff move at their own call.
+ */
+export const NO_ITEM_NEEDS: Fulfillment = { has_kitchen_items: false, lead_minutes: 0, sold_out_on: null };
 
 /** The pickups booked for one time on the day's schedule. */
 type PickupSlot = {

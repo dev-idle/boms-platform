@@ -2294,7 +2294,7 @@ table "promotions" {
 
 enum "order_incident_type" {
   schema = schema.public
-  values = ["bakery_cancelled", "ready_late", "no_show", "payment_failed", "payment_expired", "refunded", "payment_anomaly", "wrong_items", "custom_mismatch", "other"]
+  values = ["bakery_cancelled", "ready_late", "no_show", "payment_failed", "payment_expired", "refunded", "payment_anomaly", "wrong_items", "custom_mismatch", "other", "left_open"]
 }
 
 // Something that went wrong with an order: the system records the first seven

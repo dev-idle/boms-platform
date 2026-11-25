@@ -55,22 +55,45 @@ func (p PickupPolicy) validate(at, noticeFrom, now time.Time, items Fulfillment)
 	if at.Before(noticeFrom.Add(max(prep, items.Lead))) {
 		return "", ErrPickupTooSoon
 	}
+	if err := p.fits(at, now, items.SoldOutOn); err != nil {
+		return "", err
+	}
+	return orderType, nil
+}
+
+// Moves checks a pickup staff move an order to: ahead of now and within the
+// bakery's days, hours and slots. Whether the kitchen still has the notice it
+// needs is the bakery's own call, as for an order already made.
+func (p PickupPolicy) Moves(at, now time.Time) error {
+	if at.IsZero() {
+		return ErrInvalidPickupAt
+	}
+	if !at.After(now) {
+		return ErrPickupTooSoon
+	}
+	return p.fits(at, now, nil)
+}
+
+// fits checks what every pickup time meets, whoever books it: within the
+// booking window from now, on a day the bakery opens and an item has not sold
+// out, in its hours and on a slot.
+func (p PickupPolicy) fits(at, now time.Time, soldOutOn *time.Time) error {
 	if at.After(now.Add(time.Duration(p.Settings.MaxAdvanceDays) * 24 * time.Hour)) {
-		return "", ErrPickupTooFar
+		return ErrPickupTooFar
 	}
 	if slices.ContainsFunc(p.ClosedDays, domainstore.DayOf(at).Equal) {
-		return "", ErrPickupClosedDay
+		return ErrPickupClosedDay
 	}
-	if items.SoldOutOn != nil && domainstore.DayOf(at).Equal(*items.SoldOutOn) {
-		return "", ErrPickupSoldOut
+	if soldOutOn != nil && domainstore.DayOf(at).Equal(*soldOutOn) {
+		return ErrPickupSoldOut
 	}
 	local := at.In(domainstore.Location)
 	sinceMidnight := local.Sub(time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, domainstore.Location))
 	if sinceMidnight < p.Settings.OpensAt || sinceMidnight >= p.Settings.ClosesAt {
-		return "", ErrPickupOutsideHours
+		return ErrPickupOutsideHours
 	}
 	if (sinceMidnight-p.Settings.OpensAt)%p.Settings.SlotLength != 0 {
-		return "", ErrPickupOffSlot
+		return ErrPickupOffSlot
 	}
-	return orderType, nil
+	return nil
 }

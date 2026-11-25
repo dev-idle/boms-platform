@@ -63,8 +63,33 @@ type ListOrdersParams struct {
 
 type StaffListOrdersParams struct {
 	Status *domainorder.Status
-	Limit  int32
-	Offset int32
+	// OpenBefore narrows the list to the orders left open: still to accept or
+	// make with a pickup before it.
+	OpenBefore *time.Time
+	Limit      int32
+	Offset     int32
+}
+
+// StrandedPickupsParams finds the orders the bakery still has to make or hand
+// over with a pickup in [From, To) and, when OpensMinute is set, outside the
+// opening hours [OpensMinute, ClosesMinute) of the bakery's day.
+type StrandedPickupsParams struct {
+	From, To                  time.Time
+	OpensMinute, ClosesMinute *int32
+	// AfterPickupAt and AfterID page the list past the last order read.
+	AfterPickupAt *time.Time
+	AfterID       *uuid.UUID
+	Limit         int32
+}
+
+// StrandedPickup is an order a closed day or new opening hours would strand.
+type StrandedPickup struct {
+	ID                  uuid.UUID
+	Code                string
+	Status              domainorder.Status
+	PickupAt            time.Time
+	CustomerDisplayName *string
+	CustomerEmail       *string
 }
 
 // StaffListPickupsParams pages the orders with a pickup in [From, To).
@@ -153,6 +178,18 @@ type OrderRepository interface {
 	// Reschedule moves the pickup of an order not being made yet. Any other is
 	// apperrors.ErrNotFound.
 	Reschedule(ctx context.Context, params RescheduleOrderParams) (*domainorder.Order, error)
+	// ListLeftOpen returns up to limit orders still to accept or make whose
+	// pickup falls before missedBefore and that no left_open incident records.
+	ListLeftOpen(ctx context.Context, missedBefore time.Time, limit int32) ([]uuid.UUID, error)
+	// StaffReschedule moves the pickup of an order the bakery still has to hand
+	// over. Any other is apperrors.ErrNotFound.
+	StaffReschedule(ctx context.Context, orderID uuid.UUID, pickupAt time.Time) (*domainorder.Order, error)
+	// ListStrandedPickups and CountStrandedPickups find the orders a closed day
+	// or new opening hours would strand, soonest pickup first.
+	ListStrandedPickups(ctx context.Context, params StrandedPickupsParams) ([]StrandedPickup, error)
+	CountStrandedPickups(ctx context.Context, params StrandedPickupsParams) (int64, error)
+	// IDByCode finds an order by its code; apperrors.ErrNotFound when none has it.
+	IDByCode(ctx context.Context, code string) (uuid.UUID, error)
 	// ListUnreviewed returns up to limit orders still waiting for staff that
 	// were paid before paidBefore, the longest waiting first.
 	ListUnreviewed(ctx context.Context, paidBefore time.Time, limit int32) ([]uuid.UUID, error)
@@ -175,7 +212,7 @@ type OrderRepository interface {
 	ListByUserBefore(ctx context.Context, userID uuid.UUID, before *PageCursor, limit int32) ([]domainorder.Order, error)
 	ListCountByUser(ctx context.Context, userID uuid.UUID, filter OrderHistoryFilter) (int64, error)
 	StaffList(ctx context.Context, params StaffListOrdersParams) ([]StaffOrderListRow, error)
-	StaffListCount(ctx context.Context, status *domainorder.Status) (int64, error)
+	StaffListCount(ctx context.Context, status *domainorder.Status, openBefore *time.Time) (int64, error)
 	UpdateStatus(ctx context.Context, params UpdateOrderStatusParams) (*domainorder.Order, error)
 	CreateItems(ctx context.Context, items []CreateOrderItemParams) error
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domainorder.Item, error)

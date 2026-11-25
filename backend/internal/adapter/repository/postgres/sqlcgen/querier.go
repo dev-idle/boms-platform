@@ -562,6 +562,20 @@ type Querier interface {
 	//      OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
 	//    )
 	CountStationTickets(ctx context.Context, arg CountStationTicketsParams) (int64, error)
+	// How many orders ListStrandedPickups finds.
+	//
+	//  SELECT count(*)::bigint AS count
+	//  FROM orders o
+	//  WHERE o.status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status,
+	//                     'in_production'::order_status, 'ready'::order_status)
+	//    AND o.pickup_at >= $1::timestamptz
+	//    AND o.pickup_at < $2::timestamptz
+	//    AND (
+	//      $3::int IS NULL
+	//      OR EXTRACT(EPOCH FROM (o.pickup_at AT TIME ZONE $4::text)::time)::int / 60
+	//         NOT BETWEEN $3::int AND $5::int - 1
+	//    )
+	CountStrandedPickups(ctx context.Context, arg CountStrandedPickupsParams) (int64, error)
 	//CreateAdminProfile
 	//
 	//  INSERT INTO admin_profiles (user_id, full_name, phone)
@@ -1440,6 +1454,22 @@ type Querier interface {
 	//      AND status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'expired'::order_status, 'no_show'::order_status)
 	//  ) AS open
 	HasOpenOrdersForUser(ctx context.Context, dollar_1 uuid.UUID) (bool, error)
+	// Holds the pickup rules until the transaction ends and reads what a booking on
+	// closed_on must still meet: the opening hours, and whether that day has closed
+	// since the rules were read. Closing a day or changing the hours locks the row
+	// for update, so it waits for the booking and then counts it.
+	//
+	//  SELECT
+	//    s.opens_at_minute,
+	//    s.closes_at_minute,
+	//    EXISTS (
+	//      SELECT 1 FROM store_closed_dates c
+	//      WHERE c.closed_on = $1::date AND c.deleted_at IS NULL
+	//    )::bool AS closed
+	//  FROM store_settings s
+	//  WHERE s.id = 1
+	//  FOR SHARE OF s
+	HoldPickupRules(ctx context.Context, closedOn time.Time) (HoldPickupRulesRow, error)
 	//IncrementDiscountCodeUsedCount
 	//
 	//  UPDATE discount_codes
@@ -1618,6 +1648,21 @@ type Querier interface {
 	//    AND m.deleted_at IS NULL
 	//  ORDER BY m.created_at, m.id
 	ListGeneralMessages(ctx context.Context, customerID uuid.UUID) ([]ListGeneralMessagesRow, error)
+	// Orders still to accept or make whose pickup falls before missed_before — its
+	// day closed — and that no left_open incident records yet, the longest waiting
+	// first.
+	//
+	//  SELECT o.id
+	//  FROM orders o
+	//  WHERE o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+	//    AND o.pickup_at < $1::timestamptz
+	//    AND NOT EXISTS (
+	//      SELECT 1 FROM order_incidents i
+	//      WHERE i.order_id = o.id AND i.type = 'left_open'::order_incident_type
+	//    )
+	//  ORDER BY o.pickup_at
+	//  LIMIT $2::int
+	ListLeftOpenOrders(ctx context.Context, arg ListLeftOpenOrdersParams) ([]uuid.UUID, error)
 	// A page of a conversation's messages, newest first: the latest, or those
 	// before the message before_id names. A staff message carries its writer's name.
 	//
@@ -2112,6 +2157,40 @@ type Querier interface {
 	//  ORDER BY closed_on
 	//  LIMIT $3::int
 	ListStoreClosedDates(ctx context.Context, arg ListStoreClosedDatesParams) ([]ListStoreClosedDatesRow, error)
+	// Orders the bakery still has to make or hand over, an unpaid one included,
+	// with a pickup in [from_at, to_at) — and, when opens_minute is given, one
+	// falling before opens_minute or at or after closes_minute of the bakery's day
+	// in zone: the orders a closed day or new opening hours would strand. Soonest
+	// pickup first.
+	// For the name shown only: an order is stranded whoever placed it.
+	//
+	//  SELECT
+	//    o.id,
+	//    o.code,
+	//    o.status,
+	//    o.pickup_at::timestamptz AS pickup_at,
+	//    COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+	//    u.email AS customer_email
+	//  FROM orders o
+	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+	//  WHERE o.status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status,
+	//                     'in_production'::order_status, 'ready'::order_status)
+	//    AND o.pickup_at >= $1::timestamptz
+	//    AND o.pickup_at < $2::timestamptz
+	//    AND (
+	//      $3::int IS NULL
+	//      OR EXTRACT(EPOCH FROM (o.pickup_at AT TIME ZONE $4::text)::time)::int / 60
+	//         NOT BETWEEN $3::int AND $5::int - 1
+	//    )
+	//    -- The page after the last one read, so each order comes up once.
+	//    AND (
+	//      $6::timestamptz IS NULL
+	//      OR (o.pickup_at, o.id) > ($6::timestamptz, $7::uuid)
+	//    )
+	//  ORDER BY o.pickup_at, o.id
+	//  LIMIT $8::int
+	ListStrandedPickups(ctx context.Context, arg ListStrandedPickupsParams) ([]ListStrandedPickupsRow, error)
 	// What the customer has not read yet on each of the orders given.
 	//
 	//  SELECT order_id, unread_by_customer
@@ -2642,6 +2721,10 @@ type Querier interface {
 	//    WHERE order_id = $1 AND configuration->>'reference_image_url' <> ''
 	//  )::bool AS has_reference_photo
 	OrderHasReferencePhoto(ctx context.Context, orderID uuid.UUID) (bool, error)
+	//OrderIDByCode
+	//
+	//  SELECT id FROM orders WHERE code = $1
+	OrderIDByCode(ctx context.Context, code string) (uuid.UUID, error)
 	//PhoneHeldByOtherActiveUser
 	//
 	//  SELECT EXISTS (
@@ -3223,13 +3306,19 @@ type Querier interface {
 	//      $1::order_status IS NULL
 	//      OR o.status = $1::order_status
 	//    )
+	//    -- Left open: still to make or accept after its pickup day closed.
+	//    AND (
+	//      $2::timestamptz IS NULL
+	//      OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+	//          AND o.pickup_at < $2::timestamptz)
+	//    )
 	//  ORDER BY
 	//    o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
 	//    CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
 	//      THEN o.pickup_at END ASC NULLS LAST,
 	//    o.pickup_at DESC NULLS LAST,
 	//    o.created_at DESC
-	//  LIMIT $3 OFFSET $2
+	//  LIMIT $4 OFFSET $3
 	StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error)
 	//StaffListOrdersCount
 	//
@@ -3246,7 +3335,13 @@ type Querier interface {
 	//      $1::order_status IS NULL
 	//      OR o.status = $1::order_status
 	//    )
-	StaffListOrdersCount(ctx context.Context, status *OrderStatus) (int64, error)
+	//    -- Left open: still to make or accept after its pickup day closed.
+	//    AND (
+	//      $2::timestamptz IS NULL
+	//      OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+	//          AND o.pickup_at < $2::timestamptz)
+	//    )
+	StaffListOrdersCount(ctx context.Context, arg StaffListOrdersCountParams) (int64, error)
 	// The pickups of one bakery day, by time: every order the bakery took with a
 	// pickup in [pickup_from, pickup_to), cancelled ones left out. The columns of
 	// StaffListOrders, and the counter's own ticket of the order with what it
@@ -3339,6 +3434,36 @@ type Querier interface {
 	//      OR p.sold_out_on = $1::date
 	//    )
 	StaffListProductsCount(ctx context.Context, soldOutOn *time.Time) (int64, error)
+	// Moves the pickup of an order the bakery still has to hand over; its type
+	// stays as the order was prepared.
+	//
+	//  UPDATE orders
+	//  SET pickup_at  = $1,
+	//      updated_at = now()
+	//  WHERE id = $2
+	//    AND status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
+	//  RETURNING
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    pickup_at,
+	//    created_at,
+	//    updated_at,
+	//    code,
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
+	StaffRescheduleOrder(ctx context.Context, arg StaffRescheduleOrderParams) (Order, error)
 	//SumOrderItemQuantitiesByOrderIDs
 	//
 	//  SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count

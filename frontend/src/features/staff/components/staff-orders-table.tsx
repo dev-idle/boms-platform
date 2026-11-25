@@ -23,12 +23,13 @@ import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useStaffOrders } from "../hooks";
 import { StaffCustomerCell } from "./staff-customer-cell";
-import type { OrderStatus } from "@/lib/schemas/order";
+import type { StaffOrdersStatusFilter } from "../schemas";
 
 const PAGE_SIZE = DASHBOARD_STAFF_ORDERS_PAGE_SIZE;
 
-const STATUS_FILTERS: Array<{ value: OrderStatus | undefined; label: string }> = [
+const STATUS_FILTERS: Array<{ value: StaffOrdersStatusFilter | undefined; label: string }> = [
   { value: undefined, label: "All" },
+  { value: "left_open", label: "Left open" },
   { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
   { value: "in_production", label: "In production" },
@@ -40,7 +41,7 @@ const STATUS_FILTERS: Array<{ value: OrderStatus | undefined; label: string }> =
 
 export function StaffOrdersTable() {
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<OrderStatus | undefined>(undefined);
+  const [status, setStatus] = useState<StaffOrdersStatusFilter | undefined>(undefined);
   const filter = useMemo(
     () => ({ page, page_size: PAGE_SIZE, status }),
     [page, status],

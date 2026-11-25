@@ -12,11 +12,22 @@ import (
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
+	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/usecase"
 )
 
 func ptr[T any](v T) *T { return &v }
+
+// strandedOrders answers how many orders a change would strand.
+type strandedOrders struct {
+	port.OrderRepository
+	count int64
+}
+
+func (o strandedOrders) CountStrandedPickups(context.Context, port.StrandedPickupsParams) (int64, error) {
+	return o.count, nil
+}
 
 // requireValidationField asserts err is a validation error naming field.
 func requireValidationField(t *testing.T, err error, field string) {
@@ -33,7 +44,7 @@ func TestAdminStoreSettingsUsecase_PatchSettings(t *testing.T) {
 
 	setup := func() (*usecase.AdminStoreSettingsUsecase, *memoryStore, *recordingOutbox) {
 		store, outbox := newMemoryStore(), &recordingOutbox{}
-		return usecase.NewAdminStoreSettingsUsecase(store, passthroughTxManager{}, outbox, nil, nil), store, outbox
+		return usecase.NewAdminStoreSettingsUsecase(store, strandedOrders{}, nil, nil, nil, nil, passthroughTxManager{}, outbox, nil, nil), store, outbox
 	}
 
 	t.Run("changes_only_the_named_settings_and_announces_it", func(t *testing.T) {
@@ -90,7 +101,7 @@ func TestAdminStoreSettingsUsecase_PatchSettings(t *testing.T) {
 func TestAdminStoreSettingsUsecase_PatchSettings_Slots(t *testing.T) {
 	t.Parallel()
 	store := newMemoryStore()
-	uc := usecase.NewAdminStoreSettingsUsecase(store, passthroughTxManager{}, &recordingOutbox{}, nil, nil)
+	uc := usecase.NewAdminStoreSettingsUsecase(store, strandedOrders{}, nil, nil, nil, nil, passthroughTxManager{}, &recordingOutbox{}, nil, nil)
 
 	out, err := uc.PatchSettings(context.Background(), uuid.New(), domainuser.RoleAdmin, dto.PatchStoreSettingsRequest{
 		SlotMinutes: ptr(15), SlotCapacity: ptr(4), InstantPrepMinutes: ptr(45),
@@ -112,10 +123,44 @@ func TestAdminStoreSettingsUsecase_PatchSettings_Unreadable(t *testing.T) {
 		"opens_at":  {OpensAt: ptr("8am")},
 		"closes_at": {ClosesAt: ptr("25:00")},
 	} {
-		uc := usecase.NewAdminStoreSettingsUsecase(newMemoryStore(), passthroughTxManager{}, &recordingOutbox{}, nil, nil)
+		uc := usecase.NewAdminStoreSettingsUsecase(newMemoryStore(), strandedOrders{}, nil, nil, nil, nil, passthroughTxManager{}, &recordingOutbox{}, nil, nil)
 		_, err := uc.PatchSettings(context.Background(), uuid.New(), domainuser.RoleAdmin, req)
 		requireValidationField(t, err, field)
 	}
+}
+
+func TestAdminStoreSettingsUsecase_PatchSettings_StrandedPickups(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	uc := usecase.NewAdminStoreSettingsUsecase(newMemoryStore(), strandedOrders{count: 1}, nil, nil, nil, nil, passthroughTxManager{}, &recordingOutbox{}, nil, nil)
+
+	_, err := uc.PatchSettings(ctx, uuid.New(), domainuser.RoleAdmin, dto.PatchStoreSettingsRequest{ClosesAt: ptr("16:00")})
+	require.ErrorIs(t, err, domainstore.ErrPickupsStranded, "hours that leave a booked pickup outside are refused")
+
+	_, err = uc.PatchSettings(ctx, uuid.New(), domainuser.RoleAdmin, dto.PatchStoreSettingsRequest{SlotCapacity: ptr(12)})
+	require.NoError(t, err, "a change that keeps the hours strands nothing")
+}
+
+func TestAdminStoreSettingsUsecase_StrandedPickups_NamesOneChange(t *testing.T) {
+	t.Parallel()
+	uc := usecase.NewAdminStoreSettingsUsecase(newMemoryStore(), strandedOrders{}, nil, nil, nil, nil, passthroughTxManager{}, &recordingOutbox{}, nil, nil)
+
+	for _, q := range []dto.StrandedPickupsQuery{
+		{},
+		{ClosedDate: "2031-02-10", OpensAt: "08:00", ClosesAt: "16:00"},
+		{OpensAt: "08:00"},
+	} {
+		_, err := uc.StrandedPickups(context.Background(), q)
+		requireValidationField(t, err, "closed_date")
+	}
+	_, err := uc.StrandedPickups(context.Background(), dto.StrandedPickupsQuery{ClosedDate: "10/02/2031"})
+	requireValidationField(t, err, "closed_date")
+	_, err = uc.StrandedPickups(context.Background(), dto.StrandedPickupsQuery{OpensAt: "8am", ClosesAt: "16:00"})
+	requireValidationField(t, err, "opens_at")
+	_, err = uc.StrandedPickups(context.Background(), dto.StrandedPickupsQuery{OpensAt: "12:00", ClosesAt: "12:00"})
+	require.ErrorIs(t, err, domainstore.ErrInvalidHours, "hours the settings refuse would strand every order")
+	_, err = uc.StrandedPickups(context.Background(), dto.StrandedPickupsQuery{ClosedDate: "2020-01-01"})
+	require.ErrorIs(t, err, domainstore.ErrClosedDateOutOfRange, "only a day that may be closed")
 }
 
 func TestAdminStoreSettingsUsecase_ClosedDates(t *testing.T) {
@@ -126,7 +171,7 @@ func TestAdminStoreSettingsUsecase_ClosedDates(t *testing.T) {
 	t.Run("closes_a_day_once_and_reopens_it", func(t *testing.T) {
 		t.Parallel()
 		store, outbox := newMemoryStore(), &recordingOutbox{}
-		uc := usecase.NewAdminStoreSettingsUsecase(store, passthroughTxManager{}, outbox, nil, nil)
+		uc := usecase.NewAdminStoreSettingsUsecase(store, strandedOrders{}, nil, nil, nil, nil, passthroughTxManager{}, outbox, nil, nil)
 		ctx := context.Background()
 
 		added, err := uc.AddClosedDate(ctx, admin, domainuser.RoleAdmin, dto.CreateClosedDateRequest{Date: tomorrow, Reason: " Staff training "})
@@ -146,9 +191,22 @@ func TestAdminStoreSettingsUsecase_ClosedDates(t *testing.T) {
 		assert.Len(t, outbox.events, 2, "adding and removing each announce the change")
 	})
 
+	t.Run("keeps_a_day_open_while_orders_are_booked_on_it", func(t *testing.T) {
+		t.Parallel()
+		store := newMemoryStore()
+		uc := usecase.NewAdminStoreSettingsUsecase(store, strandedOrders{count: 2}, nil, nil, nil, nil, passthroughTxManager{}, &recordingOutbox{}, nil, nil)
+
+		_, err := uc.AddClosedDate(context.Background(), admin, domainuser.RoleAdmin, dto.CreateClosedDateRequest{Date: tomorrow, Reason: "Holiday"})
+
+		require.ErrorIs(t, err, domainstore.ErrPickupsStranded, "the orders are cancelled first")
+		listed, err := uc.ListClosedDates(context.Background())
+		require.NoError(t, err)
+		assert.Empty(t, listed)
+	})
+
 	t.Run("refuses_an_unreadable_or_past_day", func(t *testing.T) {
 		t.Parallel()
-		uc := usecase.NewAdminStoreSettingsUsecase(newMemoryStore(), passthroughTxManager{}, &recordingOutbox{}, nil, nil)
+		uc := usecase.NewAdminStoreSettingsUsecase(newMemoryStore(), strandedOrders{}, nil, nil, nil, nil, passthroughTxManager{}, &recordingOutbox{}, nil, nil)
 		ctx := context.Background()
 
 		_, err := uc.AddClosedDate(ctx, admin, domainuser.RoleAdmin, dto.CreateClosedDateRequest{Date: "10/02/2031", Reason: "Holiday"})

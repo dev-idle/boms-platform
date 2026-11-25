@@ -17,6 +17,7 @@ import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
 import { useClosedDates, useCreateClosedDate, useDeleteClosedDate } from "../hooks";
+import { StrandedPickupsDialog } from "./stranded-pickups-dialog";
 import { closedDayBounds, formatClosedDay } from "../lib/closed-days";
 import {
   closedDateFormSchema,
@@ -28,6 +29,8 @@ const CLOSED_DAY_FIELDS = ["date", "reason"] as const;
 
 function AddClosedDayForm() {
   const createClosedDate = useCreateClosedDate();
+  // The day asked for while orders booked on it wait to be cancelled.
+  const [stranding, setStranding] = useState<ClosedDateFormInput | null>(null);
   const bounds = closedDayBounds();
   const form = useForm<ClosedDateFormInput>({
     resolver: zodResolver(closedDateFormSchema),
@@ -48,6 +51,10 @@ function AddClosedDayForm() {
         }
         if (error.code === ApiErrorCode.ClosedDateExists) {
           form.setError("date", { message: "That day is already closed" });
+          return;
+        }
+        if (error.code === ApiErrorCode.PickupsStranded) {
+          setStranding(values);
           return;
         }
         toast.error(error.message);
@@ -104,6 +111,16 @@ function AddClosedDayForm() {
           />
         </div>
       </form>
+      {stranding ? (
+        <StrandedPickupsDialog
+          change={{ closed_date: stranding.date }}
+          onClose={() => setStranding(null)}
+          onCleared={() => {
+            setStranding(null);
+            onSubmit(stranding);
+          }}
+        />
+      ) : null}
     </Form>
   );
 }

@@ -6,6 +6,8 @@ import {
   closedDateFormSchema,
   createOperationalSchema,
   storeSettingsFormSchema,
+  strandedPickupsSchema,
+  strandingChangeSchema,
   updateRoleSchema,
 } from "./index";
 
@@ -107,5 +109,29 @@ describe("closed day form", () => {
     for (const reason of ["Closed\nearly", "Tet \u202eyadiloh", "Zero\u200bwidth"]) {
       expect(closedDateFormSchema.safeParse({ date: "2026-10-20", reason }).success).toBe(false);
     }
+  });
+});
+
+describe("stranding change", () => {
+  it("names a closed day or a pair of opening hours", () => {
+    expect(strandingChangeSchema.safeParse({ closed_date: "2026-10-20" }).success).toBe(true);
+    expect(strandingChangeSchema.safeParse({ opens_at: "09:00", closes_at: "17:00" }).success).toBe(true);
+    expect(strandingChangeSchema.safeParse({ opens_at: "09:00" }).success).toBe(false);
+  });
+
+  it("reads the stranded orders the API lists", () => {
+    const parsed = strandedPickupsSchema.parse({
+      orders: [
+        {
+          id: "0f2f3a6e-5f4c-4f2e-9c1a-1d2b3c4d5e6f",
+          code: "CH-261125-001",
+          status: "awaiting_payment",
+          pickup_at: "2026-11-26T09:00:00+07:00",
+          customer: null,
+        },
+      ],
+      total: 3,
+    });
+    expect(parsed.total).toBe(3);
   });
 });

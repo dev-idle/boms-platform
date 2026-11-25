@@ -44,6 +44,14 @@ func (m *memoryStore) GetSettingsForUpdate(context.Context) (domainstore.Setting
 	return m.settings, nil
 }
 
+func (m *memoryStore) HoldPickupRules(_ context.Context, day time.Time) (port.HeldPickupRules, error) {
+	held := port.HeldPickupRules{OpensAt: m.settings.OpensAt, ClosesAt: m.settings.ClosesAt}
+	for _, c := range m.closed {
+		held.DayClosed = held.DayClosed || c.Day.Equal(day)
+	}
+	return held, nil
+}
+
 func (m *memoryStore) UpdateSettings(_ context.Context, s domainstore.Settings) (domainstore.Settings, error) {
 	s.UpdatedAt = time.Date(2026, 9, 28, 10, 0, 0, 0, time.UTC)
 	m.settings = s

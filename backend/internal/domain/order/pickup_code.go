@@ -35,10 +35,11 @@ func (p PickupCodes) Matches(orderID uuid.UUID, code string) bool {
 }
 
 // HasPickupCode reports whether an order in this status is collected with its
-// pickup code: from when the bakery accepts it until it is handed over.
+// pickup code: from when the bakery accepts it until it is handed over, a
+// missed one included.
 func (s Status) HasPickupCode() bool {
 	switch s {
-	case StatusConfirmed, StatusInProduction, StatusReady:
+	case StatusConfirmed, StatusInProduction, StatusReady, StatusNoShow:
 		return true
 	default:
 		return false

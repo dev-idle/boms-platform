@@ -142,7 +142,8 @@ func main() {
 		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, paymentRepo, conversationRepo, assistantRepo, savedProductRepo, reviewRepo, cartRepo, sessionStore,
 		auditLogRepo,
 	)
-	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
+	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, orderRepo, ticketRepo, discountCodeRepo, paymentRepo, paymentUC,
+		pgPool, outboxRepo, auditLogger, zlog)
 	staffOrderUC := usecase.NewStaffOrderUsecase(userRepo, orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC,
 		pickupCodes, quota, port.QuotaLimit{Max: cfg.RateRedis.PickupCodeMax, Window: cfg.RateRedis.PickupCodeWindow})
 	staffProductUC := usecase.NewStaffProductUsecase(productRepo, pgPool, outboxRepo, auditLogger, zlog)
@@ -160,6 +161,7 @@ func main() {
 	salesReportRepo := postgresrepo.NewSalesReportRepository(pgPool)
 	managerSalesReportUC := usecase.NewManagerSalesReportUsecase(salesReportRepo)
 	managerOperationsUC := usecase.NewManagerOperationsUsecase(postgresrepo.NewOperationsRepository(pgPool), salesReportRepo)
+	managerOrderUC := usecase.NewManagerOrderUsecase(orderRepo, ticketRepo, discountCodeRepo, paymentRepo, pgPool, outboxRepo, auditLogger)
 	unsubscribeUC := usecase.NewUnsubscribeUsecase(userRepo, customerProfileRepo, pgPool, auditLogger,
 		domainpromotion.NewUnsubscribeTokens(cfg.Promotion.UnsubscribeSecret))
 	staffTicketUC := usecase.NewStaffTicketUsecase(orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog)
@@ -201,6 +203,7 @@ func main() {
 	managerEngagementHandler := v1.NewManagerEngagementHandler(managerEngagementUC)
 	managerSalesReportHandler := v1.NewManagerSalesReportHandler(managerSalesReportUC)
 	managerOperationsHandler := v1.NewManagerOperationsHandler(managerOperationsUC)
+	managerOrderHandler := v1.NewManagerOrderHandler(managerOrderUC)
 	unsubscribeHandler := v1.NewUnsubscribeHandler(unsubscribeUC)
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
@@ -308,6 +311,8 @@ func main() {
 	)
 	adminSettings.Get("", adminStoreSettingsHandler.Get)
 	adminSettings.Patch("", middleware.AdminWriteRateLimit(rdb, cfg.RateRedis), adminStoreSettingsHandler.Patch)
+	adminSettings.Get("/stranded-pickups", adminStoreSettingsHandler.StrandedPickups)
+	adminSettings.Post("/stranded-pickups/cancel", middleware.AdminWriteRateLimit(rdb, cfg.RateRedis), adminStoreSettingsHandler.CancelStrandedPickups)
 
 	adminClosedDates := apiV1.Group(
 		"/admin/closed-dates",
@@ -400,6 +405,7 @@ func main() {
 	managerRead.Get("/engagement", managerEngagementHandler.Report)
 	managerRead.Get("/reports/sales", managerSalesReportHandler.Sales)
 	managerRead.Get("/operations", managerOperationsHandler.Dashboard)
+	managerRead.Get("/orders/lookup", managerOrderHandler.Lookup)
 	managerRead.Get(
 		"/media/cloudinary-signature",
 		middleware.ManagerMediaRateLimit(rdb, cfg.RateRedis),
@@ -427,6 +433,7 @@ func main() {
 	managerWrite.Delete("/discount-codes/:id", managerDiscountCodeHandler.Delete)
 	managerWrite.Patch("/reviews/:id", managerReviewHandler.Moderate)
 	managerWrite.Post("/promotions", managerPromotionHandler.Send)
+	managerWrite.Post("/orders/:id/handover", managerOrderHandler.HandOver)
 
 	staffOrders := apiV1.Group(
 		"/staff",
@@ -442,6 +449,7 @@ func main() {
 	staffOrders.Get("/orders/:id", staffOrderHandler.Get)
 	staffOrders.Patch("/orders/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.PatchStatus)
 	staffOrders.Post("/orders/:id/incidents", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.ReportIncident)
+	staffOrders.Patch("/orders/:id/pickup", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.MovePickup)
 	staffOrders.Patch("/tickets/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.PatchStatus)
 	staffOrders.Patch("/tickets/:id/station", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.Move)
 	staffOrders.Get("/products", staffProductHandler.List)

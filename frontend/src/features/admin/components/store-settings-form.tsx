@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -10,10 +11,11 @@ import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { IntegerFieldInput } from "@/components/ui/integer-field-input";
 import { Select } from "@/components/ui/select";
-import { isApiError } from "@/lib/errors";
+import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
 import { usePatchStoreSettings } from "../hooks";
+import { StrandedPickupsDialog } from "./stranded-pickups-dialog";
 import {
   MAX_ADVANCE_DAYS,
   MAX_INSTANT_PREP_MINUTES,
@@ -60,6 +62,8 @@ function formValues(settings: StoreSettings): StoreSettingsFormInput {
 /** Opening hours, slots, notice, booking window and time to pay — checkout enforces them at once. */
 export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
   const patchSettings = usePatchStoreSettings();
+  // The hours asked for while orders booked outside them wait to be cancelled.
+  const [stranding, setStranding] = useState<StoreSettingsFormInput | null>(null);
   const form = useForm<StoreSettingsFormInput>({
     resolver: zodResolver(storeSettingsFormSchema),
     defaultValues: formValues(settings),
@@ -84,6 +88,10 @@ export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
       onError: (error) => {
         if (isApiError(error) && error.hasValidationDetails()) {
           applyFormFieldErrors(form, error.details!, STORE_SETTINGS_FIELDS);
+          return;
+        }
+        if (isApiError(error) && error.code === ApiErrorCode.PickupsStranded) {
+          setStranding(values);
           return;
         }
         toast.error(isApiError(error) ? error.message : "Failed to save pickup rules");
@@ -255,6 +263,16 @@ export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
           />
         </div>
       </form>
+      {stranding ? (
+        <StrandedPickupsDialog
+          change={{ opens_at: stranding.opens_at, closes_at: stranding.closes_at }}
+          onClose={() => setStranding(null)}
+          onCleared={() => {
+            setStranding(null);
+            onSubmit(stranding);
+          }}
+        />
+      ) : null}
     </Form>
   );
 }

@@ -66,6 +66,7 @@ export const ApiErrorCode = {
   TicketNotMovable: "ticket_not_movable",
   TicketStationTaken: "ticket_station_taken",
   ClosedDateExists: "closed_date_exists",
+  PickupsStranded: "pickups_stranded",
   Validation: "validation_error",
   RateLimited: "rate_limited",
   Internal: "internal_error",

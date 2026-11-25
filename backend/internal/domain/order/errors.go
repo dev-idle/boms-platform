@@ -21,6 +21,7 @@ var (
 	ErrTicketStationTaken      = errors.New("the order already has a ticket at that station")
 	ErrPickupDayLimit          = errors.New("the customer already has as many orders as one customer may book for that day")
 	ErrInvalidCancelReason     = errors.New("a cancellation needs a reason of 1 to 200 plain characters")
+	ErrInvalidHandoverReason   = errors.New("a handover without the code needs how it was checked, in 1 to 200 plain characters")
 	ErrPickupCodeInvalid       = errors.New("the pickup code does not match the order")
 	ErrPickupCodeLocked        = errors.New("too many wrong pickup codes for the order")
 	ErrInvalidIncidentType     = errors.New("staff report wrong items, a custom cake made unlike asked, or another problem")

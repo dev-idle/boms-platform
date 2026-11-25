@@ -74,6 +74,39 @@ func (h *AdminStoreSettingsHandler) CreateClosedDate(c fiber.Ctx) error {
 	return response.Created(c, out)
 }
 
+// StrandedPickups handles GET /api/v1/admin/settings/stranded-pickups: the
+// orders a closed day (?closed_date=) or new hours (?opens_at=&closes_at=)
+// would strand.
+func (h *AdminStoreSettingsHandler) StrandedPickups(c fiber.Ctx) error {
+	out, err := h.usecase.StrandedPickups(c.Context(), dto.StrandedPickupsQuery{
+		ClosedDate: c.Query("closed_date"), OpensAt: c.Query("opens_at"), ClosesAt: c.Query("closes_at"),
+	})
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OK(c, out)
+}
+
+// CancelStrandedPickups handles POST /api/v1/admin/settings/stranded-pickups/cancel.
+func (h *AdminStoreSettingsHandler) CancelStrandedPickups(c fiber.Ctx) error {
+	actorID, actorRole, err := actorFromCtx(c)
+	if err != nil {
+		return err
+	}
+	var req dto.CancelStrandedPickupsRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "invalid request body"))
+	}
+	if err := sharevalidator.Struct(&req); err != nil {
+		return writeValidationError(c, err)
+	}
+	out, err := h.usecase.CancelStrandedPickups(c.Context(), actorID, actorRole, req)
+	if err != nil {
+		return writeMapUsecaseError(c, err)
+	}
+	return response.OK(c, out)
+}
+
 // DeleteClosedDate handles DELETE /api/v1/admin/closed-dates/:id.
 func (h *AdminStoreSettingsHandler) DeleteClosedDate(c fiber.Ctx) error {
 	actorID, actorRole, err := actorFromCtx(c)

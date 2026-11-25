@@ -8,32 +8,270 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/service/auditlogger"
 	apperrors "github.com/boms/backend/internal/shared/errors"
+	"github.com/boms/backend/internal/shared/utils"
 )
 
 // AdminStoreSettingsUsecase lets admins change the pickup rules without a
 // deploy. Every change is audited and announced to open pages as it commits.
 type AdminStoreSettingsUsecase struct {
-	store  port.StoreSettingsRepository
-	tx     port.TxManager
-	events port.EventOutbox
-	audit  *auditlogger.Service
-	log    *zap.Logger
+	store       port.StoreSettingsRepository
+	orders      port.OrderRepository
+	payment     *PaymentUsecase
+	transitions orderTransitions
+	tx          port.TxManager
+	events      port.EventOutbox
+	audit       *auditlogger.Service
+	log         *zap.Logger
 }
 
 func NewAdminStoreSettingsUsecase(
 	store port.StoreSettingsRepository,
+	orders port.OrderRepository,
+	tickets port.TicketRepository,
+	discounts port.DiscountCodeRepository,
+	payments port.PaymentRepository,
+	payment *PaymentUsecase,
 	tx port.TxManager,
 	events port.EventOutbox,
 	audit *auditlogger.Service,
 	log *zap.Logger,
 ) *AdminStoreSettingsUsecase {
-	return &AdminStoreSettingsUsecase{store: store, tx: tx, events: events, audit: audit, log: log}
+	return &AdminStoreSettingsUsecase{
+		store:   store,
+		orders:  orders,
+		payment: payment,
+		transitions: orderTransitions{
+			tx: tx, orders: orders, tickets: tickets, discounts: discounts, payments: payments, events: events,
+		},
+		tx:     tx,
+		events: events,
+		audit:  audit,
+		log:    log,
+	}
+}
+
+const (
+	// maxStrandedListed is how many stranded orders a preview lists; its
+	// total counts them all.
+	maxStrandedListed = 100
+	// strandedBatch is how many stranded orders one pass cancels.
+	strandedBatch = 50
+)
+
+// StrandedPickups lists the orders a closed day or new opening hours would
+// strand, for the admin to see before making the change.
+func (u *AdminStoreSettingsUsecase) StrandedPickups(ctx context.Context, q dto.StrandedPickupsQuery) (*dto.StrandedPickupsResponse, error) {
+	params, err := u.strandedParams(ctx, q, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	rows, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]port.StrandedPickup, error) {
+			listed := params
+			listed.Limit = maxStrandedListed
+			return u.orders.ListStrandedPickups(ctx, listed)
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.orders.CountStrandedPickups(ctx, params)
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]dto.StrandedPickupResponse, 0, len(rows))
+	for _, row := range rows {
+		customer := row.CustomerDisplayName
+		if customer == nil {
+			customer = row.CustomerEmail
+		}
+		out = append(out, dto.StrandedPickupResponse{
+			ID: row.ID.String(), Code: row.Code, Status: string(row.Status), PickupAt: row.PickupAt, Customer: customer,
+		})
+	}
+	return &dto.StrandedPickupsResponse{Orders: out, Total: total}, nil
+}
+
+// CancelStrandedPickups cancels the orders a change would strand, each
+// refunded in full and its customer emailed the reason, so the day can close
+// or the hours change. Each order is tried once, a page at a time; one that
+// cannot be cancelled is reported, and the change stays refused while it
+// remains.
+func (u *AdminStoreSettingsUsecase) CancelStrandedPickups(
+	ctx context.Context,
+	actorID uuid.UUID,
+	actorRole domainuser.Role,
+	req dto.CancelStrandedPickupsRequest,
+) (*dto.CancelStrandedPickupsResponse, error) {
+	params, err := u.strandedParams(ctx, req.StrandedPickupsQuery, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	reason, err := domainorder.NewCancelReason(req.Reason)
+	if err != nil {
+		return nil, err
+	}
+	params.Limit = strandedBatch
+	actor := port.OrderActor{ID: actorID, Role: actorRole}
+	cancelled := 0
+	var failures []error
+	for {
+		batch, err := u.orders.ListStrandedPickups(ctx, params)
+		if err != nil {
+			failures = append(failures, err)
+			break
+		}
+		for _, order := range batch {
+			done, err := u.cancelStranded(ctx, actor, order, params, reason)
+			if err != nil {
+				failures = append(failures, apperrors.Errorf("cancel order %s: %w", order.Code, err))
+				continue
+			}
+			if done {
+				cancelled++
+			}
+		}
+		if len(batch) < strandedBatch {
+			break
+		}
+		last := batch[len(batch)-1]
+		params.AfterPickupAt, params.AfterID = &last.PickupAt, &last.ID
+	}
+	if len(failures) > 0 {
+		return nil, errors.Join(failures...)
+	}
+	return &dto.CancelStrandedPickupsResponse{Cancelled: cancelled}, nil
+}
+
+// cancelStranded cancels one order the change strands, as the bakery: a paid
+// one is refunded in full and its customer emailed the reason. An unpaid one is
+// first checked with the provider, as a customer's cancellation is, and one
+// whose payment the provider is reviewing is left (domainpayment.ErrUnderReview).
+// Under the order's lock it is cancelled only while the change still strands
+// it — one moved or handed over meanwhile is left, reporting false — and the
+// cancellation commits with its audit row.
+func (u *AdminStoreSettingsUsecase) cancelStranded(
+	ctx context.Context,
+	actor port.OrderActor,
+	order port.StrandedPickup,
+	params port.StrandedPickupsParams,
+	reason string,
+) (bool, error) {
+	if order.Status == domainorder.StatusAwaitingPayment {
+		taken, err := u.payment.settle(ctx, order.ID)
+		if err != nil {
+			return false, err
+		}
+		if taken == domainpayment.StatusPending {
+			return false, domainpayment.ErrUnderReview
+		}
+	}
+	done := false
+	err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The order as it is now: a payment just settled confirms it.
+		locked, err := u.orders.LockForUpdate(txCtx, order.ID)
+		if err != nil {
+			return err
+		}
+		if !locked.Status.StillToHandOver() || locked.PickupAt == nil || !strands(params, *locked.PickupAt) {
+			return nil
+		}
+		if _, err := u.transitions.applyInTx(txCtx, &actor, port.UpdateOrderStatusParams{
+			OrderID: order.ID, FromStatus: locked.Status, ToStatus: domainorder.StatusCancelled,
+		}, reason); err != nil {
+			return err
+		}
+		done = true
+		return u.audit.Log(txCtx, domainstore.AuditActionAdminCancelledStrandedOrder, actor.ID, actor.Role, &order.ID, "order",
+			map[string]any{"status": locked.Status, "pickup_at": locked.PickupAt},
+			map[string]any{"status": domainorder.StatusCancelled, "reason": reason})
+	})
+	return done && err == nil, err
+}
+
+// strands reports whether a pickup at at falls where params find it.
+func strands(params port.StrandedPickupsParams, at time.Time) bool {
+	if at.Before(params.From) || !at.Before(params.To) {
+		return false
+	}
+	if params.OpensMinute == nil {
+		return true
+	}
+	local := at.In(domainstore.Location)
+	minute := utils.Int32FromInt64(int64(local.Hour()*60 + local.Minute()))
+	return minute < *params.OpensMinute || minute >= *params.ClosesMinute
+}
+
+// strandedParams reads the change q names, checked as the change itself would
+// be: a day the bakery may close, or opening hours the settings accept.
+func (u *AdminStoreSettingsUsecase) strandedParams(ctx context.Context, q dto.StrandedPickupsQuery, now time.Time) (port.StrandedPickupsParams, error) {
+	switch {
+	case q.ClosedDate != "" && q.OpensAt == "" && q.ClosesAt == "":
+		day, err := time.ParseInLocation(domainstore.DayLayout, q.ClosedDate, domainstore.Location)
+		if err != nil {
+			return port.StrandedPickupsParams{}, apperrors.ErrValidation.WithDetail("closed_date", "use YYYY-MM-DD")
+		}
+		if from, to := domainstore.ClosedDateWindow(now); day.Before(from) || day.After(to) {
+			return port.StrandedPickupsParams{}, domainstore.ErrClosedDateOutOfRange
+		}
+		return closedDayParams(day), nil
+	case q.ClosedDate == "" && q.OpensAt != "" && q.ClosesAt != "":
+		opens, err := domainstore.ParseClock(q.OpensAt)
+		if err != nil {
+			return port.StrandedPickupsParams{}, apperrors.ErrValidation.WithDetail("opens_at", "use HH:MM")
+		}
+		closes, err := domainstore.ParseClock(q.ClosesAt)
+		if err != nil {
+			return port.StrandedPickupsParams{}, apperrors.ErrValidation.WithDetail("closes_at", "use HH:MM")
+		}
+		settings, err := u.store.GetSettings(ctx)
+		if err != nil {
+			return port.StrandedPickupsParams{}, err
+		}
+		settings.OpensAt, settings.ClosesAt = opens, closes
+		if err := settings.Validate(); err != nil {
+			return port.StrandedPickupsParams{}, err
+		}
+		return hoursParams(opens, closes, now), nil
+	default:
+		return port.StrandedPickupsParams{}, apperrors.ErrValidation.WithDetail("closed_date", "name a closed date, or the opening and closing times")
+	}
+}
+
+// closedDayParams finds the orders on a bakery day.
+func closedDayParams(day time.Time) port.StrandedPickupsParams {
+	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, domainstore.Location)
+	return port.StrandedPickupsParams{From: start, To: start.AddDate(0, 0, 1)}
+}
+
+// hoursParams finds the orders from now on outside the hours [opens, closes),
+// as far as any booking window reaches.
+func hoursParams(opens, closes time.Duration, now time.Time) port.StrandedPickupsParams {
+	opensMinute := utils.Int32FromInt64(int64(opens / time.Minute))
+	closesMinute := utils.Int32FromInt64(int64(closes / time.Minute))
+	return port.StrandedPickupsParams{
+		From: now, To: now.AddDate(0, 0, domainstore.MaxAdvanceDaysLimit+1),
+		OpensMinute: &opensMinute, ClosesMinute: &closesMinute,
+	}
+}
+
+// refuseStranded refuses a change while orders it would strand remain.
+func (u *AdminStoreSettingsUsecase) refuseStranded(txCtx context.Context, params port.StrandedPickupsParams) error {
+	stranded, err := u.orders.CountStrandedPickups(txCtx, params)
+	if err != nil {
+		return err
+	}
+	if stranded > 0 {
+		return domainstore.ErrPickupsStranded
+	}
+	return nil
 }
 
 func (u *AdminStoreSettingsUsecase) GetSettings(ctx context.Context) (*dto.StoreSettingsResponse, error) {
@@ -67,6 +305,11 @@ func (u *AdminStoreSettingsUsecase) PatchSettings(
 		}
 		if err := next.Validate(); err != nil {
 			return err
+		}
+		if next.OpensAt != current.OpensAt || next.ClosesAt != current.ClosesAt {
+			if err := u.refuseStranded(txCtx, hoursParams(next.OpensAt, next.ClosesAt, time.Now())); err != nil {
+				return err
+			}
 		}
 		saved, err := u.store.UpdateSettings(txCtx, next)
 		if err != nil {
@@ -172,6 +415,14 @@ func (u *AdminStoreSettingsUsecase) AddClosedDate(
 	}
 	var added domainstore.ClosedDate
 	err = u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// Bookings hold the settings while they book: taking them for update
+		// waits for those in flight, so the count below sees them.
+		if _, err := u.store.GetSettingsForUpdate(txCtx); err != nil {
+			return err
+		}
+		if err := u.refuseStranded(txCtx, closedDayParams(day)); err != nil {
+			return err
+		}
 		created, err := u.store.AddClosedDate(txCtx, day, reason)
 		if err != nil {
 			if errors.Is(err, apperrors.ErrConflict) {

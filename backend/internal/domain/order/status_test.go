@@ -26,6 +26,8 @@ func TestCanStaffTransition(t *testing.T) {
 		{StatusReady, StatusFulfilled, true},
 		{StatusReady, StatusCancelled, true},
 		{StatusReady, StatusInProduction, false},
+		{StatusNoShow, StatusFulfilled, true},
+		{StatusNoShow, StatusCancelled, false},
 		{StatusFulfilled, StatusCancelled, false},
 		{StatusCancelled, StatusConfirmed, false},
 	}

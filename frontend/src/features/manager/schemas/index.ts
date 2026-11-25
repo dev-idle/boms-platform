@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { reasonSchema } from "@/lib/validation/reason";
+
 import { productOptionGroupSchema } from "@/lib/schemas/catalog";
 import { incidentTypeSchema, orderIncidentSchema } from "@/lib/schemas/incident";
 import { orderCodeSchema, orderStatusSchema } from "@/lib/schemas/order";
@@ -606,3 +608,21 @@ export type DiscountCodesListResult = {
   };
   request_id?: string;
 };
+
+/** The order code a manager looks an order up by, as typed. */
+export const managerOrderLookupSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .refine((value) => orderCodeSchema.safeParse(value).success, "Enter the order code, such as CH-261125-001."),
+});
+
+export type ManagerOrderLookup = z.infer<typeof managerOrderLookupSchema>;
+
+/** `POST /manager/orders/:id/handover` — how the manager checked who is collecting an order without its code. */
+export const managerHandoverInputSchema = z.object({
+  reason: reasonSchema("Say how you checked who is collecting it"),
+});
+
+export type ManagerHandoverInput = z.infer<typeof managerHandoverInputSchema>;

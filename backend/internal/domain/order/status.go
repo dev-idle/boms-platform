@@ -9,7 +9,8 @@ import (
 	domainstore "github.com/boms/backend/internal/domain/store"
 )
 
-// maxCancelReasonLength is the longest reason a customer is shown.
+// maxCancelReasonLength is the longest reason a customer is shown, and the
+// longest note a manager keeps on a handover without the code.
 const maxCancelReasonLength = 200
 
 // NewCancelReason checks the reason the bakery gives a customer for cancelling
@@ -18,6 +19,16 @@ func NewCancelReason(raw string) (string, error) {
 	reason := strings.TrimSpace(raw)
 	if reason == "" || utf8.RuneCountInString(reason) > maxCancelReasonLength || !domainstore.PlainText(reason) {
 		return "", ErrInvalidCancelReason
+	}
+	return reason, nil
+}
+
+// NewHandoverReason checks how a manager checked who collects an order handed
+// over without its code, and returns it trimmed.
+func NewHandoverReason(raw string) (string, error) {
+	reason := strings.TrimSpace(raw)
+	if reason == "" || utf8.RuneCountInString(reason) > maxCancelReasonLength || !domainstore.PlainText(reason) {
+		return "", ErrInvalidHandoverReason
 	}
 	return reason, nil
 }
@@ -85,6 +96,9 @@ func CanStaffTransition(from, to Status) bool {
 		return to == StatusCancelled
 	case StatusReady:
 		return to == StatusFulfilled || to == StatusCancelled
+	case StatusNoShow:
+		// A missed order is still handed over if its customer comes late.
+		return to == StatusFulfilled
 	default:
 		return false
 	}

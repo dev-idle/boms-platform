@@ -8,10 +8,10 @@ import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-
 import { Button } from "@/components/ui/button";
 import { PickupSlotPicker, usePickupChoice } from "@/features/customer";
 import { isApiError } from "@/lib/errors";
-import type { Fulfillment } from "@/lib/schemas/order";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useCreateStaffOrder, useStaffCustomer, useStaffOrderQuote } from "../hooks";
+import { NO_ITEM_NEEDS } from "../lib/pickup-schedule";
 import { staffGuestFormSchema, type StaffGuestForm, type StaffOrderItemInput } from "../schemas";
 import {
   StaffOrderCustomer,
@@ -21,9 +21,6 @@ import {
 import { StaffOrderItemsPicker, type StaffOrderLine } from "./staff-order-items-picker";
 
 const PICKUP_ERROR_ID = "staff-order-pickup-error";
-
-/** Until items are chosen there is nothing to ask of the bakery. */
-const NO_ITEMS: Fulfillment = { has_kitchen_items: false, lead_minutes: 0, sold_out_on: null };
 
 function toItemInput(line: StaffOrderLine): StaffOrderItemInput {
   return line.kind === "product"
@@ -42,7 +39,7 @@ export function StaffNewOrder() {
   const customerQuery = useStaffCustomer(lookedUp);
   const quoteQuery = useStaffOrderQuote(items);
   const create = useCreateStaffOrder();
-  const choice = usePickupChoice(quoteQuery.data?.fulfillment ?? NO_ITEMS, create.isPending);
+  const choice = usePickupChoice(quoteQuery.data?.fulfillment ?? NO_ITEM_NEEDS, create.isPending);
   const guestForm = useForm<StaffGuestForm>({
     resolver: zodResolver(staffGuestFormSchema),
     defaultValues: { name: "", phone: "" },

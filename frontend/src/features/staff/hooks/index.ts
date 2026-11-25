@@ -36,6 +36,7 @@ import {
   quoteStaffOrder,
   patchCounterTicketStatus,
   patchStaffConversation,
+  moveStaffOrderPickup,
   patchStaffOrderStatus,
   postStaffMessage,
   reportOrderIncident,
@@ -47,6 +48,7 @@ import {
   staffProductsFilterSchema,
   type ConversationStatus,
   type CreateStaffOrderInput,
+  type MoveStaffOrderPickupInput,
   type MoveTicketInput,
   type StaffOrderItemInput,
   type StaffProductsFilterInput,
@@ -130,9 +132,25 @@ export function usePatchStaffOrderStatus(orderId: string) {
   });
 }
 
+/** Moves an order's pickup to another free slot ahead. */
+export function useMoveStaffOrderPickup(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MoveStaffOrderPickupInput) => moveStaffOrderPickup(orderId, input),
+    onSuccess: (order) => {
+      queryClient.setQueryData(staffQueryKeys.order(orderId), order);
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.ordersRoot });
+      toast.success("Pickup moved");
+    },
+    onError: (error) => {
+      toast.error(staffMutationErrorMessage(error, "Failed to move the pickup"));
+    },
+  });
+}
+
 /**
- * Hands a ready order over: an online one with its customer's pickup code, one
- * staff took with the cash it is paid with. The dialog shows a failure, beside
+ * Hands a ready or missed order over: an online one with its customer's pickup
+ * code, one staff took with the cash it is paid with. The dialog shows a failure, beside
  * the field when the code is wrong or locked.
  */
 export function useHandOverOrder(orderId: string) {

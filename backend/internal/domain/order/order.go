@@ -55,6 +55,29 @@ func (s Status) BeforeProduction() bool {
 	return s == StatusAwaitingPayment || s == StatusPending || s == StatusConfirmed
 }
 
+// StillToHandOver reports whether the bakery still has an order in this status
+// to make or hand over, an unpaid one included: what a closed day or new
+// opening hours strand.
+func (s Status) StillToHandOver() bool {
+	switch s {
+	case StatusAwaitingPayment, StatusPending, StatusConfirmed, StatusInProduction, StatusReady:
+		return true
+	default:
+		return false
+	}
+}
+
+// MovableByStaff reports whether staff may move the pickup of an order in this
+// status: one the bakery took and has not handed over yet.
+func (s Status) MovableByStaff() bool {
+	switch s {
+	case StatusPending, StatusConfirmed, StatusInProduction, StatusReady:
+		return true
+	default:
+		return false
+	}
+}
+
 // Channel is where an order was taken.
 type Channel string
 

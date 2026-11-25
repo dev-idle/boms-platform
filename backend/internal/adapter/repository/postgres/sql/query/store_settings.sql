@@ -10,6 +10,22 @@ FROM store_settings
 WHERE id = 1
 FOR UPDATE;
 
+-- name: HoldPickupRules :one
+-- Holds the pickup rules until the transaction ends and reads what a booking on
+-- closed_on must still meet: the opening hours, and whether that day has closed
+-- since the rules were read. Closing a day or changing the hours locks the row
+-- for update, so it waits for the booking and then counts it.
+SELECT
+  s.opens_at_minute,
+  s.closes_at_minute,
+  EXISTS (
+    SELECT 1 FROM store_closed_dates c
+    WHERE c.closed_on = sqlc.arg('closed_on')::date AND c.deleted_at IS NULL
+  )::bool AS closed
+FROM store_settings s
+WHERE s.id = 1
+FOR SHARE OF s;
+
 -- name: UpdateStoreSettings :one
 UPDATE store_settings
 SET opens_at_minute = sqlc.arg(opens_at_minute),

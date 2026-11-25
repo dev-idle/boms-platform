@@ -75,7 +75,7 @@ func (u *StaffOrderUsecase) CreateOrder(
 		totals := summarizeCart(lines, nil, now.UTC())
 		// The daily cap stops an account booking a day out online; the counter
 		// taking a regular's fourth order is the bakery's own call.
-		booking, err := bookPickup(txCtx, u.orders, nil, needs, req.PickupAt, now, policy, nil)
+		booking, err := bookPickup(txCtx, u.orders, u.store, nil, needs, req.PickupAt, now, policy, nil)
 		if err != nil {
 			return err
 		}

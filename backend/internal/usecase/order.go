@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	domaincart "github.com/boms/backend/internal/domain/cart"
@@ -113,7 +114,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UU
 		if err != nil {
 			return err
 		}
-		booking, err := bookPickup(txCtx, u.orders, &userID, items, pickupAt, now, policy, nil)
+		booking, err := bookPickup(txCtx, u.orders, u.store, &userID, items, pickupAt, now, policy, nil)
 		if err != nil {
 			return err
 		}
@@ -280,6 +281,7 @@ type pickupBooking struct {
 func bookPickup(
 	txCtx context.Context,
 	orders port.OrderRepository,
+	store port.StoreSettingsRepository,
 	customer *uuid.UUID,
 	items domainorder.Fulfillment,
 	pickupAt, now time.Time,
@@ -307,14 +309,64 @@ func bookPickup(
 			return pickupBooking{}, domainorder.ErrPickupDayLimit
 		}
 	}
-	held, err := orders.HoldPickupSlot(txCtx, pickupAt, policy.Settings.SlotLength)
+	fillsSlot, err := holdSlot(txCtx, orders, store, pickupAt, policy.Settings)
 	if err != nil {
 		return pickupBooking{}, err
 	}
-	if held >= policy.Settings.SlotCapacity {
-		return pickupBooking{}, domainorder.ErrPickupSlotFull
+	return pickupBooking{orderType: orderType, fillsSlot: fillsSlot}, nil
+}
+
+// holdSlot holds the slot of pickupAt until the transaction ends and refuses
+// it once full; it reports whether this order fills it. It first holds the
+// pickup rules and checks the day is still open and the time in the hours:
+// they were read before the transaction, and a closure or new hours committed
+// since would otherwise strand the booking.
+func holdSlot(
+	txCtx context.Context,
+	orders port.OrderRepository,
+	store port.StoreSettingsRepository,
+	pickupAt time.Time,
+	settings domainstore.Settings,
+) (bool, error) {
+	rules, err := store.HoldPickupRules(txCtx, domainstore.DayOf(pickupAt))
+	if err != nil {
+		return false, err
 	}
-	return pickupBooking{orderType: orderType, fillsSlot: held+1 == policy.Settings.SlotCapacity}, nil
+	if rules.DayClosed {
+		return false, domainorder.ErrPickupClosedDay
+	}
+	local := pickupAt.In(domainstore.Location)
+	sinceMidnight := time.Duration(local.Hour())*time.Hour + time.Duration(local.Minute())*time.Minute
+	if sinceMidnight < rules.OpensAt || sinceMidnight >= rules.ClosesAt {
+		return false, domainorder.ErrPickupOutsideHours
+	}
+	held, err := orders.HoldPickupSlot(txCtx, pickupAt, settings.SlotLength)
+	if err != nil {
+		return false, err
+	}
+	if held >= settings.SlotCapacity {
+		return false, domainorder.ErrPickupSlotFull
+	}
+	return held+1 == settings.SlotCapacity, nil
+}
+
+// addSlotChanges tells open checkouts of a pickup moved from before to after:
+// of the old slot's freed place, as after a cancellation, and of the new slot
+// only when the order fills it.
+func addSlotChanges(txCtx context.Context, events port.EventOutbox, before *time.Time, after time.Time, fillsSlot bool) error {
+	var days []time.Time
+	if before != nil {
+		days = append(days, domainstore.DayOf(*before))
+	}
+	if newDay := domainstore.DayOf(after); fillsSlot && !slices.ContainsFunc(days, newDay.Equal) {
+		days = append(days, newDay)
+	}
+	for _, day := range days {
+		if err := events.Add(txCtx, domainorder.SlotsChangedEvent(day)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // List returns a page of the customer's orders, newest first, narrowed by query.

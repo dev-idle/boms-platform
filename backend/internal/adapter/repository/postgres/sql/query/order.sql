@@ -342,6 +342,12 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
     sqlc.narg('status')::order_status IS NULL
     OR o.status = sqlc.narg('status')::order_status
   )
+  -- Left open: still to make or accept after its pickup day closed.
+  AND (
+    sqlc.narg('open_before')::timestamptz IS NULL
+    OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+        AND o.pickup_at < sqlc.narg('open_before')::timestamptz)
+  )
 -- What still needs doing comes first, soonest pickup first; then the orders
 -- already closed, latest pickup first.
 ORDER BY
@@ -424,6 +430,12 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
   AND (
     sqlc.narg('status')::order_status IS NULL
     OR o.status = sqlc.narg('status')::order_status
+  )
+  -- Left open: still to make or accept after its pickup day closed.
+  AND (
+    sqlc.narg('open_before')::timestamptz IS NULL
+    OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+        AND o.pickup_at < sqlc.narg('open_before')::timestamptz)
   );
 
 -- name: StaffGetOrderByID :one
@@ -746,6 +758,102 @@ RETURNING
   channel,
   guest_name,
   guest_phone;
+
+-- name: ListLeftOpenOrders :many
+-- Orders still to accept or make whose pickup falls before missed_before — its
+-- day closed — and that no left_open incident records yet, the longest waiting
+-- first.
+SELECT o.id
+FROM orders o
+WHERE o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
+  AND o.pickup_at < sqlc.arg('missed_before')::timestamptz
+  AND NOT EXISTS (
+    SELECT 1 FROM order_incidents i
+    WHERE i.order_id = o.id AND i.type = 'left_open'::order_incident_type
+  )
+ORDER BY o.pickup_at
+LIMIT sqlc.arg('max_rows')::int;
+
+-- name: StaffRescheduleOrder :one
+-- Moves the pickup of an order the bakery still has to hand over; its type
+-- stays as the order was prepared.
+UPDATE orders
+SET pickup_at  = sqlc.arg('pickup_at'),
+    updated_at = now()
+WHERE id = sqlc.arg('id')
+  AND status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status, 'ready'::order_status)
+RETURNING
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone;
+
+-- name: ListStrandedPickups :many
+-- Orders the bakery still has to make or hand over, an unpaid one included,
+-- with a pickup in [from_at, to_at) — and, when opens_minute is given, one
+-- falling before opens_minute or at or after closes_minute of the bakery's day
+-- in zone: the orders a closed day or new opening hours would strand. Soonest
+-- pickup first.
+SELECT
+  o.id,
+  o.code,
+  o.status,
+  o.pickup_at::timestamptz AS pickup_at,
+  COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+  u.email AS customer_email
+FROM orders o
+-- For the name shown only: an order is stranded whoever placed it.
+LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+WHERE o.status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status,
+                   'in_production'::order_status, 'ready'::order_status)
+  AND o.pickup_at >= sqlc.arg('from_at')::timestamptz
+  AND o.pickup_at < sqlc.arg('to_at')::timestamptz
+  AND (
+    sqlc.narg('opens_minute')::int IS NULL
+    OR EXTRACT(EPOCH FROM (o.pickup_at AT TIME ZONE sqlc.arg('zone')::text)::time)::int / 60
+       NOT BETWEEN sqlc.narg('opens_minute')::int AND sqlc.narg('closes_minute')::int - 1
+  )
+  -- The page after the last one read, so each order comes up once.
+  AND (
+    sqlc.narg('after_pickup_at')::timestamptz IS NULL
+    OR (o.pickup_at, o.id) > (sqlc.narg('after_pickup_at')::timestamptz, sqlc.narg('after_id')::uuid)
+  )
+ORDER BY o.pickup_at, o.id
+LIMIT sqlc.arg('max_rows')::int;
+
+-- name: CountStrandedPickups :one
+-- How many orders ListStrandedPickups finds.
+SELECT count(*)::bigint AS count
+FROM orders o
+WHERE o.status IN ('awaiting_payment'::order_status, 'pending'::order_status, 'confirmed'::order_status,
+                   'in_production'::order_status, 'ready'::order_status)
+  AND o.pickup_at >= sqlc.arg('from_at')::timestamptz
+  AND o.pickup_at < sqlc.arg('to_at')::timestamptz
+  AND (
+    sqlc.narg('opens_minute')::int IS NULL
+    OR EXTRACT(EPOCH FROM (o.pickup_at AT TIME ZONE sqlc.arg('zone')::text)::time)::int / 60
+       NOT BETWEEN sqlc.narg('opens_minute')::int AND sqlc.narg('closes_minute')::int - 1
+  );
+
+-- name: OrderIDByCode :one
+SELECT id FROM orders WHERE code = sqlc.arg('code');
 
 -- name: ListUnreviewedOrders :many
 -- Orders still waiting for staff that were paid before paid_before, the

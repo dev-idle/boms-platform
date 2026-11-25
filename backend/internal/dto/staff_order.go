@@ -81,6 +81,12 @@ type PatchStaffOrderStatusRequest struct {
 	CashCollected bool `json:"cash_collected"`
 }
 
+// ManagerHandoverRequest hands an online order over without its pickup code:
+// Reason is how the manager checked who is collecting it.
+type ManagerHandoverRequest struct {
+	Reason string `json:"reason" validate:"required,max=200"`
+}
+
 // CreateStaffOrderRequest is an order staff take at the counter or on the
 // phone, for a customer's account (CustomerID) or for a guest — one of them.
 type CreateStaffOrderRequest struct {

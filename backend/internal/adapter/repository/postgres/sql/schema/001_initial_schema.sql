@@ -624,7 +624,7 @@ CREATE TABLE "promotions" (
 );
 CREATE INDEX "promotions_created_at_idx" ON "promotions" ("created_at");
 
-CREATE TYPE "order_incident_type" AS ENUM ('bakery_cancelled', 'ready_late', 'no_show', 'payment_failed', 'payment_expired', 'refunded', 'payment_anomaly', 'wrong_items', 'custom_mismatch', 'other');
+CREATE TYPE "order_incident_type" AS ENUM ('bakery_cancelled', 'ready_late', 'no_show', 'payment_failed', 'payment_expired', 'refunded', 'payment_anomaly', 'wrong_items', 'custom_mismatch', 'other', 'left_open');
 
 CREATE TABLE "order_incidents" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),

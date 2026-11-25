@@ -3,14 +3,12 @@ package usecase
 import (
 	"context"
 	"errors"
-	"slices"
 	"time"
 
 	"github.com/google/uuid"
 
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpayment "github.com/boms/backend/internal/domain/payment"
-	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
@@ -103,7 +101,7 @@ func (u *OrderUsecase) Reschedule(
 		if err != nil {
 			return err
 		}
-		booking, err := bookPickup(txCtx, u.orders, &userID, items, req.PickupAt, now, policy, order.PickupAt)
+		booking, err := bookPickup(txCtx, u.orders, u.store, &userID, items, req.PickupAt, now, policy, order.PickupAt)
 		if err != nil {
 			return err
 		}
@@ -116,21 +114,7 @@ func (u *OrderUsecase) Reschedule(
 		if err := u.events.Add(txCtx, domainorder.RescheduledEvent(*moved)); err != nil {
 			return err
 		}
-		// Open checkouts hear of the old slot's freed place, as after a
-		// cancellation, and of the new slot only when this order fills it.
-		var days []time.Time
-		if order.PickupAt != nil {
-			days = append(days, domainstore.DayOf(*order.PickupAt))
-		}
-		if newDay := domainstore.DayOf(req.PickupAt); booking.fillsSlot && !slices.ContainsFunc(days, newDay.Equal) {
-			days = append(days, newDay)
-		}
-		for _, day := range days {
-			if err := u.events.Add(txCtx, domainorder.SlotsChangedEvent(day)); err != nil {
-				return err
-			}
-		}
-		return nil
+		return addSlotChanges(txCtx, u.events, order.PickupAt, req.PickupAt, booking.fillsSlot)
 	})
 	if err != nil {
 		return nil, err
@@ -150,6 +134,36 @@ func (u *OrderUsecase) MarkNoShows(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	return u.moveBySystem(ctx, ids, domainorder.StatusReady, domainorder.StatusNoShow, "")
+}
+
+// FlagLeftOpen records a left_open incident on each order still to accept or
+// make when its pickup day closed, a batch at a time, and returns how many: the
+// manager hears of it, and staff find it under Left open to settle.
+func (u *OrderUsecase) FlagLeftOpen(ctx context.Context) (int, error) {
+	settings, err := u.store.GetSettings(ctx)
+	if err != nil {
+		return 0, err
+	}
+	ids, err := u.orders.ListLeftOpen(ctx, settings.MissedBefore(time.Now()), systemBatch)
+	if err != nil {
+		return 0, err
+	}
+	flagged := 0
+	var failures []error
+	for _, id := range ids {
+		err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+			_, err := recordIncident(txCtx, u.orders, u.events, port.AddOrderIncidentParams{
+				OrderID: id, Type: domainorder.IncidentLeftOpen,
+			})
+			return err
+		})
+		if err != nil {
+			failures = append(failures, apperrors.Errorf("flag order %s left open: %w", id, err))
+			continue
+		}
+		flagged++
+	}
+	return flagged, errors.Join(failures...)
 }
 
 // CancelUnreviewed cancels the paid orders staff left waiting past the review

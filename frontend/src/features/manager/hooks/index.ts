@@ -25,6 +25,8 @@ import {
   getEngagementReport,
   getIncidentSummary,
   getOperations,
+  handOverWithoutCode,
+  lookupOrderByCode,
   getProductById,
   getPromotionAudience,
   getReviewSummary,
@@ -59,6 +61,7 @@ import {
   type DiscountCodeFormInput,
   type DiscountCodeListFilterInput,
   type IncidentListFilterInput,
+  type ManagerHandoverInput,
   type ProductFormInput,
   type ProductListFilterInput,
   type PromotionFormInput,
@@ -279,6 +282,30 @@ export function useDeleteDiscountCode() {
       void queryClient.invalidateQueries({
         queryKey: managerQueryKeys.discountCodesRoot,
       });
+    },
+  });
+}
+
+/** The order with this code, once one is asked for; null asks for none. */
+export function useOrderLookup(code: string | null) {
+  return useQuery({
+    queryKey: managerQueryKeys.orderLookup(code ?? ""),
+    queryFn: () => lookupOrderByCode(code ?? ""),
+    enabled: code !== null,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+/** Hands an online order over without its code; the dialog shows a failure. */
+export function useHandOverWithoutCode(order: { id: string; code: string }) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ManagerHandoverInput) => handOverWithoutCode(order.id, input),
+    onSuccess: (handed) => {
+      queryClient.setQueryData(managerQueryKeys.orderLookup(order.code), handed);
+      queryClient.invalidateQueries({ queryKey: managerQueryKeys.operations });
+      toast.success(`${order.code} handed over`);
     },
   });
 }

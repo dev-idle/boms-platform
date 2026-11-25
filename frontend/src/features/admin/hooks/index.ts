@@ -12,7 +12,9 @@ import { toast } from "sonner";
 import {
   createClosedDate,
   createOperational,
+  cancelStrandedPickups,
   deleteClosedDate,
+  getStrandedPickups,
   disableUser,
   enableUser,
   getNextEmployeeCode,
@@ -31,7 +33,9 @@ import {
   userActivityFilterSchema,
   type AdminUser,
   type AdminResetPasswordResponse,
+  type CancelStrandedFormInput,
   type ClosedDateFormInput,
+  type StrandingChange,
   type CreateOperationalInput,
   type CreateOperationalResponse,
   type ListFilterInput,
@@ -241,6 +245,25 @@ export function useCreateClosedDate() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: adminQueryKeys.closedDates });
       toast.success("Closed day added");
+    },
+  });
+}
+
+/** The orders a change would strand, read fresh each time it is asked. */
+export function useStrandedPickups(change: StrandingChange) {
+  return useQuery({
+    queryKey: adminQueryKeys.strandedPickups(change),
+    queryFn: () => getStrandedPickups(change),
+    staleTime: 0,
+  });
+}
+
+/** Cancels the orders a change would strand; the dialog shows a failure. */
+export function useCancelStrandedPickups(change: StrandingChange) {
+  return useMutation({
+    mutationFn: (input: CancelStrandedFormInput) => cancelStrandedPickups(change, input),
+    onSuccess: (cancelled) => {
+      toast.success(cancelled === 1 ? "1 order cancelled" : `${cancelled} orders cancelled`);
     },
   });
 }

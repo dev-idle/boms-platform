@@ -18,6 +18,7 @@ import {
 import {
   conversationStatusSchema,
   createStaffOrderInputSchema,
+  moveStaffOrderPickupInputSchema,
   moveTicketInputSchema,
   patchStaffOrderStatusInputSchema,
   reportIncidentInputSchema,
@@ -38,6 +39,7 @@ import {
   staffThreadSchema,
   type ConversationStatus,
   type CreateStaffOrderInput,
+  type MoveStaffOrderPickupInput,
   type MoveTicketInput,
   type StaffCustomer,
   type StaffOrderItemInput,
@@ -123,6 +125,15 @@ export async function reportOrderIncident(id: string, input: ReportIncidentInput
     method: "POST",
     schema: orderIncidentSchema,
     json: reportIncidentInputSchema.parse(input),
+  });
+}
+
+export async function moveStaffOrderPickup(id: string, input: MoveStaffOrderPickupInput): Promise<StaffOrder> {
+  const parsedId = z.uuid().parse(id);
+  return browserRequest<StaffOrder>(`/api/v1/staff/orders/${parsedId}/pickup`, {
+    method: "PATCH",
+    schema: staffOrderSchema,
+    json: moveStaffOrderPickupInputSchema.parse(input),
   });
 }
 

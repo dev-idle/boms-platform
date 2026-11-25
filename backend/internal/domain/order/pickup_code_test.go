@@ -34,10 +34,10 @@ func TestPickupCodes(t *testing.T) {
 
 func TestStatus_HasPickupCode(t *testing.T) {
 	t.Parallel()
-	for _, s := range []Status{StatusConfirmed, StatusInProduction, StatusReady} {
+	for _, s := range []Status{StatusConfirmed, StatusInProduction, StatusReady, StatusNoShow} {
 		assert.True(t, s.HasPickupCode(), s)
 	}
-	for _, s := range []Status{StatusAwaitingPayment, StatusPending, StatusFulfilled, StatusCancelled, StatusExpired, StatusNoShow} {
+	for _, s := range []Status{StatusAwaitingPayment, StatusPending, StatusFulfilled, StatusCancelled, StatusExpired} {
 		assert.False(t, s.HasPickupCode(), s)
 	}
 }

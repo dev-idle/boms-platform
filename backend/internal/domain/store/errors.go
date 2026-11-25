@@ -14,4 +14,8 @@ var (
 	ErrInvalidClosedDateReason = errors.New("closed date reason must be 1 to 200 characters")
 	ErrClosedDateExists        = errors.New("that day is already closed")
 	ErrClosedDateNotFound      = errors.New("closed date not found")
+	// ErrPickupsStranded refuses closing a day or changing the hours while
+	// orders the bakery still has to hand over are booked for the times it
+	// closes; they are cancelled first.
+	ErrPickupsStranded = errors.New("orders are booked for the times this change closes")
 )

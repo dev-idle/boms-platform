@@ -45,6 +45,7 @@ export const managerQueryKeys = {
   promotionAudience: ["manager", "promotions", "audience"] as const,
   engagementReport: ["manager", "engagement"] as const,
   operations: ["manager", "operations"] as const,
+  orderLookup: (code: string) => ["manager", "orders", "lookup", code] as const,
   salesReport: (filter: SalesReportFilterInput) => ["manager", "sales-report", filter] as const,
   incidentsRoot: ["manager", "incidents"] as const,
   incidents: (filter: IncidentListFilterInput) => [...managerQueryKeys.incidentsRoot, filter] as const,

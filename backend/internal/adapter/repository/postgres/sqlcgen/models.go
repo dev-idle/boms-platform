@@ -237,6 +237,7 @@ const (
 	OrderIncidentTypeWrongItems      OrderIncidentType = "wrong_items"
 	OrderIncidentTypeCustomMismatch  OrderIncidentType = "custom_mismatch"
 	OrderIncidentTypeOther           OrderIncidentType = "other"
+	OrderIncidentTypeLeftOpen        OrderIncidentType = "left_open"
 )
 
 func (e *OrderIncidentType) Scan(src interface{}) error {

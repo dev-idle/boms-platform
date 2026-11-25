@@ -2276,6 +2276,16 @@
     margin-block-start: 0;
   }
 
+  /* Moving a pickup: the dialog body's own padding sets the picker off. */
+  .staff-move-pickup {
+    display: grid;
+    gap: var(--db-space-3);
+  }
+
+  .staff-move-pickup .storefront-pickup-picker {
+    margin-block-start: 0;
+  }
+
   /* The primary action leads, as on every dashboard form; a set apart from
      the last section. */
   .staff-new-order__submit {

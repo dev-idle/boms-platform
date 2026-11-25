@@ -157,14 +157,14 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 
 		all, err := orders.StaffList(ctx, port.StaffListOrdersParams{Limit: 100})
 		require.NoError(t, err)
-		allCount, err := orders.StaffListCount(ctx, nil)
+		allCount, err := orders.StaffListCount(ctx, nil, nil)
 		require.NoError(t, err)
 		assert.Equal(t, int64(len(all)), allCount)
 		assert.Greater(t, allCount, int64(1), "an unset status lists every order")
 
 		filtered, err := orders.StaffList(ctx, port.StaffListOrdersParams{Status: &status, Limit: 100})
 		require.NoError(t, err)
-		filteredCount, err := orders.StaffListCount(ctx, &status)
+		filteredCount, err := orders.StaffListCount(ctx, &status, nil)
 		require.NoError(t, err)
 		require.Len(t, filtered, 1)
 		assert.Equal(t, int64(1), filteredCount)

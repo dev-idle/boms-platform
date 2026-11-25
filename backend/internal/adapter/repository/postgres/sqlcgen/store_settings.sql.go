@@ -129,6 +129,47 @@ func (q *Queries) GetStoreSettingsForUpdate(ctx context.Context) (GetStoreSettin
 	return i, err
 }
 
+const holdPickupRules = `-- name: HoldPickupRules :one
+SELECT
+  s.opens_at_minute,
+  s.closes_at_minute,
+  EXISTS (
+    SELECT 1 FROM store_closed_dates c
+    WHERE c.closed_on = $1::date AND c.deleted_at IS NULL
+  )::bool AS closed
+FROM store_settings s
+WHERE s.id = 1
+FOR SHARE OF s
+`
+
+type HoldPickupRulesRow struct {
+	OpensAtMinute  int16 `json:"opensAtMinute"`
+	ClosesAtMinute int16 `json:"closesAtMinute"`
+	Closed         bool  `json:"closed"`
+}
+
+// Holds the pickup rules until the transaction ends and reads what a booking on
+// closed_on must still meet: the opening hours, and whether that day has closed
+// since the rules were read. Closing a day or changing the hours locks the row
+// for update, so it waits for the booking and then counts it.
+//
+//	SELECT
+//	  s.opens_at_minute,
+//	  s.closes_at_minute,
+//	  EXISTS (
+//	    SELECT 1 FROM store_closed_dates c
+//	    WHERE c.closed_on = $1::date AND c.deleted_at IS NULL
+//	  )::bool AS closed
+//	FROM store_settings s
+//	WHERE s.id = 1
+//	FOR SHARE OF s
+func (q *Queries) HoldPickupRules(ctx context.Context, closedOn time.Time) (HoldPickupRulesRow, error) {
+	row := q.db.QueryRow(ctx, holdPickupRules, closedOn)
+	var i HoldPickupRulesRow
+	err := row.Scan(&i.OpensAtMinute, &i.ClosesAtMinute, &i.Closed)
+	return i, err
+}
+
 const listStoreClosedDates = `-- name: ListStoreClosedDates :many
 SELECT id, closed_on, reason, created_at
 FROM store_closed_dates

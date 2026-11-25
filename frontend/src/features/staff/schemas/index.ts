@@ -89,10 +89,21 @@ export const staffOrderSchema = z.object({
   updated_at: apiDateTimeSchema,
 });
 
+/**
+ * A status, or left_open: the orders still to accept or make after their
+ * pickup day closed (backend `StaffOrderFilterLeftOpen`).
+ */
+const staffOrdersStatusFilterSchema = z.union([orderStatusSchema, z.literal("left_open")]);
+
 export const staffOrdersListFilterSchema = z.object({
   page: z.number().int().min(1).default(1),
   page_size: z.number().int().min(1).max(100).default(20),
-  status: orderStatusSchema.optional(),
+  status: staffOrdersStatusFilterSchema.optional(),
+});
+
+/** `PATCH /staff/orders/:id/pickup` — another pickup for an order not handed over yet. */
+export const moveStaffOrderPickupInputSchema = z.object({
+  pickup_at: apiDateTimeSchema,
 });
 
 /** The reason the customer reads when the bakery cancels their order. */
@@ -277,10 +288,12 @@ export const moveTicketInputSchema = z.object({
   station: stationSchema,
 });
 
-type StaffOrderSummary = z.infer<typeof staffOrderSummarySchema>;
+export type StaffOrderSummary = z.infer<typeof staffOrderSummarySchema>;
 export type StaffOrderCustomer = z.infer<typeof staffOrderCustomerSchema>;
 export type StaffOrder = z.infer<typeof staffOrderSchema>;
 export type StaffOrdersListFilterInput = z.infer<typeof staffOrdersListFilterSchema>;
+export type StaffOrdersStatusFilter = z.infer<typeof staffOrdersStatusFilterSchema>;
+export type MoveStaffOrderPickupInput = z.infer<typeof moveStaffOrderPickupInputSchema>;
 export type PatchStaffOrderStatusInput = z.infer<typeof patchStaffOrderStatusInputSchema>;
 export type CancelOrderFormInput = z.input<typeof cancelOrderFormSchema>;
 export type ReportIncidentInput = z.infer<typeof reportIncidentInputSchema>;

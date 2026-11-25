@@ -221,6 +221,8 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("subject", "1 to 120 plain characters on one line"))
 	case errors.Is(err, domainpromotion.ErrInvalidBody):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("body", "1 to 5000 plain characters"))
+	case errors.Is(err, domainorder.ErrInvalidHandoverReason):
+		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "say how you checked who is collecting it, in plain text"))
 	case errors.Is(err, domainorder.ErrInvalidCancelReason):
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 plain characters"))
 	case errors.Is(err, domainorder.ErrInvalidIncidentType):
@@ -231,6 +233,8 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 		return writeAppError(c, apperrors.ErrValidation.WithDetail("reason", "must be 1 to 200 characters"))
 	case errors.Is(err, domainstore.ErrClosedDateExists):
 		return writeAppError(c, apperrors.ErrClosedDateExists)
+	case errors.Is(err, domainstore.ErrPickupsStranded):
+		return writeAppError(c, apperrors.ErrPickupsStranded)
 	case errors.Is(err, domainstore.ErrClosedDateNotFound):
 		return writeAppError(c, apperrors.ErrNotFound)
 	}

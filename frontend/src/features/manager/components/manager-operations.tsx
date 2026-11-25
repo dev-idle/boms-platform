@@ -2,11 +2,15 @@ import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DASHBOARD_HOME_LEAD, DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
+import { ManagerHandover } from "./manager-handover";
 import { ManagerOperationsKpis } from "./manager-operations-kpis";
 import { ManagerOperationsLate } from "./manager-operations-late";
 import { ManagerOperationsWork } from "./manager-operations-work";
 
-/** The manager's home: the bakery's work as it moves — open orders, stations, today's pickups and the late ones. */
+/**
+ * The manager's home: the bakery's work as it moves — open orders, stations,
+ * today's pickups and the late ones — and the handover without a code.
+ */
 export function ManagerOperations() {
   return (
     <div className="dashboard-page-stack">
@@ -20,6 +24,7 @@ export function ManagerOperations() {
       <div>
         <ManagerOperationsLate />
         <ManagerOperationsWork />
+        <ManagerHandover />
       </div>
     </div>
   );

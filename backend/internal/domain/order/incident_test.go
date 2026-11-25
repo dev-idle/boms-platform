@@ -12,25 +12,25 @@ import (
 func TestMoveIncident(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name    string
-		from    Status
-		to      Status
-		byStaff bool
-		want    IncidentType
+		name     string
+		from     Status
+		to       Status
+		byBakery bool
+		want     IncidentType
 	}{
-		{name: "staff_cancel_an_accepted_order", from: StatusConfirmed, to: StatusCancelled, byStaff: true, want: IncidentBakeryCancelled},
-		{name: "staff_cancel_an_order_being_made", from: StatusInProduction, to: StatusCancelled, byStaff: true, want: IncidentBakeryCancelled},
-		{name: "staff_cancel_a_ready_order", from: StatusReady, to: StatusCancelled, byStaff: true, want: IncidentBakeryCancelled},
-		{name: "staff_decline_a_custom_request", from: StatusPending, to: StatusCancelled, byStaff: true},
+		{name: "staff_cancel_an_accepted_order", from: StatusConfirmed, to: StatusCancelled, byBakery: true, want: IncidentBakeryCancelled},
+		{name: "staff_cancel_an_order_being_made", from: StatusInProduction, to: StatusCancelled, byBakery: true, want: IncidentBakeryCancelled},
+		{name: "staff_cancel_a_ready_order", from: StatusReady, to: StatusCancelled, byBakery: true, want: IncidentBakeryCancelled},
+		{name: "staff_decline_a_custom_request", from: StatusPending, to: StatusCancelled, byBakery: true},
 		{name: "a_customer_cancels", from: StatusConfirmed, to: StatusCancelled},
 		{name: "a_pickup_is_missed", from: StatusReady, to: StatusNoShow, want: IncidentNoShow},
 		{name: "an_unpaid_order_expires", from: StatusAwaitingPayment, to: StatusExpired, want: IncidentPaymentExpired},
-		{name: "an_order_is_collected", from: StatusReady, to: StatusFulfilled, byStaff: true},
+		{name: "an_order_is_collected", from: StatusReady, to: StatusFulfilled, byBakery: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, ok := MoveIncident(tc.from, tc.to, tc.byStaff)
+			got, ok := MoveIncident(tc.from, tc.to, tc.byBakery)
 			assert.Equal(t, tc.want != "", ok)
 			assert.Equal(t, tc.want, got)
 		})
@@ -74,6 +74,8 @@ func TestIncidentType_Source(t *testing.T) {
 	assert.Equal(t, IncidentSourceManual, IncidentOther.Source())
 	assert.Equal(t, IncidentSourceAuto, IncidentReadyLate.Source())
 	assert.Equal(t, IncidentSourceAuto, IncidentPaymentAnomaly.Source())
+	assert.Equal(t, IncidentSourceAuto, IncidentLeftOpen.Source())
+	assert.True(t, IncidentLeftOpen.Valid(), "the manager filters by it")
 	assert.True(t, IncidentPaymentFailed.PaymentProblem())
 	assert.True(t, IncidentPaymentExpired.PaymentProblem())
 	assert.False(t, IncidentPaymentAnomaly.PaymentProblem(), "a flag does not count towards another")

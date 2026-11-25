@@ -29,12 +29,16 @@ import { usePatchStaffOrderStatus, useStaffOrder } from "../hooks";
 import type { PatchStaffOrderStatusInput } from "../schemas";
 import { StaffCancelOrderDialog } from "./staff-cancel-order-dialog";
 import { StaffHandoffDialog } from "./staff-handoff-dialog";
+import { StaffMovePickupDialog } from "./staff-move-pickup-dialog";
 import { StaffOrderHistory } from "./staff-order-history";
 import { StaffOrderTickets } from "./staff-order-tickets";
 import { StaffReportIncidentDialog } from "./staff-report-incident-dialog";
 
 /** An order staff took is paid when collected: its cash is due until then. */
-const CASH_DUE_STATUSES: ReadonlySet<OrderStatus> = new Set(["confirmed", "in_production", "ready"]);
+const CASH_DUE_STATUSES: ReadonlySet<OrderStatus> = new Set(["confirmed", "in_production", "ready", "no_show"]);
+
+/** An order the bakery took and has not handed over: staff may move its pickup. */
+const MOVABLE_STATUSES: ReadonlySet<OrderStatus> = new Set(["pending", "confirmed", "in_production", "ready"]);
 
 type StaffOrderDetailProps = {
   orderId: string;
@@ -58,6 +62,9 @@ function nextStatusActions(
         { label: "Hand over", status: "fulfilled" },
         { label: "Cancel order", status: "cancelled" },
       ];
+    case "no_show":
+      // Missed at closing time, still handed over if its customer comes late.
+      return [{ label: "Hand over", status: "fulfilled" }];
     default:
       return [];
   }
@@ -70,6 +77,7 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
 
   if (!isValidId) {
     return <p className="text-sm text-muted">Invalid order link.</p>;
@@ -231,6 +239,11 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
                   : action.label}
               </Button>
             ))}
+            {order.pickup_at && MOVABLE_STATUSES.has(order.status) ? (
+              <Button type="button" variant="outline" onClick={() => setMoveOpen(true)}>
+                Move pickup
+              </Button>
+            ) : null}
             <Button type="button" variant="outline" onClick={() => setReportOpen(true)}>
               Report issue
             </Button>
@@ -258,6 +271,11 @@ export function StaffOrderDetail({ orderId }: StaffOrderDetailProps) {
       />
 
       <StaffReportIncidentDialog open={reportOpen} orderId={order.id} onClose={() => setReportOpen(false)} />
+
+      {/* Mounted only while open: the picker reads the pickup rules and the day's slots. */}
+      {moveOpen ? (
+        <StaffMovePickupDialog orderCode={order.code} orderId={order.id} onClose={() => setMoveOpen(false)} />
+      ) : null}
     </div>
   );
 }
