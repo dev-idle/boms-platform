@@ -154,6 +154,23 @@ func TestCounterOrders_Integration(t *testing.T) {
 		assert.Nil(t, mine.PickupCode, "it is handed over as its cash is paid")
 	})
 
+	t.Run("the_counter_takes_an_order_past_the_daily_cap", func(t *testing.T) {
+		customer := f.newCustomer(t, nil, nil)
+		for _, hour := range []int{11, 12, 13} {
+			_, err := f.cartUC.AddItem(ctx, customer, dto.AddCartItemRequest{ProductID: &pastry, Quantity: 1})
+			require.NoError(t, err)
+			_, err = f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(hour, 0)))
+			require.NoError(t, err)
+		}
+		id := customer.String()
+		req := guestOrder(14)
+		req.Channel, req.Guest, req.CustomerID = "phone", nil, &id
+
+		_, err := take(uuid.New(), req)
+
+		require.NoError(t, err, "a regular's fourth order is the bakery's own call")
+	})
+
 	t.Run("an_order_is_for_one_account_or_one_guest_and_sold_items", func(t *testing.T) {
 		customer := f.newCustomer(t, nil, nil).String()
 		both := guestOrder(11)

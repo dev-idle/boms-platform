@@ -973,6 +973,7 @@ func (q *Queries) StaffFindCustomerByEmail(ctx context.Context, email string) (S
 const updateRole = `-- name: UpdateRole :execrows
 UPDATE users
 SET role = $2,
+    session_version = session_version + 1,
     updated_at = now()
 WHERE id = $1
   AND deleted_at IS NULL
@@ -983,10 +984,12 @@ type UpdateRoleParams struct {
 	Role UserRole  `json:"role"`
 }
 
-// UpdateRole
+// A role change ends the account's sessions for good: one the Redis sweep
+// misses cannot refresh into the new role.
 //
 //	UPDATE users
 //	SET role = $2,
+//	    session_version = session_version + 1,
 //	    updated_at = now()
 //	WHERE id = $1
 //	  AND deleted_at IS NULL

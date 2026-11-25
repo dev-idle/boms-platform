@@ -42,7 +42,7 @@ func TestEngagement_Integration(t *testing.T) {
 		t.Helper()
 		conversationID, err := conversations.OpenForCustomerMessage(ctx, port.ConversationThread{CustomerID: customer, OrderID: &orderID})
 		require.NoError(t, err)
-		_, err = conversations.CreateMessage(ctx, conversationID, authorID, role, body)
+		_, err = conversations.CreateMessage(ctx, conversationID, authorID, role, body, false)
 		require.NoError(t, err)
 	}
 
@@ -79,6 +79,11 @@ func TestEngagement_Integration(t *testing.T) {
 	asker := f.newCustomer(t, nil, nil)
 	assistant := postgresadapter.NewAssistantRepository(f.pool)
 	require.NoError(t, assistant.SaveTurn(ctx, uuid.New(), &asker, "When do you open?", "At 07:00."))
+	// The questions it passed on to the counter are not the customer writing.
+	general, err := conversations.OpenForCustomerMessage(ctx, port.ConversationThread{CustomerID: asker})
+	require.NoError(t, err)
+	_, err = conversations.CreateMessage(ctx, general, asker, domainuser.RoleCustomer, "Can someone check?", true)
+	require.NoError(t, err)
 	require.NoError(t, assistant.SaveTurn(ctx, uuid.New(), nil, "Do you sell bread?", "Yes."))
 
 	// Nothing used.

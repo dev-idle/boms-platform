@@ -11,6 +11,7 @@ import (
 	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainconversation "github.com/boms/backend/internal/domain/conversation"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpayment "github.com/boms/backend/internal/domain/payment"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainsession "github.com/boms/backend/internal/domain/session"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -35,6 +36,7 @@ type DataExportUsecase struct {
 	users         port.UserRepository
 	profiles      *profilesvc.Service
 	orders        port.OrderRepository
+	payments      port.PaymentRepository
 	conversations port.ConversationRepository
 	assistant     port.AssistantRepository
 	saved         port.SavedProductRepository
@@ -50,6 +52,7 @@ func NewDataExportUsecase(
 	staff port.StaffProfileRepository,
 	admins port.AdminProfileRepository,
 	orders port.OrderRepository,
+	payments port.PaymentRepository,
 	conversations port.ConversationRepository,
 	assistant port.AssistantRepository,
 	saved port.SavedProductRepository,
@@ -62,6 +65,7 @@ func NewDataExportUsecase(
 		users:         users,
 		profiles:      profilesvc.NewService(customers, staff, admins),
 		orders:        orders,
+		payments:      payments,
 		conversations: conversations,
 		assistant:     assistant,
 		saved:         saved,
@@ -209,6 +213,7 @@ func (u *DataExportUsecase) exportOrderPage(ctx context.Context, orders []domain
 	var timelines map[uuid.UUID][]domainorder.StatusEvent
 	var messages map[uuid.UUID][]domainconversation.Message
 	var incidents map[uuid.UUID][]domainorder.Incident
+	var payments map[uuid.UUID]domainpayment.Payment
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
 		var err error
@@ -228,6 +233,11 @@ func (u *DataExportUsecase) exportOrderPage(ctx context.Context, orders []domain
 	group.Go(func() error {
 		var err error
 		incidents, err = u.orders.ListIncidentsByOrderIDs(groupCtx, ids)
+		return err
+	})
+	group.Go(func() error {
+		var err error
+		payments, err = u.payments.ListByOrderIDs(groupCtx, ids)
 		return err
 	})
 	if err := group.Wait(); err != nil {
@@ -250,11 +260,36 @@ func (u *DataExportUsecase) exportOrderPage(ctx context.Context, orders []domain
 			Timeline:             mapOrderTimelineToDTO(timelines[order.ID]),
 			Messages:             toMessageResponses(messages[order.ID], false),
 			Incidents:            toOrderIncidentResponses(incidents[order.ID]),
+			Payment:              toExportPayment(payments, order.ID),
 			CreatedAt:            order.CreatedAt,
 			UpdatedAt:            order.UpdatedAt,
 		})
 	}
 	return out, nil
+}
+
+// toExportPayment is the order's payment as the export lists it; nil when
+// the order was never paid.
+func toExportPayment(payments map[uuid.UUID]domainpayment.Payment, orderID uuid.UUID) *dto.DataExportPaymentResponse {
+	payment, ok := payments[orderID]
+	if !ok {
+		return nil
+	}
+	out := &dto.DataExportPaymentResponse{
+		Provider:          string(payment.Provider),
+		Status:            string(payment.Status),
+		AmountCents:       payment.AmountCents,
+		Currency:          payment.Currency,
+		CaptureID:         payment.CaptureID,
+		CapturedAt:        payment.CapturedAt,
+		RefundRequestedAt: payment.RefundRequestedAt,
+		RefundID:          payment.RefundID,
+		RefundedAt:        payment.RefundedAt,
+	}
+	if payment.ProviderOrderID != "" {
+		out.Reference = &payment.ProviderOrderID
+	}
+	return out
 }
 
 // mapExportAssistantSessions writes each conversation with the assistant as

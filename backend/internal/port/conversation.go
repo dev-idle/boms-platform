@@ -26,11 +26,14 @@ type ConversationRepository interface {
 	// OpenForStaffMessage does the same for a message from staffID, who takes
 	// the conversation over.
 	OpenForStaffMessage(ctx context.Context, thread ConversationThread, staffID uuid.UUID) (uuid.UUID, error)
+	// CreateMessage writes a message; viaAssistant marks a customer's questions
+	// the assistant passed on.
 	CreateMessage(
 		ctx context.Context,
 		conversationID, authorID uuid.UUID,
 		authorRole domainuser.Role,
 		body string,
+		viaAssistant bool,
 	) (*domainconversation.Message, error)
 	// Get returns apperrors.ErrNotFound before the conversation's first message.
 	Get(ctx context.Context, thread ConversationThread) (*domainconversation.Conversation, error)

@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaindiscount "github.com/boms/backend/internal/domain/discount"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainproduct "github.com/boms/backend/internal/domain/product"
@@ -230,5 +232,36 @@ func TestCustomCakes_Integration(t *testing.T) {
 		assert.False(t, cart.Items[0].IsAvailable, "its flavor is no longer offered")
 		assert.False(t, cart.CheckoutReady)
 		assert.Equal(t, "Happy birthday Mai", cart.Items[0].Customization.Message, "the customer still sees what it was")
+	})
+
+	t.Run("a_product_in_a_hidden_category_stays_editable_and_none_moves_in", func(t *testing.T) {
+		categories := postgresadapter.NewCategoryRepository(f.pool)
+		newCategory := func(slug string) uuid.UUID {
+			category, err := categories.Create(ctx, port.CreateCategoryParams{
+				Name: slug, Slug: slug, IsActive: true, Station: domaincategory.StationKitchen,
+			})
+			require.NoError(t, err)
+			return category.ID
+		}
+		winter, spring := newCategory("winter"), newCategory("spring")
+		chestnut, err := manager.Create(ctx, managerID, domainuser.RoleManager, dto.CreateProductRequest{
+			CategoryID: winter.String(), Name: "Chestnut log", PriceCents: 3200, IsActive: true,
+		})
+		require.NoError(t, err)
+		raw, err := pgxpool.New(ctx, f.connStr)
+		require.NoError(t, err)
+		t.Cleanup(raw.Close)
+		_, err = raw.Exec(ctx, "UPDATE categories SET is_active = false WHERE id = ANY($1)", []uuid.UUID{winter, spring})
+		require.NoError(t, err)
+		update := dto.UpdateProductRequest{
+			CategoryID: winter.String(), Name: chestnut.Name, Slug: chestnut.Slug, PriceCents: 3500, IsActive: true,
+		}
+
+		_, err = manager.Update(ctx, managerID, domainuser.RoleManager, uuid.MustParse(chestnut.ID), update)
+		require.NoError(t, err, "a season being prepared is edited where it is")
+
+		update.CategoryID = spring.String()
+		_, err = manager.Update(ctx, managerID, domainuser.RoleManager, uuid.MustParse(chestnut.ID), update)
+		require.ErrorIs(t, err, domaincategory.ErrInactive, "nothing moves into a hidden category")
 	})
 }

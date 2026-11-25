@@ -102,6 +102,21 @@ type TermsAcceptanceResponse struct {
 	AcceptedAt time.Time `json:"accepted_at"`
 }
 
+// DataExportPaymentResponse is what the bakery keeps of an order's payment:
+// the provider, its references and the amounts and times.
+type DataExportPaymentResponse struct {
+	Provider          string     `json:"provider"`
+	Status            string     `json:"status"`
+	AmountCents       int64      `json:"amount_cents"`
+	Currency          string     `json:"currency"`
+	Reference         *string    `json:"reference,omitempty"`
+	CaptureID         *string    `json:"capture_id,omitempty"`
+	CapturedAt        *time.Time `json:"captured_at,omitempty"`
+	RefundRequestedAt *time.Time `json:"refund_requested_at,omitempty"`
+	RefundID          *string    `json:"refund_id,omitempty"`
+	RefundedAt        *time.Time `json:"refunded_at,omitempty"`
+}
+
 // DataExportOrderResponse is one order as its customer sees it, with the
 // policies accepted when it was placed and the messages written about it.
 type DataExportOrderResponse struct {
@@ -119,6 +134,8 @@ type DataExportOrderResponse struct {
 	Timeline             []OrderTimelineEntryResponse `json:"timeline"`
 	Messages             []MessageResponse            `json:"messages"`
 	Incidents            []OrderIncidentResponse      `json:"incidents"`
-	CreatedAt            time.Time                    `json:"created_at"`
-	UpdatedAt            time.Time                    `json:"updated_at"`
+	// Payment is how the order was paid and any refund; null when it never was.
+	Payment   *DataExportPaymentResponse `json:"payment"`
+	CreatedAt time.Time                  `json:"created_at"`
+	UpdatedAt time.Time                  `json:"updated_at"`
 }

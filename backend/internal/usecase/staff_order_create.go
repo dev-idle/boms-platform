@@ -20,7 +20,7 @@ import (
 
 // CreateOrder takes an order at the counter or on the phone, for a
 // customer's account or for a guest: priced from the catalog now, held to the
-// pickup rules a checkout is, and confirmed at once with its total due in cash
+// pickup rules a checkout is but the daily cap, and confirmed at once with its total due in cash
 // when it is collected. checkoutKey is the request's Idempotency-Key: the same
 // key returns the order it took, so a retry takes nothing twice.
 func (u *StaffOrderUsecase) CreateOrder(
@@ -73,7 +73,9 @@ func (u *StaffOrderUsecase) CreateOrder(
 			return err
 		}
 		totals := summarizeCart(lines, nil, now.UTC())
-		booking, err := bookPickup(txCtx, u.orders, customerID, needs, req.PickupAt, now, policy, nil)
+		// The daily cap stops an account booking a day out online; the counter
+		// taking a regular's fourth order is the bakery's own call.
+		booking, err := bookPickup(txCtx, u.orders, nil, needs, req.PickupAt, now, policy, nil)
 		if err != nil {
 			return err
 		}

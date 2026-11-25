@@ -170,6 +170,11 @@ func (u *MeUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldPwd
 	if err := u.hasher.Verify(user.PasswordHash, oldPwd); err != nil {
 		return apperrors.ErrInvalidCredentials
 	}
+	// The old password was just verified, so the same text is the same
+	// password: a temporary one an admin has seen cannot stay.
+	if newPwd == oldPwd {
+		return apperrors.ErrValidation.WithDetail("new_password", "Choose a password different from your current one")
+	}
 	hash, err := u.hasher.Hash(newPwd)
 	if err != nil {
 		return apperrors.Errorf("hash password: %w", err)
@@ -191,8 +196,10 @@ func (u *MeUsecase) ChangePassword(ctx context.Context, userID uuid.UUID, oldPwd
 	}); err != nil {
 		return err
 	}
+	// The password write raised the session version, so a session the sweep
+	// misses lives only until its access token expires: the change stands.
 	if err := u.sessions.DeleteAllForUser(ctx, userID.String()); err != nil {
-		return err
+		u.log.Warn("password_change_session_sweep_failed", zap.String("user_id", userID.String()), zap.Error(err))
 	}
 	u.logAudit(ctx, domainuser.AuditActionMeChangedPassword, userID, user.Role, &userID, "user", nil, map[string]any{"changed": true})
 	return nil

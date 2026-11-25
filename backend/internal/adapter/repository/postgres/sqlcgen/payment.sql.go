@@ -200,6 +200,53 @@ func (q *Queries) GetPaymentByProviderOrderID(ctx context.Context, arg GetPaymen
 	return i, err
 }
 
+const listPaymentsByOrderIDs = `-- name: ListPaymentsByOrderIDs :many
+SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+FROM payments
+WHERE order_id = ANY($1::uuid[])
+`
+
+// The payment of each order named that has one, for a personal data export.
+//
+//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+//	FROM payments
+//	WHERE order_id = ANY($1::uuid[])
+func (q *Queries) ListPaymentsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]Payment, error) {
+	rows, err := q.db.Query(ctx, listPaymentsByOrderIDs, orderIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Payment{}
+	for rows.Next() {
+		var i Payment
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.Provider,
+			&i.ProviderOrderID,
+			&i.ApproveUrl,
+			&i.Status,
+			&i.CaptureID,
+			&i.AmountCents,
+			&i.Currency,
+			&i.CapturedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.RefundRequestedAt,
+			&i.RefundID,
+			&i.RefundedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRefundsDue = `-- name: ListRefundsDue :many
 SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
 FROM payments

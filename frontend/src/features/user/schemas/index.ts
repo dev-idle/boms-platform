@@ -48,6 +48,13 @@ export const changePasswordFormSchema = changePasswordSchema
     confirm_password: z.string().min(1, "Confirm your new password"),
   })
   .superRefine((input, ctx) => {
+    if (input.new_password === input.old_password) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Choose a password different from your current one",
+        path: ["new_password"],
+      });
+    }
     if (input.new_password !== input.confirm_password) {
       ctx.addIssue({
         code: "custom",

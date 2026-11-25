@@ -134,7 +134,7 @@ func TestSavedProducts_Integration(t *testing.T) {
 		conversations := postgresadapter.NewConversationRepository(f.pool)
 
 		export, err := usecase.NewDataExportUsecase(f.users, customerProfiles, postgresadapter.NewStaffProfileRepository(f.pool),
-			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, postgresadapter.NewAssistantRepository(f.pool), savedRepo,
+			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, postgresadapter.NewPaymentRepository(f.pool), conversations, postgresadapter.NewAssistantRepository(f.pool), savedRepo,
 			postgresadapter.NewReviewRepository(f.pool), f.carts, fixedSessions{}, audit,
 		).Export(ctx, customer)
 		require.NoError(t, err)

@@ -60,8 +60,12 @@ function plural(count: number, noun: string): string {
 export function StaffPickupSchedule() {
   const now = useNow(MINUTE_MS);
   const today = bakeryDayOf(now);
-  const [day, setDay] = useState(today);
-  const [page, setPage] = useState(1);
+  // Unless staff pick a day, the schedule is today's, and turns over at midnight.
+  const [chosenDay, setChosenDay] = useState<string | null>(null);
+  const day = chosenDay ?? today;
+  // A page belongs to its day: another day, picked or come at midnight, starts on page 1.
+  const [paging, setPaging] = useState({ day, page: 1 });
+  const page = paging.day === day ? paging.page : 1;
   const [handoff, setHandoff] = useState<StaffPickup | null>(null);
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [preparing, setPreparing] = useState<StaffPickup | null>(null);
@@ -73,8 +77,7 @@ export function StaffPickupSchedule() {
   const showState = initialLoading || pickupsQuery.isError || pickups.length === 0;
 
   function showDay(next: string): void {
-    setDay(next);
-    setPage(1);
+    setChosenDay(next === today ? null : next);
   }
 
   return (
@@ -217,7 +220,7 @@ export function StaffPickupSchedule() {
         <DashboardTablePagination
           disabled={refetching}
           itemLabel="pickups"
-          onPageChange={setPage}
+          onPageChange={(next) => setPaging({ day, page: next })}
           page={pagination?.page ?? page}
           pageSize={pagination?.page_size ?? PAGE_SIZE}
           totalItems={pagination?.total ?? pickups.length}

@@ -139,7 +139,8 @@ func TestOrderChanges_Integration(t *testing.T) {
 		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
 		order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(9, 30)))
 		require.NoError(t, err)
-		setStatus(order.ID, domainorder.StatusInProduction, "1 day")
+		// Past tomorrow, so it never lands in a one-order slot a later subtest books.
+		setStatus(order.ID, domainorder.StatusInProduction, "3 days")
 
 		_, err = f.orderUC.Cancel(ctx, customer, uuid.MustParse(order.ID))
 		require.ErrorIs(t, err, domainorder.ErrInvalidStatusTransition)

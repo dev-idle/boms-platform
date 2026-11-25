@@ -1918,6 +1918,11 @@ table "messages" {
     type = timestamptz
     null = true
   }
+  column "via_assistant" {
+    type    = boolean
+    null    = false
+    default = false
+  }
   primary_key {
     columns = [column.id]
   }

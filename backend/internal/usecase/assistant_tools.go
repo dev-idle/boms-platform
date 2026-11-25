@@ -219,7 +219,7 @@ func (q *AssistantQuestion) handOff(ctx context.Context, code string) (*dto.Assi
 		return nil, err
 	}
 	if order != nil {
-		_, err := q.u.messages.Post(ctx, *q.userID, &order.ID, req)
+		_, err := q.u.messages.post(ctx, *q.userID, &order.ID, req, true)
 		if err == nil {
 			orderID := order.ID.String()
 			return &dto.AssistantHandOffResponse{OrderID: &orderID, OrderCode: &order.Code}, nil
@@ -228,7 +228,7 @@ func (q *AssistantQuestion) handOff(ctx context.Context, code string) (*dto.Assi
 			return nil, err
 		}
 	}
-	if _, err := q.u.messages.Post(ctx, *q.userID, nil, req); err != nil {
+	if _, err := q.u.messages.post(ctx, *q.userID, nil, req, true); err != nil {
 		return nil, err
 	}
 	return &dto.AssistantHandOffResponse{}, nil

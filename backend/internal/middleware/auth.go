@@ -66,7 +66,8 @@ func RequireAuthWithSession(signer port.TokenSigner, sessions port.SessionStore)
 			if errors.Is(err, apperrors.ErrNotFound) {
 				return sessionRevoked(c)
 			}
-			return writeMiddlewareError(c, apperrors.ErrInternal)
+			// Returned, not written here: the error handler logs it with its cause.
+			return apperrors.Errorf("read session: %w", err)
 		}
 		setAuthLocals(c, locals)
 		c.Locals(localSessionMetaKey, meta)
@@ -251,7 +252,8 @@ func RequirePasswordChanged(sessions port.SessionStore) fiber.Handler {
 			if errors.Is(err, apperrors.ErrNotFound) {
 				return sessionRevoked(c)
 			}
-			return writeMiddlewareError(c, apperrors.ErrInternal)
+			// Returned, not written here: the error handler logs it with its cause.
+			return apperrors.Errorf("read session: %w", err)
 		}
 		c.Locals(localSessionMetaKey, meta)
 		if meta.MustChangePassword {

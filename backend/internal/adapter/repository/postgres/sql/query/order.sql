@@ -527,12 +527,22 @@ SELECT pg_advisory_xact_lock(
 -- name: CountOrdersInSlot :one
 -- Orders holding the slot [from_at, to_at): every order not cancelled or
 -- expired whose pickup falls in it, wherever in it an earlier slot grid put
--- that pickup.
+-- that pickup. An unpaid order the worker would expire — past its time to pay
+-- and grace_seconds, with no payment PayPal is reviewing — holds nothing,
+-- though the worker has yet to run.
 SELECT count(*)::bigint AS count
 FROM orders
 WHERE pickup_at >= sqlc.arg('from_at')::timestamptz
   AND pickup_at < sqlc.arg('to_at')::timestamptz
-  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status);
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+  AND NOT (
+    status = 'awaiting_payment'::order_status
+    AND payment_due_at <= now() - make_interval(secs => sqlc.arg('grace_seconds')::double precision)
+    AND NOT EXISTS (
+      SELECT 1 FROM payments p
+      WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+    )
+  );
 
 -- name: LockCustomerBookings :exec
 -- Holds the customer's bookings until the transaction ends, so two of their
@@ -541,20 +551,38 @@ WHERE pickup_at >= sqlc.arg('from_at')::timestamptz
 SELECT pg_advisory_xact_lock(sqlc.arg('namespace')::int, hashtext(sqlc.arg('user_id')::uuid::text));
 
 -- name: CountCustomerOrdersBetween :one
--- A customer's orders not cancelled or expired with a pickup in [from_at, to_at).
+-- A customer's orders not cancelled or expired with a pickup in [from_at,
+-- to_at), an unpaid one the worker would expire left out (CountOrdersInSlot).
 SELECT count(*)::bigint AS count
 FROM orders
 WHERE user_id = sqlc.arg('user_id')::uuid
   AND pickup_at >= sqlc.arg('from_at')::timestamptz
   AND pickup_at < sqlc.arg('to_at')::timestamptz
-  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status);
+  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+  AND NOT (
+    status = 'awaiting_payment'::order_status
+    AND payment_due_at <= now() - make_interval(secs => sqlc.arg('grace_seconds')::double precision)
+    AND NOT EXISTS (
+      SELECT 1 FROM payments p
+      WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+    )
+  );
 
 -- name: CountOrdersByPickupTime :many
+-- The orders holding each pickup time, counted as CountOrdersInSlot counts.
 SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
 FROM orders
 WHERE pickup_at >= sqlc.arg('from_at')::timestamptz
   AND pickup_at < sqlc.arg('to_at')::timestamptz
   AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+  AND NOT (
+    status = 'awaiting_payment'::order_status
+    AND payment_due_at <= now() - make_interval(secs => sqlc.arg('grace_seconds')::double precision)
+    AND NOT EXISTS (
+      SELECT 1 FROM payments p
+      WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+    )
+  )
 GROUP BY pickup_at;
 
 -- name: LockOrder :one

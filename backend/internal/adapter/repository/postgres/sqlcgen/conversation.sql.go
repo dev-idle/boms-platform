@@ -37,8 +37,8 @@ func (q *Queries) CloseCustomerConversations(ctx context.Context, userID uuid.UU
 
 const createMessage = `-- name: CreateMessage :one
 WITH created AS (
-  INSERT INTO messages (conversation_id, author_id, author_role, body)
-  VALUES ($1, $2, $3, $4)
+  INSERT INTO messages (conversation_id, author_id, author_role, body, via_assistant)
+  VALUES ($1, $2, $3, $4, $5)
   RETURNING id, author_id, author_role, body, created_at
 )
 SELECT
@@ -56,6 +56,7 @@ type CreateMessageParams struct {
 	AuthorID       uuid.UUID `json:"authorId"`
 	AuthorRole     UserRole  `json:"authorRole"`
 	Body           string    `json:"body"`
+	ViaAssistant   bool      `json:"viaAssistant"`
 }
 
 type CreateMessageRow struct {
@@ -66,11 +67,12 @@ type CreateMessageRow struct {
 	AuthorName *string   `json:"authorName"`
 }
 
-// Writes a message and returns it as a thread lists it.
+// Writes a message and returns it as a thread lists it. via_assistant marks a
+// customer's questions the assistant passed on to the counter.
 //
 //	WITH created AS (
-//	  INSERT INTO messages (conversation_id, author_id, author_role, body)
-//	  VALUES ($1, $2, $3, $4)
+//	  INSERT INTO messages (conversation_id, author_id, author_role, body, via_assistant)
+//	  VALUES ($1, $2, $3, $4, $5)
 //	  RETURNING id, author_id, author_role, body, created_at
 //	)
 //	SELECT
@@ -87,6 +89,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (C
 		arg.AuthorID,
 		arg.AuthorRole,
 		arg.Body,
+		arg.ViaAssistant,
 	)
 	var i CreateMessageRow
 	err := row.Scan(

@@ -13,13 +13,23 @@ import (
 )
 
 const catalogGetComboByID = `-- name: CatalogGetComboByID :one
-SELECT id, name, slug, price_cents, image_url, starts_at, ends_at
-FROM combos
-WHERE id = $1
-  AND deleted_at IS NULL
-  AND is_active = true
-  AND starts_at <= now()
-  AND ends_at > now()
+SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
+FROM combos c
+WHERE c.id = $1
+  AND c.deleted_at IS NULL
+  AND c.is_active = true
+  AND c.starts_at <= now()
+  AND c.ends_at > now()
+  AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+  -- Every product in it is on sale: a combo missing one is not sold short.
+  AND NOT EXISTS (
+    SELECT 1
+    FROM combo_items ci
+    LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+    LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+    WHERE ci.combo_id = c.id
+      AND cat.id IS NULL
+  )
 `
 
 type CatalogGetComboByIDRow struct {
@@ -34,13 +44,23 @@ type CatalogGetComboByIDRow struct {
 
 // CatalogGetComboByID
 //
-//	SELECT id, name, slug, price_cents, image_url, starts_at, ends_at
-//	FROM combos
-//	WHERE id = $1
-//	  AND deleted_at IS NULL
-//	  AND is_active = true
-//	  AND starts_at <= now()
-//	  AND ends_at > now()
+//	SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
+//	FROM combos c
+//	WHERE c.id = $1
+//	  AND c.deleted_at IS NULL
+//	  AND c.is_active = true
+//	  AND c.starts_at <= now()
+//	  AND c.ends_at > now()
+//	  AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+//	  -- Every product in it is on sale: a combo missing one is not sold short.
+//	  AND NOT EXISTS (
+//	    SELECT 1
+//	    FROM combo_items ci
+//	    LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+//	    LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+//	    WHERE ci.combo_id = c.id
+//	      AND cat.id IS NULL
+//	  )
 func (q *Queries) CatalogGetComboByID(ctx context.Context, id uuid.UUID) (CatalogGetComboByIDRow, error) {
 	row := q.db.QueryRow(ctx, catalogGetComboByID, id)
 	var i CatalogGetComboByIDRow
@@ -64,12 +84,15 @@ WHERE c.id = ANY($1::uuid[])
   AND c.is_active = true
   AND c.starts_at <= now()
   AND c.ends_at > now()
-  AND EXISTS (
+  AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+  -- Every product in it is on sale: a combo missing one is not sold short.
+  AND NOT EXISTS (
     SELECT 1
     FROM combo_items ci
-    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
-    INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+    LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+    LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
     WHERE ci.combo_id = c.id
+      AND cat.id IS NULL
   )
 `
 
@@ -92,12 +115,15 @@ type CatalogGetCombosByIDsRow struct {
 //	  AND c.is_active = true
 //	  AND c.starts_at <= now()
 //	  AND c.ends_at > now()
-//	  AND EXISTS (
+//	  AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+//	  -- Every product in it is on sale: a combo missing one is not sold short.
+//	  AND NOT EXISTS (
 //	    SELECT 1
 //	    FROM combo_items ci
-//	    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
-//	    INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+//	    LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+//	    LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
 //	    WHERE ci.combo_id = c.id
+//	      AND cat.id IS NULL
 //	  )
 func (q *Queries) CatalogGetCombosByIDs(ctx context.Context, comboIds []uuid.UUID) ([]CatalogGetCombosByIDsRow, error) {
 	rows, err := q.db.Query(ctx, catalogGetCombosByIDs, comboIds)
@@ -134,12 +160,15 @@ WHERE c.deleted_at IS NULL
   AND c.is_active = true
   AND c.starts_at <= now()
   AND c.ends_at > now()
-  AND EXISTS (
+  AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+  -- Every product in it is on sale: a combo missing one is not sold short.
+  AND NOT EXISTS (
     SELECT 1
     FROM combo_items ci
-    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
-    INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+    LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+    LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
     WHERE ci.combo_id = c.id
+      AND cat.id IS NULL
   )
 ORDER BY c.starts_at ASC, c.name ASC
 LIMIT $1 OFFSET $2
@@ -168,12 +197,15 @@ type CatalogListCombosRow struct {
 //	  AND c.is_active = true
 //	  AND c.starts_at <= now()
 //	  AND c.ends_at > now()
-//	  AND EXISTS (
+//	  AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+//	  -- Every product in it is on sale: a combo missing one is not sold short.
+//	  AND NOT EXISTS (
 //	    SELECT 1
 //	    FROM combo_items ci
-//	    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
-//	    INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+//	    LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+//	    LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
 //	    WHERE ci.combo_id = c.id
+//	      AND cat.id IS NULL
 //	  )
 //	ORDER BY c.starts_at ASC, c.name ASC
 //	LIMIT $1 OFFSET $2
@@ -212,12 +244,15 @@ WHERE c.deleted_at IS NULL
   AND c.is_active = true
   AND c.starts_at <= now()
   AND c.ends_at > now()
-  AND EXISTS (
+  AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+  -- Every product in it is on sale: a combo missing one is not sold short.
+  AND NOT EXISTS (
     SELECT 1
     FROM combo_items ci
-    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
-    INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+    LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+    LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
     WHERE ci.combo_id = c.id
+      AND cat.id IS NULL
   )
 `
 
@@ -229,12 +264,15 @@ WHERE c.deleted_at IS NULL
 //	  AND c.is_active = true
 //	  AND c.starts_at <= now()
 //	  AND c.ends_at > now()
-//	  AND EXISTS (
+//	  AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+//	  -- Every product in it is on sale: a combo missing one is not sold short.
+//	  AND NOT EXISTS (
 //	    SELECT 1
 //	    FROM combo_items ci
-//	    INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
-//	    INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+//	    LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+//	    LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
 //	    WHERE ci.combo_id = c.id
+//	      AND cat.id IS NULL
 //	  )
 func (q *Queries) CatalogListCombosCount(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, catalogListCombosCount)

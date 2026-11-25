@@ -303,7 +303,7 @@ func TestConversations_Integration(t *testing.T) {
 		customerProfiles := postgresadapter.NewCustomerProfileRepository(f.pool)
 		audit := postgresadapter.NewAuditLogRepository(f.pool)
 		export, err := usecase.NewDataExportUsecase(f.users, customerProfiles, postgresadapter.NewStaffProfileRepository(f.pool),
-			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, postgresadapter.NewAssistantRepository(f.pool),
+			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, postgresadapter.NewPaymentRepository(f.pool), conversations, postgresadapter.NewAssistantRepository(f.pool),
 			postgresadapter.NewSavedProductRepository(f.pool),
 			postgresadapter.NewReviewRepository(f.pool), f.carts, fixedSessions{}, audit,
 		).Export(ctx, customer)

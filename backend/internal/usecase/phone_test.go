@@ -31,7 +31,7 @@ func TestPhoneClaim(t *testing.T) {
 		t.Parallel()
 		users := new(mockUserRepo)
 		hasher := new(mockHasher)
-		uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, hasher, nil, nil, nil)
+		uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, nil, passthroughTxManager{}, hasher, nil, nil, nil)
 		created := &domainuser.User{ID: uuid.New(), Role: domainuser.RoleStaff}
 
 		hasher.On("Hash", mock.Anything).Return("temp-hash", nil).Once()
@@ -116,7 +116,7 @@ func TestPhoneClaim(t *testing.T) {
 		t.Parallel()
 		users := new(mockUserRepo)
 		staff := new(mockStaffProfileRepo)
-		uc := usecase.NewAdminUserUsecase(users, nil, staff, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+		uc := usecase.NewAdminUserUsecase(users, nil, nil, staff, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 		targetID := uuid.New()
 
 		users.On("AdminGetByID", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff}, nil).Once()
@@ -135,7 +135,7 @@ func TestPhoneClaim(t *testing.T) {
 		t.Parallel()
 		users := new(mockUserRepo)
 		staff := new(mockStaffProfileRepo)
-		uc := usecase.NewAdminUserUsecase(users, nil, staff, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+		uc := usecase.NewAdminUserUsecase(users, nil, nil, staff, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 		targetID := uuid.New()
 
 		users.On("AdminGetByID", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff}, nil).Once()

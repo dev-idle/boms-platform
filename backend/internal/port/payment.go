@@ -23,6 +23,8 @@ type PaymentRepository interface {
 	// apperrors.ErrConflict.
 	Create(ctx context.Context, params CreatePaymentParams) (*domainpayment.Payment, error)
 	GetByOrderID(ctx context.Context, orderID uuid.UUID) (*domainpayment.Payment, error)
+	// ListByOrderIDs returns the payment of each order named that has one, by order.
+	ListByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID]domainpayment.Payment, error)
 	GetByProviderOrderID(ctx context.Context, provider domainpayment.Provider, providerOrderID string) (*domainpayment.Payment, error)
 	// Restart gives a denied payment a new provider order to approve. A payment
 	// not denied is apperrors.ErrNotFound.

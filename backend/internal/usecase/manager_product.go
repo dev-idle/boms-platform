@@ -195,8 +195,12 @@ func (u *ManagerProductUsecase) Update(
 	if err != nil {
 		return nil, apperrors.ErrValidation.WithDetail("category_id", "invalid uuid")
 	}
-	if err := u.ensureCategoryExists(ctx, categoryID); err != nil {
-		return nil, err
+	// A product moves only into a category on show; one in a hidden category
+	// (a season being prepared, or put away) stays editable where it is.
+	if categoryID != before.CategoryID {
+		if err := u.ensureCategoryExists(ctx, categoryID); err != nil {
+			return nil, err
+		}
 	}
 
 	name := strings.TrimSpace(req.Name)

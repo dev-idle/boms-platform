@@ -15,10 +15,11 @@ describe("resolveClientIp", () => {
     ).toBe("203.0.113.7");
   });
 
-  it("takes the client the chain starts with", () => {
+  it("takes the address the proxy appended, not what the visitor put first", () => {
     expect(
-      resolveClientIp(headers({ "x-forwarded-for": "203.0.113.7, 10.0.0.1, 10.0.0.2" })),
+      resolveClientIp(headers({ "x-forwarded-for": "1.2.3.4, 203.0.113.7" })),
     ).toBe("203.0.113.7");
+    expect(resolveClientIp(headers({ "x-forwarded-for": "203.0.113.7" }))).toBe("203.0.113.7");
   });
 
   it("reads IPv6", () => {

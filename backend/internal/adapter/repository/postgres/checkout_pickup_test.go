@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -319,6 +320,33 @@ func TestCheckoutPickup_Integration(t *testing.T) {
 		require.NoError(t, err)
 		_, err = f.orderUC.Checkout(ctx, late, uuid.New(), acceptingTerms(slot))
 		require.NoError(t, err, "a cancelled order no longer holds its slot")
+	})
+
+	t.Run("an_order_the_worker_would_expire_holds_no_place", func(t *testing.T) {
+		f.setSettings(t, func(s *domainstore.Settings) { s.SlotCapacity = 1 })
+		raw, err := pgxpool.New(ctx, f.connStr)
+		require.NoError(t, err)
+		t.Cleanup(raw.Close)
+		overdue := func(slot time.Time) *dto.OrderResponse {
+			customer := f.newCustomer(t, []uuid.UUID{f.cake}, nil)
+			order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(slot))
+			require.NoError(t, err)
+			_, err = f.paymentUC.Start(ctx, customer, uuid.MustParse(order.ID))
+			require.NoError(t, err)
+			_, err = raw.Exec(ctx, "UPDATE orders SET payment_due_at = now() - interval '5 minutes' WHERE id = $1", order.ID)
+			require.NoError(t, err)
+			return order
+		}
+
+		overdue(tomorrowAt(13, 0))
+		_, err = f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), uuid.New(), acceptingTerms(tomorrowAt(13, 0)))
+		require.NoError(t, err, "the place is free before the worker marks the order expired")
+
+		reviewed := overdue(tomorrowAt(13, 30))
+		_, err = raw.Exec(ctx, "UPDATE payments SET status = 'pending', capture_id = 'CAPTURE-held' WHERE order_id = $1", reviewed.ID)
+		require.NoError(t, err)
+		_, err = f.orderUC.Checkout(ctx, f.newCustomer(t, []uuid.UUID{f.cake}, nil), uuid.New(), acceptingTerms(tomorrowAt(13, 30)))
+		require.ErrorIs(t, err, domainorder.ErrPickupSlotFull, "a payment PayPal is reviewing can still confirm the order")
 	})
 
 	t.Run("two_checkouts_race_for_the_last_place", func(t *testing.T) {

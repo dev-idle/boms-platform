@@ -15,7 +15,7 @@ WITH usage AS MATERIALIZED (
     u.id IN (SELECT DISTINCT user_id FROM reviews WHERE deleted_at IS NULL) AS reviews,
     u.id IN (SELECT DISTINCT user_id FROM saved_products WHERE list = 'favorite') AS favorites,
     u.id IN (SELECT DISTINCT user_id FROM saved_products WHERE list = 'wishlist') AS wishlist,
-    u.id IN (SELECT DISTINCT author_id FROM messages WHERE author_role = 'customer' AND deleted_at IS NULL) AS messages,
+    u.id IN (SELECT DISTINCT author_id FROM messages WHERE author_role = 'customer' AND NOT via_assistant AND deleted_at IS NULL) AS messages,
     u.id IN (SELECT user_id FROM customer_profiles WHERE marketing_consent_at IS NOT NULL) AS promotions,
     u.id IN (SELECT DISTINCT user_id FROM assistant_sessions WHERE user_id IS NOT NULL) AS assistant
   FROM users u
@@ -69,7 +69,7 @@ type CountEngagementRow struct {
 //	    u.id IN (SELECT DISTINCT user_id FROM reviews WHERE deleted_at IS NULL) AS reviews,
 //	    u.id IN (SELECT DISTINCT user_id FROM saved_products WHERE list = 'favorite') AS favorites,
 //	    u.id IN (SELECT DISTINCT user_id FROM saved_products WHERE list = 'wishlist') AS wishlist,
-//	    u.id IN (SELECT DISTINCT author_id FROM messages WHERE author_role = 'customer' AND deleted_at IS NULL) AS messages,
+//	    u.id IN (SELECT DISTINCT author_id FROM messages WHERE author_role = 'customer' AND NOT via_assistant AND deleted_at IS NULL) AS messages,
 //	    u.id IN (SELECT user_id FROM customer_profiles WHERE marketing_consent_at IS NOT NULL) AS promotions,
 //	    u.id IN (SELECT DISTINCT user_id FROM assistant_sessions WHERE user_id IS NOT NULL) AS assistant
 //	  FROM users u

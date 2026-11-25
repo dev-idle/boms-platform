@@ -47,6 +47,7 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 		postgresadapter.NewStaffProfileRepository(f.pool),
 		postgresadapter.NewAdminProfileRepository(f.pool),
 		f.orders,
+		postgresadapter.NewPaymentRepository(f.pool),
 		postgresadapter.NewConversationRepository(f.pool),
 		postgresadapter.NewAssistantRepository(f.pool),
 		postgresadapter.NewSavedProductRepository(f.pool),
@@ -101,6 +102,7 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 		second, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(11, 0)))
 		require.NoError(t, err)
 		require.NoError(t, f.fillCart(customer, []uuid.UUID{f.cake}, nil))
+		f.pay(t, customer, second.ID)
 		f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
 		_, err = f.orders.AddIncident(ctx, port.AddOrderIncidentParams{OrderID: uuid.MustParse(first.ID), Type: domainorder.IncidentPaymentExpired})
 		require.NoError(t, err)
@@ -126,6 +128,11 @@ func TestPolicyAcceptanceAndDataExport_Integration(t *testing.T) {
 		require.Len(t, export.Orders, 2, "their orders and nobody else's")
 		assert.Equal(t, []string{second.ID, first.ID}, []string{export.Orders[0].ID, export.Orders[1].ID}, "newest first")
 		assert.Empty(t, export.Orders[0].Incidents)
+		require.NotNil(t, export.Orders[0].Payment, "how they paid")
+		assert.Equal(t, "captured", export.Orders[0].Payment.Status)
+		assert.Equal(t, second.TotalCents, export.Orders[0].Payment.AmountCents)
+		assert.NotNil(t, export.Orders[0].Payment.Reference, "the provider's reference")
+		assert.Nil(t, export.Orders[1].Payment, "an order never paid has no payment")
 		require.Len(t, export.Orders[1].Incidents, 1, "what went wrong with their order")
 		assert.Equal(t, "payment_expired", export.Orders[1].Incidents[0].Type)
 		for _, order := range export.Orders {

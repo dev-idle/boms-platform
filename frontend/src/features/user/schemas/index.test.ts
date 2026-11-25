@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dataExportSchema } from "./index";
+import { changePasswordFormSchema, dataExportSchema } from "./index";
 
 const exported = {
   exported_at: "2026-09-29T08:15:00Z",
@@ -32,5 +32,17 @@ describe("dataExportSchema", () => {
 
   it("refuses a response that is not an export", () => {
     expect(dataExportSchema.safeParse({ account: exported.account }).success).toBe(false);
+  });
+});
+
+describe("changePasswordFormSchema", () => {
+  it("refuses to keep the current password, a temporary one included", () => {
+    const result = changePasswordFormSchema.safeParse({
+      old_password: "Temp-Pass-123",
+      new_password: "Temp-Pass-123",
+      confirm_password: "Temp-Pass-123",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path.join("."))).toContain("new_password");
   });
 });

@@ -2,12 +2,16 @@ package middleware
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/boms/backend/internal/config"
+	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/infrastructure/ratelimit"
 	apperrors "github.com/boms/backend/internal/shared/errors"
 	"github.com/boms/backend/internal/shared/response"
@@ -59,6 +63,23 @@ func RedisRateLimit(rdb *goredis.Client, keyFn func(fiber.Ctx) string, max int, 
 			Message: apperrors.ErrTooManyRequests.Message,
 		})
 	}
+}
+
+// AuthUserRateLimit limits sign-in attempts per account, whatever address they
+// come from, so a password cannot be guessed from many addresses. The body is
+// read with the binder the login handler uses, so both see the same account
+// whatever the content type. The key is the email as given, lower-cased and
+// hashed, so no address sits in Redis. It fails closed, as the per-address
+// limit does.
+func AuthUserRateLimit(rdb *goredis.Client, cfg config.RateLimitRedisConfig) fiber.Handler {
+	return RedisRateLimit(rdb, func(c fiber.Ctx) string {
+		var req dto.LoginRequest
+		// A body that does not bind still counts, under the empty account: the
+		// handler refuses it after.
+		_ = c.Bind().Body(&req)
+		sum := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(req.Email))))
+		return "rl:account:" + hex.EncodeToString(sum[:16]) + ":auth_attempt"
+	}, cfg.AuthUserMax, cfg.AuthUserWindow, false)
 }
 
 // AuthAttemptRateLimit limits login/register attempts per IP (fail-closed when Redis is down).

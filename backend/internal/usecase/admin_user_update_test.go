@@ -16,12 +16,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestAdminUserUsecase_Enable_RefusesAnErasedAccount(t *testing.T) {
 	t.Parallel()
 	users := new(mockUserRepo)
-	uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+	uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 	targetID := uuid.New()
 	erasedAt := time.Now()
 	users.On("AdminGetByID", mock.Anything, targetID).Return(&domainuser.User{
@@ -43,7 +44,7 @@ func TestAdminUserUsecase_RefusesAdminTargets(t *testing.T) {
 		admin := &domainuser.User{ID: targetID, Role: domainuser.RoleAdmin}
 		users.On("AdminGetByID", mock.Anything, targetID).Return(admin, nil).Maybe()
 		users.On("AdminGetByIDForUpdate", mock.Anything, targetID).Return(admin, nil).Maybe()
-		return usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil), users, targetID
+		return usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil), users, targetID
 	}
 
 	t.Run("profile_update", func(t *testing.T) {
@@ -99,7 +100,7 @@ func TestAdminUserUsecase_UpdateRole(t *testing.T) {
 		users.On("AdminGetByID", mock.Anything, targetID).Return(target, nil).Maybe()
 		staff.On("GetByUserID", mock.Anything, targetID).Return(current, nil).Maybe()
 		return fixture{
-			uc:       usecase.NewAdminUserUsecase(users, nil, staff, nil, nil, sessions, passthroughTxManager{}, nil, nil, nil, nil),
+			uc:       usecase.NewAdminUserUsecase(users, nil, nil, staff, nil, nil, sessions, passthroughTxManager{}, nil, nil, nil, zap.NewNop()),
 			users:    users,
 			staff:    staff,
 			sessions: sessions,
@@ -171,6 +172,21 @@ func TestAdminUserUsecase_UpdateRole(t *testing.T) {
 		f.staff.AssertNotCalled(t, "NextEmployeeCode", mock.Anything)
 	})
 
+	t.Run("role_change_stands_though_the_session_sweep_fails", func(t *testing.T) {
+		t.Parallel()
+		f := newFixture(domainuser.RoleStaff)
+		f.staff.On("UpdateByUserID", mock.Anything, mock.Anything).Return(f.current, nil).Once()
+		f.users.On("UpdateRole", mock.Anything, f.targetID, domainuser.RoleBaker).Return(nil).Once()
+		f.sessions.On("DeleteAllForUser", mock.Anything, f.targetID.String()).Return(errors.New("redis is down")).Once()
+
+		_, err := f.uc.UpdateRole(context.Background(), uuid.New(), domainuser.RoleAdmin, f.targetID, dto.UpdateUserRoleRequest{
+			Role: string(domainuser.RoleBaker),
+		})
+
+		require.NoError(t, err, "the raised session version ends what the sweep missed")
+		f.users.AssertExpectations(t)
+	})
+
 	t.Run("held_phone_blocks_the_whole_change", func(t *testing.T) {
 		t.Parallel()
 		f := newFixture(domainuser.RoleStaff)
@@ -192,7 +208,7 @@ func TestAdminUserUsecase_UpdateRole(t *testing.T) {
 		targetID := uuid.New()
 		disabledAt := time.Now()
 		users.On("AdminGetByIDForUpdate", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff, DeletedAt: &disabledAt}, nil).Once()
-		uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+		uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 
 		_, err := uc.UpdateRole(context.Background(), uuid.New(), domainuser.RoleAdmin, targetID, dto.UpdateUserRoleRequest{Role: string(domainuser.RoleBaker)})
 
@@ -208,7 +224,7 @@ func TestAdminUserUsecase_UpdateRole(t *testing.T) {
 		targetID := uuid.New()
 		users.On("AdminGetByIDForUpdate", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff}, nil).Once()
 		staff.On("GetByUserID", mock.Anything, targetID).Return(nil, apperrors.ErrNotFound).Once()
-		uc := usecase.NewAdminUserUsecase(users, nil, staff, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+		uc := usecase.NewAdminUserUsecase(users, nil, nil, staff, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 
 		_, err := uc.UpdateRole(context.Background(), uuid.New(), domainuser.RoleAdmin, targetID, dto.UpdateUserRoleRequest{Role: string(domainuser.RoleBaker)})
 
@@ -219,7 +235,7 @@ func TestAdminUserUsecase_UpdateRole(t *testing.T) {
 func TestAdminUserUsecase_UpdateOperationalProfile_RejectsBlankName(t *testing.T) {
 	t.Parallel()
 	users := new(mockUserRepo)
-	uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
+	uc := usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, nil, passthroughTxManager{}, nil, nil, nil, nil)
 
 	_, err := uc.UpdateOperationalProfile(context.Background(), uuid.New(), domainuser.RoleAdmin, uuid.New(), dto.UpdateOperationalProfileRequest{FullName: "   "})
 
@@ -241,10 +257,11 @@ func TestAdminUserUsecase_VoidsEmailedLinks(t *testing.T) {
 		tokens := &fakeTokens{}
 		targetID := uuid.New()
 		users.On("AdminGetByID", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff}, nil)
+		users.On("GetByIDForUpdate", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff}, nil).Maybe()
 		staff.On("GetByUserID", mock.Anything, targetID).Return(&domainprofile.Staff{UserID: targetID, FullName: "Linh Tran"}, nil)
 		hasher.On("Hash", mock.Anything).Return("temp-hash", nil)
 		sessions.On("DeleteAllForUser", mock.Anything, targetID.String()).Return(nil)
-		uc := usecase.NewAdminUserUsecase(users, nil, staff, nil, tokens, sessions, passthroughTxManager{}, hasher, nil, nil, nil)
+		uc := usecase.NewAdminUserUsecase(users, &erasureOrders{}, nil, staff, nil, tokens, sessions, passthroughTxManager{}, hasher, nil, nil, nil)
 		return uc, users, tokens, sessions, targetID
 	}
 
@@ -286,6 +303,45 @@ func TestAdminUserUsecase_VoidsEmailedLinks(t *testing.T) {
 	})
 }
 
+func TestAdminUserUsecase_Disable(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	newFixture := func(open bool) (*usecase.AdminUserUsecase, *mockUserRepo, *mockSessionStore, uuid.UUID) {
+		users := new(mockUserRepo)
+		sessions := new(mockSessionStore)
+		targetID := uuid.New()
+		customer := &domainuser.User{ID: targetID, Role: domainuser.RoleCustomer}
+		users.On("AdminGetByID", mock.Anything, targetID).Return(customer, nil)
+		users.On("GetByIDForUpdate", mock.Anything, targetID).Return(customer, nil)
+		uc := usecase.NewAdminUserUsecase(users, &erasureOrders{open: open}, nil, nil, nil, &fakeTokens{}, sessions,
+			passthroughTxManager{}, nil, nil, nil, zap.NewNop())
+		return uc, users, sessions, targetID
+	}
+
+	t.Run("keeps_a_customer_with_an_order_still_to_collect", func(t *testing.T) {
+		t.Parallel()
+		uc, users, sessions, targetID := newFixture(true)
+
+		err := uc.Disable(ctx, uuid.New(), domainuser.RoleAdmin, targetID)
+
+		require.ErrorIs(t, err, domainuser.ErrAccountHasOpenOrders)
+		users.AssertNotCalled(t, "SoftDelete", mock.Anything, mock.Anything)
+		sessions.AssertNotCalled(t, "DeleteAllForUser", mock.Anything, mock.Anything)
+	})
+
+	t.Run("stands_though_the_session_sweep_fails", func(t *testing.T) {
+		t.Parallel()
+		uc, users, sessions, targetID := newFixture(false)
+		users.On("SoftDelete", mock.Anything, targetID).Return(nil)
+		sessions.On("DeleteAllForUser", mock.Anything, targetID.String()).Return(errors.New("redis is down"))
+
+		require.NoError(t, uc.Disable(ctx, uuid.New(), domainuser.RoleAdmin, targetID),
+			"the raised session version ends what the sweep missed")
+		users.AssertExpectations(t)
+	})
+}
+
 func TestAdminUserUsecase_RevokeSessions(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -295,7 +351,7 @@ func TestAdminUserUsecase_RevokeSessions(t *testing.T) {
 		sessions := new(mockSessionStore)
 		targetID := uuid.New()
 		users.On("AdminGetByID", mock.Anything, targetID).Return(&domainuser.User{ID: targetID, Role: domainuser.RoleStaff}, nil)
-		return usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, sessions, passthroughTxManager{}, nil, nil, nil, nil), users, sessions, targetID
+		return usecase.NewAdminUserUsecase(users, nil, nil, nil, nil, nil, sessions, passthroughTxManager{}, nil, nil, nil, zap.NewNop()), users, sessions, targetID
 	}
 
 	t.Run("ends_them_for_good", func(t *testing.T) {
@@ -308,6 +364,16 @@ func TestAdminUserUsecase_RevokeSessions(t *testing.T) {
 
 		users.AssertExpectations(t)
 		sessions.AssertExpectations(t)
+	})
+
+	t.Run("stands_though_the_session_sweep_fails", func(t *testing.T) {
+		t.Parallel()
+		uc, users, sessions, targetID := newFixture()
+		users.On("BumpSessionVersion", mock.Anything, targetID).Return(nil)
+		sessions.On("DeleteAllForUser", mock.Anything, targetID.String()).Return(errors.New("redis is down"))
+
+		require.NoError(t, uc.RevokeSessions(ctx, uuid.New(), domainuser.RoleAdmin, targetID),
+			"the raised session version ends what the sweep missed")
 	})
 
 	t.Run("a_failed_bump_skips_the_sweep", func(t *testing.T) {

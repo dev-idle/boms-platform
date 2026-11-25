@@ -121,13 +121,23 @@ type Querier interface {
 	CancelOrderTickets(ctx context.Context, orderID uuid.UUID) ([]OrderTicket, error)
 	//CatalogGetComboByID
 	//
-	//  SELECT id, name, slug, price_cents, image_url, starts_at, ends_at
-	//  FROM combos
-	//  WHERE id = $1
-	//    AND deleted_at IS NULL
-	//    AND is_active = true
-	//    AND starts_at <= now()
-	//    AND ends_at > now()
+	//  SELECT c.id, c.name, c.slug, c.price_cents, c.image_url, c.starts_at, c.ends_at
+	//  FROM combos c
+	//  WHERE c.id = $1
+	//    AND c.deleted_at IS NULL
+	//    AND c.is_active = true
+	//    AND c.starts_at <= now()
+	//    AND c.ends_at > now()
+	//    AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+	//    -- Every product in it is on sale: a combo missing one is not sold short.
+	//    AND NOT EXISTS (
+	//      SELECT 1
+	//      FROM combo_items ci
+	//      LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+	//      LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+	//      WHERE ci.combo_id = c.id
+	//        AND cat.id IS NULL
+	//    )
 	CatalogGetComboByID(ctx context.Context, id uuid.UUID) (CatalogGetComboByIDRow, error)
 	//CatalogGetCombosByIDs
 	//
@@ -138,12 +148,15 @@ type Querier interface {
 	//    AND c.is_active = true
 	//    AND c.starts_at <= now()
 	//    AND c.ends_at > now()
-	//    AND EXISTS (
+	//    AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+	//    -- Every product in it is on sale: a combo missing one is not sold short.
+	//    AND NOT EXISTS (
 	//      SELECT 1
 	//      FROM combo_items ci
-	//      INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
-	//      INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+	//      LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+	//      LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
 	//      WHERE ci.combo_id = c.id
+	//        AND cat.id IS NULL
 	//    )
 	CatalogGetCombosByIDs(ctx context.Context, comboIds []uuid.UUID) ([]CatalogGetCombosByIDsRow, error)
 	//CatalogGetProductByID
@@ -208,12 +221,15 @@ type Querier interface {
 	//    AND c.is_active = true
 	//    AND c.starts_at <= now()
 	//    AND c.ends_at > now()
-	//    AND EXISTS (
+	//    AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+	//    -- Every product in it is on sale: a combo missing one is not sold short.
+	//    AND NOT EXISTS (
 	//      SELECT 1
 	//      FROM combo_items ci
-	//      INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
-	//      INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+	//      LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+	//      LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
 	//      WHERE ci.combo_id = c.id
+	//        AND cat.id IS NULL
 	//    )
 	//  ORDER BY c.starts_at ASC, c.name ASC
 	//  LIMIT $1 OFFSET $2
@@ -226,12 +242,15 @@ type Querier interface {
 	//    AND c.is_active = true
 	//    AND c.starts_at <= now()
 	//    AND c.ends_at > now()
-	//    AND EXISTS (
+	//    AND EXISTS (SELECT 1 FROM combo_items ci WHERE ci.combo_id = c.id)
+	//    -- Every product in it is on sale: a combo missing one is not sold short.
+	//    AND NOT EXISTS (
 	//      SELECT 1
 	//      FROM combo_items ci
-	//      INNER JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
-	//      INNER JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
+	//      LEFT JOIN products p ON p.id = ci.product_id AND p.deleted_at IS NULL AND p.is_active = true
+	//      LEFT JOIN categories cat ON cat.id = p.category_id AND cat.deleted_at IS NULL AND cat.is_active = true
 	//      WHERE ci.combo_id = c.id
+	//        AND cat.id IS NULL
 	//    )
 	CatalogListCombosCount(ctx context.Context) (int64, error)
 	// The page is cut first and the gallery gathered after: fetching images
@@ -377,7 +396,8 @@ type Querier interface {
 	//    AND discount_code_id = $2
 	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
 	CountCustomerDiscountUses(ctx context.Context, arg CountCustomerDiscountUsesParams) (int64, error)
-	// A customer's orders not cancelled or expired with a pickup in [from_at, to_at).
+	// A customer's orders not cancelled or expired with a pickup in [from_at,
+	// to_at), an unpaid one the worker would expire left out (CountOrdersInSlot).
 	//
 	//  SELECT count(*)::bigint AS count
 	//  FROM orders
@@ -385,6 +405,14 @@ type Querier interface {
 	//    AND pickup_at >= $2::timestamptz
 	//    AND pickup_at < $3::timestamptz
 	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+	//    AND NOT (
+	//      status = 'awaiting_payment'::order_status
+	//      AND payment_due_at <= now() - make_interval(secs => $4::double precision)
+	//      AND NOT EXISTS (
+	//        SELECT 1 FROM payments p
+	//        WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+	//      )
+	//    )
 	CountCustomerOrdersBetween(ctx context.Context, arg CountCustomerOrdersBetweenParams) (int64, error)
 	// How many open customer accounts there are, how many of them used each
 	// engagement feature, and how many used none, one, or two or more. Reviews
@@ -400,7 +428,7 @@ type Querier interface {
 	//      u.id IN (SELECT DISTINCT user_id FROM reviews WHERE deleted_at IS NULL) AS reviews,
 	//      u.id IN (SELECT DISTINCT user_id FROM saved_products WHERE list = 'favorite') AS favorites,
 	//      u.id IN (SELECT DISTINCT user_id FROM saved_products WHERE list = 'wishlist') AS wishlist,
-	//      u.id IN (SELECT DISTINCT author_id FROM messages WHERE author_role = 'customer' AND deleted_at IS NULL) AS messages,
+	//      u.id IN (SELECT DISTINCT author_id FROM messages WHERE author_role = 'customer' AND NOT via_assistant AND deleted_at IS NULL) AS messages,
 	//      u.id IN (SELECT user_id FROM customer_profiles WHERE marketing_consent_at IS NOT NULL) AS promotions,
 	//      u.id IN (SELECT DISTINCT user_id FROM assistant_sessions WHERE user_id IS NOT NULL) AS assistant
 	//    FROM users u
@@ -443,24 +471,42 @@ type Querier interface {
 	//  GROUP BY type
 	//  ORDER BY type
 	CountOrderIncidentsByType(ctx context.Context, arg CountOrderIncidentsByTypeParams) ([]CountOrderIncidentsByTypeRow, error)
-	//CountOrdersByPickupTime
+	// The orders holding each pickup time, counted as CountOrdersInSlot counts.
 	//
 	//  SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
 	//  FROM orders
 	//  WHERE pickup_at >= $1::timestamptz
 	//    AND pickup_at < $2::timestamptz
 	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+	//    AND NOT (
+	//      status = 'awaiting_payment'::order_status
+	//      AND payment_due_at <= now() - make_interval(secs => $3::double precision)
+	//      AND NOT EXISTS (
+	//        SELECT 1 FROM payments p
+	//        WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+	//      )
+	//    )
 	//  GROUP BY pickup_at
 	CountOrdersByPickupTime(ctx context.Context, arg CountOrdersByPickupTimeParams) ([]CountOrdersByPickupTimeRow, error)
 	// Orders holding the slot [from_at, to_at): every order not cancelled or
 	// expired whose pickup falls in it, wherever in it an earlier slot grid put
-	// that pickup.
+	// that pickup. An unpaid order the worker would expire — past its time to pay
+	// and grace_seconds, with no payment PayPal is reviewing — holds nothing,
+	// though the worker has yet to run.
 	//
 	//  SELECT count(*)::bigint AS count
 	//  FROM orders
 	//  WHERE pickup_at >= $1::timestamptz
 	//    AND pickup_at < $2::timestamptz
 	//    AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+	//    AND NOT (
+	//      status = 'awaiting_payment'::order_status
+	//      AND payment_due_at <= now() - make_interval(secs => $3::double precision)
+	//      AND NOT EXISTS (
+	//        SELECT 1 FROM payments p
+	//        WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+	//      )
+	//    )
 	CountOrdersInSlot(ctx context.Context, arg CountOrdersInSlotParams) (int64, error)
 	// How many products on sale the customer's list shows besides the one given.
 	//
@@ -615,11 +661,12 @@ type Querier interface {
 	//      updated_at,
 	//      deleted_at
 	CreateDiscountCode(ctx context.Context, arg CreateDiscountCodeParams) (DiscountCode, error)
-	// Writes a message and returns it as a thread lists it.
+	// Writes a message and returns it as a thread lists it. via_assistant marks a
+	// customer's questions the assistant passed on to the counter.
 	//
 	//  WITH created AS (
-	//    INSERT INTO messages (conversation_id, author_id, author_role, body)
-	//    VALUES ($1, $2, $3, $4)
+	//    INSERT INTO messages (conversation_id, author_id, author_role, body, via_assistant)
+	//    VALUES ($1, $2, $3, $4, $5)
 	//    RETURNING id, author_id, author_role, body, created_at
 	//  )
 	//  SELECT
@@ -1844,6 +1891,12 @@ type Querier interface {
 	//      OR created_at < $4::timestamptz
 	//    )
 	ListOrdersByUserCount(ctx context.Context, arg ListOrdersByUserCountParams) (int64, error)
+	// The payment of each order named that has one, for a personal data export.
+	//
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  FROM payments
+	//  WHERE order_id = ANY($1::uuid[])
+	ListPaymentsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]Payment, error)
 	//ListProductImagesByProductID
 	//
 	//  SELECT image_url, sort_order
@@ -3483,10 +3536,12 @@ type Querier interface {
 	//    AND o.product_id = $1
 	//    AND o.deleted_at IS NULL
 	UpdateProductOptions(ctx context.Context, arg UpdateProductOptionsParams) (int64, error)
-	//UpdateRole
+	// A role change ends the account's sessions for good: one the Redis sweep
+	// misses cannot refresh into the new role.
 	//
 	//  UPDATE users
 	//  SET role = $2,
+	//      session_version = session_version + 1,
 	//      updated_at = now()
 	//  WHERE id = $1
 	//    AND deleted_at IS NULL

@@ -147,9 +147,26 @@ func mapPayment(row sqlcgen.Payment) *domainpayment.Payment {
 		Currency:          row.Currency,
 		CapturedAt:        row.CapturedAt,
 		RefundRequestedAt: row.RefundRequestedAt,
+		RefundID:          row.RefundID,
 		RefundedAt:        row.RefundedAt,
 		CreatedAt:         row.CreatedAt,
 	}
+}
+
+// ListByOrderIDs implements port.PaymentRepository.
+func (r *PaymentRepository) ListByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID]domainpayment.Payment, error) {
+	out := make(map[uuid.UUID]domainpayment.Payment, len(orderIDs))
+	if len(orderIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.q(ctx).ListPaymentsByOrderIDs(ctx, orderIDs)
+	if err != nil {
+		return nil, mapRepoError(err, "list payments by orders")
+	}
+	for _, row := range rows {
+		out[row.OrderID] = *mapPayment(row)
+	}
+	return out, nil
 }
 
 // CreateCash implements port.PaymentRepository.

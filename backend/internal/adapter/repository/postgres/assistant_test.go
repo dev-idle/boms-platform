@@ -112,6 +112,10 @@ func TestAssistant_Integration(t *testing.T) {
 		require.Len(t, thread.Messages, 1)
 		assert.Equal(t, "My cake came without its candles.", thread.Messages[0].Body)
 		assert.Equal(t, "customer", thread.Messages[0].From, "the customer's own words, not the assistant's")
+		var viaAssistant bool
+		require.NoError(t, raw.QueryRow(ctx, "SELECT via_assistant FROM messages WHERE body = $1",
+			"My cake came without its candles.").Scan(&viaAssistant))
+		assert.True(t, viaAssistant, "engagement counts customers writing, not questions the assistant passed on")
 	})
 
 	t.Run("a_question_about_no_order_goes_to_the_general_conversation", func(t *testing.T) {
@@ -200,7 +204,7 @@ func TestAssistant_Integration(t *testing.T) {
 		customerProfiles := postgresadapter.NewCustomerProfileRepository(f.pool)
 		audit := postgresadapter.NewAuditLogRepository(f.pool)
 		export, err := usecase.NewDataExportUsecase(f.users, customerProfiles, postgresadapter.NewStaffProfileRepository(f.pool),
-			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, conversations, sessions,
+			postgresadapter.NewAdminProfileRepository(f.pool), f.orders, postgresadapter.NewPaymentRepository(f.pool), conversations, sessions,
 			postgresadapter.NewSavedProductRepository(f.pool), postgresadapter.NewReviewRepository(f.pool), f.carts, fixedSessions{}, audit,
 		).Export(ctx, customer)
 		require.NoError(t, err)

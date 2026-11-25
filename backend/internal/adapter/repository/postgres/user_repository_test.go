@@ -220,6 +220,19 @@ func TestUserRepository_Integration(t *testing.T) {
 		assert.True(t, confirmed.EmailVerified)
 	})
 
+	t.Run("a_role_change_ends_the_accounts_sessions", func(t *testing.T) {
+		user, err := repo.Create(ctx, port.CreateUserParams{
+			Email: "role-version@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleStaff,
+		})
+		require.NoError(t, err)
+
+		require.NoError(t, repo.UpdateRole(ctx, user.ID, domainuser.RoleBaker))
+
+		byID, err := repo.GetByID(ctx, user.ID)
+		require.NoError(t, err)
+		assert.Equal(t, user.SessionVersion+1, byID.SessionVersion, "a session the sweep misses cannot refresh into the new role")
+	})
+
 	t.Run("every password write, disabling and a revoke end the account's sessions", func(t *testing.T) {
 		user, err := repo.Create(ctx, port.CreateUserParams{
 			Email: "versions@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,

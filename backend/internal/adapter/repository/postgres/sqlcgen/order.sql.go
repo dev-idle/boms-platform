@@ -47,15 +47,25 @@ WHERE user_id = $1::uuid
   AND pickup_at >= $2::timestamptz
   AND pickup_at < $3::timestamptz
   AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+  AND NOT (
+    status = 'awaiting_payment'::order_status
+    AND payment_due_at <= now() - make_interval(secs => $4::double precision)
+    AND NOT EXISTS (
+      SELECT 1 FROM payments p
+      WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+    )
+  )
 `
 
 type CountCustomerOrdersBetweenParams struct {
-	UserID uuid.UUID `json:"userId"`
-	FromAt time.Time `json:"fromAt"`
-	ToAt   time.Time `json:"toAt"`
+	UserID       uuid.UUID `json:"userId"`
+	FromAt       time.Time `json:"fromAt"`
+	ToAt         time.Time `json:"toAt"`
+	GraceSeconds float64   `json:"graceSeconds"`
 }
 
-// A customer's orders not cancelled or expired with a pickup in [from_at, to_at).
+// A customer's orders not cancelled or expired with a pickup in [from_at,
+// to_at), an unpaid one the worker would expire left out (CountOrdersInSlot).
 //
 //	SELECT count(*)::bigint AS count
 //	FROM orders
@@ -63,8 +73,21 @@ type CountCustomerOrdersBetweenParams struct {
 //	  AND pickup_at >= $2::timestamptz
 //	  AND pickup_at < $3::timestamptz
 //	  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+//	  AND NOT (
+//	    status = 'awaiting_payment'::order_status
+//	    AND payment_due_at <= now() - make_interval(secs => $4::double precision)
+//	    AND NOT EXISTS (
+//	      SELECT 1 FROM payments p
+//	      WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+//	    )
+//	  )
 func (q *Queries) CountCustomerOrdersBetween(ctx context.Context, arg CountCustomerOrdersBetweenParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countCustomerOrdersBetween, arg.UserID, arg.FromAt, arg.ToAt)
+	row := q.db.QueryRow(ctx, countCustomerOrdersBetween,
+		arg.UserID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.GraceSeconds,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -76,12 +99,21 @@ FROM orders
 WHERE pickup_at >= $1::timestamptz
   AND pickup_at < $2::timestamptz
   AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+  AND NOT (
+    status = 'awaiting_payment'::order_status
+    AND payment_due_at <= now() - make_interval(secs => $3::double precision)
+    AND NOT EXISTS (
+      SELECT 1 FROM payments p
+      WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+    )
+  )
 GROUP BY pickup_at
 `
 
 type CountOrdersByPickupTimeParams struct {
-	FromAt time.Time `json:"fromAt"`
-	ToAt   time.Time `json:"toAt"`
+	FromAt       time.Time `json:"fromAt"`
+	ToAt         time.Time `json:"toAt"`
+	GraceSeconds float64   `json:"graceSeconds"`
 }
 
 type CountOrdersByPickupTimeRow struct {
@@ -89,16 +121,24 @@ type CountOrdersByPickupTimeRow struct {
 	Count    int64     `json:"count"`
 }
 
-// CountOrdersByPickupTime
+// The orders holding each pickup time, counted as CountOrdersInSlot counts.
 //
 //	SELECT pickup_at::timestamptz AS pickup_at, count(*)::bigint AS count
 //	FROM orders
 //	WHERE pickup_at >= $1::timestamptz
 //	  AND pickup_at < $2::timestamptz
 //	  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+//	  AND NOT (
+//	    status = 'awaiting_payment'::order_status
+//	    AND payment_due_at <= now() - make_interval(secs => $3::double precision)
+//	    AND NOT EXISTS (
+//	      SELECT 1 FROM payments p
+//	      WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+//	    )
+//	  )
 //	GROUP BY pickup_at
 func (q *Queries) CountOrdersByPickupTime(ctx context.Context, arg CountOrdersByPickupTimeParams) ([]CountOrdersByPickupTimeRow, error) {
-	rows, err := q.db.Query(ctx, countOrdersByPickupTime, arg.FromAt, arg.ToAt)
+	rows, err := q.db.Query(ctx, countOrdersByPickupTime, arg.FromAt, arg.ToAt, arg.GraceSeconds)
 	if err != nil {
 		return nil, err
 	}
@@ -123,24 +163,43 @@ FROM orders
 WHERE pickup_at >= $1::timestamptz
   AND pickup_at < $2::timestamptz
   AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+  AND NOT (
+    status = 'awaiting_payment'::order_status
+    AND payment_due_at <= now() - make_interval(secs => $3::double precision)
+    AND NOT EXISTS (
+      SELECT 1 FROM payments p
+      WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+    )
+  )
 `
 
 type CountOrdersInSlotParams struct {
-	FromAt time.Time `json:"fromAt"`
-	ToAt   time.Time `json:"toAt"`
+	FromAt       time.Time `json:"fromAt"`
+	ToAt         time.Time `json:"toAt"`
+	GraceSeconds float64   `json:"graceSeconds"`
 }
 
 // Orders holding the slot [from_at, to_at): every order not cancelled or
 // expired whose pickup falls in it, wherever in it an earlier slot grid put
-// that pickup.
+// that pickup. An unpaid order the worker would expire — past its time to pay
+// and grace_seconds, with no payment PayPal is reviewing — holds nothing,
+// though the worker has yet to run.
 //
 //	SELECT count(*)::bigint AS count
 //	FROM orders
 //	WHERE pickup_at >= $1::timestamptz
 //	  AND pickup_at < $2::timestamptz
 //	  AND status NOT IN ('cancelled'::order_status, 'expired'::order_status)
+//	  AND NOT (
+//	    status = 'awaiting_payment'::order_status
+//	    AND payment_due_at <= now() - make_interval(secs => $3::double precision)
+//	    AND NOT EXISTS (
+//	      SELECT 1 FROM payments p
+//	      WHERE p.order_id = orders.id AND p.status = 'pending'::payment_status
+//	    )
+//	  )
 func (q *Queries) CountOrdersInSlot(ctx context.Context, arg CountOrdersInSlotParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countOrdersInSlot, arg.FromAt, arg.ToAt)
+	row := q.db.QueryRow(ctx, countOrdersInSlot, arg.FromAt, arg.ToAt, arg.GraceSeconds)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

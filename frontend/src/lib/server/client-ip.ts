@@ -25,14 +25,19 @@ function isAddress(value: string): boolean {
  * BFF's own address: one rate-limit bucket for the whole storefront, and one
  * address in every audit row.
  *
- * **Only trustworthy behind a proxy that overwrites these headers** — Vercel and
- * a standard nginx `proxy_set_header` both do. A directly exposed Next server
- * would let a visitor choose its own address, so the deployment must not do that.
+ * **Only trustworthy behind one proxy that sets these headers** — Vercel and a
+ * standard nginx `proxy_set_header` both do. The single address wins, so the
+ * proxy must overwrite it (`proxy_set_header X-Real-IP $remote_addr`) or a
+ * visitor's own copy is taken. From the chain the last entry is taken: a proxy
+ * that appends (`$proxy_add_x_forwarded_for`) adds the address it saw at the
+ * end, while everything before it is what the visitor sent. A directly exposed
+ * Next server would let a visitor choose its own address, so the deployment
+ * must not do that.
  */
 export function resolveClientIp(headers: Headers): string | undefined {
   const candidates = [
     headers.get(EDGE_CLIENT_IP_HEADER.single),
-    headers.get(EDGE_CLIENT_IP_HEADER.chain)?.split(",")[0],
+    headers.get(EDGE_CLIENT_IP_HEADER.chain)?.split(",").at(-1),
   ];
 
   for (const candidate of candidates) {

@@ -96,8 +96,9 @@ func main() {
 		zlog.Fatal("auth_usecase", zap.Error(err))
 	}
 	meUC := usecase.NewMeUsecase(userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, userTokenRepo, sessionStore, pgPool, hasher, auditLogger, zlog)
+	orderRepo := postgresrepo.NewOrderRepository(pgPool)
 	adminUserUC := usecase.NewAdminUserUsecase(
-		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, userTokenRepo, sessionStore, pgPool, hasher, auditLogger, auditLogRepo, zlog,
+		userRepo, orderRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, userTokenRepo, sessionStore, pgPool, hasher, auditLogger, auditLogRepo, zlog,
 	)
 	categoryRepo := postgresrepo.NewCategoryRepository(pgPool)
 	productRepo := postgresrepo.NewProductRepository(pgPool)
@@ -110,7 +111,6 @@ func main() {
 	managerDiscountCodeUC := usecase.NewManagerDiscountCodeUsecase(discountCodeRepo, auditLogger, zlog)
 	catalogUC := usecase.NewCatalogUsecase(categoryRepo, productRepo, comboRepo)
 	cartRepo := postgresrepo.NewCartRepository(pgPool)
-	orderRepo := postgresrepo.NewOrderRepository(pgPool)
 	cartUC := usecase.NewCartUsecase(cartRepo, productRepo, comboRepo, discountCodeRepo, cfg.Cloudinary)
 	storeSettingsRepo := postgresrepo.NewStoreSettingsRepository(pgPool)
 	eventDispatcher := eventdispatch.New(outboxRepo, bootstrap.EventPublisher(redisClient.RDB()), pgPool, zlog, cfg.Outbox.DispatchTimeout)
@@ -139,7 +139,7 @@ func main() {
 		auditLogger, zlog,
 	)
 	dataExportUC := usecase.NewDataExportUsecase(
-		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, conversationRepo, assistantRepo, savedProductRepo, reviewRepo, cartRepo, sessionStore,
+		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, paymentRepo, conversationRepo, assistantRepo, savedProductRepo, reviewRepo, cartRepo, sessionStore,
 		auditLogRepo,
 	)
 	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, pgPool, outboxRepo, auditLogger, zlog)
@@ -226,7 +226,7 @@ func main() {
 	rdb := redisClient.RDB()
 	authGroup := apiV1.Group("/auth")
 	authGroup.Post("/register", middleware.AuthAttemptRateLimit(rdb, cfg.RateRedis), authHandler.Register)
-	authGroup.Post("/login", middleware.AuthAttemptRateLimit(rdb, cfg.RateRedis), authHandler.Login)
+	authGroup.Post("/login", middleware.AuthAttemptRateLimit(rdb, cfg.RateRedis), middleware.AuthUserRateLimit(rdb, cfg.RateRedis), authHandler.Login)
 	authGroup.Post("/refresh", middleware.AuthRefreshRateLimit(rdb, cfg.RateRedis), authHandler.Refresh)
 	authGroup.Post("/logout", middleware.AuthLogoutRateLimit(rdb, cfg.RateRedis), middleware.OptionalAuth(tokenSigner), authHandler.Logout)
 	// Emailed links work without a session: they are often opened on another device.

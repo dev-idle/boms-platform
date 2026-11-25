@@ -53,10 +53,11 @@ SET status = 'open',
 RETURNING id;
 
 -- name: CreateMessage :one
--- Writes a message and returns it as a thread lists it.
+-- Writes a message and returns it as a thread lists it. via_assistant marks a
+-- customer's questions the assistant passed on to the counter.
 WITH created AS (
-  INSERT INTO messages (conversation_id, author_id, author_role, body)
-  VALUES (sqlc.arg('conversation_id'), sqlc.arg('author_id'), sqlc.arg('author_role'), sqlc.arg('body'))
+  INSERT INTO messages (conversation_id, author_id, author_role, body, via_assistant)
+  VALUES (sqlc.arg('conversation_id'), sqlc.arg('author_id'), sqlc.arg('author_role'), sqlc.arg('body'), sqlc.arg('via_assistant'))
   RETURNING id, author_id, author_role, body, created_at
 )
 SELECT

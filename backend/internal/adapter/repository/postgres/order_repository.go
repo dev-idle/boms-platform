@@ -539,8 +539,9 @@ func (r *OrderRepository) HoldPickupSlot(ctx context.Context, startsAt time.Time
 		return 0, mapRepoError(err, "lock pickup slot")
 	}
 	count, err := r.q(ctx).CountOrdersInSlot(ctx, sqlcgen.CountOrdersInSlotParams{
-		FromAt: startsAt,
-		ToAt:   startsAt.Add(length),
+		FromAt:       startsAt,
+		ToAt:         startsAt.Add(length),
+		GraceSeconds: domainorder.ExpiryGrace.Seconds(),
 	})
 	if err != nil {
 		return 0, mapRepoError(err, "count orders in slot")
@@ -562,9 +563,10 @@ func (r *OrderRepository) HoldCustomerDay(ctx context.Context, userID uuid.UUID,
 		return 0, mapRepoError(err, "lock customer bookings")
 	}
 	count, err := r.q(ctx).CountCustomerOrdersBetween(ctx, sqlcgen.CountCustomerOrdersBetweenParams{
-		UserID: userID,
-		FromAt: from,
-		ToAt:   to,
+		UserID:       userID,
+		FromAt:       from,
+		ToAt:         to,
+		GraceSeconds: domainorder.ExpiryGrace.Seconds(),
 	})
 	if err != nil {
 		return 0, mapRepoError(err, "count customer orders between")
@@ -573,7 +575,9 @@ func (r *OrderRepository) HoldCustomerDay(ctx context.Context, userID uuid.UUID,
 }
 
 func (r *OrderRepository) CountByPickupTime(ctx context.Context, from, to time.Time) ([]port.PickupCount, error) {
-	rows, err := r.q(ctx).CountOrdersByPickupTime(ctx, sqlcgen.CountOrdersByPickupTimeParams{FromAt: from, ToAt: to})
+	rows, err := r.q(ctx).CountOrdersByPickupTime(ctx, sqlcgen.CountOrdersByPickupTimeParams{
+		FromAt: from, ToAt: to, GraceSeconds: domainorder.ExpiryGrace.Seconds(),
+	})
 	if err != nil {
 		return nil, mapRepoError(err, "count orders by pickup time")
 	}

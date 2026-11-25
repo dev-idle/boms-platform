@@ -33,6 +33,12 @@ SELECT *
 FROM payments
 WHERE order_id = $1;
 
+-- name: ListPaymentsByOrderIDs :many
+-- The payment of each order named that has one, for a personal data export.
+SELECT *
+FROM payments
+WHERE order_id = ANY(sqlc.arg('order_ids')::uuid[]);
+
 -- name: GetPaymentByProviderOrderID :one
 SELECT *
 FROM payments

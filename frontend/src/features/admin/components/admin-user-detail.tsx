@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { InlineLoadingState } from "@/components/ui/loading-state";
-import { isApiError } from "@/lib/errors";
+import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
 
 import {
@@ -50,6 +50,10 @@ export function AdminUserDetail({ userId }: { userId: string }) {
     }
     if (isApiError(error) && error.isCannotModifyAdmin()) {
       toast.error("Admin accounts cannot be disabled or have sessions revoked.");
+      return;
+    }
+    if (isApiError(error) && error.code === ApiErrorCode.AccountHasOpenOrders) {
+      toast.error("This customer has orders the bakery has not handed over or cancelled yet. Settle those first.");
       return;
     }
     toast.error(isApiError(error) ? error.message : fallback);

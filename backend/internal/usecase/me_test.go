@@ -2,6 +2,7 @@ package usecase_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	domainprofile "github.com/boms/backend/internal/domain/profile"
 	domainuser "github.com/boms/backend/internal/domain/user"
@@ -105,7 +107,7 @@ func TestMeUsecase_ChangePassword(t *testing.T) {
 		users.On("GetByID", mock.Anything, userID).Return(&domainuser.User{ID: userID, Role: domainuser.RoleCustomer, PasswordHash: "old-hash"}, nil)
 		hasher.On("Verify", "old-hash", "Old-Password-1").Return(nil)
 		hasher.On("Hash", "New-Password-2").Return("new-hash", nil)
-		return usecase.NewMeUsecase(users, nil, nil, nil, tokens, sessions, passthroughTxManager{}, hasher, nil, nil), users, tokens, sessions, userID
+		return usecase.NewMeUsecase(users, nil, nil, nil, tokens, sessions, passthroughTxManager{}, hasher, nil, zap.NewNop()), users, tokens, sessions, userID
 	}
 
 	t.Run("a_new_password_voids_the_emailed_links", func(t *testing.T) {
@@ -122,6 +124,17 @@ func TestMeUsecase_ChangePassword(t *testing.T) {
 		sessions.AssertExpectations(t)
 	})
 
+	t.Run("stands_though_the_session_sweep_fails", func(t *testing.T) {
+		t.Parallel()
+		uc, users, _, sessions, userID := newFixture()
+		users.On("UpdatePassword", mock.Anything, userID, "new-hash").Return(nil)
+		users.On("ClearMustChangePassword", mock.Anything, userID).Return(nil)
+		sessions.On("DeleteAllForUser", mock.Anything, userID.String()).Return(errors.New("redis is down"))
+
+		require.NoError(t, uc.ChangePassword(ctx, userID, "Old-Password-1", "New-Password-2"),
+			"the raised session version ends what the sweep missed")
+	})
+
 	t.Run("links_that_cannot_be_voided_stop_the_change", func(t *testing.T) {
 		t.Parallel()
 		uc, users, tokens, sessions, userID := newFixture()
@@ -131,5 +144,19 @@ func TestMeUsecase_ChangePassword(t *testing.T) {
 
 		users.AssertNotCalled(t, "UpdatePassword", mock.Anything, mock.Anything, mock.Anything)
 		sessions.AssertNotCalled(t, "DeleteAllForUser", mock.Anything, mock.Anything)
+	})
+
+	t.Run("refuses_to_keep_the_current_password", func(t *testing.T) {
+		t.Parallel()
+		uc, users, tokens, _, userID := newFixture()
+
+		err := uc.ChangePassword(ctx, userID, "Old-Password-1", "Old-Password-1")
+
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, apperrors.ErrValidation.Code, appErr.Code)
+		assert.Contains(t, appErr.Details, "new_password", "a temporary password an admin has seen cannot stay")
+		assert.Empty(t, tokens.deleted)
+		users.AssertNotCalled(t, "UpdatePassword", mock.Anything, mock.Anything, mock.Anything)
 	})
 }

@@ -5,7 +5,7 @@
  */
 /**
  * Where the hosting edge reports the visitor: one address, or a chain whose
- * first entry is the client it saw. Read through these names only — they are the
+ * last entry is the one the edge appended for the client it saw. Read through these names only — they are the
  * same strings the strip list below removes, so a header the BFF reads can never
  * be one a browser was allowed to set.
  */

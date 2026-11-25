@@ -78,12 +78,14 @@ func (r *ConversationRepository) CreateMessage(
 	conversationID, authorID uuid.UUID,
 	authorRole domainuser.Role,
 	body string,
+	viaAssistant bool,
 ) (*domainconversation.Message, error) {
 	row, err := r.q(ctx).CreateMessage(ctx, sqlcgen.CreateMessageParams{
 		ConversationID: conversationID,
 		AuthorID:       authorID,
 		AuthorRole:     sqlcgen.UserRole(authorRole),
 		Body:           body,
+		ViaAssistant:   viaAssistant,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "create message")

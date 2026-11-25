@@ -272,8 +272,9 @@ type pickupBooking struct {
 // bookPickup decides the order's type from what its items ask of the bakery,
 // checks the pickup time against the rules for that type, and holds its slot
 // until the transaction ends. It refuses a slot that is already full and a
-// customer who already holds as many orders for that day as one may (a guest,
-// nil customer, has no account to count); current is the pickup an order being
+// customer who already holds as many orders for that day as one may (a nil
+// customer is not counted: a guest has no account, and an order the counter
+// takes is the bakery's own call); current is the pickup an order being
 // moved holds now, nil for a new order. Both holds last until the transaction
 // ends, so neither count can race.
 func bookPickup(

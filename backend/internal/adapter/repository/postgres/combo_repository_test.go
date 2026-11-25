@@ -101,6 +101,32 @@ func TestComboRepository_Integration(t *testing.T) {
 		assert.Len(t, got[0].Items, 2)
 	})
 
+	t.Run("sells_a_combo_only_while_every_product_in_it_is_on_sale", func(t *testing.T) {
+		combo := newBox(t, "seasonal-box", nil)
+		seasonal, err := products.Create(ctx, port.CreateProductParams{
+			CategoryID: category.ID, Name: "Chestnut tart", Slug: "chestnut-tart", PriceCents: 500, IsActive: true,
+		})
+		require.NoError(t, err)
+		require.NoError(t, combos.ReplaceItems(ctx, combo.ID, []port.ComboItemParams{
+			{ProductID: croissant.ID, Quantity: 1},
+			{ProductID: seasonal.ID, Quantity: 1},
+		}))
+		listed, err := combos.CatalogGetByIDs(ctx, []uuid.UUID{combo.ID})
+		require.NoError(t, err)
+		require.Len(t, listed, 1)
+
+		_, err = products.Update(ctx, port.UpdateProductParams{
+			ID: seasonal.ID, CategoryID: category.ID, Name: seasonal.Name, Slug: seasonal.Slug, PriceCents: seasonal.PriceCents, IsActive: false,
+		})
+		require.NoError(t, err)
+
+		listed, err = combos.CatalogGetByIDs(ctx, []uuid.UUID{combo.ID})
+		require.NoError(t, err)
+		assert.Empty(t, listed, "a combo missing one of its products is not sold short at its full price")
+		_, err = combos.CatalogGetByID(ctx, combo.ID)
+		assert.ErrorIs(t, err, apperrors.ErrNotFound, "nor shown on its own page")
+	})
+
 	t.Run("hides_a_soft_deleted_combo", func(t *testing.T) {
 		combo := newBox(t, "deleted-box", nil)
 		require.NoError(t, combos.SoftDelete(ctx, combo.ID))

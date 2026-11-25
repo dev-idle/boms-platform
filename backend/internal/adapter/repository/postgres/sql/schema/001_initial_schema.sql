@@ -523,6 +523,7 @@ CREATE TABLE "messages" (
   "body" text NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "deleted_at" timestamptz NULL,
+  "via_assistant" boolean NOT NULL DEFAULT false,
   PRIMARY KEY ("id"),
   CONSTRAINT "messages_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations" ("id") ON DELETE RESTRICT,

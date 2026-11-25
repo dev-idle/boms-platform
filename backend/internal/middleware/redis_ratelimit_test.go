@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -137,6 +139,65 @@ func TestAssistantRateLimit_CountsGuestsByAddress(t *testing.T) {
 
 	assert.Equal(t, fiber.StatusTooManyRequests, attempt("203.0.113.7"))
 	assert.Equal(t, fiber.StatusOK, attempt("203.0.113.8"))
+}
+
+// Sign-in attempts count per account whatever address they come from, and
+// stop when Redis cannot count them.
+func TestAuthUserRateLimit(t *testing.T) {
+	t.Parallel()
+	cfg := config.RateLimitRedisConfig{AuthUserMax: 2, AuthUserWindow: time.Minute}
+	newApp := func(rdb *goredis.Client) *fiber.App {
+		app := fiber.New()
+		app.Post("/login", AuthUserRateLimit(rdb, cfg), func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
+		return app
+	}
+	send := func(t *testing.T, app *fiber.App, contentType, body, address string) int {
+		t.Helper()
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/login", strings.NewReader(body))
+		req.Header.Set(fiber.HeaderContentType, contentType)
+		req.Header.Set(ClientIPHeader, address)
+		resp, err := app.Test(req)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+		return resp.StatusCode
+	}
+	attempt := func(t *testing.T, app *fiber.App, email, address string) int {
+		t.Helper()
+		return send(t, app, fiber.MIMEApplicationJSON, `{"email":"`+email+`","password":"x"}`, address)
+	}
+
+	t.Run("counts_an_account_across_addresses", func(t *testing.T) {
+		t.Parallel()
+		app := newApp(goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()}))
+
+		attempt(t, app, "owner@choux.vn", "203.0.113.1")
+		attempt(t, app, "Owner@Choux.vn ", "203.0.113.2")
+
+		assert.Equal(t, fiber.StatusTooManyRequests, attempt(t, app, "owner@choux.vn", "203.0.113.3"))
+		assert.Equal(t, fiber.StatusOK, attempt(t, app, "staff@choux.vn", "203.0.113.3"), "another account has its own count")
+	})
+
+	t.Run("counts_the_account_the_login_handler_reads", func(t *testing.T) {
+		t.Parallel()
+		app := newApp(goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()}))
+
+		// JSON-looking text sent as a form: the handler binds it as a form.
+		for i, decoy := range []string{"decoy-1@choux.vn", "decoy-2@choux.vn"} {
+			body := `{"email":"` + decoy + `","a":"&email=owner@choux.vn&password=guess&b="}`
+			send(t, app, fiber.MIMEApplicationForm, body, fmt.Sprintf("203.0.113.%d", i+1))
+		}
+
+		assert.Equal(t, fiber.StatusTooManyRequests, attempt(t, app, "owner@choux.vn", "203.0.113.3"))
+	})
+
+	t.Run("refuses_when_redis_is_down", func(t *testing.T) {
+		t.Parallel()
+		server := miniredis.RunT(t)
+		app := newApp(goredis.NewClient(&goredis.Options{Addr: server.Addr(), MaxRetries: -1}))
+		server.Close()
+
+		assert.Equal(t, fiber.StatusServiceUnavailable, attempt(t, app, "owner@choux.vn", "203.0.113.1"))
+	})
 }
 
 // Per-address limiters on the emailed-link endpoints fail closed: each call may

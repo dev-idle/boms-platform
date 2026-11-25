@@ -246,12 +246,16 @@ func toDiscountCodeResponse(code *domaindiscount.Code) *dto.DiscountCodeResponse
 
 func toDiscountCodeAudit(resp *dto.DiscountCodeResponse) map[string]any {
 	return map[string]any{
-		"code":          resp.Code,
-		"discount_type": resp.DiscountType,
-		"value":         resp.Value,
-		"is_active":     resp.IsActive,
-		"starts_at":     resp.StartsAt,
-		"ends_at":       resp.EndsAt,
+		"code":                  resp.Code,
+		"discount_type":         resp.DiscountType,
+		"value":                 resp.Value,
+		"min_order_cents":       resp.MinOrderCents,
+		"max_uses":              resp.MaxUses,
+		"max_uses_per_customer": resp.MaxUsesPerCustomer,
+		"max_discount_cents":    resp.MaxDiscountCents,
+		"is_active":             resp.IsActive,
+		"starts_at":             resp.StartsAt,
+		"ends_at":               resp.EndsAt,
 	}
 }
 

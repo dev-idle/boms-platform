@@ -123,6 +123,11 @@ func (o Order) HasPickupCode() bool {
 	return o.Channel == ChannelOnline && o.Status.HasPickupCode()
 }
 
+// ExpiryGrace is how long past its due time an unpaid order waits before it
+// expires, so a capture started in time finishes first: well past the longest
+// the provider's answer can take. Until then the order keeps its pickup slot.
+const ExpiryGrace = 2 * time.Minute
+
 // Payable reports whether the order still takes its payment at now: it awaits
 // one and its time to pay has not run out.
 func (o Order) Payable(now time.Time) bool {

@@ -161,7 +161,7 @@ func (u *StaffConversationUsecase) Post(
 		if err != nil {
 			return err
 		}
-		if message, err = u.conversations.CreateMessage(txCtx, conversationID, actorID, domainuser.RoleStaff, body); err != nil {
+		if message, err = u.conversations.CreateMessage(txCtx, conversationID, actorID, domainuser.RoleStaff, body, false); err != nil {
 			return err
 		}
 		return u.events.Add(txCtx, domainconversation.MessageCreatedEvent(thread.CustomerID, thread.OrderID))

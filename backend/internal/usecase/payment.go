@@ -20,10 +20,6 @@ import (
 const approvedQuery = "?paypal=approved"
 
 const (
-	// expiryGrace is how long past its due time an order waits before it
-	// expires, so a capture started in time finishes first: well past the
-	// longest the provider's answer can take.
-	expiryGrace = 2 * time.Minute
 	// expiryBatch is how many overdue orders one run expires; the next run
 	// takes the rest.
 	expiryBatch = 50
@@ -216,7 +212,7 @@ func (u *PaymentUsecase) HandleWebhook(ctx context.Context, header func(name str
 // a capture still under review keeps it waiting. Each order stands alone: one
 // that fails is reported with the rest while the others go on.
 func (u *PaymentUsecase) ExpireOverdue(ctx context.Context) (int, error) {
-	ids, err := u.orders.ListDueUnpaid(ctx, expiryGrace, expiryBatch)
+	ids, err := u.orders.ListDueUnpaid(ctx, domainorder.ExpiryGrace, expiryBatch)
 	if err != nil {
 		return 0, err
 	}
@@ -243,7 +239,7 @@ func (u *PaymentUsecase) expire(ctx context.Context, orderID uuid.UUID) (bool, e
 		return false, err
 	}
 	err = u.tx.WithTx(ctx, func(txCtx context.Context) error {
-		order, err := u.orders.Expire(txCtx, orderID, expiryGrace)
+		order, err := u.orders.Expire(txCtx, orderID, domainorder.ExpiryGrace)
 		if err != nil {
 			return err
 		}

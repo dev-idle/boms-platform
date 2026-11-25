@@ -54,8 +54,10 @@ type Payment struct {
 	// RefundRequestedAt is when the order's cancellation asked for the money
 	// back; RefundedAt when the provider took the refund.
 	RefundRequestedAt *time.Time
-	RefundedAt        *time.Time
-	CreatedAt         time.Time
+	// RefundID is the provider's reference for the money given back.
+	RefundID   *string
+	RefundedAt *time.Time
+	CreatedAt  time.Time
 }
 
 // Capture is the provider's answer to taking the money.

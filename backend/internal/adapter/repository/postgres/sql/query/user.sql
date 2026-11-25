@@ -70,8 +70,11 @@ WHERE id = $1
   AND deleted_at IS NULL;
 
 -- name: UpdateRole :execrows
+-- A role change ends the account's sessions for good: one the Redis sweep
+-- misses cannot refresh into the new role.
 UPDATE users
 SET role = $2,
+    session_version = session_version + 1,
     updated_at = now()
 WHERE id = $1
   AND deleted_at IS NULL;

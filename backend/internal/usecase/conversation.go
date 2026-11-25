@@ -72,6 +72,19 @@ func (u *ConversationUsecase) Post(
 	orderID *uuid.UUID,
 	req dto.PostMessageRequest,
 ) (*dto.MessageResponse, error) {
+	return u.post(ctx, userID, orderID, req, false)
+}
+
+// post writes a customer's message; viaAssistant marks the questions the
+// assistant passed on, which the engagement report does not count as the
+// customer writing to the counter.
+func (u *ConversationUsecase) post(
+	ctx context.Context,
+	userID uuid.UUID,
+	orderID *uuid.UUID,
+	req dto.PostMessageRequest,
+	viaAssistant bool,
+) (*dto.MessageResponse, error) {
 	body, err := domainconversation.NewBody(req.Body)
 	if err != nil {
 		return nil, err
@@ -89,7 +102,7 @@ func (u *ConversationUsecase) Post(
 		if err != nil {
 			return err
 		}
-		if message, err = u.conversations.CreateMessage(txCtx, conversationID, userID, domainuser.RoleCustomer, body); err != nil {
+		if message, err = u.conversations.CreateMessage(txCtx, conversationID, userID, domainuser.RoleCustomer, body, viaAssistant); err != nil {
 			return err
 		}
 		return u.events.Add(txCtx, domainconversation.MessageCreatedEvent(userID, orderID))

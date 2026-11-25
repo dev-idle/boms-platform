@@ -19,6 +19,7 @@ import (
 
 type AdminUserUsecase struct {
 	users     port.UserRepository
+	orders    port.OrderRepository
 	staff     port.StaffProfileRepository
 	tokens    port.UserTokenRepository
 	sessions  port.SessionStore
@@ -32,6 +33,7 @@ type AdminUserUsecase struct {
 
 func NewAdminUserUsecase(
 	users port.UserRepository,
+	orders port.OrderRepository,
 	customers port.CustomerProfileRepository,
 	staff port.StaffProfileRepository,
 	admins port.AdminProfileRepository,
@@ -45,6 +47,7 @@ func NewAdminUserUsecase(
 ) *AdminUserUsecase {
 	return &AdminUserUsecase{
 		users:     users,
+		orders:    orders,
 		staff:     staff,
 		tokens:    tokens,
 		sessions:  sessions,
@@ -204,9 +207,7 @@ func (u *AdminUserUsecase) UpdateRole(
 
 	u.logAudit(ctx, domainuser.AuditActionAdminUpdatedProfile, actorID, actorRole, &targetID, "user_profile", change.before, change.after)
 	if change.oldRole != newRole {
-		if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
-			return nil, err
-		}
+		u.sweepSessions(ctx, targetID)
 		u.logAudit(ctx, domainuser.AuditActionAdminUpdatedRole, actorID, actorRole, &targetID, "user", map[string]any{"role": string(change.oldRole)}, map[string]any{"role": string(newRole)})
 	}
 	return u.getAdminUserResponse(ctx, targetID)
@@ -401,9 +402,7 @@ func (u *AdminUserUsecase) ResetPassword(
 	}); err != nil {
 		return nil, err
 	}
-	if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
-		return nil, err
-	}
+	u.sweepSessions(ctx, targetID)
 
 	u.logAudit(ctx, domainuser.AuditActionAdminResetUserPassword, actorID, actorRole, &targetID, "user", nil, map[string]any{"must_change_password": true})
 	resp, err := u.getAdminUserResponse(ctx, targetID)
@@ -425,20 +424,41 @@ func (u *AdminUserUsecase) Disable(ctx context.Context, actorID uuid.UUID, actor
 	}
 	// A disabled account's links open nothing, but would again once it is
 	// enabled, so closing it voids them. Links go before the account, the
-	// order redeeming one takes them.
+	// order redeeming one takes them. A customer with an order the bakery
+	// still has to make or hand over keeps the account: the counter could no
+	// longer see the order. The account is locked before the orders are
+	// counted, as an order being placed holds it, so none slips in between.
 	if err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if err := u.tokens.DeleteForUser(txCtx, targetID); err != nil {
 			return err
+		}
+		if _, err := u.users.GetByIDForUpdate(txCtx, targetID); err != nil {
+			return err
+		}
+		open, err := u.orders.HasOpen(txCtx, targetID)
+		if err != nil {
+			return err
+		}
+		if open {
+			return domainuser.ErrAccountHasOpenOrders
 		}
 		return u.users.SoftDelete(txCtx, targetID)
 	}); err != nil {
 		return err
 	}
-	if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
-		return err
-	}
+	u.sweepSessions(ctx, targetID)
 	u.logAudit(ctx, domainuser.AuditActionAdminDisabledUser, actorID, actorRole, &targetID, "user", nil, map[string]any{"disabled": true})
 	return nil
+}
+
+// sweepSessions ends the sessions an account holds after a change that raised
+// its session version. Redis failing here leaves a session alive only until
+// its access token expires — refresh refuses the old version — so the change
+// and its audit row stand.
+func (u *AdminUserUsecase) sweepSessions(ctx context.Context, userID uuid.UUID) {
+	if err := u.sessions.DeleteAllForUser(ctx, userID.String()); err != nil {
+		u.log.Warn("admin_session_sweep_failed", zap.String("user_id", userID.String()), zap.Error(err))
+	}
 }
 
 func (u *AdminUserUsecase) RevokeSessions(ctx context.Context, actorID uuid.UUID, actorRole domainuser.Role, targetID uuid.UUID) error {
@@ -451,9 +471,7 @@ func (u *AdminUserUsecase) RevokeSessions(ctx context.Context, actorID uuid.UUID
 	if err := u.users.BumpSessionVersion(ctx, targetID); err != nil {
 		return err
 	}
-	if err := u.sessions.DeleteAllForUser(ctx, targetID.String()); err != nil {
-		return err
-	}
+	u.sweepSessions(ctx, targetID)
 	u.logAudit(ctx, domainuser.AuditActionAdminRevokedUserSessions, actorID, actorRole, &targetID, "session", nil, map[string]any{"revoked": true})
 	return nil
 }
