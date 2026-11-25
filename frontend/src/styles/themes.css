@@ -64,6 +64,10 @@
   --db-table-col-status-pill: 9rem;
   --db-table-col-actions-pair: 10.5rem;
   --db-table-col-actions-group: 17rem;
+  /* Three text actions — the pickup schedule's Ready, Hand over, Order →. */
+  --db-table-col-actions-triple: 18rem;
+  /* What the counter gets ready on a pickup: two or three items on a line. */
+  --db-table-col-counter: 12rem;
   --db-table-col-role: 9.25rem;
   /* "Counter" as a micro-label plus the cell padding. */
   --db-table-col-station: 7.5rem;

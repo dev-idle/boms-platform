@@ -1,7 +1,7 @@
 import type { QueryKey } from "@tanstack/react-query";
 
 import { REALTIME_EVENT_TYPE, type RealtimeEvent } from "@/lib/realtime/events";
-import type { StationTicketsListFilterInput } from "@/lib/schemas/ticket";
+import type { StationTicketsListFilterInput } from "../schemas";
 
 export const bakerQueryKeys = {
   ticketsRoot: ["baker", "tickets"] as const,

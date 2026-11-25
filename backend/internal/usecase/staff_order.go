@@ -104,9 +104,9 @@ func (u *StaffOrderUsecase) List(
 		return nil, 0, page, pageSize, err
 	}
 
-	out, err := u.summaries(ctx, rows)
-	if err != nil {
-		return nil, 0, page, pageSize, err
+	out := make([]dto.StaffOrderSummaryResponse, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, toStaffOrderSummary(row))
 	}
 	return out, total, page, pageSize, nil
 }
@@ -134,7 +134,7 @@ func (u *StaffOrderUsecase) Pickups(
 		Offset: utils.PageOffset(page, pageSize),
 	}
 	rows, total, err := listWithTotal(ctx,
-		func(ctx context.Context) ([]port.StaffOrderListRow, error) {
+		func(ctx context.Context) ([]port.StaffPickupRow, error) {
 			return u.orders.StaffListPickups(ctx, params)
 		},
 		func(ctx context.Context) (int64, error) {
@@ -144,9 +144,13 @@ func (u *StaffOrderUsecase) Pickups(
 	if err != nil {
 		return nil, 0, page, pageSize, err
 	}
-	pickups, err := u.summaries(ctx, rows)
-	if err != nil {
-		return nil, 0, page, pageSize, err
+	pickups := make([]dto.StaffPickupResponse, 0, len(rows))
+	for _, row := range rows {
+		pickup := dto.StaffPickupResponse{StaffOrderSummaryResponse: toStaffOrderSummary(row.StaffOrderListRow)}
+		if row.CounterTicket != nil {
+			pickup.CounterTicket = &mapOrderTicketsToDTO([]domainorder.Ticket{*row.CounterTicket})[0]
+		}
+		pickups = append(pickups, pickup)
 	}
 	return &dto.StaffPickupsResponse{
 		SlotMinutes: int(settings.SlotLength / time.Minute),
@@ -154,31 +158,18 @@ func (u *StaffOrderUsecase) Pickups(
 	}, total, page, pageSize, nil
 }
 
-// summaries maps listed orders with how many items each holds.
-func (u *StaffOrderUsecase) summaries(ctx context.Context, rows []port.StaffOrderListRow) ([]dto.StaffOrderSummaryResponse, error) {
-	orderIDs := make([]uuid.UUID, 0, len(rows))
-	for _, row := range rows {
-		orderIDs = append(orderIDs, row.Order.ID)
+// toStaffOrderSummary is how a listed order reads at the counter.
+func toStaffOrderSummary(row port.StaffOrderListRow) dto.StaffOrderSummaryResponse {
+	return dto.StaffOrderSummaryResponse{
+		ID:         row.Order.ID.String(),
+		Code:       row.Order.Code,
+		Status:     string(row.Order.Status),
+		Channel:    string(row.Order.Channel),
+		TotalCents: row.Order.TotalCents,
+		Customer:   toStaffOrderCustomer(&row),
+		PickupAt:   row.Order.PickupAt,
+		CreatedAt:  row.Order.CreatedAt,
 	}
-	itemCounts, err := u.orders.SumItemQuantitiesByOrderIDs(ctx, orderIDs)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]dto.StaffOrderSummaryResponse, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, dto.StaffOrderSummaryResponse{
-			ID:         row.Order.ID.String(),
-			Code:       row.Order.Code,
-			Status:     string(row.Order.Status),
-			Channel:    string(row.Order.Channel),
-			TotalCents: row.Order.TotalCents,
-			ItemCount:  itemCounts[row.Order.ID],
-			Customer:   toStaffOrderCustomer(&row),
-			PickupAt:   row.Order.PickupAt,
-			CreatedAt:  row.Order.CreatedAt,
-		})
-	}
-	return out, nil
 }
 
 func (u *StaffOrderUsecase) Get(ctx context.Context, orderID uuid.UUID) (*dto.StaffOrderResponse, error) {

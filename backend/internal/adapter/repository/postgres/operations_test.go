@@ -63,8 +63,6 @@ func TestOperationsDashboard_Integration(t *testing.T) {
 			require.NoError(t, err)
 			_, err = f.kitchen.PatchStatus(ctx, f.baker, domainuser.RoleBaker, ticket, domainorder.TicketReady)
 		} else {
-			_, err = f.counter.PatchStatus(ctx, f.clerk, domainuser.RoleStaff, ticket, domainorder.TicketInProgress)
-			require.NoError(t, err)
 			_, err = f.counter.PatchStatus(ctx, f.clerk, domainuser.RoleStaff, ticket, domainorder.TicketReady)
 		}
 		require.NoError(t, err)

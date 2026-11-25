@@ -959,9 +959,16 @@
   /* -----------------------------------------------------------------------------
      CTA band — matcha-100 tint, exactly one per page.
      ----------------------------------------------------------------------------- */
+  /* The band closes the home page and meets the footer with no rule between:
+     it covers the footer's top hairline by its last pixel. Done here rather
+     than from the page around it, which also holds the pages the router keeps
+     hidden. */
   .storefront-cta {
     background-color: var(--color-matcha-100);
+    margin-bottom: -1px;
     padding-block: 5.5rem;
+    position: relative;
+    z-index: 1;
   }
 
   .storefront-cta__inner {
@@ -4197,10 +4204,6 @@
   .storefront-footer {
     background-color: var(--color-bg);
     border-top: 1px solid var(--color-border);
-  }
-
-  main:has(> .storefront-cta:last-child) + .storefront-footer {
-    border-top-color: transparent;
   }
 
   /* The bottom clears the assistant's launcher, fixed in the corner (1.5rem

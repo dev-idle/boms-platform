@@ -7,17 +7,20 @@ import {
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
 import {
   patchTicketStatusInputSchema,
-  stationTicketSchema,
-  stationTicketsListFilterSchema,
   ticketChangeSchema,
   type PatchTicketStatusInput,
-  type StationTicket,
-  type StationTicketsListFilterInput,
-  type StationTicketsListResult,
   type TicketChange,
 } from "@/lib/schemas/ticket";
 
-import { kitchenTicketSchema, type KitchenTicket } from "../schemas";
+import {
+  stationTicketSchema,
+  stationTicketsListFilterSchema,
+  type StationTicket,
+  type StationTicketsListFilterInput,
+  type StationTicketsListResult,
+  kitchenTicketSchema,
+  type KitchenTicket,
+} from "../schemas";
 
 export async function listKitchenTickets(
   input: StationTicketsListFilterInput,
@@ -28,6 +31,9 @@ export async function listKitchenTickets(
   params.set("page_size", String(filter.page_size));
   if (filter.status) {
     params.set("status", filter.status);
+  }
+  if (filter.date) {
+    params.set("date", filter.date);
   }
   const result = await browserRequestWithMeta<StationTicket[]>(
     `/api/v1/baker/tickets?${params.toString()}`,

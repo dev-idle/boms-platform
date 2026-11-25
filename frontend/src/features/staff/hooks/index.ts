@@ -16,10 +16,8 @@ import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { MESSAGE_REFUSED_TEXT, type MessageInput } from "@/lib/schemas/message";
 import {
-  stationTicketsListFilterSchema,
   ticketChangeMessage,
   type PatchTicketStatusInput,
-  type StationTicketsListFilterInput,
 } from "@/lib/schemas/ticket";
 
 import {
@@ -28,7 +26,6 @@ import {
   getStaffConversationCounts,
   getStaffOrder,
   getStaffMessages,
-  listCounterTickets,
   listStaffOrders,
   listStaffPickups,
   listStaffConversations,
@@ -151,30 +148,14 @@ export function useHandOverOrder(orderId: string) {
   });
 }
 
-const defaultTicketsFilter: StationTicketsListFilterInput = {
-  page: 1,
-  page_size: 20,
-};
-
-export function useCounterTickets(
-  input: StationTicketsListFilterInput = defaultTicketsFilter,
-) {
-  const filter = stationTicketsListFilterSchema.parse(input);
-  return useQuery({
-    queryKey: staffQueryKeys.tickets(filter),
-    queryFn: () => listCounterTickets(filter),
-    placeholderData: keepPreviousData,
-  });
-}
-
-/** Starts or finishes one counter ticket; the queue holds several, so the ticket rides with each call. */
+/** Gets one counter ticket ready; the schedule holds several, so the ticket rides with each call. */
 export function usePatchCounterTicketStatus() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ ticketId, ...input }: PatchTicketStatusInput & { ticketId: string }) =>
       patchCounterTicketStatus(ticketId, input),
     onSuccess: (change) => {
-      queryClient.invalidateQueries({ queryKey: staffQueryKeys.ticketsRoot });
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.pickupsRoot });
       queryClient.invalidateQueries({ queryKey: staffQueryKeys.order(change.order_id) });
       toast.success(ticketChangeMessage(change));
     },
@@ -191,7 +172,7 @@ export function useMoveTicket(orderId: string) {
       moveTicket(ticketId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: staffQueryKeys.order(orderId) });
-      queryClient.invalidateQueries({ queryKey: staffQueryKeys.ticketsRoot });
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.pickupsRoot });
       toast.success("Ticket moved");
     },
     onError: (error) => {

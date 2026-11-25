@@ -30,8 +30,14 @@ func (s TicketStatus) Valid() bool {
 }
 
 // CanAdvanceTicket reports whether a station may move its ticket from one
-// status to the next: start it, then finish it. Cancelling follows the order.
-func CanAdvanceTicket(from, to TicketStatus) bool {
+// status to the next. The kitchen starts a ticket, then finishes it; the
+// counter only gets drinks and items from the case ready, in one step (a
+// ticket it started before that rule finishes the same way). Cancelling
+// follows the order.
+func CanAdvanceTicket(station domaincategory.Station, from, to TicketStatus) bool {
+	if station == domaincategory.StationCounter {
+		return to == TicketReady && (from == TicketQueued || from == TicketInProgress)
+	}
 	return (from == TicketQueued && to == TicketInProgress) || (from == TicketInProgress && to == TicketReady)
 }
 
@@ -103,8 +109,8 @@ func (s Status) ProducesTickets() bool {
 }
 
 // DeriveStatus is the status an order being made reaches from its tickets:
-// in production once any ticket started, ready once every ticket is. Cancelled
-// tickets do not count; an order not being made keeps its status.
+// in production once any ticket started or is ready, ready once every ticket
+// is. Cancelled tickets do not count; an order not being made keeps its status.
 func DeriveStatus(current Status, tickets []TicketStatus) Status {
 	if !current.ProducesTickets() {
 		return current

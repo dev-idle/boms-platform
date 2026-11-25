@@ -71,8 +71,9 @@ type DiscountCodeUseResponse struct {
 	DiscountCents int64  `json:"discount_cents"`
 }
 
-// ProductionTimeResponse is how many orders became ready and their average
-// minutes from the first ticket started to ready, null when none did.
+// ProductionTimeResponse is how many orders became ready after production and
+// their average minutes from the first ticket started to ready, null when none
+// did. An order the counter alone got ready in one step is not among them.
 type ProductionTimeResponse struct {
 	Orders         int64  `json:"orders"`
 	AverageMinutes *int32 `json:"average_minutes"`

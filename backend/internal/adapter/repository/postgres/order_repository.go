@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/boms/backend/internal/adapter/repository/postgres/sqlcgen"
+	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainstore "github.com/boms/backend/internal/domain/store"
@@ -247,7 +248,7 @@ func (r *OrderRepository) StaffList(ctx context.Context, params port.StaffListOr
 	return out, nil
 }
 
-func (r *OrderRepository) StaffListPickups(ctx context.Context, params port.StaffListPickupsParams) ([]port.StaffOrderListRow, error) {
+func (r *OrderRepository) StaffListPickups(ctx context.Context, params port.StaffListPickupsParams) ([]port.StaffPickupRow, error) {
 	rows, err := r.q(ctx).StaffListPickups(ctx, sqlcgen.StaffListPickupsParams{
 		PickupFrom: params.From,
 		PickupTo:   params.To,
@@ -257,11 +258,48 @@ func (r *OrderRepository) StaffListPickups(ctx context.Context, params port.Staf
 	if err != nil {
 		return nil, mapRepoError(err, "staff list pickups")
 	}
-	out := make([]port.StaffOrderListRow, 0, len(rows))
+	out := make([]port.StaffPickupRow, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, *mapStaffListOrdersRow(sqlcgen.StaffListOrdersRow(row)))
+		order := mapStaffOrderJoined(
+			row.ID, row.UserID, row.Status, row.SubtotalCents, row.DiscountCents, row.TotalCents,
+			row.DiscountCodeID, row.DiscountCodeSnapshot, row.PickupAt, row.CreatedAt, row.UpdatedAt,
+			row.Code, row.OrderType, row.Channel,
+			row.CustomerEmail, row.CustomerEmailVerified, row.CustomerDisplayName, nil,
+		)
+		counter, err := decodeCounterTicket(row.ID, row.CounterTicket)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, port.StaffPickupRow{StaffOrderListRow: *order, CounterTicket: counter})
 	}
 	return out, nil
+}
+
+// decodeCounterTicket reads the counter's ticket a pickup row carries as JSON;
+// nil when the order has none.
+func decodeCounterTicket(orderID uuid.UUID, raw []byte) (*domainorder.Ticket, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	var ticket struct {
+		ID     uuid.UUID       `json:"id"`
+		Status string          `json:"status"`
+		Items  json.RawMessage `json:"items"`
+	}
+	if err := json.Unmarshal(raw, &ticket); err != nil {
+		return nil, apperrors.Errorf("decode counter ticket: %w", err)
+	}
+	items, err := decodeStationTicketItems(ticket.Items)
+	if err != nil {
+		return nil, err
+	}
+	return &domainorder.Ticket{
+		ID:      ticket.ID,
+		OrderID: orderID,
+		Station: domaincategory.StationCounter,
+		Status:  domainorder.TicketStatus(ticket.Status),
+		Items:   items,
+	}, nil
 }
 
 func (r *OrderRepository) StaffListPickupsCount(ctx context.Context, from, to time.Time) (int64, error) {

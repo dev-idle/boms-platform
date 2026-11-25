@@ -111,9 +111,10 @@ ORDER BY discount_cents DESC, code
 LIMIT sqlc.arg('max_rows')::int;
 
 -- name: ProductionTime :one
--- The orders that became ready in [from_at, to_at), and on average how many
--- whole minutes they took from the first ticket started (in production) to
--- ready; 0 when none did.
+-- The orders that became ready in [from_at, to_at) after being in production,
+-- and on average how many whole minutes they took from the first ticket
+-- started (in production) to ready; 0 when none did. An order the counter
+-- alone got ready in one step never was in production and is not counted.
 SELECT
   count(*)::bigint AS orders,
   COALESCE(round(avg(extract(epoch FROM r.created_at - s.created_at)) / 60), 0)::int AS average_minutes

@@ -70,11 +70,17 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
     $2::ticket_status IS NULL
     OR t.status = $2::ticket_status
   )
+  AND (
+    $3::timestamptz IS NULL
+    OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
+  )
 `
 
 type CountStationTicketsParams struct {
-	Station Station       `json:"station"`
-	Status  *TicketStatus `json:"status"`
+	Station    Station       `json:"station"`
+	Status     *TicketStatus `json:"status"`
+	PickupFrom *time.Time    `json:"pickupFrom"`
+	PickupTo   *time.Time    `json:"pickupTo"`
 }
 
 // CountStationTickets
@@ -91,8 +97,17 @@ type CountStationTicketsParams struct {
 //	    $2::ticket_status IS NULL
 //	    OR t.status = $2::ticket_status
 //	  )
+//	  AND (
+//	    $3::timestamptz IS NULL
+//	    OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
+//	  )
 func (q *Queries) CountStationTickets(ctx context.Context, arg CountStationTicketsParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countStationTickets, arg.Station, arg.Status)
+	row := q.db.QueryRow(ctx, countStationTickets,
+		arg.Station,
+		arg.Status,
+		arg.PickupFrom,
+		arg.PickupTo,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -418,8 +433,12 @@ FROM (
       $2::ticket_status IS NULL
       OR t.status = $2::ticket_status
     )
+    AND (
+      $3::timestamptz IS NULL
+      OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
+    )
   ORDER BY o.pickup_at ASC NULLS LAST, t.created_at ASC, t.id ASC
-  LIMIT $4 OFFSET $3
+  LIMIT $6 OFFSET $5
 ) page
 LEFT JOIN LATERAL (
   SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name) AS list
@@ -430,10 +449,12 @@ ORDER BY page.pickup_at ASC NULLS LAST, page.created_at ASC, page.id ASC
 `
 
 type ListStationTicketsParams struct {
-	Station Station       `json:"station"`
-	Status  *TicketStatus `json:"status"`
-	Offset  int32         `json:"offset"`
-	Limit   int32         `json:"limit"`
+	Station    Station       `json:"station"`
+	Status     *TicketStatus `json:"status"`
+	PickupFrom *time.Time    `json:"pickupFrom"`
+	PickupTo   *time.Time    `json:"pickupTo"`
+	Offset     int32         `json:"offset"`
+	Limit      int32         `json:"limit"`
 }
 
 type ListStationTicketsRow struct {
@@ -451,8 +472,9 @@ type ListStationTicketsRow struct {
 }
 
 // A station's queue: its tickets of orders accepted and not yet collected,
-// soonest pickup first, each with what it makes. The page is cut first and
-// the items gathered after, as in CatalogListProducts.
+// soonest pickup first, each with what it makes — every day's, or those with
+// a pickup in [pickup_from, pickup_to). The page is cut first and the items
+// gathered after, as in CatalogListProducts.
 //
 //	SELECT
 //	  page.id,
@@ -490,8 +512,12 @@ type ListStationTicketsRow struct {
 //	      $2::ticket_status IS NULL
 //	      OR t.status = $2::ticket_status
 //	    )
+//	    AND (
+//	      $3::timestamptz IS NULL
+//	      OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
+//	    )
 //	  ORDER BY o.pickup_at ASC NULLS LAST, t.created_at ASC, t.id ASC
-//	  LIMIT $4 OFFSET $3
+//	  LIMIT $6 OFFSET $5
 //	) page
 //	LEFT JOIN LATERAL (
 //	  SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name) AS list
@@ -503,6 +529,8 @@ func (q *Queries) ListStationTickets(ctx context.Context, arg ListStationTickets
 	rows, err := q.db.Query(ctx, listStationTickets,
 		arg.Station,
 		arg.Status,
+		arg.PickupFrom,
+		arg.PickupTo,
 		arg.Offset,
 		arg.Limit,
 	)

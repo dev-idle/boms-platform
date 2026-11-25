@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { StaffPickup } from "../schemas";
-import { groupPickupsBySlot, isLatePickup } from "./pickup-schedule";
+import { counterReadyBlockedReason, groupPickupsBySlot, isLatePickup } from "./pickup-schedule";
 
 const pickup = (id: number, pickupAt: string, status: StaffPickup["status"] = "confirmed"): StaffPickup => ({
   id: `00000000-0000-4000-8000-00000000000${id}`,
@@ -9,7 +9,7 @@ const pickup = (id: number, pickupAt: string, status: StaffPickup["status"] = "c
   status,
   channel: "online",
   total_cents: 4500,
-  item_count: 2,
+  counter_ticket: null,
   customer: { user_id: "00000000-0000-4000-8000-000000000009", email: "mai@example.com" },
   pickup_at: pickupAt,
   created_at: "2026-10-01T08:00:00+07:00",
@@ -45,5 +45,29 @@ describe("isLatePickup", () => {
     expect(isLatePickup(pickup(1, "2026-10-01T09:00:00+07:00", "ready"), 60, now)).toBe(false);
     expect(isLatePickup(pickup(1, "2026-10-01T09:00:00+07:00", "fulfilled"), 30, now)).toBe(false);
     expect(isLatePickup(pickup(1, "2026-10-01T09:00:00+07:00", "no_show"), 30, now)).toBe(false);
+  });
+});
+
+describe("counterReadyBlockedReason", () => {
+  const withCounter = (status: StaffPickup["status"], ticketStatus: "queued" | "ready"): StaffPickup => ({
+    ...pickup(1, "2026-10-01T09:00:00+07:00", status),
+    counter_ticket: {
+      id: "00000000-0000-4000-8000-0000000000c1",
+      station: "counter",
+      status: ticketStatus,
+      items: [{ name: "Butter Croissant", quantity: 1, customization: null }],
+    },
+  });
+
+  it("lets the counter get its part of an accepted order ready", () => {
+    expect(counterReadyBlockedReason(withCounter("confirmed", "queued"))).toBeUndefined();
+    expect(counterReadyBlockedReason(withCounter("in_production", "queued"))).toBeUndefined();
+  });
+
+  it("says why the counter cannot", () => {
+    expect(counterReadyBlockedReason(pickup(1, "2026-10-01T09:00:00+07:00"))).toBe("The kitchen makes this order");
+    expect(counterReadyBlockedReason(withCounter("in_production", "ready"))).toBe("Counter part ready");
+    expect(counterReadyBlockedReason(withCounter("pending", "queued"))).toBe("Accept the order first");
+    expect(counterReadyBlockedReason(withCounter("fulfilled", "queued"))).toBe("Nothing left to prepare");
   });
 });

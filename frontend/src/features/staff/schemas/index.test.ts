@@ -122,15 +122,27 @@ describe("staff pickups", () => {
     status: "ready",
     channel: "online",
     total_cents: 4500,
-    item_count: 2,
     customer: order.customer,
     pickup_at: "2026-10-01T09:00:00+07:00",
     created_at: order.created_at,
+    counter_ticket: null,
   };
 
   it("reads a page of a day's pickups and the slot length", () => {
     const result = staffPickupsSchema.parse({ slot_minutes: 30, pickups: [pickup] });
     expect(result.pickups[0]?.pickup_at).toBe("2026-10-01T09:00:00+07:00");
+  });
+
+  it("reads the counter's own part of a pickup, or none when the kitchen makes it all", () => {
+    const counterTicket = {
+      id: "00000000-0000-4000-8000-0000000000c1",
+      station: "counter",
+      status: "queued",
+      items: [{ name: "Butter Croissant", quantity: 1, customization: null }],
+    };
+    const result = staffPickupsSchema.parse({ slot_minutes: 30, pickups: [{ ...pickup, counter_ticket: counterTicket }] });
+    expect(result.pickups[0]?.counter_ticket?.items[0]?.name).toBe("Butter Croissant");
+    expect(staffPickupsSchema.safeParse({ slot_minutes: 30, pickups: [{ ...pickup, counter_ticket: undefined }] }).success).toBe(false);
   });
 
   it("rejects a pickup without a time", () => {

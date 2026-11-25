@@ -78,20 +78,29 @@ func TestDecompose(t *testing.T) {
 func TestCanAdvanceTicket(t *testing.T) {
 	t.Parallel()
 	statuses := []TicketStatus{TicketQueued, TicketInProgress, TicketReady, TicketCancelled}
-	allowed := map[[2]TicketStatus]bool{
-		{TicketQueued, TicketInProgress}: true,
-		{TicketInProgress, TicketReady}:  true,
+	allowed := map[domaincategory.Station]map[[2]TicketStatus]bool{
+		domaincategory.StationKitchen: {
+			{TicketQueued, TicketInProgress}: true,
+			{TicketInProgress, TicketReady}:  true,
+		},
+		domaincategory.StationCounter: {
+			{TicketQueued, TicketReady}:     true,
+			{TicketInProgress, TicketReady}: true,
+		},
 	}
-	for _, from := range statuses {
-		for _, to := range statuses {
-			assert.Equal(t, allowed[[2]TicketStatus{from, to}], CanAdvanceTicket(from, to), "%s -> %s", from, to)
+	for station, moves := range allowed {
+		for _, from := range statuses {
+			for _, to := range statuses {
+				assert.Equal(t, moves[[2]TicketStatus{from, to}], CanAdvanceTicket(station, from, to), "%s: %s -> %s", station, from, to)
+			}
 		}
 	}
 }
 
 // The case table backing synchronized completion: an order is ready exactly
 // when every ticket it still has is ready, and in production from the first
-// start until then.
+// ticket started or made ready until then — the counter makes its ticket
+// ready in one step, so an order only it makes goes straight to ready.
 func TestDeriveStatus(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -103,6 +112,8 @@ func TestDeriveStatus(t *testing.T) {
 		{StatusConfirmed, []TicketStatus{TicketQueued, TicketQueued}, StatusConfirmed},
 		{StatusConfirmed, []TicketStatus{TicketInProgress}, StatusInProduction},
 		{StatusConfirmed, []TicketStatus{TicketInProgress, TicketQueued}, StatusInProduction},
+		{StatusConfirmed, []TicketStatus{TicketReady, TicketQueued}, StatusInProduction},
+		{StatusConfirmed, []TicketStatus{TicketReady}, StatusReady},
 		{StatusInProduction, []TicketStatus{TicketReady, TicketQueued}, StatusInProduction},
 		{StatusInProduction, []TicketStatus{TicketReady, TicketInProgress}, StatusInProduction},
 		{StatusInProduction, []TicketStatus{TicketReady}, StatusReady},

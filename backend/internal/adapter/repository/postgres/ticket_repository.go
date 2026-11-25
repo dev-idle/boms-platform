@@ -204,23 +204,21 @@ type stationTicketItem struct {
 
 func (r *TicketRepository) ListByStation(ctx context.Context, params port.StationTicketsParams) ([]port.StationTicket, error) {
 	rows, err := r.q(ctx).ListStationTickets(ctx, sqlcgen.ListStationTicketsParams{
-		Station: sqlcgen.Station(params.Station),
-		Status:  optionalTicketStatus(params.Status),
-		Limit:   params.Limit,
-		Offset:  params.Offset,
+		Station:    sqlcgen.Station(params.Station),
+		Status:     optionalTicketStatus(params.Status),
+		PickupFrom: params.PickupFrom,
+		PickupTo:   params.PickupTo,
+		Limit:      params.Limit,
+		Offset:     params.Offset,
 	})
 	if err != nil {
 		return nil, mapRepoError(err, "list station tickets")
 	}
 	out := make([]port.StationTicket, 0, len(rows))
 	for _, row := range rows {
-		var listed []stationTicketItem
-		if err := json.Unmarshal(row.Items, &listed); err != nil {
-			return nil, apperrors.Errorf("decode station ticket items: %w", err)
-		}
-		items := make([]domainorder.TicketItem, 0, len(listed))
-		for _, item := range listed {
-			items = append(items, domainorder.TicketItem{Name: item.Name, Quantity: item.Quantity})
+		items, err := decodeStationTicketItems(row.Items)
+		if err != nil {
+			return nil, err
 		}
 		out = append(out, port.StationTicket{
 			Ticket: domainorder.Ticket{
@@ -241,19 +239,31 @@ func (r *TicketRepository) ListByStation(ctx context.Context, params port.Statio
 	return out, nil
 }
 
-func (r *TicketRepository) CountByStation(
-	ctx context.Context,
-	station domaincategory.Station,
-	status *domainorder.TicketStatus,
-) (int64, error) {
+func (r *TicketRepository) CountByStation(ctx context.Context, params port.StationTicketsParams) (int64, error) {
 	count, err := r.q(ctx).CountStationTickets(ctx, sqlcgen.CountStationTicketsParams{
-		Station: sqlcgen.Station(station),
-		Status:  optionalTicketStatus(status),
+		Station:    sqlcgen.Station(params.Station),
+		Status:     optionalTicketStatus(params.Status),
+		PickupFrom: params.PickupFrom,
+		PickupTo:   params.PickupTo,
 	})
 	if err != nil {
 		return 0, mapRepoError(err, "count station tickets")
 	}
 	return count, nil
+}
+
+// decodeStationTicketItems reads the names and quantities a station's ticket
+// list gathers as JSON.
+func decodeStationTicketItems(raw []byte) ([]domainorder.TicketItem, error) {
+	var listed []stationTicketItem
+	if err := json.Unmarshal(raw, &listed); err != nil {
+		return nil, apperrors.Errorf("decode station ticket items: %w", err)
+	}
+	items := make([]domainorder.TicketItem, 0, len(listed))
+	for _, item := range listed {
+		items = append(items, domainorder.TicketItem{Name: item.Name, Quantity: item.Quantity})
+	}
+	return items, nil
 }
 
 func optionalTicketStatus(status *domainorder.TicketStatus) *sqlcgen.TicketStatus {

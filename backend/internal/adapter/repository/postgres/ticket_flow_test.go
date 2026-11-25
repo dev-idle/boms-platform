@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -15,6 +16,7 @@ import (
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainevent "github.com/boms/backend/internal/domain/event"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
@@ -176,8 +178,13 @@ func TestTickets_Integration(t *testing.T) {
 		require.ErrorIs(t, err, domainorder.ErrTicketNotFound, "the kitchen does not see counter tickets")
 		_, err = f.kitchen.PatchStatus(ctx, baker, domainuser.RoleBaker, ticket.ID, domainorder.TicketInProgress)
 		require.ErrorIs(t, err, domainorder.ErrTicketNotFound, "nor moves them")
-		_, err = f.counter.PatchStatus(ctx, clerk, domainuser.RoleStaff, ticket.ID, domainorder.TicketReady)
-		require.ErrorIs(t, err, domainorder.ErrInvalidTicketTransition, "a ticket starts before it is ready")
+		_, err = f.counter.PatchStatus(ctx, clerk, domainuser.RoleStaff, ticket.ID, domainorder.TicketInProgress)
+		require.ErrorIs(t, err, domainorder.ErrInvalidTicketTransition, "the counter does not start a ticket")
+
+		kitchenOrder := f.placeConfirmed(t, []uuid.UUID{f.cake}, nil, 14)
+		cake := f.ticketAt(t, kitchenOrder.ID, domaincategory.StationKitchen)
+		_, err = f.kitchen.PatchStatus(ctx, baker, domainuser.RoleBaker, cake.ID, domainorder.TicketReady)
+		require.ErrorIs(t, err, domainorder.ErrInvalidTicketTransition, "the kitchen starts a ticket before it is ready")
 
 		unknown := uuid.New()
 		_, err = f.kitchen.Get(ctx, unknown)
@@ -188,9 +195,33 @@ func TestTickets_Integration(t *testing.T) {
 		require.ErrorIs(t, err, domainorder.ErrTicketNotFound)
 	})
 
+	t.Run("the_kitchen_queue_shows_one_pickup_day", func(t *testing.T) {
+		order := f.placeConfirmed(t, []uuid.UUID{f.cake}, nil, 10)
+		tomorrow := domainstore.DayOf(tomorrowAt(12, 0))
+		listed := func(day time.Time) ([]string, int64) {
+			tickets, total, _, _, err := f.kitchen.List(ctx, 1, 100, "", day.Format(domainstore.DayLayout))
+			require.NoError(t, err)
+			ids := make([]string, 0, len(tickets))
+			for _, ticket := range tickets {
+				ids = append(ids, ticket.OrderID)
+			}
+			return ids, total
+		}
+
+		ids, total := listed(tomorrow)
+		assert.Contains(t, ids, order.ID)
+		assert.Equal(t, int64(len(ids)), total, "the count follows the day")
+		ids, _ = listed(tomorrow.AddDate(0, 0, 1))
+		assert.NotContains(t, ids, order.ID, "another day does not list it")
+		_, _, _, _, err := f.kitchen.List(ctx, 1, 100, "", "tomorrow")
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Contains(t, appErr.Details, "date")
+	})
+
 	t.Run("a_queue_filters_only_by_the_statuses_it_holds", func(t *testing.T) {
 		for _, filter := range []string{"cancelled", "baking"} {
-			_, _, _, _, err := f.kitchen.List(ctx, 1, 20, filter)
+			_, _, _, _, err := f.kitchen.List(ctx, 1, 20, filter, "")
 			var appErr *apperrors.AppError
 			require.ErrorAs(t, err, &appErr, filter)
 			assert.Equal(t, apperrors.ErrValidation.Code, appErr.Code, filter)
@@ -213,11 +244,9 @@ func TestTickets_Integration(t *testing.T) {
 		require.Len(t, seen.OrderTickets, 2, "the kitchen sees where the whole order stands")
 		assert.Equal(t, []dto.TicketItemResponse{{Name: "Matcha cake", Quantity: 1}}, seen.Items)
 
-		_, err = f.counter.PatchStatus(ctx, clerk, domainuser.RoleStaff, pastry.ID, domainorder.TicketInProgress)
-		require.NoError(t, err)
 		change, err = f.counter.PatchStatus(ctx, clerk, domainuser.RoleStaff, pastry.ID, domainorder.TicketReady)
 		require.NoError(t, err)
-		assert.Equal(t, string(domainorder.StatusReady), change.OrderStatus)
+		assert.Equal(t, string(domainorder.StatusReady), change.OrderStatus, "the counter gets its part ready in one step")
 
 		detail, err := f.staff.Get(ctx, uuid.MustParse(order.ID))
 		require.NoError(t, err)
@@ -231,7 +260,7 @@ func TestTickets_Integration(t *testing.T) {
 			"order.created:awaiting_payment", "order.status_changed:confirmed",
 			"order.status_changed:in_production", "ticket.changed:in_progress",
 			"ticket.changed:ready",
-			"ticket.changed:in_progress", "order.status_changed:ready", "ticket.changed:ready",
+			"order.status_changed:ready", "ticket.changed:ready",
 		}, f.orderNotices(t, order.ID), "every ticket move is announced with the order status it derives")
 
 		_, err = f.staff.PatchStatus(ctx, clerk, domainuser.RoleStaff, uuid.MustParse(order.ID),
@@ -241,13 +270,42 @@ func TestTickets_Integration(t *testing.T) {
 		require.ErrorIs(t, err, domainorder.ErrTicketOrderNotActive, "a collected order has nothing left to move")
 	})
 
+	t.Run("an_order_the_counter_makes_alone_goes_straight_to_ready", func(t *testing.T) {
+		order := f.placeConfirmed(t, []uuid.UUID{f.pastry}, nil, 16)
+		pastry := f.ticketAt(t, order.ID, domaincategory.StationCounter)
+
+		change, err := f.counter.PatchStatus(ctx, clerk, domainuser.RoleStaff, pastry.ID, domainorder.TicketReady)
+
+		require.NoError(t, err)
+		assert.Equal(t, string(domainorder.StatusReady), change.OrderStatus)
+		detail, err := f.staff.Get(ctx, uuid.MustParse(order.ID))
+		require.NoError(t, err)
+		last := detail.Timeline[len(detail.Timeline)-1]
+		assert.Equal(t, "ready", last.Status)
+		require.NotNil(t, last.ActorRole)
+		assert.Equal(t, "staff", *last.ActorRole)
+		for _, entry := range detail.Timeline {
+			assert.NotEqual(t, string(domainorder.StatusInProduction), entry.Status, "nothing was ever started")
+		}
+		notices := f.orderNotices(t, order.ID)
+		assert.Equal(t, []string{"order.status_changed:ready", "ticket.changed:ready"}, notices[len(notices)-2:])
+	})
+
+	t.Run("the_counter_finishing_first_puts_a_mixed_order_in_production", func(t *testing.T) {
+		order := f.placeConfirmed(t, []uuid.UUID{f.cake, f.pastry}, nil, 17)
+		pastry := f.ticketAt(t, order.ID, domaincategory.StationCounter)
+
+		change, err := f.counter.PatchStatus(ctx, clerk, domainuser.RoleStaff, pastry.ID, domainorder.TicketReady)
+
+		require.NoError(t, err)
+		assert.Equal(t, string(domainorder.StatusInProduction), change.OrderStatus, "the kitchen still has its part to do")
+	})
+
 	t.Run("the_last_two_tickets_finishing_at_once_make_the_order_ready_once", func(t *testing.T) {
 		order := f.placeConfirmed(t, []uuid.UUID{f.cake, f.pastry}, nil, 15)
 		cake := f.ticketAt(t, order.ID, domaincategory.StationKitchen)
 		pastry := f.ticketAt(t, order.ID, domaincategory.StationCounter)
 		_, err := f.kitchen.PatchStatus(ctx, baker, domainuser.RoleBaker, cake.ID, domainorder.TicketInProgress)
-		require.NoError(t, err)
-		_, err = f.counter.PatchStatus(ctx, clerk, domainuser.RoleStaff, pastry.ID, domainorder.TicketInProgress)
 		require.NoError(t, err)
 
 		var wg sync.WaitGroup
@@ -342,7 +400,7 @@ func TestTickets_Integration(t *testing.T) {
 		change, err := f.counter.Move(ctx, clerk, domainuser.RoleStaff, pastry.ID, domaincategory.StationKitchen)
 		require.NoError(t, err)
 		assert.Equal(t, string(domaincategory.StationKitchen), change.Station)
-		queue, _, _, _, err := f.kitchen.List(ctx, 1, 100, "")
+		queue, _, _, _, err := f.kitchen.List(ctx, 1, 100, "", "")
 		require.NoError(t, err)
 		assert.True(t, containsTicket(queue, pastry.ID), "the kitchen now makes it")
 

@@ -14,14 +14,12 @@ import (
 	"github.com/boms/backend/internal/service/auditlogger"
 )
 
-// StaffTicketUsecase is the counter's prep queue — its own tickets, started
-// and finished one at a time — and the move of a ticket nobody has started to
-// the other station.
+// StaffTicketUsecase gets the counter's tickets ready — listed with the day's
+// pickups — and moves a ticket nobody has started to the other station.
 type StaffTicketUsecase struct {
-	tickets port.TicketRepository
-	flow    ticketFlow
-	audit   *auditlogger.Service
-	log     *zap.Logger
+	flow  ticketFlow
+	audit *auditlogger.Service
+	log   *zap.Logger
 }
 
 func NewStaffTicketUsecase(
@@ -33,22 +31,13 @@ func NewStaffTicketUsecase(
 	log *zap.Logger,
 ) *StaffTicketUsecase {
 	return &StaffTicketUsecase{
-		tickets: tickets,
-		flow:    ticketFlow{tx: tx, orders: orders, tickets: tickets, events: events},
-		audit:   audit,
-		log:     log,
+		flow:  ticketFlow{tx: tx, orders: orders, tickets: tickets, events: events},
+		audit: audit,
+		log:   log,
 	}
 }
 
-func (u *StaffTicketUsecase) List(
-	ctx context.Context,
-	page, pageSize int32,
-	statusFilter string,
-) ([]dto.StationTicketResponse, int64, int32, int32, error) {
-	return listStationTickets(ctx, u.tickets, domaincategory.StationCounter, page, pageSize, statusFilter)
-}
-
-// PatchStatus starts or finishes a counter ticket.
+// PatchStatus gets a counter ticket ready.
 func (u *StaffTicketUsecase) PatchStatus(
 	ctx context.Context,
 	actorID uuid.UUID,

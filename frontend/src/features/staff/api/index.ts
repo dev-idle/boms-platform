@@ -10,13 +10,8 @@ import { orderIncidentSchema, type OrderIncident } from "@/lib/schemas/incident"
 import { messageInputSchema, messageSchema, type Message, type MessageInput } from "@/lib/schemas/message";
 import {
   patchTicketStatusInputSchema,
-  stationTicketSchema,
-  stationTicketsListFilterSchema,
   ticketChangeSchema,
   type PatchTicketStatusInput,
-  type StationTicket,
-  type StationTicketsListFilterInput,
-  type StationTicketsListResult,
   type TicketChange,
 } from "@/lib/schemas/ticket";
 
@@ -142,31 +137,6 @@ export async function patchStaffOrderStatus(
     schema: staffOrderSchema,
     json: body,
   });
-}
-
-export async function listCounterTickets(
-  input: StationTicketsListFilterInput,
-): Promise<StationTicketsListResult> {
-  const filter = stationTicketsListFilterSchema.parse(input);
-  const params = new URLSearchParams();
-  params.set("page", String(filter.page));
-  params.set("page_size", String(filter.page_size));
-  if (filter.status) {
-    params.set("status", filter.status);
-  }
-  const result = await browserRequestWithMeta<StationTicket[]>(
-    `/api/v1/staff/tickets?${params.toString()}`,
-    { method: "GET", schema: z.array(stationTicketSchema) },
-  );
-  const parsed = parsePaginatedList(result.data, result.meta, {
-    page: filter.page,
-    page_size: filter.page_size,
-  });
-  return {
-    tickets: parsed.items,
-    pagination: parsed.pagination,
-    request_id: parsed.request_id,
-  };
 }
 
 export async function patchCounterTicketStatus(

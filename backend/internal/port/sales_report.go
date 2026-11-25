@@ -62,8 +62,9 @@ type DiscountCodeUse struct {
 	DiscountCents int64
 }
 
-// ProductionTime is how many orders became ready and their average minutes
-// from the first ticket started to ready, 0 when none did.
+// ProductionTime is how many orders became ready after production and their
+// average minutes from the first ticket started to ready, 0 when none did. An
+// order the counter alone got ready in one step is not among them.
 type ProductionTime struct {
 	Orders         int64
 	AverageMinutes int32

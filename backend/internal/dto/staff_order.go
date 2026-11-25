@@ -17,8 +17,16 @@ type StaffOrderCustomerResponse struct {
 // slot length the counter measures lateness by: a pickup is late once its slot
 // has ended.
 type StaffPickupsResponse struct {
-	SlotMinutes int                         `json:"slot_minutes"`
-	Pickups     []StaffOrderSummaryResponse `json:"pickups"`
+	SlotMinutes int                   `json:"slot_minutes"`
+	Pickups     []StaffPickupResponse `json:"pickups"`
+}
+
+// StaffPickupResponse is one pickup with the counter's own part of it — the
+// drinks and items from the case it gets ready — or null when the kitchen
+// makes the whole order.
+type StaffPickupResponse struct {
+	StaffOrderSummaryResponse
+	CounterTicket *OrderTicketResponse `json:"counter_ticket"`
 }
 
 type StaffOrderSummaryResponse struct {
@@ -27,7 +35,6 @@ type StaffOrderSummaryResponse struct {
 	Status     string                     `json:"status"`
 	Channel    string                     `json:"channel"`
 	TotalCents int64                      `json:"total_cents"`
-	ItemCount  int32                      `json:"item_count"`
 	Customer   StaffOrderCustomerResponse `json:"customer"`
 	PickupAt   *time.Time                 `json:"pickup_at,omitempty"`
 	CreatedAt  time.Time                  `json:"created_at"`

@@ -511,6 +511,10 @@ type Querier interface {
 	//      $2::ticket_status IS NULL
 	//      OR t.status = $2::ticket_status
 	//    )
+	//    AND (
+	//      $3::timestamptz IS NULL
+	//      OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
+	//    )
 	CountStationTickets(ctx context.Context, arg CountStationTicketsParams) (int64, error)
 	//CreateAdminProfile
 	//
@@ -1991,8 +1995,9 @@ type Querier interface {
 	//  ORDER BY s.list, s.saved_at DESC, s.id DESC
 	ListSavedProductsForExport(ctx context.Context, userID uuid.UUID) ([]ListSavedProductsForExportRow, error)
 	// A station's queue: its tickets of orders accepted and not yet collected,
-	// soonest pickup first, each with what it makes. The page is cut first and
-	// the items gathered after, as in CatalogListProducts.
+	// soonest pickup first, each with what it makes — every day's, or those with
+	// a pickup in [pickup_from, pickup_to). The page is cut first and the items
+	// gathered after, as in CatalogListProducts.
 	//
 	//  SELECT
 	//    page.id,
@@ -2030,8 +2035,12 @@ type Querier interface {
 	//        $2::ticket_status IS NULL
 	//        OR t.status = $2::ticket_status
 	//      )
+	//      AND (
+	//        $3::timestamptz IS NULL
+	//        OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
+	//      )
 	//    ORDER BY o.pickup_at ASC NULLS LAST, t.created_at ASC, t.id ASC
-	//    LIMIT $4 OFFSET $3
+	//    LIMIT $6 OFFSET $5
 	//  ) page
 	//  LEFT JOIN LATERAL (
 	//    SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name) AS list
@@ -2585,9 +2594,10 @@ type Querier interface {
 	//      AND u.deleted_at IS NULL
 	//  ) AS held
 	PhoneHeldByOtherActiveUser(ctx context.Context, arg PhoneHeldByOtherActiveUserParams) (bool, error)
-	// The orders that became ready in [from_at, to_at), and on average how many
-	// whole minutes they took from the first ticket started (in production) to
-	// ready; 0 when none did.
+	// The orders that became ready in [from_at, to_at) after being in production,
+	// and on average how many whole minutes they took from the first ticket
+	// started (in production) to ready; 0 when none did. An order the counter
+	// alone got ready in one step never was in production and is not counted.
 	//
 	//  SELECT
 	//    count(*)::bigint AS orders,
@@ -3174,8 +3184,9 @@ type Querier interface {
 	//    )
 	StaffListOrdersCount(ctx context.Context, status *OrderStatus) (int64, error)
 	// The pickups of one bakery day, by time: every order the bakery took with a
-	// pickup in [pickup_from, pickup_to), cancelled ones left out. Same columns as
-	// StaffListOrders.
+	// pickup in [pickup_from, pickup_to), cancelled ones left out. The columns of
+	// StaffListOrders, and the counter's own ticket of the order with what it
+	// makes (null when the kitchen makes the whole order).
 	//
 	//  SELECT
 	//    o.id,
@@ -3194,7 +3205,22 @@ type Querier interface {
 	//    o.channel,
 	//    u.email AS customer_email,
 	//    (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-	//    COALESCE(cp.display_name, o.guest_name) AS customer_display_name
+	//    COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+	//    (
+	//      SELECT json_build_object(
+	//        'id', t.id,
+	//        'status', t.status,
+	//        'items', COALESCE((
+	//          SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name)
+	//          FROM order_ticket_items i
+	//          WHERE i.ticket_id = t.id
+	//        ), '[]'::json)
+	//      )
+	//      FROM order_tickets t
+	//      WHERE t.order_id = o.id
+	//        AND t.station = 'counter'::station
+	//        AND t.status <> 'cancelled'::ticket_status
+	//    ) AS counter_ticket
 	//  FROM orders o
 	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id

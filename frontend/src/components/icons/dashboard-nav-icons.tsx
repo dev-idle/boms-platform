@@ -93,16 +93,6 @@ function DiscountsIcon({ className }: IconProps) {
   );
 }
 
-/** Checklist — a queue of tickets to work through. */
-function PrepIcon({ className }: IconProps) {
-  return (
-    <IconBase className={className}>
-      <path d="M10 6h10M10 12h10M10 18h10" />
-      <path d="m4 6 1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17" />
-    </IconBase>
-  );
-}
-
 /** A tray with a slash — what has run out today. */
 function AvailabilityIcon({ className }: IconProps) {
   return (
@@ -231,7 +221,6 @@ const DASHBOARD_NAV_ICONS = {
   orders: OrdersIcon,
   password: PasswordIcon,
   pickups: PickupsIcon,
-  prep: PrepIcon,
   products: ProductsIcon,
   profile: ProfileIcon,
   promotions: PromotionsIcon,

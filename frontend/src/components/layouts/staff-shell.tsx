@@ -17,9 +17,15 @@ export function StaffShell({ children }: StaffShellProps) {
   const navItems: readonly DashboardNavItem[] = [
     { href: ROUTE.staff.orders, icon: "orders", label: "Orders", match: "prefix" },
     // Conversations holding messages nobody at the counter has read.
-    { href: ROUTE.staff.chat, icon: "messages", label: "Messages", match: "prefix", count: counts.data?.unread },
+    {
+      href: ROUTE.staff.chat,
+      icon: "messages",
+      label: "Messages",
+      match: "prefix",
+      count: counts.data?.unread,
+      fullBleed: true,
+    },
     { href: ROUTE.staff.pickups, icon: "pickups", label: "Pickups", match: "prefix" },
-    { href: ROUTE.staff.prep, icon: "prep", label: "Prep Queue", match: "prefix" },
     { href: ROUTE.staff.availability, icon: "availability", label: "Availability", match: "prefix" },
   ];
 

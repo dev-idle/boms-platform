@@ -11,11 +11,14 @@ import { toast } from "sonner";
 
 import { isApiError } from "@/lib/errors";
 import {
-  stationTicketsListFilterSchema,
   ticketChangeMessage,
   type PatchTicketStatusInput,
-  type StationTicketsListFilterInput,
 } from "@/lib/schemas/ticket";
+
+import {
+  stationTicketsListFilterSchema,
+  type StationTicketsListFilterInput,
+} from "../schemas";
 
 import {
   getKitchenTicket,

@@ -442,7 +442,6 @@ func main() {
 	staffOrders.Get("/orders/:id", staffOrderHandler.Get)
 	staffOrders.Patch("/orders/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.PatchStatus)
 	staffOrders.Post("/orders/:id/incidents", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffOrderHandler.ReportIncident)
-	staffOrders.Get("/tickets", staffTicketHandler.List)
 	staffOrders.Patch("/tickets/:id/status", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.PatchStatus)
 	staffOrders.Patch("/tickets/:id/station", middleware.OrderWriteRateLimit(rdb, cfg.RateRedis), staffTicketHandler.Move)
 	staffOrders.Get("/products", staffProductHandler.List)

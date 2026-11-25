@@ -62,8 +62,9 @@ func (f ticketFlow) lockTicket(txCtx context.Context, ticketID uuid.UUID) (domai
 }
 
 // advance moves a ticket made at station to the next status and moves its
-// order along when its tickets say so: in production at the first start,
-// ready once every ticket is. A ticket of another station is not found there.
+// order along when its tickets say so: in production at the first ticket
+// started or made ready, ready once every ticket is. A ticket of another
+// station is not found there.
 func (f ticketFlow) advance(
 	ctx context.Context,
 	actor ticketActor,
@@ -83,7 +84,7 @@ func (f ticketFlow) advance(
 		if !order.Status.ProducesTickets() {
 			return domainorder.ErrTicketOrderNotActive
 		}
-		if !domainorder.CanAdvanceTicket(ticket.Status, to) {
+		if !domainorder.CanAdvanceTicket(station, ticket.Status, to) {
 			return domainorder.ErrInvalidTicketTransition
 		}
 		updated, err := f.tickets.UpdateStatus(txCtx, port.UpdateTicketStatusParams{

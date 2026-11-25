@@ -85,6 +85,13 @@ type StaffOrderListRow struct {
 	CustomerPhone         *string
 }
 
+// StaffPickupRow is an order on the pickup schedule with the counter's own
+// ticket, its items named and counted; nil when the kitchen makes it all.
+type StaffPickupRow struct {
+	StaffOrderListRow
+	CounterTicket *domainorder.Ticket
+}
+
 // PickupCount is how many orders not cancelled are due at one pickup time.
 type PickupCount struct {
 	At     time.Time
@@ -171,7 +178,7 @@ type OrderRepository interface {
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domainorder.Item, error)
 	// StaffListPickups pages the orders the bakery took with a pickup in
 	// [From, To), by pickup time; cancelled ones are left out.
-	StaffListPickups(ctx context.Context, params StaffListPickupsParams) ([]StaffOrderListRow, error)
+	StaffListPickups(ctx context.Context, params StaffListPickupsParams) ([]StaffPickupRow, error)
 	StaffListPickupsCount(ctx context.Context, from, to time.Time) (int64, error)
 	// HasCustomItems reports whether the order holds an item its customer
 	// configured, which staff review before the bakery makes it.

@@ -1895,32 +1895,8 @@
     width: var(--db-table-col-actions-pair);
   }
 
-  /* Prep queue: the order (code over name) and its items split what pickup,
-     status and two actions leave; below the minimum the wrapper scrolls, so
-     the order never gets narrower than a code. */
-  .db-table--prep-queue {
-    --db-table-prep-fixed-cols: calc(
-      var(--db-table-col-datetime) + var(--db-table-col-status-pill) +
-        var(--db-table-col-actions-group)
-    );
-
-    min-width: calc(var(--db-table-prep-fixed-cols) + 24rem);
-  }
-
-  .db-table--prep-queue col.db-table-col-status {
-    width: var(--db-table-col-status-pill);
-  }
-
-  .db-table--prep-queue col.db-table-col-actions {
-    width: var(--db-table-col-actions-group);
-  }
-
-  .db-table--prep-queue .db-table-row-actions {
-    flex-wrap: nowrap;
-  }
-
   /* A day, week or range picker and its steps sit together: on the pickups
-     toolbar's left, and in the incidents and sales headers. */
+     and the kitchen queue toolbars' left, and in the incidents and sales headers. */
   .db-table-day {
     align-items: center;
     display: flex;
@@ -1941,13 +1917,18 @@
     white-space: nowrap;
   }
 
-  /* Pickups: code, items, status and two actions are fixed; the customer takes
-     the rest, and below that the wrapper scrolls. */
+  /* Pickups: the code, what the counter gets ready, the status and three
+     actions are fixed; the customer takes the rest, at least as wide as the
+     counter column, and below that the wrapper scrolls. */
   .db-table--pickups {
     min-width: calc(
-      var(--db-table-col-code) + var(--db-table-col-number) + var(--db-table-col-status-pill) +
-        var(--db-table-col-actions-group) + 14rem
+      var(--db-table-col-code) + 2 * var(--db-table-col-counter) + var(--db-table-col-status-pill) +
+        var(--db-table-col-actions-triple)
     );
+  }
+
+  .db-table--pickups col.db-table-col-counter {
+    width: var(--db-table-col-counter);
   }
 
   .db-table--pickups col.db-table-col-status {
@@ -1955,7 +1936,7 @@
   }
 
   .db-table--pickups col.db-table-col-actions {
-    width: var(--db-table-col-actions-group);
+    width: var(--db-table-col-actions-triple);
   }
 
   .db-table--pickups .db-table-row-actions {
@@ -3017,11 +2998,11 @@
   /* Messages (02 §13): the inbox, the open conversation and the order it is
      about fill the work area edge to edge, each pane scrolling on its own. One
      pane on a narrow screen, two from 64rem, the order beside them from 90rem. */
-  .dashboard-main:has(.staff-chat) {
+  .dashboard-main--full-bleed {
     padding: 0;
   }
 
-  .dashboard-page:has(> .staff-chat) {
+  .dashboard-main--full-bleed > .dashboard-page {
     max-width: none;
   }
 

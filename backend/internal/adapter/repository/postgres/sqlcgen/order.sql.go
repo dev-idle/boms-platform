@@ -2125,7 +2125,22 @@ SELECT
   o.channel,
   u.email AS customer_email,
   (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-  COALESCE(cp.display_name, o.guest_name) AS customer_display_name
+  COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+  (
+    SELECT json_build_object(
+      'id', t.id,
+      'status', t.status,
+      'items', COALESCE((
+        SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name)
+        FROM order_ticket_items i
+        WHERE i.ticket_id = t.id
+      ), '[]'::json)
+    )
+    FROM order_tickets t
+    WHERE t.order_id = o.id
+      AND t.station = 'counter'::station
+      AND t.status <> 'cancelled'::ticket_status
+  ) AS counter_ticket
 FROM orders o
 LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 LEFT JOIN customer_profiles cp ON cp.user_id = u.id
@@ -2163,11 +2178,13 @@ type StaffListPickupsRow struct {
 	CustomerEmail         *string      `json:"customerEmail"`
 	CustomerEmailVerified bool         `json:"customerEmailVerified"`
 	CustomerDisplayName   *string      `json:"customerDisplayName"`
+	CounterTicket         []byte       `json:"counterTicket"`
 }
 
 // The pickups of one bakery day, by time: every order the bakery took with a
-// pickup in [pickup_from, pickup_to), cancelled ones left out. Same columns as
-// StaffListOrders.
+// pickup in [pickup_from, pickup_to), cancelled ones left out. The columns of
+// StaffListOrders, and the counter's own ticket of the order with what it
+// makes (null when the kitchen makes the whole order).
 //
 //	SELECT
 //	  o.id,
@@ -2186,7 +2203,22 @@ type StaffListPickupsRow struct {
 //	  o.channel,
 //	  u.email AS customer_email,
 //	  (u.email_verified_at IS NOT NULL)::boolean AS customer_email_verified,
-//	  COALESCE(cp.display_name, o.guest_name) AS customer_display_name
+//	  COALESCE(cp.display_name, o.guest_name) AS customer_display_name,
+//	  (
+//	    SELECT json_build_object(
+//	      'id', t.id,
+//	      'status', t.status,
+//	      'items', COALESCE((
+//	        SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name)
+//	        FROM order_ticket_items i
+//	        WHERE i.ticket_id = t.id
+//	      ), '[]'::json)
+//	    )
+//	    FROM order_tickets t
+//	    WHERE t.order_id = o.id
+//	      AND t.station = 'counter'::station
+//	      AND t.status <> 'cancelled'::ticket_status
+//	  ) AS counter_ticket
 //	FROM orders o
 //	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
 //	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
@@ -2229,6 +2261,7 @@ func (q *Queries) StaffListPickups(ctx context.Context, arg StaffListPickupsPara
 			&i.CustomerEmail,
 			&i.CustomerEmailVerified,
 			&i.CustomerDisplayName,
+			&i.CounterTicket,
 		); err != nil {
 			return nil, err
 		}

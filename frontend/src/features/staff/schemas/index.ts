@@ -64,7 +64,6 @@ export const staffOrderSummarySchema = z.object({
   status: orderStatusSchema,
   channel: orderChannelSchema,
   total_cents: z.number().int().min(0),
-  item_count: z.number().int().min(0),
   customer: staffOrderCustomerSchema,
   pickup_at: apiDateTimeSchema.nullable().optional(),
   created_at: apiDateTimeSchema,
@@ -151,7 +150,13 @@ export const staffPickupsFilterSchema = z.object({
 /** The page, with the slot length lateness is measured by: a pickup is late once its slot has ended. */
 export const staffPickupsSchema = z.object({
   slot_minutes: z.number().int().min(1),
-  pickups: z.array(staffOrderSummarySchema.extend({ pickup_at: apiDateTimeSchema })),
+  pickups: z.array(
+    staffOrderSummarySchema.extend({
+      pickup_at: apiDateTimeSchema,
+      /** What the counter gets ready itself; null when the kitchen makes the whole order. */
+      counter_ticket: staffOrderTicketSchema.nullable(),
+    }),
+  ),
 });
 
 /** A product or a combo on an order staff take, with how many. */

@@ -97,8 +97,9 @@ RETURNING id, order_id, station, status, created_at, updated_at;
 
 -- name: ListStationTickets :many
 -- A station's queue: its tickets of orders accepted and not yet collected,
--- soonest pickup first, each with what it makes. The page is cut first and
--- the items gathered after, as in CatalogListProducts.
+-- soonest pickup first, each with what it makes — every day's, or those with
+-- a pickup in [pickup_from, pickup_to). The page is cut first and the items
+-- gathered after, as in CatalogListProducts.
 SELECT
   page.id,
   page.order_id,
@@ -135,6 +136,10 @@ FROM (
       sqlc.narg('status')::ticket_status IS NULL
       OR t.status = sqlc.narg('status')::ticket_status
     )
+    AND (
+      sqlc.narg('pickup_from')::timestamptz IS NULL
+      OR (o.pickup_at >= sqlc.narg('pickup_from')::timestamptz AND o.pickup_at < sqlc.narg('pickup_to')::timestamptz)
+    )
   ORDER BY o.pickup_at ASC NULLS LAST, t.created_at ASC, t.id ASC
   LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
 ) page
@@ -157,4 +162,8 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
   AND (
     sqlc.narg('status')::ticket_status IS NULL
     OR t.status = sqlc.narg('status')::ticket_status
+  )
+  AND (
+    sqlc.narg('pickup_from')::timestamptz IS NULL
+    OR (o.pickup_at >= sqlc.narg('pickup_from')::timestamptz AND o.pickup_at < sqlc.narg('pickup_to')::timestamptz)
   );

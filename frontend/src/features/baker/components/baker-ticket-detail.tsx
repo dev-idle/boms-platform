@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CustomizationSummary } from "@/components/ui/customization-summary";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import {
@@ -10,11 +12,12 @@ import {
   ticketStatusToPillVariant,
 } from "@/components/ui/status-pill";
 import { isApiError } from "@/lib/errors";
-import { nextTicketAction, STATION_LABEL } from "@/lib/schemas/ticket";
+import { STATION_LABEL } from "@/lib/schemas/ticket";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 
 import { useKitchenTicket, usePatchKitchenTicketStatus } from "../hooks";
+import { nextTicketAction } from "../schemas";
 
 type BakerTicketDetailProps = {
   ticketId: string;
@@ -25,6 +28,7 @@ export function BakerTicketDetail({ ticketId }: BakerTicketDetailProps) {
   const isValidId = z.uuid().safeParse(ticketId).success;
   const ticketQuery = useKitchenTicket(ticketId);
   const patchStatus = usePatchKitchenTicketStatus(ticketId);
+  const [confirming, setConfirming] = useState(false);
 
   if (!isValidId) {
     return <p className="text-sm text-muted">Invalid ticket link.</p>;
@@ -92,15 +96,23 @@ export function BakerTicketDetail({ ticketId }: BakerTicketDetailProps) {
               disabled={!action || patchStatus.isPending}
               title={action ? undefined : "The ticket is ready for pickup"}
               type="button"
-              onClick={() => {
-                if (action) {
-                  patchStatus.mutate({ status: action.status });
-                }
-              }}
+              onClick={() => setConfirming(true)}
             >
               {patchStatus.isPending ? "Updating…" : (action?.label ?? "Mark ready")}
             </Button>
           </div>
+          {action ? (
+            <ConfirmDialog
+              confirmLabel={action.label}
+              confirmVariant="warning"
+              description={`${ticket.order_code}: ${action.consequence}`}
+              isPending={patchStatus.isPending}
+              open={confirming}
+              title={action.title}
+              onCancel={() => setConfirming(false)}
+              onConfirm={() => patchStatus.mutate({ status: action.status }, { onSettled: () => setConfirming(false) })}
+            />
+          ) : null}
         </div>
       </DashboardProfileSection>
 

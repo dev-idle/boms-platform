@@ -19,11 +19,15 @@ type UpdateTicketStatusParams struct {
 	To       domainorder.TicketStatus
 }
 
+// StationTicketsParams narrows a station's queue to one ticket status, and to
+// the pickups in [PickupFrom, PickupTo) when PickupFrom is set.
 type StationTicketsParams struct {
-	Station domaincategory.Station
-	Status  *domainorder.TicketStatus
-	Limit   int32
-	Offset  int32
+	Station    domaincategory.Station
+	Status     *domainorder.TicketStatus
+	PickupFrom *time.Time
+	PickupTo   *time.Time
+	Limit      int32
+	Offset     int32
 }
 
 // StationTicket is a ticket in a station's queue with what the station needs
@@ -53,5 +57,6 @@ type TicketRepository interface {
 	// CancelForOrder cancels an order's tickets not cancelled yet and returns them.
 	CancelForOrder(ctx context.Context, orderID uuid.UUID) ([]domainorder.Ticket, error)
 	ListByStation(ctx context.Context, params StationTicketsParams) ([]StationTicket, error)
-	CountByStation(ctx context.Context, station domaincategory.Station, status *domainorder.TicketStatus) (int64, error)
+	// CountByStation counts what ListByStation lists, all pages together.
+	CountByStation(ctx context.Context, params StationTicketsParams) (int64, error)
 }

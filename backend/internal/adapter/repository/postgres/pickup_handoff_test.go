@@ -117,6 +117,7 @@ func TestPickupHandoff_Integration(t *testing.T) {
 	t.Run("the_counter_sees_a_days_pickups_by_time", func(t *testing.T) {
 		later := f.placeConfirmed(t, []uuid.UUID{f.pastry}, nil, 15)
 		sooner := f.placeConfirmed(t, []uuid.UUID{f.pastry}, nil, 13)
+		kitchenOnly := f.placeConfirmed(t, []uuid.UUID{f.cake}, nil, 16)
 		cancelled := f.placeConfirmed(t, []uuid.UUID{f.pastry}, nil, 14)
 		setStatus(cancelled.ID, domainorder.StatusCancelled)
 		day := domainstore.DayOf(tomorrowAt(12, 0)).Format(domainstore.DayLayout)
@@ -128,16 +129,27 @@ func TestPickupHandoff_Integration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, int(settings.SlotLength.Minutes()), schedule.SlotMinutes)
 		assert.Equal(t, int64(len(schedule.Pickups)), total)
-		ids := pickupIDs(schedule.Pickups)
+		ids := scheduleIDs(schedule.Pickups)
 		assert.Less(t, slices.Index(ids, sooner.ID), slices.Index(ids, later.ID), "by pickup time")
 		assert.NotContains(t, ids, cancelled.ID, "a cancelled order is not picked up")
+		for _, pickup := range schedule.Pickups {
+			switch pickup.ID {
+			case sooner.ID:
+				require.NotNil(t, pickup.CounterTicket, "the counter gets its own part ready from the schedule")
+				assert.Equal(t, string(domainorder.TicketQueued), pickup.CounterTicket.Status)
+				require.Len(t, pickup.CounterTicket.Items, 1)
+				assert.Equal(t, "Croissant", pickup.CounterTicket.Items[0].Name)
+			case kitchenOnly.ID:
+				assert.Nil(t, pickup.CounterTicket, "the kitchen makes the whole order")
+			}
+		}
 
 		first, total, _, _, err := f.staff.Pickups(ctx, day, 1, 1)
 		require.NoError(t, err)
 		second, _, _, _, err := f.staff.Pickups(ctx, day, 2, 1)
 		require.NoError(t, err)
 		assert.Equal(t, int64(len(ids)), total, "a page counts the whole day")
-		assert.Equal(t, ids[:2], append(pickupIDs(first.Pickups), pickupIDs(second.Pickups)...), "pages follow on")
+		assert.Equal(t, ids[:2], append(scheduleIDs(first.Pickups), scheduleIDs(second.Pickups)...), "pages follow on")
 
 		other, _, _, _, err := f.staff.Pickups(ctx, domainstore.DayOf(tomorrowAt(12, 0).AddDate(0, 0, 1)).Format(domainstore.DayLayout), 1, 100)
 		require.NoError(t, err)
@@ -188,6 +200,14 @@ func pickupIDs(orders []dto.StaffOrderSummaryResponse) []string {
 	ids := make([]string, 0, len(orders))
 	for _, order := range orders {
 		ids = append(ids, order.ID)
+	}
+	return ids
+}
+
+func scheduleIDs(pickups []dto.StaffPickupResponse) []string {
+	ids := make([]string, 0, len(pickups))
+	for _, pickup := range pickups {
+		ids = append(ids, pickup.ID)
 	}
 	return ids
 }

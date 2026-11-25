@@ -3,17 +3,21 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/service/auditlogger"
 	apperrors "github.com/boms/backend/internal/shared/errors"
+	"github.com/boms/backend/internal/shared/utils"
 )
 
 // BakerTicketUsecase is the kitchen's queue: the kitchen tickets of orders
@@ -43,12 +47,51 @@ func NewBakerTicketUsecase(
 	}
 }
 
+// List is a page of the kitchen's queue, soonest pickup first, narrowed to one
+// ticket status when statusFilter names one, and to one bakery day's pickups
+// when dateFilter names one (YYYY-MM-DD).
 func (u *BakerTicketUsecase) List(
 	ctx context.Context,
 	page, pageSize int32,
-	statusFilter string,
+	statusFilter, dateFilter string,
 ) ([]dto.StationTicketResponse, int64, int32, int32, error) {
-	return listStationTickets(ctx, u.tickets, domaincategory.StationKitchen, page, pageSize, statusFilter)
+	page, pageSize = normalizeOrderListPage(page, pageSize)
+	params := port.StationTicketsParams{
+		Station: domaincategory.StationKitchen,
+		Limit:   pageSize,
+		Offset:  utils.PageOffset(page, pageSize),
+	}
+	if trimmed := strings.TrimSpace(statusFilter); trimmed != "" {
+		parsed := domainorder.TicketStatus(trimmed)
+		if !parsed.Valid() || parsed == domainorder.TicketCancelled {
+			return nil, 0, page, pageSize, apperrors.ErrValidation.WithDetail("status", "queued, in_progress or ready")
+		}
+		params.Status = &parsed
+	}
+	if trimmed := strings.TrimSpace(dateFilter); trimmed != "" {
+		day, err := time.ParseInLocation(domainstore.DayLayout, trimmed, domainstore.Location)
+		if err != nil {
+			return nil, 0, page, pageSize, apperrors.ErrValidation.WithDetail("date", "use YYYY-MM-DD")
+		}
+		next := day.AddDate(0, 0, 1)
+		params.PickupFrom, params.PickupTo = &day, &next
+	}
+	rows, total, err := listWithTotal(ctx,
+		func(ctx context.Context) ([]port.StationTicket, error) {
+			return u.tickets.ListByStation(ctx, params)
+		},
+		func(ctx context.Context) (int64, error) {
+			return u.tickets.CountByStation(ctx, params)
+		},
+	)
+	if err != nil {
+		return nil, 0, page, pageSize, err
+	}
+	out := make([]dto.StationTicketResponse, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, toStationTicketResponse(row))
+	}
+	return out, total, page, pageSize, nil
 }
 
 // Get returns a kitchen ticket of an order the kitchen may see, with where the

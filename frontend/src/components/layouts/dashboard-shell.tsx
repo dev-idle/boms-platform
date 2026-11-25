@@ -20,6 +20,8 @@ export type DashboardNavItem = {
   match: "exact" | "prefix";
   /** What waits there, e.g. unread conversations; none shows no number. */
   count?: number;
+  /** Its pages fill the work area edge to edge, without the page padding. */
+  fullBleed?: boolean;
 };
 
 type DashboardShellProps = {
@@ -45,6 +47,12 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
+  // Decided by the route, not by what the page holds: the router keeps pages
+  // left behind mounted (hidden), so their content says nothing about the
+  // page on show.
+  const fullBleed = navItems.some(
+    (item) => item.fullBleed && isNavItemActive(pathname, item.href, item.match),
+  );
 
   return (
     <div className="dashboard-shell">
@@ -88,7 +96,7 @@ export function DashboardShell({
           profileHref={profileHref}
         />
       </aside>
-      <main className="dashboard-main">
+      <main className={fullBleed ? "dashboard-main dashboard-main--full-bleed" : "dashboard-main"}>
         <div className="dashboard-page">{children}</div>
       </main>
     </div>

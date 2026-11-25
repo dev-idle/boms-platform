@@ -20,11 +20,13 @@ import { ROUTE } from "@/constants/routes";
 import { useNow } from "@/lib/hooks/use-now";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import type { OrderStatus } from "@/lib/schemas/order";
+import { formatTicketItems } from "@/lib/schemas/ticket";
 import { bakeryDayOf, formatPickupWallTime, shiftDay } from "@/lib/validation/pickup";
 
 import { useStaffPickups } from "../hooks";
-import { groupPickupsBySlot, isLatePickup } from "../lib/pickup-schedule";
+import { counterReadyBlockedReason, groupPickupsBySlot, isLatePickup } from "../lib/pickup-schedule";
 import type { StaffPickup } from "../schemas";
+import { StaffCounterReadyDialog } from "./staff-counter-ready-dialog";
 import { StaffCustomerCell } from "./staff-customer-cell";
 import { StaffHandoffDialog } from "./staff-handoff-dialog";
 
@@ -50,7 +52,11 @@ function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-/** The counter's day: every pickup by time, late ones flagged, ready ones handed over here. */
+/**
+ * The counter's day: every pickup by time, late ones flagged. The counter gets
+ * its own part of each order ready here — drinks and items from the case — and
+ * hands over the orders every station has finished.
+ */
 export function StaffPickupSchedule() {
   const now = useNow(MINUTE_MS);
   const today = bakeryDayOf(now);
@@ -58,6 +64,7 @@ export function StaffPickupSchedule() {
   const [page, setPage] = useState(1);
   const [handoff, setHandoff] = useState<StaffPickup | null>(null);
   const [handoffOpen, setHandoffOpen] = useState(false);
+  const [preparing, setPreparing] = useState<StaffPickup | null>(null);
   const pickupsQuery = useStaffPickups({ date: day, page, page_size: PAGE_SIZE });
   const { initialLoading, refetching } = getQuerySurface(pickupsQuery);
   const pickups = pickupsQuery.data?.pickups ?? [];
@@ -110,7 +117,7 @@ export function StaffPickupSchedule() {
           <colgroup>
             <col className="db-table-col-code" />
             <col />
-            <col className="db-table-col-number" />
+            <col className="db-table-col-counter" />
             <col className="db-table-col-status" />
             <col className="db-table-col-actions" />
           </colgroup>
@@ -118,7 +125,7 @@ export function StaffPickupSchedule() {
             <tr>
               <th>Order</th>
               <th>Customer</th>
-              <th className="db-table-num">Items</th>
+              <th>Counter</th>
               <th className="db-table-status">Status</th>
               <th className="db-table-detail">Actions</th>
             </tr>
@@ -160,7 +167,13 @@ export function StaffPickupSchedule() {
                       <td>
                         <StaffCustomerCell channel={pickup.channel} customer={pickup.customer} />
                       </td>
-                      <td className="db-table-num">{pickup.item_count}</td>
+                      <td>
+                        {pickup.counter_ticket ? (
+                          formatTicketItems(pickup.counter_ticket.items)
+                        ) : (
+                          <span className="text-muted">Kitchen only</span>
+                        )}
+                      </td>
                       <td className="db-table-status">
                         <StatusPill
                           label={formatOrderStatusLabel(pickup.status)}
@@ -169,6 +182,13 @@ export function StaffPickupSchedule() {
                       </td>
                       <td className="db-table-detail">
                         <DashboardTableRowActions>
+                          <DashboardTableActionButton
+                            blockedReason={counterReadyBlockedReason(pickup)}
+                            label={`Mark the counter part of order ${pickup.code} ready`}
+                            onClick={() => setPreparing(pickup)}
+                            text="Ready"
+                            tone="accent"
+                          />
                           <DashboardTableActionButton
                             blockedReason={handoffBlockedReason(pickup.status)}
                             label={`Hand over order ${pickup.code}`}
@@ -204,6 +224,8 @@ export function StaffPickupSchedule() {
           totalPages={pagination?.total_pages ?? 1}
         />
       </DashboardTableWrap>
+
+      <StaffCounterReadyDialog pickup={preparing} onClose={() => setPreparing(null)} />
 
       {/* Stays mounted once opened, so closing it hands focus back to the row. */}
       {handoff ? (

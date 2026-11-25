@@ -29,6 +29,24 @@ export function groupPickupsBySlot(pickups: ReadonlyArray<StaffPickup>): PickupS
   return slots;
 }
 
+/** Why the counter's part of this order cannot be marked ready, or undefined when it can. */
+export function counterReadyBlockedReason(pickup: StaffPickup): string | undefined {
+  const ticket = pickup.counter_ticket;
+  if (!ticket) {
+    return "The kitchen makes this order";
+  }
+  if (ticket.status === "ready") {
+    return "Counter part ready";
+  }
+  if (pickup.status === "pending") {
+    return "Accept the order first";
+  }
+  if (pickup.status !== "confirmed" && pickup.status !== "in_production") {
+    return "Nothing left to prepare";
+  }
+  return undefined;
+}
+
 /** An order nobody has collected though its slot, `slotMinutes` long, has ended. */
 export function isLatePickup(pickup: StaffPickup, slotMinutes: number, now: Date): boolean {
   return (

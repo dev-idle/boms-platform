@@ -5,7 +5,7 @@
  *   - Public:   /, /login, /register, /forgot-password, /reset-password, /verify-email, /unsubscribe,
  *               /products, /products/:id, /terms, /privacy, /refund-policy
  *   - Customer: /cart, /orders, /customer/saved, /customer/account/*
- *   - Staff:    /staff/orders, /staff/orders/new, /staff/orders/:id, /staff/pickups, /staff/prep, /staff/availability, /staff/chat, /staff/chat/:orderId, /staff/chat/customers/:customerId, /staff/account/*
+ *   - Staff:    /staff/orders, /staff/orders/new, /staff/orders/:id, /staff/pickups, /staff/availability, /staff/chat, /staff/chat/:orderId, /staff/chat/customers/:customerId, /staff/account/*
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/reviews, /manager/promotions, /manager/promotions/new,
@@ -44,7 +44,6 @@ export const ROUTE = {
     newOrder: "/staff/orders/new",
     orderDetail: (id: string) => `/staff/orders/${id}`,
     pickups: "/staff/pickups",
-    prep: "/staff/prep",
     availability: "/staff/availability",
     chat: "/staff/chat",
     chatThread: (orderId: string) => `/staff/chat/${orderId}`,

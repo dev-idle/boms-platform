@@ -3,45 +3,42 @@ import { describe, expect, it } from "vitest";
 import { staffQueryKeys, staffQueryKeysForEvent } from "./query-options";
 
 describe("staffQueryKeysForEvent", () => {
-  it("refreshes both queues and every order detail when an order moves or is paid", () => {
+  it("refreshes the orders, the schedule and every order detail when an order moves or is paid", () => {
     expect(
       staffQueryKeysForEvent({ type: "order.status_changed", data: { order_id: "o-1" } }),
-    ).toEqual([staffQueryKeys.ordersRoot, staffQueryKeys.ticketsRoot]);
+    ).toEqual([staffQueryKeys.ordersRoot]);
     expect(staffQueryKeys.order("o-1").slice(0, 2)).toEqual([
       ...staffQueryKeys.ordersRoot,
     ]);
   });
 
-  it("refreshes both queues when a pickup moves, and only the orders when a refund arrives", () => {
+  it("refreshes the orders when a pickup moves or a refund arrives", () => {
     expect(
       staffQueryKeysForEvent({ type: "order.rescheduled", data: { order_id: "o-1" } }),
-    ).toEqual([staffQueryKeys.ordersRoot, staffQueryKeys.ticketsRoot]);
+    ).toEqual([staffQueryKeys.ordersRoot]);
     expect(
       staffQueryKeysForEvent({ type: "order.refunded", data: { order_id: "o-1" } }),
     ).toEqual([staffQueryKeys.ordersRoot]);
   });
 
-  it("refreshes the prep queue and the ticket's order when a ticket moves", () => {
+  it("refreshes the schedule and the ticket's order when a ticket moves", () => {
     expect(
       staffQueryKeysForEvent({ type: "ticket.changed", data: { order_id: "o-1", ticket_id: "t-1" } }),
-    ).toEqual([staffQueryKeys.ticketsRoot, staffQueryKeys.order("o-1")]);
+    ).toEqual([staffQueryKeys.pickupsRoot, staffQueryKeys.order("o-1")]);
   });
 
-  it("refreshes every order detail when a ticket event names no order", () => {
-    expect(staffQueryKeysForEvent({ type: "ticket.changed", data: {} })).toEqual([
-      staffQueryKeys.ticketsRoot,
-      staffQueryKeys.ordersRoot,
-    ]);
+  it("refreshes every order when a ticket event names no order", () => {
+    expect(staffQueryKeysForEvent({ type: "ticket.changed", data: {} })).toEqual([staffQueryKeys.ordersRoot]);
   });
 
   it("keeps a day's pickups under the orders, so every order event refreshes them", () => {
-    expect(staffQueryKeys.pickups({ date: "2026-10-01" }).slice(0, 2)).toEqual([...staffQueryKeys.ordersRoot]);
+    expect(staffQueryKeys.pickups({ date: "2026-10-01" }).slice(0, 3)).toEqual([...staffQueryKeys.pickupsRoot]);
+    expect(staffQueryKeys.pickupsRoot.slice(0, 2)).toEqual([...staffQueryKeys.ordersRoot]);
   });
 
-  it("refreshes both queues when the counter takes an order, and the availability list when a product runs out", () => {
+  it("refreshes the orders when the counter takes one, and the availability list when a product runs out", () => {
     expect(staffQueryKeysForEvent({ type: "order.created", data: { order_id: "o-1" } })).toEqual([
       staffQueryKeys.ordersRoot,
-      staffQueryKeys.ticketsRoot,
     ]);
     expect(staffQueryKeysForEvent({ type: "product.sold_out_changed", data: { product_id: "p-1" } })).toEqual([
       staffQueryKeys.productsRoot,
