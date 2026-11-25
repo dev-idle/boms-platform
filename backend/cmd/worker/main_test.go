@@ -86,6 +86,16 @@ func TestSweep_StopsOnError(t *testing.T) {
 	assert.Equal(t, 1, sweeps)
 }
 
+// beats counts the worker's recorded runs.
+type beats struct{ count atomic.Int32 }
+
+func (b *beats) Beat(context.Context, time.Time) error {
+	b.count.Add(1)
+	return nil
+}
+
+func (b *beats) LastBeat(context.Context) (*time.Time, error) { return nil, nil }
+
 func TestRun_SweepsPrunesPurgesAndExpiresUntilStopped(t *testing.T) {
 	t.Parallel()
 	jobs := &fakeJobs{}
@@ -94,10 +104,11 @@ func TestRun_SweepsPrunesPurgesAndExpiresUntilStopped(t *testing.T) {
 		orderRuns.Add(1)
 		return 0, nil
 	}}}
+	heartbeat := &beats{}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		run(ctx, jobs, jobs, orders, &config.Config{
+		run(ctx, jobs, jobs, orders, heartbeat, &config.Config{
 			Outbox: config.OutboxConfig{
 				SweepInterval: 5 * time.Millisecond,
 				PruneInterval: 5 * time.Millisecond,
@@ -112,7 +123,7 @@ func TestRun_SweepsPrunesPurgesAndExpiresUntilStopped(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		sweeps, prunes := jobs.counts()
 		purges, _ := jobs.purged()
-		return sweeps > 0 && prunes > 0 && purges > 0 && orderRuns.Load() > 0
+		return sweeps > 0 && prunes > 0 && purges > 0 && orderRuns.Load() > 0 && heartbeat.count.Load() > 0
 	}, 5*time.Second, 5*time.Millisecond)
 	_, retention := jobs.purged()
 	assert.Equal(t, 60*24*time.Hour, retention, "the assistant's conversations are kept as long as the policy says")

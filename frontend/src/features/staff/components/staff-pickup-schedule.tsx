@@ -21,6 +21,7 @@ import { useNow } from "@/lib/hooks/use-now";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import type { OrderStatus } from "@/lib/schemas/order";
 import { formatTicketItems } from "@/lib/schemas/ticket";
+import { plural } from "@/lib/utils";
 import { bakeryDayOf, formatPickupWallTime, shiftDay } from "@/lib/validation/pickup";
 
 import { useStaffPickups } from "../hooks";
@@ -47,10 +48,6 @@ function handoffBlockedReason(status: OrderStatus): string | undefined {
     default:
       return "Not ready yet";
   }
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 /**

@@ -214,7 +214,8 @@ func strands(params port.StrandedPickupsParams, at time.Time) bool {
 func (u *AdminStoreSettingsUsecase) strandedParams(ctx context.Context, q dto.StrandedPickupsQuery, now time.Time) (port.StrandedPickupsParams, error) {
 	switch {
 	case q.ClosedDate != "" && q.OpensAt == "" && q.ClosesAt == "":
-		day, err := time.ParseInLocation(domainstore.DayLayout, q.ClosedDate, domainstore.Location)
+		// A calendar day, as DayOf and ClosedDateWindow give one.
+		day, err := time.Parse(domainstore.DayLayout, q.ClosedDate)
 		if err != nil {
 			return port.StrandedPickupsParams{}, apperrors.ErrValidation.WithDetail("closed_date", "use YYYY-MM-DD")
 		}
@@ -245,7 +246,7 @@ func (u *AdminStoreSettingsUsecase) strandedParams(ctx context.Context, q dto.St
 	}
 }
 
-// closedDayParams finds the orders on a bakery day.
+// closedDayParams finds the orders on a bakery day, given as a calendar day.
 func closedDayParams(day time.Time) port.StrandedPickupsParams {
 	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, domainstore.Location)
 	return port.StrandedPickupsParams{From: start, To: start.AddDate(0, 0, 1)}

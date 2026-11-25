@@ -36,3 +36,8 @@ const twMerge = extendTailwindMerge<TypeStyleGroup>({
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
+
+/** A count with its noun, plural unless the count is one: "1 order", "3 orders". */
+export function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}

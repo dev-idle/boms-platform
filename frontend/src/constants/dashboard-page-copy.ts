@@ -1,6 +1,6 @@
 /** Dashboard home page lead copy (SSOT). */
 export const DASHBOARD_HOME_LEAD = {
-  admin: "Use the sidebar to manage users and store settings, or update your profile.",
+  admin: "The accounts in use, and whether the system runs as it should.",
   manager: "The orders the bakery is making and handing over now, as they move.",
 } as const;
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { USER_ROLE } from "@/constants/roles";
 
 import {
+  adminDashboardSchema,
   closedDateFormSchema,
   createOperationalSchema,
   storeSettingsFormSchema,
@@ -133,5 +134,28 @@ describe("stranding change", () => {
       total: 3,
     });
     expect(parsed.total).toBe(3);
+  });
+});
+
+describe("admin dashboard", () => {
+  const figures = {
+    accounts: { by_role: [{ role: "customer", count: 12 }], disabled: 1, new_customers_this_week: 2, unconfirmed_emails: 3 },
+    health: {
+      database: "up",
+      redis: "down",
+      worker: "unknown",
+      worker_last_run_at: null,
+      undelivered_events: 0,
+      failed_emails: null,
+      stuck_refunds: 0,
+    },
+  };
+
+  it("reads what the API reports while Redis is down", () => {
+    expect(adminDashboardSchema.parse(figures).health.failed_emails).toBeNull();
+  });
+
+  it("refuses a state the API never sends", () => {
+    expect(adminDashboardSchema.safeParse({ ...figures, health: { ...figures.health, worker: "stopped" } }).success).toBe(false);
   });
 });

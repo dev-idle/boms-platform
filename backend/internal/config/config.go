@@ -190,7 +190,8 @@ const maxOutboxSweepBatch = 1000
 // OrderConfig tunes the worker's order jobs.
 type OrderConfig struct {
 	// JobInterval is how often the worker expires orders not paid in time,
-	// makes the refunds cancelled orders ask for and records missed pickups.
+	// makes the refunds cancelled orders ask for and records missed pickups;
+	// the API reads it to tell the admin when the worker is late.
 	JobInterval time.Duration
 	// PickupCodeSecret signs orders into the codes customers give at pickup;
 	// the API checks them and the worker writes them in emails.

@@ -14,6 +14,7 @@ import (
 	"github.com/boms/backend/internal/adapter/eventbus"
 	"github.com/boms/backend/internal/adapter/llm"
 	"github.com/boms/backend/internal/adapter/paypal"
+	"github.com/boms/backend/internal/adapter/queue"
 	"github.com/boms/backend/internal/adapter/realtime"
 	postgresrepo "github.com/boms/backend/internal/adapter/repository/postgres"
 	redisrepo "github.com/boms/backend/internal/adapter/repository/redis"
@@ -217,6 +218,9 @@ func main() {
 	}
 	readiness := usecase.NewReadiness(resources, readinessTimeout+time.Second, zlog)
 	health := v1.NewHealthHandler(readiness)
+	adminDashboardUC := usecase.NewAdminDashboardUsecase(postgresrepo.NewAdminDashboardRepository(pgPool), readiness,
+		redisrepo.NewWorkerHeartbeat(redisClient), queue.NewEmailFailures(redisClient.RDB()), cfg.Order.JobInterval, zlog)
+	adminDashboardHandler := v1.NewAdminDashboardHandler(adminDashboardUC)
 
 	app := newFiberApp(cfg, zlog)
 	// Health probes are intentionally unauthenticated and bypass the proxy secret.
@@ -302,6 +306,14 @@ func main() {
 	adminWrite.Patch("/:id/enable", adminUserHandler.PatchEnable)
 	adminWrite.Post("/:id/reset-password", adminUserHandler.PostResetPassword)
 	adminWrite.Post("/:id/revoke-sessions", adminUserHandler.RevokeSessions)
+
+	adminDashboard := apiV1.Group(
+		"/admin/dashboard",
+		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
+		middleware.RequireRole(domainuser.RoleAdmin),
+		passwordChanged,
+	)
+	adminDashboard.Get("", adminDashboardHandler.Get)
 
 	adminSettings := apiV1.Group(
 		"/admin/settings",

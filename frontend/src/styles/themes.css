@@ -68,6 +68,10 @@
   --db-table-col-actions-triple: 18rem;
   /* What the counter gets ready on a pickup: two or three items on a line. */
   --db-table-col-counter: 12rem;
+  /* A system health check's name: "Undelivered events" plus the cell padding. */
+  --db-table-col-check: 12rem;
+  /* A health status pill: "Needs attention" with its dot, plus the cell padding. */
+  --db-table-col-health-status: 12.5rem;
   --db-table-col-role: 9.25rem;
   /* "Counter" as a micro-label plus the cell padding. */
   --db-table-col-station: 7.5rem;

@@ -29,6 +29,10 @@ func (o strandedOrders) CountStrandedPickups(context.Context, port.StrandedPicku
 	return o.count, nil
 }
 
+func (o strandedOrders) ListStrandedPickups(context.Context, port.StrandedPickupsParams) ([]port.StrandedPickup, error) {
+	return nil, nil
+}
+
 // requireValidationField asserts err is a validation error naming field.
 func requireValidationField(t *testing.T, err error, field string) {
 	t.Helper()
@@ -159,6 +163,9 @@ func TestAdminStoreSettingsUsecase_StrandedPickups_NamesOneChange(t *testing.T) 
 	requireValidationField(t, err, "opens_at")
 	_, err = uc.StrandedPickups(context.Background(), dto.StrandedPickupsQuery{OpensAt: "12:00", ClosesAt: "12:00"})
 	require.ErrorIs(t, err, domainstore.ErrInvalidHours, "hours the settings refuse would strand every order")
+	today := domainstore.DayOf(time.Now()).Format(domainstore.DayLayout)
+	_, err = uc.StrandedPickups(context.Background(), dto.StrandedPickupsQuery{ClosedDate: today})
+	require.NoError(t, err, "today may still close")
 	_, err = uc.StrandedPickups(context.Background(), dto.StrandedPickupsQuery{ClosedDate: "2020-01-01"})
 	require.ErrorIs(t, err, domainstore.ErrClosedDateOutOfRange, "only a day that may be closed")
 }

@@ -36,10 +36,12 @@ import {
   type UserActivityListResult,
   type UsersListResult,
   userActivityFilterSchema,
+  adminDashboardSchema,
   cancelStrandedFormSchema,
   cancelStrandedResultSchema,
   strandedPickupsSchema,
   strandingChangeSchema,
+  type AdminDashboard,
   type CancelStrandedFormInput,
   type StrandedPickups,
   type StrandingChange,
@@ -208,6 +210,11 @@ export async function createClosedDate(input: ClosedDateFormInput): Promise<Clos
     json: closedDateFormSchema.parse(input),
     schema: closedDateSchema,
   });
+}
+
+/** The admin home: the accounts, and whether the system runs as it should. */
+export async function getAdminDashboard(): Promise<AdminDashboard> {
+  return browserRequest<AdminDashboard>("/api/v1/admin/dashboard", { method: "GET", schema: adminDashboardSchema });
 }
 
 /** The orders a closed day or new opening hours would strand. */

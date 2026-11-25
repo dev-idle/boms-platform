@@ -1,3 +1,4 @@
+export { AdminDashboard } from "./admin-dashboard";
 export { AdminStoreSettings } from "./admin-store-settings";
 export { AdminUserDetail } from "./admin-user-detail";
 export { AdminUsersTable } from "./admin-users-table";

@@ -284,6 +284,29 @@ export const cancelStrandedResultSchema = z.object({
   cancelled: z.number().int().min(0),
 });
 
+const count = z.number().int().min(0);
+const upDownSchema = z.enum(["up", "down"]);
+
+/** GET /api/v1/admin/dashboard — the accounts, and whether the system runs as it should. */
+export const adminDashboardSchema = z.object({
+  accounts: z.object({
+    by_role: z.array(z.object({ role: adminUserSchema.shape.role, count })),
+    disabled: count,
+    new_customers_this_week: count,
+    unconfirmed_emails: count,
+  }),
+  health: z.object({
+    database: upDownSchema,
+    redis: upDownSchema,
+    worker: z.enum(["up", "late", "unknown"]),
+    worker_last_run_at: apiDateTimeSchema.nullable(),
+    undelivered_events: count,
+    failed_emails: count.nullable(),
+    stuck_refunds: count,
+  }),
+});
+
+export type AdminDashboard = z.infer<typeof adminDashboardSchema>;
 export type StrandingChange = z.infer<typeof strandingChangeSchema>;
 export type StrandedPickups = z.infer<typeof strandedPickupsSchema>;
 export type CancelStrandedFormInput = z.infer<typeof cancelStrandedFormSchema>;

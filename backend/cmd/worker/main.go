@@ -31,6 +31,7 @@ import (
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpromotion "github.com/boms/backend/internal/domain/promotion"
 	"github.com/boms/backend/internal/infrastructure/logger"
+	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/service/eventdispatch"
 	"github.com/boms/backend/internal/usecase"
 )
@@ -91,7 +92,7 @@ func main() {
 		zap.Duration("order_job_interval", cfg.Order.JobInterval),
 		zap.Int("email_concurrency", cfg.Mail.Concurrency),
 	)
-	run(ctx, dispatcher, postgresrepo.NewAssistantRepository(pgPool), orderJobs, cfg, zlog)
+	run(ctx, dispatcher, postgresrepo.NewAssistantRepository(pgPool), orderJobs, redisrepo.NewWorkerHeartbeat(redisClient), cfg, zlog)
 	// A delivery is a publish and a mark, each within the dispatch timeout.
 	waitCtx, cancel := context.WithTimeout(context.Background(), 2*cfg.Outbox.DispatchTimeout)
 	defer cancel()
@@ -212,12 +213,13 @@ func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, codes domainorder
 }
 
 // run sweeps, prunes and runs the order jobs on their intervals until ctx is
-// cancelled.
+// cancelled. Each round of order jobs is recorded as the worker's last run.
 func run(
 	ctx context.Context,
 	jobs outboxJobs,
 	assistant assistantSessions,
 	orders []orderJob,
+	heartbeat port.WorkerHeartbeat,
 	cfg *config.Config,
 	log *zap.Logger,
 ) {
@@ -247,6 +249,9 @@ func run(
 				if moved > 0 {
 					log.Info("order_job_done", zap.String("job", job.name), zap.Int("orders", moved))
 				}
+			}
+			if err := heartbeat.Beat(ctx, time.Now()); err != nil {
+				log.Warn("worker_heartbeat_failed", zap.Error(err))
 			}
 		case <-pruneTicker.C:
 			prune(ctx, jobs, assistant, cfg, log)

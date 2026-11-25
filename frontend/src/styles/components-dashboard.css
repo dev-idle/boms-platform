@@ -2085,6 +2085,20 @@
     width: var(--db-table-col-status-pill);
   }
 
+  /* System health: the check and its status are fixed; the detail keeps
+     16rem, and below that the wrapper scrolls. */
+  .db-table--health {
+    min-width: calc(var(--db-table-col-check) + var(--db-table-col-health-status) + 16rem);
+  }
+
+  .db-table--health col.db-table-col-name {
+    width: var(--db-table-col-check);
+  }
+
+  .db-table--health col.db-table-col-status {
+    width: var(--db-table-col-health-status);
+  }
+
   /* Report tables: the first column keeps 10rem beside two, three or four
      fixed figure columns; below that the wrapper scrolls. */
   .db-table--figures-2 {

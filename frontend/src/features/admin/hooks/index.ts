@@ -14,6 +14,7 @@ import {
   createOperational,
   cancelStrandedPickups,
   deleteClosedDate,
+  getAdminDashboard,
   getStrandedPickups,
   disableUser,
   enableUser,
@@ -210,6 +211,18 @@ export function useUserActivity(userId: string, input: UserActivityFilterInput) 
     queryFn: () => listUserActivity(userId, filter),
     enabled: Boolean(userId),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** How often the admin home reads again: the worker runs every minute. */
+const DASHBOARD_REFRESH_MS = 60_000;
+
+/** The admin home, read again every minute. */
+export function useAdminDashboard() {
+  return useQuery({
+    queryKey: adminQueryKeys.dashboard,
+    queryFn: getAdminDashboard,
+    refetchInterval: DASHBOARD_REFRESH_MS,
   });
 }
 
