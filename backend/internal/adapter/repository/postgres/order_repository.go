@@ -122,6 +122,15 @@ func (r *OrderRepository) Reschedule(ctx context.Context, params port.Reschedule
 	return mapOrder(row), nil
 }
 
+// ListUnreviewed implements port.OrderRepository.
+func (r *OrderRepository) ListUnreviewed(ctx context.Context, paidBefore time.Time, limit int32) ([]uuid.UUID, error) {
+	ids, err := r.q(ctx).ListUnreviewedOrders(ctx, sqlcgen.ListUnreviewedOrdersParams{PaidBefore: paidBefore, MaxRows: limit})
+	if err != nil {
+		return nil, mapRepoError(err, "list unreviewed orders")
+	}
+	return ids, nil
+}
+
 // ListMissedPickups implements port.OrderRepository.
 func (r *OrderRepository) ListMissedPickups(ctx context.Context, missedBefore time.Time, limit int32) ([]uuid.UUID, error) {
 	ids, err := r.q(ctx).ListMissedPickups(ctx, sqlcgen.ListMissedPickupsParams{MissedBefore: &missedBefore, MaxRows: limit})
@@ -438,10 +447,10 @@ func (r *OrderRepository) ListItemsByOrderID(ctx context.Context, orderID uuid.U
 	return out, nil
 }
 
-func (r *OrderRepository) HasCustomItems(ctx context.Context, orderID uuid.UUID) (bool, error) {
-	has, err := r.q(ctx).OrderHasCustomItems(ctx, orderID)
+func (r *OrderRepository) HasReferencePhoto(ctx context.Context, orderID uuid.UUID) (bool, error) {
+	has, err := r.q(ctx).OrderHasReferencePhoto(ctx, orderID)
 	if err != nil {
-		return false, mapRepoError(err, "order has custom items")
+		return false, mapRepoError(err, "order has reference photo")
 	}
 	return has, nil
 }

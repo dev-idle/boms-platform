@@ -11,7 +11,8 @@ const MaxLeadTime = 7 * 24 * time.Hour
 
 // Product is a sellable catalog item. LeadTime is the notice it needs before
 // pickup, on top of the bakery's own. A customizable product is configured
-// from its options before it goes in the cart, and staff review the order.
+// from its options before it goes in the cart; staff review an order for one
+// only when it brings a reference photo.
 type Product struct {
 	ID             uuid.UUID
 	CategoryID     uuid.UUID

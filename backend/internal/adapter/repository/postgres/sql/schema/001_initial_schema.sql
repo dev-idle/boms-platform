@@ -144,7 +144,7 @@ CREATE TABLE "product_images" (
 );
 CREATE INDEX "product_images_product_id_sort_idx" ON "product_images" ("product_id", "sort_order");
 
-CREATE TYPE "product_option_group" AS ENUM ('size', 'flavor', 'decoration');
+CREATE TYPE "product_option_group" AS ENUM ('size', 'flavor', 'filling', 'decoration');
 
 CREATE TABLE "product_options" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),

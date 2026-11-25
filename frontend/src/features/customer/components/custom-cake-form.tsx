@@ -178,7 +178,9 @@ export function CustomCakeForm({ product }: CustomCakeFormProps) {
           />
         ) : null}
         <p className="text-caption">
-          We confirm every custom cake before we start. If we cannot make it, you are refunded in full.
+          Without a reference photo, your cake is confirmed when you pay. With one, we check it first and accept or
+          decline it within 24 hours of your payment. If we cannot make it, or have not accepted it by then, you are
+          refunded in full.
         </p>
         <div className="dashboard-profile-form-actions">
           <Button aria-busy={addCartItem.isPending || undefined} disabled={busy} type="submit">

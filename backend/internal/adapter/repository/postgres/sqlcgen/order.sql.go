@@ -1612,6 +1612,51 @@ func (q *Queries) ListOrdersByUserCount(ctx context.Context, arg ListOrdersByUse
 	return count, err
 }
 
+const listUnreviewedOrders = `-- name: ListUnreviewedOrders :many
+SELECT o.id
+FROM orders o
+JOIN order_status_events e ON e.order_id = o.id AND e.to_status = 'pending'::order_status
+WHERE o.status = 'pending'::order_status
+  AND e.created_at < $1
+ORDER BY e.created_at
+LIMIT $2::int
+`
+
+type ListUnreviewedOrdersParams struct {
+	PaidBefore time.Time `json:"paidBefore"`
+	MaxRows    int32     `json:"maxRows"`
+}
+
+// Orders still waiting for staff that were paid before paid_before, the
+// longest waiting first.
+//
+//	SELECT o.id
+//	FROM orders o
+//	JOIN order_status_events e ON e.order_id = o.id AND e.to_status = 'pending'::order_status
+//	WHERE o.status = 'pending'::order_status
+//	  AND e.created_at < $1
+//	ORDER BY e.created_at
+//	LIMIT $2::int
+func (q *Queries) ListUnreviewedOrders(ctx context.Context, arg ListUnreviewedOrdersParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listUnreviewedOrders, arg.PaidBefore, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockCustomerBookings = `-- name: LockCustomerBookings :exec
 SELECT pg_advisory_xact_lock($1::int, hashtext($2::uuid::text))
 `
@@ -1764,25 +1809,25 @@ func (q *Queries) NextOrderDayNumber(ctx context.Context, zone string) (OrderDay
 	return i, err
 }
 
-const orderHasCustomItems = `-- name: OrderHasCustomItems :one
+const orderHasReferencePhoto = `-- name: OrderHasReferencePhoto :one
 SELECT EXISTS (
   SELECT 1 FROM order_items
-  WHERE order_id = $1 AND configuration <> '{}'::jsonb
-)::bool AS has_custom_items
+  WHERE order_id = $1 AND configuration->>'reference_image_url' <> ''
+)::bool AS has_reference_photo
 `
 
-// Whether the order holds an item its customer configured, which staff review
-// before the bakery makes it.
+// Whether the order holds a cake asked for after a reference photo, which
+// staff look at before the bakery makes it.
 //
 //	SELECT EXISTS (
 //	  SELECT 1 FROM order_items
-//	  WHERE order_id = $1 AND configuration <> '{}'::jsonb
-//	)::bool AS has_custom_items
-func (q *Queries) OrderHasCustomItems(ctx context.Context, orderID uuid.UUID) (bool, error) {
-	row := q.db.QueryRow(ctx, orderHasCustomItems, orderID)
-	var has_custom_items bool
-	err := row.Scan(&has_custom_items)
-	return has_custom_items, err
+//	  WHERE order_id = $1 AND configuration->>'reference_image_url' <> ''
+//	)::bool AS has_reference_photo
+func (q *Queries) OrderHasReferencePhoto(ctx context.Context, orderID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, orderHasReferencePhoto, orderID)
+	var has_reference_photo bool
+	err := row.Scan(&has_reference_photo)
+	return has_reference_photo, err
 }
 
 const rescheduleOrder = `-- name: RescheduleOrder :one

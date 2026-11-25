@@ -3,6 +3,7 @@ package order
 import (
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	domainstore "github.com/boms/backend/internal/domain/store"
@@ -50,15 +51,24 @@ func SeenByStaff(status Status, history []StatusEvent) bool {
 	})
 }
 
-// PaidStatus is the status an order takes once it is paid: one holding a
-// custom item waits for staff to accept it (pending) before the bakery makes
-// it; any other goes straight to the bakery.
-func PaidStatus(hasCustomItems bool) Status {
-	if hasCustomItems {
+// PaidStatus is the status an order takes once it is paid: one holding a cake
+// asked for after a reference photo waits for staff to accept it (pending)
+// before the bakery makes it; any other, a cake built from the options offered
+// included, goes straight to the bakery.
+func PaidStatus(hasReferencePhoto bool) Status {
+	if hasReferencePhoto {
 		return StatusPending
 	}
 	return StatusConfirmed
 }
+
+// ReviewWindow is how long staff have to accept or reject a paid order that
+// waits for them: one left longer is cancelled and refunded, as the terms say.
+const ReviewWindow = 24 * time.Hour
+
+// UnreviewedReason is what the customer reads of an order the bakery left
+// waiting past ReviewWindow.
+const UnreviewedReason = "We could not review your reference photo within 24 hours of your payment."
 
 // CanStaffTransition reports whether staff may change order status at the counter.
 func CanStaffTransition(from, to Status) bool {

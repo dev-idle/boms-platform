@@ -289,8 +289,8 @@ func (u *PaymentUsecase) settle(ctx context.Context, orderID uuid.UUID) (domainp
 
 // record keeps the provider's answer to a capture and, when the money is
 // taken, moves the order on in the same transaction — to the bakery, or to
-// staff review for a custom order: the two exist together or not at all. A
-// refusal is an incident.
+// staff review for a cake with a reference photo: the two exist together or
+// not at all. A refusal is an incident.
 func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment, capture domainpayment.Capture) error {
 	if capture.Currency != p.Currency || capture.AmountCents != p.AmountCents {
 		return apperrors.Errorf("payment %s: captured %d %s for an order of %d %s: %w",
@@ -315,7 +315,7 @@ func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment,
 	if err != nil {
 		return err
 	}
-	custom, err := u.orders.HasCustomItems(txCtx, order.ID)
+	photo, err := u.orders.HasReferencePhoto(txCtx, order.ID)
 	if err != nil {
 		return err
 	}
@@ -324,7 +324,7 @@ func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment,
 	_, err = u.transitions.applyInTx(txCtx, customer, port.UpdateOrderStatusParams{
 		OrderID:    order.ID,
 		FromStatus: domainorder.StatusAwaitingPayment,
-		ToStatus:   domainorder.PaidStatus(custom),
+		ToStatus:   domainorder.PaidStatus(photo),
 	}, "")
 	if errors.Is(err, domainorder.ErrInvalidStatusTransition) {
 		// The order closed while the buyer paid: the money goes back.

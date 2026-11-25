@@ -491,7 +491,7 @@ table "product_images" {
 
 enum "product_option_group" {
   schema = schema.public
-  values = ["size", "flavor", "decoration"]
+  values = ["size", "flavor", "filling", "decoration"]
 }
 
 // A choice a customer makes on a customizable product, priced on top of it.

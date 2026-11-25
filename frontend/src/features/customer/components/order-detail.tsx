@@ -93,8 +93,8 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
 
         {order.status === "pending" ? (
           <p className="text-caption">
-            We are checking your custom order and will email you once we accept it. If we cannot make it, you are
-            refunded in full.
+            We are checking your reference photo and will email you once we accept your order, within 24 hours of
+            your payment. If we cannot make it, or have not accepted it by then, you are refunded in full.
           </p>
         ) : null}
 

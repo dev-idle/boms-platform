@@ -12,8 +12,8 @@ export function activeOrderProgressIndex(status: OrderStatus): number {
   if (isUncollected(status)) {
     return -1;
   }
-  // An order placed before online payment waited for the counter instead: it
-  // is placed as well.
+  // A paid order whose reference photo staff check first is placed as well; it
+  // moves on once they accept it.
   if (status === "pending") {
     return 0;
   }

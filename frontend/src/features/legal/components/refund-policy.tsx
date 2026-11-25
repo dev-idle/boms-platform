@@ -37,10 +37,11 @@ export function RefundPolicy() {
         </p>
       </PolicySection>
 
-      <PolicySection id="refunds-custom" title="3. Made-to-order cakes">
+      <PolicySection id="refunds-custom" title="3. Custom cakes">
         <p>
-          Made-to-order cakes are paid in full when you order. We review each request before
-          baking; if we cannot make it, we decline it and refund you in full.
+          Custom cakes are paid in full when you order. A cake with a reference photo is checked
+          before we start: if we cannot make it, or have not accepted it within 24 hours of your
+          payment, we cancel it and refund you in full.
         </p>
       </PolicySection>
 

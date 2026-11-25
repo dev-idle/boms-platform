@@ -69,6 +69,12 @@ describe("cartCustomizationInputSchema", () => {
     expect(cartCustomizationInputSchema.safeParse({ ...cake, option_ids: [""] }).success).toBe(false);
   });
 
+  it("takes one option from each of the four groups, and no more", () => {
+    const ids = (count: number) => Array.from({ length: count }, () => crypto.randomUUID());
+    expect(cartCustomizationInputSchema.safeParse({ ...cake, option_ids: ids(4) }).success).toBe(true);
+    expect(cartCustomizationInputSchema.safeParse({ ...cake, option_ids: ids(5) }).success).toBe(false);
+  });
+
   it("refuses a long or formatted message", () => {
     for (const message of ["a".repeat(61), "Happy\nbirthday"]) {
       expect(cartCustomizationInputSchema.safeParse({ ...cake, message }).success).toBe(false);

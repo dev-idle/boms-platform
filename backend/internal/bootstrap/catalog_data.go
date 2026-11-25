@@ -78,13 +78,16 @@ var seedProducts = []seedProduct{
 	{Slug: "strawberry-shortcake-20", CategorySlug: "birthday-cakes", Name: "Strawberry Shortcake 20 cm", Description: "The house strawberry cake in the party size. Serves eight to ten.", PriceCents: 3800, IsActive: true, LeadTimeMinutes: 1440},
 	{Slug: "korean-cream-cake-16", CategorySlug: "birthday-cakes", Name: "Korean Cream Cake 16 cm", Description: "Minimalist finish in ivory buttercream with a single piped line of colour. Serves four to six.", PriceCents: 3200, IsActive: true, LeadTimeMinutes: 1440},
 	{Slug: "chocolate-fudge-cake-16", CategorySlug: "birthday-cakes", Name: "Chocolate Fudge Cake 16 cm", Description: "Dark chocolate sponge, fudge ganache, cocoa nib crown. Serves four to six.", PriceCents: 3000, IsActive: true, LeadTimeMinutes: 1440},
-	{Slug: "custom-celebration-cake", CategorySlug: "birthday-cakes", Name: "Custom Celebration Cake", Description: "Choose the size, flavor and decoration, add a message, and share a photo for reference. We confirm every custom cake before we bake it.", PriceCents: 3000, IsActive: true, LeadTimeMinutes: 2880, Options: []seedOption{
+	{Slug: "custom-celebration-cake", CategorySlug: "birthday-cakes", Name: "Custom Celebration Cake", Description: "Choose the size, flavor, filling and decoration, and add a message. Share a photo for reference and we accept the cake within 24 hours of your payment, before we bake it.", PriceCents: 3000, IsActive: true, LeadTimeMinutes: 2880, Options: []seedOption{
 		{Group: domainproduct.OptionSize, Label: "16 cm, serves 4–6"},
 		{Group: domainproduct.OptionSize, Label: "20 cm, serves 8–10", PriceDeltaCents: 1000},
 		{Group: domainproduct.OptionSize, Label: "24 cm, serves 12–15", PriceDeltaCents: 2000},
 		{Group: domainproduct.OptionFlavor, Label: "Vanilla bean and berries"},
 		{Group: domainproduct.OptionFlavor, Label: "Dark chocolate fudge"},
 		{Group: domainproduct.OptionFlavor, Label: "Ceremonial matcha", PriceDeltaCents: 200},
+		{Group: domainproduct.OptionFilling, Label: "Fresh cream and strawberries"},
+		{Group: domainproduct.OptionFilling, Label: "Salted caramel", PriceDeltaCents: 300},
+		{Group: domainproduct.OptionFilling, Label: "Passion fruit curd", PriceDeltaCents: 300},
 		{Group: domainproduct.OptionDecoration, Label: "Clean cream finish"},
 		{Group: domainproduct.OptionDecoration, Label: "Fresh fruit crown", PriceDeltaCents: 400},
 		{Group: domainproduct.OptionDecoration, Label: "Hand-piped flowers", PriceDeltaCents: 600},

@@ -26,14 +26,33 @@ type PickupPolicy struct {
 // pre-order notice. Either waits the longest notice one of its items needs.
 // Slot capacity is not checked here: it needs the orders already booked.
 func (p PickupPolicy) Validate(at, now time.Time, items Fulfillment) (Type, error) {
+	return p.validate(at, now, now, items)
+}
+
+// Accepts checks, as staff accept an order placed at placedAt, that its pickup
+// at is still ahead of now and still follows the rules, the notice its items
+// need counted from placedAt: the time the order waited for staff is the
+// bakery's to make up, not the customer's. The booking window counts from now,
+// which holds a pickup booked at placedAt and one moved since.
+func (p PickupPolicy) Accepts(at, placedAt, now time.Time, items Fulfillment) error {
+	if !at.After(now) {
+		return ErrPickupTooSoon
+	}
+	_, err := p.validate(at, placedAt, now, items)
+	return err
+}
+
+// validate is Validate with the notice counted from noticeFrom and the booking
+// window from now.
+func (p PickupPolicy) validate(at, noticeFrom, now time.Time, items Fulfillment) (Type, error) {
 	if at.IsZero() {
 		return "", ErrInvalidPickupAt
 	}
 	orderType, prep := TypePreOrder, p.Settings.PreorderMinLead
-	if !items.Kitchen && domainstore.DayOf(at).Equal(domainstore.DayOf(now)) {
+	if !items.Kitchen && domainstore.DayOf(at).Equal(domainstore.DayOf(noticeFrom)) {
 		orderType, prep = TypeInstant, p.Settings.InstantPrep
 	}
-	if at.Before(now.Add(max(prep, items.Lead))) {
+	if at.Before(noticeFrom.Add(max(prep, items.Lead))) {
 		return "", ErrPickupTooSoon
 	}
 	if at.After(now.Add(time.Duration(p.Settings.MaxAdvanceDays) * 24 * time.Hour)) {

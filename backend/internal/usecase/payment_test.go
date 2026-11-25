@@ -41,8 +41,8 @@ func (f *paymentOrders) FlagPaymentAnomaly(context.Context, uuid.UUID, time.Dura
 	return nil, nil
 }
 
-// HasCustomItems holds no custom items: these orders go straight to the bakery.
-func (f *paymentOrders) HasCustomItems(context.Context, uuid.UUID) (bool, error) {
+// HasReferencePhoto holds no reference photo: these orders go straight to the bakery.
+func (f *paymentOrders) HasReferencePhoto(context.Context, uuid.UUID) (bool, error) {
 	return false, nil
 }
 

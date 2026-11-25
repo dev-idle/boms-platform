@@ -108,6 +108,24 @@ func TestFieldErrorsReportsJSONFieldNames(t *testing.T) {
 
 // The full name of an operational user is its identity in the sidebar and in
 // the admin table: absent means "leave it alone", empty would mean "erase it".
+func TestStruct_CustomCakeOptionGroups(t *testing.T) {
+	t.Parallel()
+	for _, group := range []string{"size", "flavor", "filling", "decoration"} {
+		require.NoError(t, validator.Struct(dto.ProductOptionInput{Group: group, Label: "Choice"}), group)
+	}
+	require.Error(t, validator.Struct(dto.ProductOptionInput{Group: "shape", Label: "Heart"}))
+
+	ids := func(count int) []string {
+		out := make([]string, count)
+		for i := range out {
+			out[i] = "0f2f3a6e-5f4c-4f2e-9c1a-1d2b3c4d5e6f"
+		}
+		return out
+	}
+	require.NoError(t, validator.Struct(dto.CartCustomizationRequest{OptionIDs: ids(4)}), "one option from each of four groups")
+	require.Error(t, validator.Struct(dto.CartCustomizationRequest{OptionIDs: ids(5)}))
+}
+
 func TestStruct_FullNameCannotBeEmptied(t *testing.T) {
 	t.Parallel()
 

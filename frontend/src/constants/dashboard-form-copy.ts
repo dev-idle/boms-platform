@@ -38,7 +38,7 @@ export const FORM_SWITCH_HINT = {
   storefrontVisible: "When off, hidden from browse and category filters.",
   availableToOrder: "When off, hidden from the storefront and cart.",
   customizable:
-    "When on, customers choose from the options below, add a message and a reference photo, and staff review the order before the kitchen starts.",
+    "When on, customers choose from the options below and may add a message and a reference photo. Staff must accept an order with a photo within 24 hours of payment, or it is cancelled and refunded.",
   checkoutActive: "When off, cannot be applied at checkout.",
 } as const;
 

@@ -21,6 +21,7 @@ import (
 	"github.com/boms/backend/internal/dto"
 	"github.com/boms/backend/internal/port"
 	apperrors "github.com/boms/backend/internal/shared/errors"
+	"github.com/boms/backend/internal/shared/utils"
 	"github.com/boms/backend/internal/usecase"
 )
 
@@ -34,6 +35,9 @@ func TestCustomCakes_Integration(t *testing.T) {
 	products := postgresadapter.NewProductRepository(f.pool)
 	manager := usecase.NewManagerProductUsecase(products, postgresadapter.NewCategoryRepository(f.pool), f.pool, nil, testCloudinary, zap.NewNop())
 	managerID := f.newWorker(t, domainuser.RoleManager)
+	raw, err := pgxpool.New(ctx, f.connStr)
+	require.NoError(t, err)
+	t.Cleanup(raw.Close)
 	kitchenCake, err := products.GetByID(ctx, f.cake)
 	require.NoError(t, err)
 	cakeRequest := dto.CreateProductRequest{
@@ -44,11 +48,12 @@ func TestCustomCakes_Integration(t *testing.T) {
 			{Group: "size", Label: "20 cm", PriceDeltaCents: 1000, IsActive: true},
 			{Group: "flavor", Label: "Matcha", PriceDeltaCents: 200, IsActive: true},
 			{Group: "flavor", Label: "Durian", IsActive: false},
+			{Group: "filling", Label: "Salted caramel", PriceDeltaCents: 300, IsActive: true},
 		},
 	}
 	cake, err := manager.Create(ctx, managerID, domainuser.RoleManager, cakeRequest)
 	require.NoError(t, err)
-	require.Len(t, cake.Options, 4)
+	require.Len(t, cake.Options, 5)
 	option := func(label string) string {
 		for _, o := range cake.Options {
 			if o.Label == label {
@@ -71,6 +76,33 @@ func TestCustomCakes_Integration(t *testing.T) {
 	ownPhoto := func(customer uuid.UUID) string {
 		return "https://res.cloudinary.com/demo/image/upload/v1/boms/references/" + customer.String() + "/cake.jpg"
 	}
+	withPhoto := func(customer uuid.UUID) *dto.CartCustomizationRequest {
+		customization := choose("16 cm", "Matcha", "Salted caramel")
+		customization.ReferenceImageURL = ownPhoto(customer)
+		customization.ReferenceRightsConfirmed = true
+		return customization
+	}
+	paidWithPhoto := func(t *testing.T, pickupAt time.Time) *dto.OrderResponse {
+		t.Helper()
+		customer := f.newCustomer(t, nil, nil)
+		_, err := add(customer, withPhoto(customer))
+		require.NoError(t, err)
+		order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(pickupAt))
+		require.NoError(t, err)
+		f.pay(t, customer, order.ID)
+		return order
+	}
+	accept := func(orderID string) (*dto.StaffOrderResponse, error) {
+		return f.staff.PatchStatus(ctx, f.clerk, domainuser.RoleStaff, uuid.MustParse(orderID), dto.PatchStaffOrderStatusRequest{Status: "confirmed"})
+	}
+	setLeadTime := func(t *testing.T, minutes int32) {
+		t.Helper()
+		_, err := manager.Update(ctx, managerID, domainuser.RoleManager, uuid.MustParse(cake.ID), dto.UpdateProductRequest{
+			CategoryID: cakeRequest.CategoryID, Name: cake.Name, Slug: cake.Slug, PriceCents: cake.PriceCents,
+			IsActive: true, LeadTimeMinutes: minutes, IsCustomizable: true,
+		})
+		require.NoError(t, err)
+	}
 	validationField := func(t *testing.T, err error) string {
 		t.Helper()
 		var appErr *apperrors.AppError
@@ -84,18 +116,20 @@ func TestCustomCakes_Integration(t *testing.T) {
 	t.Run("a_custom_cake_is_priced_by_the_options_chosen", func(t *testing.T) {
 		customer := f.newCustomer(t, nil, nil)
 
-		_, err := add(customer, choose("20 cm", "Matcha"))
+		_, err := add(customer, choose("20 cm", "Matcha", "Salted caramel"))
 		require.NoError(t, err)
-		cart, err := add(customer, choose("20 cm", "Matcha"))
+		cart, err := add(customer, choose("20 cm", "Matcha", "Salted caramel"))
 
 		require.NoError(t, err)
 		require.Len(t, cart.Items, 2, "each configured cake is a line of its own")
 		line := cart.Items[0]
-		assert.Equal(t, int64(4200), line.UnitPriceCents)
+		assert.Equal(t, int64(4500), line.UnitPriceCents)
 		require.NotNil(t, line.Customization)
 		assert.Equal(t, "Happy birthday Mai", line.Customization.Message)
 		assert.Equal(t, "20 cm", line.Customization.Options[0].Label)
 		assert.Equal(t, "Matcha", line.Customization.Options[1].Label)
+		assert.Equal(t, "filling", line.Customization.Options[2].Group)
+		assert.Equal(t, "Salted caramel", line.Customization.Options[2].Label)
 	})
 
 	t.Run("a_choice_must_fit_what_the_cake_offers", func(t *testing.T) {
@@ -110,9 +144,9 @@ func TestCustomCakes_Integration(t *testing.T) {
 		require.ErrorIs(t, err, domainproduct.ErrInvalidChoice, "a flavor no longer offered")
 		_, err = add(customer, nil)
 		require.ErrorIs(t, err, domainproduct.ErrCustomization, "a custom cake is configured")
-		_, err = f.cartUC.AddItem(ctx, customer, dto.AddCartItemRequest{ProductID: &pastry, Quantity: 1, Customization: choose("16 cm", "Matcha")})
+		_, err = f.cartUC.AddItem(ctx, customer, dto.AddCartItemRequest{ProductID: &pastry, Quantity: 1, Customization: choose("16 cm", "Matcha", "Salted caramel")})
 		require.ErrorIs(t, err, domainproduct.ErrCustomization, "a plain pastry is not")
-		long := choose("16 cm", "Matcha")
+		long := choose("16 cm", "Matcha", "Salted caramel")
 		long.Message = strings.Repeat("a", domainproduct.MaxMessageLength+1)
 		_, err = add(customer, long)
 		require.ErrorIs(t, err, domainproduct.ErrInvalidMessage)
@@ -120,26 +154,26 @@ func TestCustomCakes_Integration(t *testing.T) {
 
 	t.Run("a_reference_photo_is_the_customers_own_upload", func(t *testing.T) {
 		customer := f.newCustomer(t, nil, nil)
-		withPhoto := choose("16 cm", "Matcha")
-		withPhoto.ReferenceImageURL = ownPhoto(customer)
+		photo := withPhoto(customer)
+		photo.ReferenceRightsConfirmed = false
 
-		_, err := add(customer, withPhoto)
+		_, err := add(customer, photo)
 		assert.Equal(t, "reference_rights_confirmed", validationField(t, err))
-		someoneElses := *withPhoto
+		someoneElses := *photo
 		someoneElses.ReferenceImageURL = ownPhoto(uuid.New())
 		someoneElses.ReferenceRightsConfirmed = true
 		_, err = add(customer, &someoneElses)
 		assert.Equal(t, "reference_image_url", validationField(t, err))
 
-		withPhoto.ReferenceRightsConfirmed = true
-		cart, err := add(customer, withPhoto)
+		photo.ReferenceRightsConfirmed = true
+		cart, err := add(customer, photo)
 		require.NoError(t, err)
 		assert.Equal(t, ownPhoto(customer), cart.Items[0].Customization.ReferenceImageURL)
 	})
 
-	t.Run("a_paid_custom_order_waits_for_staff_who_accept_it_in_time", func(t *testing.T) {
+	t.Run("a_cake_built_from_the_options_goes_straight_to_the_kitchen", func(t *testing.T) {
 		customer := f.newCustomer(t, nil, nil)
-		_, err := add(customer, choose("20 cm", "Matcha"))
+		_, err := add(customer, choose("20 cm", "Matcha", "Salted caramel"))
 		require.NoError(t, err)
 		order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(15, 0)))
 		require.NoError(t, err)
@@ -147,18 +181,27 @@ func TestCustomCakes_Integration(t *testing.T) {
 
 		f.pay(t, customer, order.ID)
 
-		paid, err := f.orderUC.Get(ctx, customer, uuid.MustParse(order.ID))
+		paid, err := f.staff.Get(ctx, uuid.MustParse(order.ID))
 		require.NoError(t, err)
-		assert.Equal(t, string(domainorder.StatusPending), paid.Status, "staff review it before the kitchen starts")
-		accepted, err := f.staff.PatchStatus(ctx, f.clerk, domainuser.RoleStaff, uuid.MustParse(order.ID),
-			dto.PatchStaffOrderStatusRequest{Status: "confirmed"})
-		require.NoError(t, err)
-		assert.Equal(t, string(domainorder.StatusConfirmed), accepted.Status)
-		require.Len(t, accepted.Tickets, 1)
-		ticket, err := f.kitchen.Get(ctx, uuid.MustParse(accepted.Tickets[0].ID))
+		assert.Equal(t, string(domainorder.StatusConfirmed), paid.Status, "nothing for staff to look at first")
+		require.Len(t, paid.Tickets, 1)
+		ticket, err := f.kitchen.Get(ctx, uuid.MustParse(paid.Tickets[0].ID))
 		require.NoError(t, err)
 		require.NotNil(t, ticket.Items[0].Customization)
 		assert.Equal(t, "Happy birthday Mai", ticket.Items[0].Customization.Message, "the kitchen sees how to make it")
+		assert.Equal(t, "Salted caramel", ticket.Items[0].Customization.Options[2].Label)
+	})
+
+	t.Run("a_cake_with_a_reference_photo_waits_for_staff_who_accept_it", func(t *testing.T) {
+		order := paidWithPhoto(t, tomorrowAt(15, 30))
+
+		staffView, err := f.staff.Get(ctx, uuid.MustParse(order.ID))
+		require.NoError(t, err)
+		assert.Equal(t, string(domainorder.StatusPending), staffView.Status, "staff look at the photo before the kitchen starts")
+		accepted, err := accept(order.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, string(domainorder.StatusConfirmed), accepted.Status)
 	})
 
 	t.Run("a_custom_order_with_nothing_to_pay_still_waits_for_staff", func(t *testing.T) {
@@ -168,7 +211,7 @@ func TestCustomCakes_Integration(t *testing.T) {
 		})
 		require.NoError(t, err)
 		customer := f.newCustomer(t, nil, nil)
-		_, err = add(customer, choose("16 cm", "Matcha"))
+		_, err = add(customer, withPhoto(customer))
 		require.NoError(t, err)
 		_, err = f.cartUC.ApplyDiscount(ctx, customer, dto.ApplyCartDiscountRequest{Code: "CAKEONUS"})
 		require.NoError(t, err)
@@ -180,29 +223,71 @@ func TestCustomCakes_Integration(t *testing.T) {
 		assert.Equal(t, string(domainorder.StatusPending), order.Status, "the discount pays it; staff still review it")
 	})
 
-	t.Run("a_request_left_waiting_too_long_is_not_accepted", func(t *testing.T) {
-		customer := f.newCustomer(t, nil, nil)
-		_, err := add(customer, choose("16 cm", "Matcha"))
+	t.Run("the_notice_counts_from_when_the_order_was_placed", func(t *testing.T) {
+		pickupAt := tomorrowAt(16, 30)
+		order := paidWithPhoto(t, pickupAt)
+		_, err := raw.Exec(ctx, "UPDATE orders SET created_at = now() - interval '2 days' WHERE id = $1", order.ID)
 		require.NoError(t, err)
-		order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(16, 0)))
-		require.NoError(t, err)
-		f.pay(t, customer, order.ID)
-		longer := dto.UpdateProductRequest{
-			CategoryID: cakeRequest.CategoryID, Name: cake.Name, Slug: cake.Slug, PriceCents: cake.PriceCents,
-			IsActive: true, LeadTimeMinutes: 7 * 24 * 60, IsCustomizable: true,
-		}
-		_, err = manager.Update(ctx, managerID, domainuser.RoleManager, uuid.MustParse(cake.ID), longer)
+		// From now the cake would need an hour more than its pickup gives.
+		setLeadTime(t, utils.Int32FromInt64(int64(time.Until(pickupAt)/time.Minute)+60))
+		t.Cleanup(func() { setLeadTime(t, 180) })
+
+		accepted, err := accept(order.ID)
+
+		require.NoError(t, err, "the time the order waited for staff is the bakery's to make up")
+		assert.Equal(t, string(domainorder.StatusConfirmed), accepted.Status)
+	})
+
+	t.Run("a_pickup_already_passed_is_not_accepted", func(t *testing.T) {
+		order := paidWithPhoto(t, tomorrowAt(17, 0))
+		// Placed long enough ago that the notice alone would let it through.
+		_, err := raw.Exec(ctx, "UPDATE orders SET pickup_at = now() - interval '1 hour', created_at = now() - interval '2 days' WHERE id = $1", order.ID)
 		require.NoError(t, err)
 
-		_, err = f.staff.PatchStatus(ctx, f.clerk, domainuser.RoleStaff, uuid.MustParse(order.ID),
-			dto.PatchStaffOrderStatusRequest{Status: "confirmed"})
+		_, err = accept(order.ID)
+
+		require.ErrorIs(t, err, domainorder.ErrPickupTooSoon)
+	})
+
+	t.Run("an_order_left_unreviewed_for_a_day_is_cancelled_and_refunded", func(t *testing.T) {
+		waited := paidWithPhoto(t, tomorrowAt(17, 30))
+		fresh := paidWithPhoto(t, tomorrowAt(13, 30))
+		_, err := raw.Exec(ctx, "UPDATE order_status_events SET created_at = now() - interval '25 hours' WHERE order_id = $1 AND to_status = 'pending'", waited.ID)
+		require.NoError(t, err)
+
+		cancelled, err := f.orderUC.CancelUnreviewed(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, cancelled)
+		staffView, err := f.staff.Get(ctx, uuid.MustParse(waited.ID))
+		require.NoError(t, err)
+		assert.Equal(t, string(domainorder.StatusCancelled), staffView.Status)
+		require.NotNil(t, staffView.Payment.RefundRequestedAt, "the customer gets the money back")
+		last := staffView.Timeline[len(staffView.Timeline)-1]
+		assert.Nil(t, last.ActorRole, "the system cancelled it")
+		require.NotNil(t, last.Reason)
+		assert.Equal(t, domainorder.UnreviewedReason, *last.Reason)
+		other, err := f.staff.Get(ctx, uuid.MustParse(fresh.ID))
+		require.NoError(t, err)
+		assert.Equal(t, string(domainorder.StatusPending), other.Status, "staff still have time for this one")
+		again, err := f.orderUC.CancelUnreviewed(ctx)
+		require.NoError(t, err)
+		assert.Zero(t, again)
+	})
+
+	t.Run("a_cake_now_needing_more_notice_than_its_pickup_gives_is_not_accepted", func(t *testing.T) {
+		order := paidWithPhoto(t, tomorrowAt(16, 0))
+		setLeadTime(t, 7*24*60)
+		t.Cleanup(func() { setLeadTime(t, 180) })
+
+		_, err := accept(order.ID)
 
 		require.ErrorIs(t, err, domainorder.ErrPickupTooSoon, "the bakery no longer has the notice the cake needs")
 	})
 
 	t.Run("retiring_an_option_takes_the_cakes_that_chose_it_off_sale", func(t *testing.T) {
 		customer := f.newCustomer(t, nil, nil)
-		_, err := add(customer, choose("16 cm", "Matcha"))
+		_, err := add(customer, choose("16 cm", "Matcha", "Salted caramel"))
 		require.NoError(t, err)
 		keep := func(labels ...string) *[]dto.ProductOptionInput {
 			kept := make([]dto.ProductOptionInput, 0, len(labels))
@@ -248,9 +333,6 @@ func TestCustomCakes_Integration(t *testing.T) {
 			CategoryID: winter.String(), Name: "Chestnut log", PriceCents: 3200, IsActive: true,
 		})
 		require.NoError(t, err)
-		raw, err := pgxpool.New(ctx, f.connStr)
-		require.NoError(t, err)
-		t.Cleanup(raw.Close)
 		_, err = raw.Exec(ctx, "UPDATE categories SET is_active = false WHERE id = ANY($1)", []uuid.UUID{winter, spring})
 		require.NoError(t, err)
 		update := dto.UpdateProductRequest{

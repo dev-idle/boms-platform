@@ -17,12 +17,13 @@ const (
 	OptionSize       OptionGroup = "size"
 	OptionFlavor     OptionGroup = "flavor"
 	OptionDecoration OptionGroup = "decoration"
+	OptionFilling    OptionGroup = "filling"
 )
 
 // Valid reports whether g is a group this package defines.
 func (g OptionGroup) Valid() bool {
 	switch g {
-	case OptionSize, OptionFlavor, OptionDecoration:
+	case OptionSize, OptionFlavor, OptionDecoration, OptionFilling:
 		return true
 	default:
 		return false
@@ -65,7 +66,7 @@ func NewOption(id uuid.UUID, group OptionGroup, label string, priceDeltaCents in
 
 // Place numbers each option by its order within its group, as listed.
 func Place(options []Option) {
-	perGroup := make(map[OptionGroup]int16, 3)
+	perGroup := make(map[OptionGroup]int16, 4)
 	for i := range options {
 		options[i].SortOrder = perGroup[options[i].Group]
 		perGroup[options[i].Group]++
@@ -84,7 +85,7 @@ func Choose(offered []Option, ids []uuid.UUID) ([]Option, error) {
 		picked[id] = true
 	}
 	chosen := make([]Option, 0, len(ids))
-	perGroup := make(map[OptionGroup]int, 3)
+	perGroup := make(map[OptionGroup]int, 4)
 	for _, option := range offered {
 		if !option.IsActive {
 			continue

@@ -49,7 +49,7 @@ type CreateProductRequest struct {
 // new, and an option left out of the list is retired.
 type ProductOptionInput struct {
 	ID              *string `json:"id,omitempty" validate:"omitempty,uuid"`
-	Group           string  `json:"group" validate:"required,oneof=size flavor decoration"`
+	Group           string  `json:"group" validate:"required,oneof=size flavor filling decoration"`
 	Label           string  `json:"label" validate:"required,max=60"`
 	PriceDeltaCents int64   `json:"price_delta_cents" validate:"min=0,max=100000"`
 	IsActive        bool    `json:"is_active"`

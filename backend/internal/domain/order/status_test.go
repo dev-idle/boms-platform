@@ -61,10 +61,10 @@ func TestStatusValid(t *testing.T) {
 func TestPaidStatus(t *testing.T) {
 	t.Parallel()
 	if got := PaidStatus(true); got != StatusPending {
-		t.Errorf("a custom order waits for staff review, got %q", got)
+		t.Errorf("an order with a reference photo waits for staff review, got %q", got)
 	}
 	if got := PaidStatus(false); got != StatusConfirmed {
-		t.Errorf("any other goes to the bakery, got %q", got)
+		t.Errorf("any other, a cake built from the options offered included, goes to the bakery, got %q", got)
 	}
 }
 

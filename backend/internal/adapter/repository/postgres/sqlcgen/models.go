@@ -457,6 +457,7 @@ type ProductOptionGroup string
 const (
 	ProductOptionGroupSize       ProductOptionGroup = "size"
 	ProductOptionGroupFlavor     ProductOptionGroup = "flavor"
+	ProductOptionGroupFilling    ProductOptionGroup = "filling"
 	ProductOptionGroupDecoration ProductOptionGroup = "decoration"
 )
 

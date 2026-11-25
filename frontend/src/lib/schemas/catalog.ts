@@ -21,13 +21,14 @@ export const catalogCategorySchema = z.object({
 });
 
 /** What an option sets on a custom cake; a customer picks one from each group offered. */
-export const productOptionGroupSchema = z.enum(["size", "flavor", "decoration"]);
+export const productOptionGroupSchema = z.enum(["size", "flavor", "filling", "decoration"]);
 
 type ProductOptionGroup = z.infer<typeof productOptionGroupSchema>;
 
 export const PRODUCT_OPTION_GROUP_LABEL: Record<ProductOptionGroup, string> = {
   size: "Size",
   flavor: "Flavor",
+  filling: "Filling",
   decoration: "Decoration",
 };
 

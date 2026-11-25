@@ -17,9 +17,9 @@ import (
 	apperrors "github.com/boms/backend/internal/shared/errors"
 )
 
-// noShowBatch is how many missed pickups one run records; the next run takes
-// the rest.
-const noShowBatch = 50
+// systemBatch is how many orders one run of a worker job moves; the next run
+// takes the rest.
+const systemBatch = 50
 
 // Cancel cancels the customer's order while it is not being made yet. A paid
 // order is refunded in full and its discount use goes back to the code: both
@@ -140,31 +140,45 @@ func (u *OrderUsecase) Reschedule(
 
 // MarkNoShows records the orders ready and not collected by closing time on
 // their pickup day as missed pickups, a batch at a time, and returns how many.
-// One collected or cancelled meanwhile stays as it is. Each order stands
-// alone: one that fails is reported with the rest while the others go on.
 func (u *OrderUsecase) MarkNoShows(ctx context.Context) (int, error) {
 	settings, err := u.store.GetSettings(ctx)
 	if err != nil {
 		return 0, err
 	}
-	ids, err := u.orders.ListMissedPickups(ctx, settings.MissedBefore(time.Now()), noShowBatch)
+	ids, err := u.orders.ListMissedPickups(ctx, settings.MissedBefore(time.Now()), systemBatch)
 	if err != nil {
 		return 0, err
 	}
-	marked := 0
+	return u.moveBySystem(ctx, ids, domainorder.StatusReady, domainorder.StatusNoShow, "")
+}
+
+// CancelUnreviewed cancels the paid orders staff left waiting past the review
+// window, a batch at a time, and returns how many. Each is refunded in full and
+// its customer emailed why, as for any cancellation.
+func (u *OrderUsecase) CancelUnreviewed(ctx context.Context) (int, error) {
+	ids, err := u.orders.ListUnreviewed(ctx, time.Now().Add(-domainorder.ReviewWindow), systemBatch)
+	if err != nil {
+		return 0, err
+	}
+	return u.moveBySystem(ctx, ids, domainorder.StatusPending, domainorder.StatusCancelled, domainorder.UnreviewedReason)
+}
+
+// moveBySystem moves each order from one status to another as the worker, and
+// returns how many moved. One moved on meanwhile stays as it is. Each order
+// stands alone: one that fails is reported with the rest while the others go on.
+func (u *OrderUsecase) moveBySystem(ctx context.Context, ids []uuid.UUID, from, to domainorder.Status, reason string) (int, error) {
+	moved := 0
 	var failures []error
 	for _, id := range ids {
-		_, err := u.transitions.apply(ctx, nil, port.UpdateOrderStatusParams{
-			OrderID: id, FromStatus: domainorder.StatusReady, ToStatus: domainorder.StatusNoShow,
-		}, "")
+		_, err := u.transitions.apply(ctx, nil, port.UpdateOrderStatusParams{OrderID: id, FromStatus: from, ToStatus: to}, reason)
 		if errors.Is(err, domainorder.ErrInvalidStatusTransition) {
 			continue
 		}
 		if err != nil {
-			failures = append(failures, apperrors.Errorf("mark order %s missed: %w", id, err))
+			failures = append(failures, apperrors.Errorf("move order %s to %s: %w", id, to, err))
 			continue
 		}
-		marked++
+		moved++
 	}
-	return marked, errors.Join(failures...)
+	return moved, errors.Join(failures...)
 }

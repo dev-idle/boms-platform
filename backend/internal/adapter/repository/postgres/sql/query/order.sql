@@ -256,13 +256,13 @@ FROM jsonb_to_recordset(sqlc.arg('items')::jsonb) AS item (
   line_total_cents bigint
 );
 
--- name: OrderHasCustomItems :one
--- Whether the order holds an item its customer configured, which staff review
--- before the bakery makes it.
+-- name: OrderHasReferencePhoto :one
+-- Whether the order holds a cake asked for after a reference photo, which
+-- staff look at before the bakery makes it.
 SELECT EXISTS (
   SELECT 1 FROM order_items
-  WHERE order_id = $1 AND configuration <> '{}'::jsonb
-)::bool AS has_custom_items;
+  WHERE order_id = $1 AND configuration->>'reference_image_url' <> ''
+)::bool AS has_reference_photo;
 
 -- name: SumOrderItemQuantitiesByOrderIDs :many
 SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count
@@ -746,6 +746,17 @@ RETURNING
   channel,
   guest_name,
   guest_phone;
+
+-- name: ListUnreviewedOrders :many
+-- Orders still waiting for staff that were paid before paid_before, the
+-- longest waiting first.
+SELECT o.id
+FROM orders o
+JOIN order_status_events e ON e.order_id = o.id AND e.to_status = 'pending'::order_status
+WHERE o.status = 'pending'::order_status
+  AND e.created_at < sqlc.arg('paid_before')
+ORDER BY e.created_at
+LIMIT sqlc.arg('max_rows')::int;
 
 -- name: ListMissedPickups :many
 -- Orders ready and not collected whose pickup falls before missed_before, the

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { catalogSlugSchema } from "@/lib/validation/catalog";
-import { CAKE_MESSAGE_MAX, catalogProductSchema } from "@/lib/schemas/catalog";
+import { CAKE_MESSAGE_MAX, catalogProductSchema, productOptionGroupSchema } from "@/lib/schemas/catalog";
 import { messageSchema } from "@/lib/schemas/message";
 import { MAX_RATING, ratingSchema, REVIEW_COMMENT_MAX_LENGTH, reviewStatusSchema } from "@/lib/schemas/review";
 import {
@@ -58,7 +58,7 @@ export const cartSchema = z.object({
  */
 export const cartCustomizationInputSchema = z
   .object({
-    option_ids: z.array(z.uuid("Choose an option")).max(3),
+    option_ids: z.array(z.uuid("Choose an option")).max(productOptionGroupSchema.options.length),
     message: z
       .string()
       .trim()

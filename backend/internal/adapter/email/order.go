@@ -38,22 +38,22 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 	},
 	domainorder.NoticeRequested: {
 		subject:   "We received your request %s",
-		preheader: "We will check your custom order and email you once we accept it.",
+		preheader: "We will check your reference photo and email you within 24 hours.",
 		eyebrow:   "Request received",
 		heading:   "Thank you for your request",
 		lead: []string{
-			"We have your order and your payment. Before we start, we check that we can make it as you asked, and we will email you once we accept it.",
-			"If we cannot make it, we will tell you why and refund you in full.",
+			"We have your order and your payment. Before we start, we check your reference photo to be sure we can make the cake as you asked, and we will email you once we accept it, within 24 hours of your payment.",
+			"If we cannot make it, or have not accepted it by then, we cancel it, tell you why and refund you in full.",
 		},
 		receipt: true,
 	},
 	domainorder.NoticeAccepted: {
 		subject:   "We accepted your order %s",
-		preheader: "Your custom order is confirmed for your pickup time.",
+		preheader: "Your cake is confirmed for your pickup time.",
 		eyebrow:   "Order accepted",
 		heading:   "Your order is confirmed",
 		lead: []string{
-			"We checked your custom order and will have it ready for your pickup time. We will email you again when it is ready to collect.",
+			"We checked your reference photo and will have your cake ready for your pickup time. We will email you again when it is ready to collect.",
 		},
 	},
 	domainorder.NoticeReady: {

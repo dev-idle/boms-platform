@@ -183,7 +183,7 @@ func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UU
 			if order, err = u.transitions.applyInTx(txCtx, customer, port.UpdateOrderStatusParams{
 				OrderID:    order.ID,
 				FromStatus: domainorder.StatusAwaitingPayment,
-				ToStatus:   domainorder.PaidStatus(hasCustomLine(lines)),
+				ToStatus:   domainorder.PaidStatus(hasReferencePhoto(lines)),
 			}, ""); err != nil {
 				return err
 			}

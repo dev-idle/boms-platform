@@ -178,10 +178,12 @@ func customizedPrice(
 	return price, snapshot, true, nil
 }
 
-// hasCustomLine reports whether any line is configured, which sends the order
-// to staff review once it is paid.
-func hasCustomLine(lines []pricedCartLine) bool {
-	return slices.ContainsFunc(lines, func(line pricedCartLine) bool { return line.Customization != nil })
+// hasReferencePhoto reports whether any line brings a reference photo, which
+// sends the order to staff review once it is paid.
+func hasReferencePhoto(lines []pricedCartLine) bool {
+	return slices.ContainsFunc(lines, func(line pricedCartLine) bool {
+		return line.Customization != nil && line.Customization.ReferenceImageURL != ""
+	})
 }
 
 // fulfillmentOf is what the priced lines ask of the bakery. Checkout reads it

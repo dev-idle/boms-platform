@@ -14,6 +14,8 @@ func TestNewOption(t *testing.T) {
 	option, err := NewOption(uuid.Nil, OptionSize, "  20 cm ", 1000, true)
 	require.NoError(t, err)
 	assert.Equal(t, "20 cm", option.Label)
+	_, err = NewOption(uuid.Nil, OptionFilling, "Salted caramel", 300, true)
+	require.NoError(t, err, "a cake's filling is a group of its own")
 
 	for name, tc := range map[string]struct {
 		group OptionGroup

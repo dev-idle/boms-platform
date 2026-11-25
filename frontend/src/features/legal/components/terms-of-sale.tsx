@@ -63,9 +63,13 @@ export function TermsOfSale() {
       <PolicySection id="terms-custom" title="4. Custom cakes">
         <ul>
           <li>
-            A custom cake is made in the size, flavor and decoration you choose, with the message you
-            ask for. We check every custom order before we start and may decline one we cannot make as
-            asked; you are then refunded in full.
+            A custom cake is made in the size, flavor, filling and decoration you choose, with the
+            message you ask for. Without a reference photo it is confirmed when you pay.
+          </li>
+          <li>
+            A cake you order with a reference photo is checked before we start: we accept or decline it
+            within 24 hours of your payment, and one we have not accepted by then is cancelled. A cake
+            we decline or cancel is refunded in full.
           </li>
           <li>
             A reference photo you upload must be one you took or may share. By uploading it you allow us

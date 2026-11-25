@@ -153,6 +153,9 @@ type OrderRepository interface {
 	// Reschedule moves the pickup of an order not being made yet. Any other is
 	// apperrors.ErrNotFound.
 	Reschedule(ctx context.Context, params RescheduleOrderParams) (*domainorder.Order, error)
+	// ListUnreviewed returns up to limit orders still waiting for staff that
+	// were paid before paidBefore, the longest waiting first.
+	ListUnreviewed(ctx context.Context, paidBefore time.Time, limit int32) ([]uuid.UUID, error)
 	// ListMissedPickups returns up to limit orders ready and not collected
 	// whose pickup falls before missedBefore, the longest waiting first.
 	ListMissedPickups(ctx context.Context, missedBefore time.Time, limit int32) ([]uuid.UUID, error)
@@ -180,9 +183,9 @@ type OrderRepository interface {
 	// [From, To), by pickup time; cancelled ones are left out.
 	StaffListPickups(ctx context.Context, params StaffListPickupsParams) ([]StaffPickupRow, error)
 	StaffListPickupsCount(ctx context.Context, from, to time.Time) (int64, error)
-	// HasCustomItems reports whether the order holds an item its customer
-	// configured, which staff review before the bakery makes it.
-	HasCustomItems(ctx context.Context, orderID uuid.UUID) (bool, error)
+	// HasReferencePhoto reports whether the order holds a cake asked for after
+	// a reference photo, which staff look at before the bakery makes it.
+	HasReferencePhoto(ctx context.Context, orderID uuid.UUID) (bool, error)
 	SumItemQuantitiesByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) (map[uuid.UUID]int32, error)
 	// ListItemsByOrderIDs and ListStatusEventsByOrderIDs read many orders' lines
 	// and histories in one round trip each, keyed by order.

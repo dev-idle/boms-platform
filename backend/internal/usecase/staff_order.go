@@ -321,9 +321,9 @@ func (u *StaffOrderUsecase) checkPickupCode(ctx context.Context, actorID, orderI
 }
 
 // stillInTime checks, as staff accept an order they reviewed, that its pickup
-// still follows the rules it was booked under — above all, that the bakery
-// still has the notice its items need: a request left waiting too long is
-// refused rather than made late, and staff reject it or the customer moves it.
+// still follows the rules (domainorder.PickupPolicy.Accepts). One a later
+// change to the hours or to an item's notice no longer allows is refused, and
+// staff reject it or the customer moves it.
 func (u *StaffOrderUsecase) stillInTime(ctx context.Context, order domainorder.Order) error {
 	if order.PickupAt == nil {
 		return nil
@@ -341,8 +341,7 @@ func (u *StaffOrderUsecase) stillInTime(ctx context.Context, order domainorder.O
 	if err != nil {
 		return err
 	}
-	_, err = pickupPolicy(settings, closed).Validate(*order.PickupAt, now, needs.HeldOn(domainstore.DayOf(*order.PickupAt)))
-	return err
+	return pickupPolicy(settings, closed).Accepts(*order.PickupAt, order.CreatedAt, now, needs.HeldOn(domainstore.DayOf(*order.PickupAt)))
 }
 
 // toStaffOrderCustomer is who the order is for: an account, or a guest with no

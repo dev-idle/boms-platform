@@ -9,10 +9,11 @@ type AddCartItemRequest struct {
 }
 
 // CartCustomizationRequest is how a customer configures a customizable
-// product: one option from each group it offers, a message for the cake, and a
-// photo they uploaded for reference, with their word that they may share it.
+// product: one option from each group it offers (four groups at most), a
+// message for the cake, and a photo they uploaded for reference, with their
+// word that they may share it.
 type CartCustomizationRequest struct {
-	OptionIDs                []string `json:"option_ids" validate:"max=3,dive,uuid"`
+	OptionIDs                []string `json:"option_ids" validate:"max=4,dive,uuid"`
 	Message                  string   `json:"message" validate:"max=60"`
 	ReferenceImageURL        string   `json:"reference_image_url" validate:"omitempty,url,max=2048"`
 	ReferenceRightsConfirmed bool     `json:"reference_rights_confirmed"`

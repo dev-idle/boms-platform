@@ -163,6 +163,26 @@ func TestPickupPolicy_SlotsStartOnWholeMinutes(t *testing.T) {
 	assert.ErrorIs(t, err, ErrPickupOffSlot)
 }
 
+func TestPickupPolicy_Accepts(t *testing.T) {
+	t.Parallel()
+	cases := loadPickupCases(t)
+	policy := policyFromRules(t, cases)
+	placed := wallClock(t, cases.Policy.Now)
+	now := placed.Add(20 * time.Hour)
+	cake := Fulfillment{Kitchen: true, Lead: 24 * time.Hour}
+
+	require.NoError(t, policy.Accepts(wallClock(t, "2026-07-11T10:00"), placed, now, cake),
+		"the notice counts from when the order was placed")
+	assert.ErrorIs(t, policy.Accepts(wallClock(t, "2026-07-11T09:30"), placed, now, cake), ErrPickupTooSoon)
+	require.NoError(t, policy.Accepts(wallClock(t, "2026-07-24T16:00"), placed, now, cake),
+		"a pickup moved since was booked within the window from then")
+	assert.ErrorIs(t, policy.Accepts(wallClock(t, "2026-07-13T12:00"), placed, now, cake), ErrPickupClosedDay)
+
+	later := wallClock(t, "2026-07-11T12:00").Add(time.Minute)
+	assert.ErrorIs(t, policy.Accepts(wallClock(t, "2026-07-11T12:00"), placed, later, cake), ErrPickupTooSoon,
+		"a pickup already passed")
+}
+
 func TestPickupPolicy_HonoursEditedHours(t *testing.T) {
 	t.Parallel()
 	cases := loadPickupCases(t)

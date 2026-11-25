@@ -2119,6 +2119,17 @@ type Querier interface {
 	//  WHERE order_id = ANY($1::uuid[])
 	//    AND unread_by_customer > 0
 	ListUnreadByCustomer(ctx context.Context, orderIds []uuid.UUID) ([]ListUnreadByCustomerRow, error)
+	// Orders still waiting for staff that were paid before paid_before, the
+	// longest waiting first.
+	//
+	//  SELECT o.id
+	//  FROM orders o
+	//  JOIN order_status_events e ON e.order_id = o.id AND e.to_status = 'pending'::order_status
+	//  WHERE o.status = 'pending'::order_status
+	//    AND e.created_at < $1
+	//  ORDER BY e.created_at
+	//  LIMIT $2::int
+	ListUnreviewedOrders(ctx context.Context, arg ListUnreviewedOrdersParams) ([]uuid.UUID, error)
 	// Holds the customer's bookings until the transaction ends, so two of their
 	// checkouts or pickup moves cannot both take a day's last place. The key is the
 	// customer, under a namespace of its own.
@@ -2623,14 +2634,14 @@ type Querier interface {
 	//  GROUP BY t.station
 	//  ORDER BY t.station
 	OperationsStationLoads(ctx context.Context) ([]OperationsStationLoadsRow, error)
-	// Whether the order holds an item its customer configured, which staff review
-	// before the bakery makes it.
+	// Whether the order holds a cake asked for after a reference photo, which
+	// staff look at before the bakery makes it.
 	//
 	//  SELECT EXISTS (
 	//    SELECT 1 FROM order_items
-	//    WHERE order_id = $1 AND configuration <> '{}'::jsonb
-	//  )::bool AS has_custom_items
-	OrderHasCustomItems(ctx context.Context, orderID uuid.UUID) (bool, error)
+	//    WHERE order_id = $1 AND configuration->>'reference_image_url' <> ''
+	//  )::bool AS has_reference_photo
+	OrderHasReferencePhoto(ctx context.Context, orderID uuid.UUID) (bool, error)
 	//PhoneHeldByOtherActiveUser
 	//
 	//  SELECT EXISTS (
