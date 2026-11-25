@@ -1,7 +1,8 @@
-import type { QueryKey } from "@tanstack/react-query";
+import { infiniteQueryOptions, type QueryKey } from "@tanstack/react-query";
 
 import { REALTIME_EVENT_TYPE, type RealtimeEvent } from "@/lib/realtime/events";
 
+import { getGeneralMessages } from "../api";
 import type { OrdersListFilterInput } from "../schemas";
 
 export const customerQueryKeys = {
@@ -21,6 +22,21 @@ export const customerQueryKeys = {
   reviews: (orderId: string) => [...customerQueryKeys.reviewsRoot, orderId] as const,
   saved: ["customer", "saved"] as const,
 };
+
+/**
+ * The customer's general conversation with the counter, the latest page
+ * first; each older page starts before the oldest message loaded. The thread
+ * and the count of replies left unread share it.
+ */
+export function generalMessagesQueryOptions() {
+  return infiniteQueryOptions({
+    queryKey: customerQueryKeys.generalMessages,
+    queryFn: ({ pageParam }) => getGeneralMessages(pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => (page.has_more ? page.messages[0]?.id : undefined),
+    retry: false,
+  });
+}
 
 /** Everything pushed events can change in a customer tab, refetched after a gap. */
 export const customerLiveQueryKeys: readonly QueryKey[] = [

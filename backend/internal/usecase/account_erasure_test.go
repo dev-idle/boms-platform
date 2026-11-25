@@ -43,11 +43,17 @@ func (c *erasureCarts) DeleteAllItems(context.Context, uuid.UUID) error {
 func (c *erasureCarts) ClearDiscountCode(context.Context, uuid.UUID) error { return nil }
 
 // erasureOrders says whether the customer has an open order and records whose
-// incident notes were erased.
+// incident notes and order lines' personal data were erased.
 type erasureOrders struct {
 	port.OrderRepository
 	open   bool
 	erased []uuid.UUID
+	lines  []uuid.UUID
+}
+
+func (o *erasureOrders) EraseLinePersonalData(_ context.Context, userID uuid.UUID) error {
+	o.lines = append(o.lines, userID)
+	return nil
 }
 
 func (o *erasureOrders) HasOpen(context.Context, uuid.UUID) (bool, error) { return o.open, nil }
@@ -111,6 +117,7 @@ type erasureFixture struct {
 	assistant *erasureAssistant
 	saved     *erasureSaved
 	reviews   *erasureReviews
+	photos    *pendingErasures
 	audit     *recordingAuditLogs
 	tokens    *fakeTokens
 	sessions  *mockSessionStore
@@ -131,6 +138,7 @@ func newErasureFixture() *erasureFixture {
 		assistant: &erasureAssistant{},
 		saved:     &erasureSaved{},
 		reviews:   &erasureReviews{},
+		photos:    &pendingErasures{},
 		audit:     &recordingAuditLogs{},
 		tokens:    &fakeTokens{},
 		sessions:  new(mockSessionStore),
@@ -145,8 +153,8 @@ func newErasureFixture() *erasureFixture {
 
 func (f *erasureFixture) usecase() *usecase.AccountErasureUsecase {
 	return usecase.NewAccountErasureUsecase(
-		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.messages, f.assistant, f.saved, f.reviews, f.audit, f.tokens,
-		f.sessions, auditlogger.NewService(f.audit), f.hasher,
+		passthroughTxManager{}, f.users, f.customers, f.carts, f.orders, f.messages, f.assistant, f.saved, f.reviews, f.photos, f.audit,
+		f.tokens, f.sessions, auditlogger.NewService(f.audit), f.hasher,
 	)
 }
 
@@ -166,6 +174,8 @@ func (f *erasureFixture) nothingErased(t *testing.T) {
 	assert.Empty(t, f.orders.erased, "the incident notes are kept")
 	assert.Empty(t, f.saved.emptied, "the saved lists are kept")
 	assert.Empty(t, f.reviews.erased, "the reviews are kept")
+	assert.Empty(t, f.orders.lines, "the order lines keep their photos and messages")
+	assert.Empty(t, f.photos.due, "no photo is deleted")
 	f.customers.AssertNotCalled(t, "Erase", mock.Anything, mock.Anything)
 	f.users.AssertNotCalled(t, "Erase", mock.Anything, mock.Anything)
 	f.sessions.AssertNotCalled(t, "DeleteAllForUser", mock.Anything, mock.Anything)
@@ -189,6 +199,8 @@ func TestAccountErasureUsecase_Erase(t *testing.T) {
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.orders.erased, "what staff wrote about their orders goes")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.saved.emptied, "their favorites and wishlist go")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.reviews.erased, "what they wrote in reviews goes")
+		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.orders.lines, "their photos and cake messages come off their orders")
+		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.photos.due, "and are deleted from Cloudinary by the worker")
 		assert.Equal(t, []uuid.UUID{f.customer.ID}, f.tokens.deleted, "no emailed link outlives the account")
 		assert.Equal(t, []domainuser.AuditAction{domainuser.AuditActionMeErasedAccount}, f.audit.actions)
 		assert.True(t, f.audit.scrubbed, "the audit trail loses the personal data")

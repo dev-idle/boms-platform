@@ -154,6 +154,13 @@ func (r *OrderRepository) EraseIncidentNotes(ctx context.Context, userID uuid.UU
 	return nil
 }
 
+func (r *OrderRepository) EraseLinePersonalData(ctx context.Context, userID uuid.UUID) error {
+	if err := r.q(ctx).EraseOrderLinePersonalData(ctx, userID); err != nil {
+		return mapRepoError(err, "erase order line personal data")
+	}
+	return nil
+}
+
 func incidentFromRow(row sqlcgen.OrderIncident) domainorder.Incident {
 	return domainorder.Incident{
 		ID:        row.ID,

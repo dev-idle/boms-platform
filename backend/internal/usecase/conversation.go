@@ -40,6 +40,43 @@ func NewConversationUsecase(
 	return &ConversationUsecase{users: users, orders: orders, conversations: conversations, tx: tx, events: events}
 }
 
+// repliesBatch is how many conversations one run emails about; the next run
+// takes the rest.
+const repliesBatch = 50
+
+// EmailUnreadReplies asks for an email to each customer who has left the
+// counter's replies unread for domainconversation.RepliesUnreadEmailAfter —
+// once until they read them — a batch at a time, and returns how many it asked
+// for. Each conversation stands alone: one that fails is reported with the
+// rest while the others go on.
+func (u *ConversationUsecase) EmailUnreadReplies(ctx context.Context) (int, error) {
+	due, err := u.conversations.ListUnreadRepliesDue(ctx, domainconversation.RepliesUnreadEmailAfter, repliesBatch)
+	if err != nil {
+		return 0, err
+	}
+	asked := 0
+	var failures []error
+	for _, id := range due {
+		marked := false
+		err := u.tx.WithTx(ctx, func(txCtx context.Context) error {
+			var err error
+			// Not marked: read meanwhile, or another run took it.
+			if marked, err = u.conversations.MarkRepliesEmailed(txCtx, id); err != nil || !marked {
+				return err
+			}
+			return u.events.Add(txCtx, domainconversation.RepliesUnreadEvent(id))
+		})
+		if err != nil {
+			failures = append(failures, apperrors.Errorf("email unread replies of %s: %w", id, err))
+			continue
+		}
+		if marked {
+			asked++
+		}
+	}
+	return asked, errors.Join(failures...)
+}
+
 // Thread returns a page of the customer's messages about their order, or of
 // their general conversation when orderID is nil: the latest, or those
 // before beforeID.

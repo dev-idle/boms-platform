@@ -1032,6 +1032,15 @@ type Querier interface {
 	//  WHERE note IS NOT NULL
 	//    AND order_id IN (SELECT id FROM orders WHERE user_id = $1::uuid)
 	EraseOrderIncidentNotes(ctx context.Context, userID uuid.UUID) error
+	// Takes the reference photo and the cake's message off the customer's order
+	// lines as their account is erased: both are about them (Cloudinary deletes
+	// the photo), while what was made — the options — stays on the sales record.
+	//
+	//  UPDATE order_items
+	//  SET configuration = configuration - 'reference_image_url' - 'message'
+	//  WHERE (configuration->>'reference_image_url' IS NOT NULL OR configuration->>'message' IS NOT NULL)
+	//    AND order_id IN (SELECT id FROM orders WHERE user_id = $1::uuid)
+	EraseOrderLinePersonalData(ctx context.Context, userID uuid.UUID) error
 	// Erases an account's personal details at its owner's request and closes it.
 	// The email becomes a placeholder nobody can sign in with or receive mail at
 	// (RFC 2606 reserves .invalid), freeing the address, and the password can no
@@ -1466,6 +1475,23 @@ type Querier interface {
 	//  WHERE id = 1
 	//  FOR UPDATE
 	GetStoreSettingsForUpdate(ctx context.Context) (GetStoreSettingsForUpdateRow, error)
+	// What the email about replies left unread says — who it goes to, the order
+	// it is about and how many replies wait — while the account is open and its
+	// address confirmed. None wait once the customer read them, even if more came
+	// since: the mark that asked for this email went with the read.
+	//
+	//  SELECT
+	//    c.order_id,
+	//    o.code AS order_code,
+	//    (CASE WHEN c.reply_emailed_at IS NULL THEN 0 ELSE c.unread_by_customer END)::integer AS unread_by_customer,
+	//    u.email,
+	//    cp.display_name
+	//  FROM conversations c
+	//  JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL AND u.email_verified_at IS NOT NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+	//  LEFT JOIN orders o ON o.id = c.order_id
+	//  WHERE c.id = $1
+	GetUnreadReplies(ctx context.Context, id uuid.UUID) (GetUnreadRepliesRow, error)
 	//GetUserByEmail
 	//
 	//  SELECT id, email, password_hash, role, email_verified_at, must_change_password, created_at, updated_at, deleted_at, erased_at, session_version
@@ -2077,6 +2103,15 @@ type Querier interface {
 	//  ORDER BY m.created_at DESC, m.role DESC
 	//  LIMIT $3
 	ListRecentAssistantTurns(ctx context.Context, arg ListRecentAssistantTurnsParams) ([]ListRecentAssistantTurnsRow, error)
+	// The customers whose reference photos are still to be deleted, the oldest
+	// request first.
+	//
+	//  SELECT user_id
+	//  FROM reference_photo_erasures
+	//  WHERE erased_at IS NULL
+	//  ORDER BY requested_at
+	//  LIMIT $1
+	ListReferencePhotoErasuresDue(ctx context.Context, limit int32) ([]uuid.UUID, error)
 	// Payments whose refund is asked for, not made yet and due a try: a refusal
 	// puts that payment's next try off (refund_retry_at), so the payments behind it
 	// are tried meanwhile. The longest due first.
@@ -2261,6 +2296,19 @@ type Querier interface {
 	//  WHERE order_id = ANY($1::uuid[])
 	//    AND unread_by_customer > 0
 	ListUnreadByCustomer(ctx context.Context, orderIds []uuid.UUID) ([]ListUnreadByCustomerRow, error)
+	// Conversations whose customer has left the counter's replies unread for
+	// unread_seconds and has not been emailed about them, the longest waiting
+	// first. Only an open account whose address is confirmed is emailed.
+	//
+	//  SELECT c.id
+	//  FROM conversations c
+	//  JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL AND u.email_verified_at IS NOT NULL
+	//  WHERE c.unread_by_customer > 0
+	//    AND c.reply_emailed_at IS NULL
+	//    AND c.last_message_at <= now() - make_interval(secs => $1::double precision)
+	//  ORDER BY c.last_message_at
+	//  LIMIT $2
+	ListUnreadRepliesDue(ctx context.Context, arg ListUnreadRepliesDueParams) ([]uuid.UUID, error)
 	// Orders still waiting for staff that were paid before paid_before, the
 	// longest waiting first.
 	//
@@ -2543,10 +2591,11 @@ type Querier interface {
 	//      OR r.status = $1::review_status
 	//    )
 	ManagerListReviewsCount(ctx context.Context, status *ReviewStatus) (int64, error)
-	//MarkConversationReadByCustomer
+	// Reading the replies also lets the next ones email the customer once again.
 	//
 	//  UPDATE conversations
 	//  SET unread_by_customer = 0,
+	//      reply_emailed_at = NULL,
 	//      updated_at = now()
 	//  WHERE customer_id = $1
 	//    AND (order_id = $2 OR ($2::uuid IS NULL AND order_id IS NULL))
@@ -2585,6 +2634,22 @@ type Querier interface {
 	//  WHERE id = $2
 	//    AND status = 'sending'::promotion_status
 	MarkPromotionSent(ctx context.Context, arg MarkPromotionSentParams) (int64, error)
+	//MarkReferencePhotosErased
+	//
+	//  UPDATE reference_photo_erasures
+	//  SET erased_at = now()
+	//  WHERE user_id = $1
+	//    AND erased_at IS NULL
+	MarkReferencePhotosErased(ctx context.Context, userID uuid.UUID) error
+	// Records that the customer is emailed about the replies they left unread;
+	// none when they read them meanwhile, or are emailed already.
+	//
+	//  UPDATE conversations
+	//  SET reply_emailed_at = now()
+	//  WHERE id = $1
+	//    AND unread_by_customer > 0
+	//    AND reply_emailed_at IS NULL
+	MarkRepliesEmailed(ctx context.Context, id uuid.UUID) (int64, error)
 	// Publishes or hides a review, and returns it as the moderation list shows it.
 	//
 	//  WITH moderated AS (
@@ -2669,6 +2734,7 @@ type Querier interface {
 	//  SET status = 'open',
 	//      unread_by_staff = conversations.unread_by_staff + 1,
 	//      unread_by_customer = 0,
+	//      reply_emailed_at = NULL,
 	//      last_message_at = GREATEST(conversations.last_message_at, now()),
 	//      updated_at = now()
 	//  RETURNING id
@@ -2696,6 +2762,7 @@ type Querier interface {
 	//  SET status = 'open',
 	//      unread_by_staff = conversations.unread_by_staff + 1,
 	//      unread_by_customer = 0,
+	//      reply_emailed_at = NULL,
 	//      last_message_at = GREATEST(conversations.last_message_at, now()),
 	//      updated_at = now()
 	//  RETURNING id
@@ -2818,6 +2885,14 @@ type Querier interface {
 	//    AND r.created_at >= $1::timestamptz
 	//    AND r.created_at < $2::timestamptz
 	ProductionTime(ctx context.Context, arg ProductionTimeParams) (ProductionTimeRow, error)
+	// Records the policy version an API serves and returns when one first served
+	// it: a version served before keeps its time.
+	//
+	//  INSERT INTO policy_versions (version)
+	//  VALUES ($1)
+	//  ON CONFLICT (version) DO UPDATE SET version = EXCLUDED.version
+	//  RETURNING published_at
+	PublishPolicyVersion(ctx context.Context, version string) (time.Time, error)
 	//RecordOutboxPublishFailure
 	//
 	//  UPDATE outbox_events
@@ -2959,6 +3034,12 @@ type Querier interface {
 	//    AND status = 'captured'
 	//    AND refund_requested_at IS NULL
 	RequestPaymentRefund(ctx context.Context, orderID uuid.UUID) error
+	// Asks, with the erasure, for the customer's reference photos to be deleted.
+	//
+	//  INSERT INTO reference_photo_erasures (user_id)
+	//  VALUES ($1)
+	//  ON CONFLICT (user_id) DO NOTHING
+	RequestReferencePhotoErasure(ctx context.Context, userID uuid.UUID) error
 	// Moves the pickup of an order not being made yet; its type follows the new
 	// time.
 	//

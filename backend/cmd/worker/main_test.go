@@ -99,7 +99,7 @@ func (b *beats) LastBeat(context.Context) (*time.Time, error) { return nil, nil 
 func TestRun_AStuckJobHoldsNoOtherBack(t *testing.T) {
 	t.Parallel()
 	var stuckEnded, others atomic.Int32
-	orders := []orderJob{
+	orders := []job{
 		{name: "stuck", run: func(ctx context.Context) (int, error) {
 			<-ctx.Done()
 			stuckEnded.Add(1)
@@ -135,7 +135,7 @@ func TestRun_SweepsPrunesPurgesAndExpiresUntilStopped(t *testing.T) {
 	t.Parallel()
 	jobs := &fakeJobs{}
 	var orderRuns atomic.Int32
-	orders := []orderJob{{name: "count", run: func(context.Context) (int, error) {
+	orders := []job{{name: "count", run: func(context.Context) (int, error) {
 		orderRuns.Add(1)
 		return 0, nil
 	}}}

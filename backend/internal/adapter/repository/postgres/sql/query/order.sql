@@ -291,6 +291,15 @@ SELECT EXISTS (
   WHERE order_id = $1 AND configuration->>'reference_image_url' <> ''
 )::bool AS has_reference_photo;
 
+-- name: EraseOrderLinePersonalData :exec
+-- Takes the reference photo and the cake's message off the customer's order
+-- lines as their account is erased: both are about them (Cloudinary deletes
+-- the photo), while what was made — the options — stays on the sales record.
+UPDATE order_items
+SET configuration = configuration - 'reference_image_url' - 'message'
+WHERE (configuration->>'reference_image_url' IS NOT NULL OR configuration->>'message' IS NOT NULL)
+  AND order_id IN (SELECT id FROM orders WHERE user_id = sqlc.arg('user_id')::uuid);
+
 -- name: SumOrderItemQuantitiesByOrderIDs :many
 SELECT order_id, COALESCE(SUM(quantity), 0)::bigint AS item_count
 FROM order_items

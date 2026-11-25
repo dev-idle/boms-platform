@@ -12,7 +12,6 @@ import {
   getMe as getMeFromUserApi,
   meQueryOptions,
   primeMeQueryCache,
-  userQueryKeys,
 } from "@/features/user";
 import { resolvePostAuthDestination } from "@/lib/routing/post-auth-destination";
 
@@ -49,7 +48,7 @@ export function useConfirmPasswordReset() {
     mutationFn: (input: PasswordResetConfirmInput) => confirmPasswordReset(input),
     onSuccess: () => {
       endLocalSession();
-      queryClient.removeQueries({ queryKey: userQueryKeys.me });
+      queryClient.clear();
       router.replace(`${ROUTE.login}?reset=1`);
     },
   });
@@ -136,6 +135,9 @@ export function useLogin() {
       }
     },
     onSuccess: ({ data, me }, variables) => {
+      // A session that ended without signing out — one that expired — left
+      // its reads behind: none reach the account signing in.
+      queryClient.clear();
       setAuth({
         accessToken: data.access_token,
         expiresIn: data.expires_in,
@@ -169,7 +171,8 @@ export function useLogout() {
     },
     onSettled: () => {
       endLocalSession();
-      queryClient.removeQueries({ queryKey: userQueryKeys.me });
+      // Nothing the account read stays for whoever uses this browser next.
+      queryClient.clear();
       router.replace(ROUTE.login);
     },
   });

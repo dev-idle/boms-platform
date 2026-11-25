@@ -12,7 +12,4 @@ export {
   EmailVerificationNotice,
   OperationalAccountProfileView,
 } from "./components";
-export {
-  meQueryOptions,
-  userQueryKeys,
-} from "./hooks";
+export { meQueryOptions } from "./hooks";

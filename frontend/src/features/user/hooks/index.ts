@@ -27,7 +27,7 @@ import {
 } from "../schemas/index";
 import { meQueryOptions, userQueryKeys } from "./query-options";
 
-export { meQueryOptions, userQueryKeys } from "./query-options";
+export { meQueryOptions } from "./query-options";
 
 type UseMeOptions = {
   /**
@@ -85,7 +85,7 @@ export function useChangePassword() {
     onSuccess: () => {
       beginLogout();
       endLocalSession();
-      queryClient.removeQueries({ queryKey: userQueryKeys.me });
+      queryClient.clear();
       router.push(`${ROUTE.login}?changed=1`);
     },
   });
@@ -103,7 +103,7 @@ export function useDeleteAccount() {
     onSuccess: () => {
       beginLogout();
       endLocalSession();
-      queryClient.removeQueries({ queryKey: userQueryKeys.me });
+      queryClient.clear();
       toast.success("Your account and personal details were erased");
       router.push(ROUTE.login);
     },

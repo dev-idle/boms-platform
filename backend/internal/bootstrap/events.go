@@ -12,15 +12,16 @@ import (
 
 // EventPublisher is every destination of a committed event: the realtime bus
 // for open pages, then the queue of emails the event calls for — order
-// updates, confirmation and reset links, and promotions. The API's
-// post-commit delivery and the worker's sweeper both use it, so an event the
-// sweeper recovers reaches exactly what it would have reached on time.
+// updates, confirmation and reset links, replies left unread, and promotions.
+// The API's post-commit delivery and the worker's sweeper both use it, so an
+// event the sweeper recovers reaches exactly what it would have reached on time.
 func EventPublisher(rdb *redis.Client) port.EventPublisher {
 	emails := queue.NewEmailQueue(rdb)
 	return eventdispatch.Fanout(
 		eventbus.NewRedisPublisher(rdb),
 		notification.NewOrderEmails(emails),
 		notification.NewAccountEmails(emails),
+		notification.NewReplyEmails(emails),
 		notification.NewPromotionEmails(emails),
 	)
 }

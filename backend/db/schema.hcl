@@ -1831,6 +1831,61 @@ table "payment_refund_notices" {
   }
 }
 
+// Each version of the customer policies, with when an API first served it:
+// the version it replaced is still accepted for a short while after, so a page
+// opened before the change is not refused while the change reaches it.
+table "policy_versions" {
+  schema = schema.public
+  column "version" {
+    type = text
+    null = false
+  }
+  column "published_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.version]
+  }
+  check "policy_versions_version_check" {
+    expr = "char_length(version) BETWEEN 1 AND 32"
+  }
+}
+
+// Erased customers whose reference photos Cloudinary may still hold: written
+// with the erasure, done by the worker, which deletes the photos — they live
+// outside the database, so the erasure's own transaction cannot take them.
+table "reference_photo_erasures" {
+  schema = schema.public
+  column "user_id" {
+    type = uuid
+    null = false
+  }
+  column "requested_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  column "erased_at" {
+    type = timestamptz
+    null = true
+  }
+  primary_key {
+    columns = [column.user_id]
+  }
+  foreign_key "reference_photo_erasures_user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = RESTRICT
+  }
+  // The erasures still to do, the oldest request first.
+  index "reference_photo_erasures_due_idx" {
+    columns = [column.requested_at]
+    where   = "erased_at IS NULL"
+  }
+}
+
 enum "conversation_status" {
   schema = schema.public
   values = ["open", "closed"]
@@ -1878,6 +1933,12 @@ table "conversations" {
     null    = false
     default = 0
   }
+  // When the customer was emailed about the counter's replies they left
+  // unread; cleared when they read them, so later replies email them once more.
+  column "reply_emailed_at" {
+    type = timestamptz
+    null = true
+  }
   column "last_message_at" {
     type = timestamptz
     null = false
@@ -1919,6 +1980,11 @@ table "conversations" {
     unique  = true
     columns = [column.customer_id]
     where   = "order_id IS NULL"
+  }
+  // Replies left unread that no email has told of yet, the longest waiting first.
+  index "conversations_unread_replies_idx" {
+    columns = [column.last_message_at]
+    where   = "unread_by_customer > 0 AND reply_emailed_at IS NULL"
   }
   // The inbox: latest message first, within a status.
   index "conversations_status_last_message_idx" {

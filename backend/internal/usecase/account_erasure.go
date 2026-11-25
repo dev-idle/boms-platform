@@ -18,7 +18,9 @@ import (
 // over, their personal details go for good: the account is closed, its email
 // and profile cleared, the cart and their saved lists emptied, their messages
 // with the counter, their conversations with the assistant and their reviews
-// erased and the personal data taken out of the audit trail. Their orders stay
+// erased, their reference photos and cake messages taken off their orders —
+// the photos deleted from Cloudinary by the worker — and the personal data
+// taken out of the audit trail. Their orders stay
 // as the bakery's anonymous sales records, which accounting law requires it to
 // keep.
 type AccountErasureUsecase struct {
@@ -31,6 +33,7 @@ type AccountErasureUsecase struct {
 	assistant     port.AssistantRepository
 	saved         port.SavedProductRepository
 	reviews       port.ReviewRepository
+	photos        port.ReferencePhotoErasures
 	scrubber      port.AuditScrubber
 	tokens        port.UserTokenRepository
 	sessions      port.SessionStore
@@ -48,6 +51,7 @@ func NewAccountErasureUsecase(
 	assistant port.AssistantRepository,
 	saved port.SavedProductRepository,
 	reviews port.ReviewRepository,
+	photos port.ReferencePhotoErasures,
 	scrubber port.AuditScrubber,
 	tokens port.UserTokenRepository,
 	sessions port.SessionStore,
@@ -64,6 +68,7 @@ func NewAccountErasureUsecase(
 		assistant:     assistant,
 		saved:         saved,
 		reviews:       reviews,
+		photos:        photos,
 		scrubber:      scrubber,
 		tokens:        tokens,
 		sessions:      sessions,
@@ -153,6 +158,12 @@ func (u *AccountErasureUsecase) erase(txCtx context.Context, user *domainuser.Us
 		return err
 	}
 	if err := u.orders.EraseIncidentNotes(txCtx, user.ID); err != nil {
+		return err
+	}
+	if err := u.orders.EraseLinePersonalData(txCtx, user.ID); err != nil {
+		return err
+	}
+	if err := u.photos.RequestErasure(txCtx, user.ID); err != nil {
 		return err
 	}
 	if err := u.saved.RemoveAll(txCtx, user.ID); err != nil {

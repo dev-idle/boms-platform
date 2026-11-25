@@ -580,6 +580,26 @@ func (q *Queries) CreateOrderStatusEvent(ctx context.Context, arg CreateOrderSta
 	return err
 }
 
+const eraseOrderLinePersonalData = `-- name: EraseOrderLinePersonalData :exec
+UPDATE order_items
+SET configuration = configuration - 'reference_image_url' - 'message'
+WHERE (configuration->>'reference_image_url' IS NOT NULL OR configuration->>'message' IS NOT NULL)
+  AND order_id IN (SELECT id FROM orders WHERE user_id = $1::uuid)
+`
+
+// Takes the reference photo and the cake's message off the customer's order
+// lines as their account is erased: both are about them (Cloudinary deletes
+// the photo), while what was made — the options — stays on the sales record.
+//
+//	UPDATE order_items
+//	SET configuration = configuration - 'reference_image_url' - 'message'
+//	WHERE (configuration->>'reference_image_url' IS NOT NULL OR configuration->>'message' IS NOT NULL)
+//	  AND order_id IN (SELECT id FROM orders WHERE user_id = $1::uuid)
+func (q *Queries) EraseOrderLinePersonalData(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, eraseOrderLinePersonalData, userID)
+	return err
+}
+
 const expireOrder = `-- name: ExpireOrder :one
 UPDATE orders
 SET status = 'expired'::order_status,

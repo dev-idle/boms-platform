@@ -21,6 +21,7 @@ import (
 	"github.com/boms/backend/internal/bootstrap"
 	"github.com/boms/backend/internal/config"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainpromotion "github.com/boms/backend/internal/domain/promotion"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	v1 "github.com/boms/backend/internal/handler/v1"
@@ -92,7 +93,13 @@ func main() {
 	outboxRepo := postgresrepo.NewOutboxRepository(pgPool)
 	userTokenRepo := postgresrepo.NewUserTokenRepository(pgPool)
 
-	authUC, err := usecase.NewAuthUsecase(userRepo, customerProfileRepo, pgPool, outboxRepo, sessionStore, hasher, tokenSigner, zlog)
+	// The overlap for the policies before these starts when an API first serves them.
+	termsServedSince, err := postgresrepo.NewPolicyRepository(pgPool).Publish(rootCtx, domainpolicy.TermsVersion)
+	if err != nil {
+		zlog.Fatal("policy_init", zap.Error(err))
+	}
+	terms := domainpolicy.NewTerms(termsServedSince)
+	authUC, err := usecase.NewAuthUsecase(userRepo, customerProfileRepo, pgPool, outboxRepo, sessionStore, hasher, tokenSigner, zlog, terms)
 	if err != nil {
 		zlog.Fatal("auth_usecase", zap.Error(err))
 	}
@@ -127,11 +134,11 @@ func main() {
 	promotionRepo := postgresrepo.NewPromotionRepository(pgPool)
 	assistantRepo := postgresrepo.NewAssistantRepository(pgPool)
 	orderUC := usecase.NewOrderUsecase(userRepo, orderRepo, cartRepo, discountCodeRepo, cartUC, pgPool, outboxRepo, storeSettingsRepo, ticketRepo, paymentRepo, paymentUC, pickupCodes,
-		conversationRepo)
+		conversationRepo, terms)
 	storeUC := usecase.NewStoreUsecase(storeSettingsRepo, orderRepo)
 	accountErasureUC := usecase.NewAccountErasureUsecase(
-		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, conversationRepo, assistantRepo, savedProductRepo, reviewRepo, auditLogRepo, userTokenRepo, sessionStore,
-		auditLogger, hasher,
+		pgPool, userRepo, customerProfileRepo, cartRepo, orderRepo, conversationRepo, assistantRepo, savedProductRepo, reviewRepo,
+		postgresrepo.NewReferencePhotoRepository(pgPool), auditLogRepo, userTokenRepo, sessionStore, auditLogger, hasher,
 	)
 	emailVerificationUC := usecase.NewEmailVerificationUsecase(pgPool, userRepo, userTokenRepo, outboxRepo, auditLogger)
 	passwordResetUC := usecase.NewPasswordResetUsecase(
@@ -152,6 +159,7 @@ func main() {
 	staffConversationUC := usecase.NewStaffConversationUsecase(userRepo, orderRepo, conversationRepo, pgPool, outboxRepo)
 	assistantUC := usecase.NewAssistantUsecase(
 		llm.New(cfg.Assistant), assistantRepo, userRepo, productRepo, storeSettingsRepo, orderRepo, conversationUC, pgPool,
+		cfg.Assistant.Concurrency,
 	)
 	savedProductUC := usecase.NewSavedProductUsecase(userRepo, savedProductRepo, pgPool)
 	reviewUC := usecase.NewReviewUsecase(userRepo, orderRepo, reviewRepo, pgPool, outboxRepo)

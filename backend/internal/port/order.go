@@ -211,6 +211,9 @@ type OrderRepository interface {
 	// HasOpen reports whether the customer has an order not yet fulfilled or
 	// cancelled — one the bakery still has to make or hand over.
 	HasOpen(ctx context.Context, userID uuid.UUID) (bool, error)
+	// EraseLinePersonalData takes the reference photo and the cake's message
+	// off every line of the customer's orders.
+	EraseLinePersonalData(ctx context.Context, userID uuid.UUID) error
 	// ListByUserBefore pages a customer's orders newest first by keyset.
 	ListByUserBefore(ctx context.Context, userID uuid.UUID, before *PageCursor, limit int32) ([]domainorder.Order, error)
 	ListCountByUser(ctx context.Context, userID uuid.UUID, filter OrderHistoryFilter) (int64, error)

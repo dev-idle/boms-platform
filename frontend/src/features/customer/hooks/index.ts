@@ -25,7 +25,6 @@ import {
   checkoutCart,
   createReview,
   getCart,
-  getGeneralMessages,
   getOrder,
   getOrderMessages,
   getPickupRules,
@@ -57,7 +56,7 @@ import {
   type SavedProduct,
   type UpdateCartItemInput,
 } from "../schemas";
-import { customerQueryKeys } from "./query-options";
+import { customerQueryKeys, generalMessagesQueryOptions } from "./query-options";
 
 function cartMutationErrorMessage(error: unknown, fallback: string): string {
   if (isApiError(error)) {
@@ -415,18 +414,24 @@ export function useMarkOrderMessagesRead(orderId: string) {
   });
 }
 
-/**
- * The customer's general conversation with the counter, the latest page
- * first; each older page starts before the oldest message loaded.
- */
+/** The customer's general conversation with the counter. */
 export function useGeneralMessages() {
-  return useInfiniteQuery({
-    queryKey: customerQueryKeys.generalMessages,
-    queryFn: ({ pageParam }) => getGeneralMessages(pageParam),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (page) => (page.has_more ? page.messages[0]?.id : undefined),
-    retry: false,
+  return useInfiniteQuery(generalMessagesQueryOptions());
+}
+
+/**
+ * How many of the counter's replies in the general conversation a signed-in
+ * customer has not read. It reads the conversation's own cache, so a reply
+ * pushed, or read here or in another tab, changes it at once.
+ */
+export function useGeneralUnread(signedIn: boolean): number {
+  const { data } = useInfiniteQuery({
+    ...generalMessagesQueryOptions(),
+    enabled: signedIn,
+    select: (thread) => thread.pages[0]?.unread ?? 0,
   });
+  // A disabled query still holds what it read: a session that ended shows none.
+  return signedIn ? (data ?? 0) : 0;
 }
 
 /** Writes the customer's message to the counter in their general conversation. */

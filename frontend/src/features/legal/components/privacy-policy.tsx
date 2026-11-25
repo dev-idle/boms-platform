@@ -96,6 +96,10 @@ export function PrivacyPolicy() {
       <PolicySection id="privacy-why" title="3. Why we keep it">
         <ul>
           <li>To take, make and hand over your orders — the agreement you make with us.</li>
+          <li>
+            To email you, at an address you confirmed, when a message from our staff has waited 15
+            minutes unread — once, and not again until you have read it.
+          </li>
           <li>To keep accounts secure and stop abuse, such as repeated failed sign-ins.</li>
           <li>
             To find and fix what goes wrong with orders, and to notice payments being misused, such as
@@ -158,16 +162,17 @@ export function PrivacyPolicy() {
             Your account, profile, cart, favorites, wishlist, reviews, your agreement to promotions and
             your messages with our staff, until you delete your account. Deleting it erases your name,
             phone number and email, empties your cart and your lists, erases those messages, your
-            reviews and your conversations with the assistant, and removes your personal details from
-            the record of changes; you are signed out everywhere and the account cannot be restored.
+            reviews, your conversations with the assistant and the messages written on your cakes,
+            deletes the reference photos you uploaded, and removes your personal details from the
+            record of changes; you are signed out everywhere and the account cannot be restored.
           </li>
           <li>Your sign-in sessions, until you sign out or they expire.</li>
           <li>
             A conversation with the assistant, for 60 days after its last message; then it is deleted.
           </li>
           <li>
-            A reference photo, as long as the order it was made for; one you uploaded without ordering
-            stays stored until you ask us to delete it.
+            A reference photo, as long as the order it was made for; one you uploaded without ordering,
+            until you ask us to delete it. Deleting your account deletes every photo you uploaded.
           </li>
           <li>
             Your orders, as part of our sales records, for as long as accounting law requires — after

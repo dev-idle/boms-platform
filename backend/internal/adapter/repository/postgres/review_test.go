@@ -226,7 +226,7 @@ func TestReviews_Integration(t *testing.T) {
 		assert.Equal(t, "published", export.Reviews[0].Status)
 
 		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, postgresadapter.NewAssistantRepository(f.pool), savedRepo,
-			reviewRepo, audit,
+			reviewRepo, postgresadapter.NewReferencePhotoRepository(f.pool), audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})
 		require.NoError(t, erasure.Erase(ctx, customer, fixturePassword))
 

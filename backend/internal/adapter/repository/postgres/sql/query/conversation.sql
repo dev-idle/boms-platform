@@ -8,6 +8,7 @@ ON CONFLICT (order_id) DO UPDATE
 SET status = 'open',
     unread_by_staff = conversations.unread_by_staff + 1,
     unread_by_customer = 0,
+    reply_emailed_at = NULL,
     last_message_at = GREATEST(conversations.last_message_at, now()),
     updated_at = now()
 RETURNING id;
@@ -20,6 +21,7 @@ ON CONFLICT (customer_id) WHERE order_id IS NULL DO UPDATE
 SET status = 'open',
     unread_by_staff = conversations.unread_by_staff + 1,
     unread_by_customer = 0,
+    reply_emailed_at = NULL,
     last_message_at = GREATEST(conversations.last_message_at, now()),
     updated_at = now()
 RETURNING id;
@@ -119,8 +121,10 @@ ORDER BY m.created_at DESC, m.id DESC
 LIMIT sqlc.arg('limit');
 
 -- name: MarkConversationReadByCustomer :execrows
+-- Reading the replies also lets the next ones email the customer once again.
 UPDATE conversations
 SET unread_by_customer = 0,
+    reply_emailed_at = NULL,
     updated_at = now()
 WHERE customer_id = sqlc.arg('customer_id')
   AND (order_id = sqlc.narg('order_id') OR (sqlc.narg('order_id')::uuid IS NULL AND order_id IS NULL))
@@ -250,3 +254,42 @@ SET status = 'closed',
     unread_by_staff = 0,
     updated_at = now()
 WHERE customer_id = sqlc.arg('user_id')::uuid;
+
+-- name: ListUnreadRepliesDue :many
+-- Conversations whose customer has left the counter's replies unread for
+-- unread_seconds and has not been emailed about them, the longest waiting
+-- first. Only an open account whose address is confirmed is emailed.
+SELECT c.id
+FROM conversations c
+JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL AND u.email_verified_at IS NOT NULL
+WHERE c.unread_by_customer > 0
+  AND c.reply_emailed_at IS NULL
+  AND c.last_message_at <= now() - make_interval(secs => sqlc.arg('unread_seconds')::double precision)
+ORDER BY c.last_message_at
+LIMIT sqlc.arg('limit');
+
+-- name: MarkRepliesEmailed :execrows
+-- Records that the customer is emailed about the replies they left unread;
+-- none when they read them meanwhile, or are emailed already.
+UPDATE conversations
+SET reply_emailed_at = now()
+WHERE id = $1
+  AND unread_by_customer > 0
+  AND reply_emailed_at IS NULL;
+
+-- name: GetUnreadReplies :one
+-- What the email about replies left unread says — who it goes to, the order
+-- it is about and how many replies wait — while the account is open and its
+-- address confirmed. None wait once the customer read them, even if more came
+-- since: the mark that asked for this email went with the read.
+SELECT
+  c.order_id,
+  o.code AS order_code,
+  (CASE WHEN c.reply_emailed_at IS NULL THEN 0 ELSE c.unread_by_customer END)::integer AS unread_by_customer,
+  u.email,
+  cp.display_name
+FROM conversations c
+JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL AND u.email_verified_at IS NOT NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+LEFT JOIN orders o ON o.id = c.order_id
+WHERE c.id = $1;

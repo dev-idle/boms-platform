@@ -13,7 +13,9 @@ import (
 
 	postgresadapter "github.com/boms/backend/internal/adapter/repository/postgres"
 	domainaccount "github.com/boms/backend/internal/domain/account"
+	domaincart "github.com/boms/backend/internal/domain/cart"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainproduct "github.com/boms/backend/internal/domain/product"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/port"
 	"github.com/boms/backend/internal/service/auditlogger"
@@ -57,10 +59,11 @@ func TestAccountErasure_Integration(t *testing.T) {
 	audit := postgresadapter.NewAuditLogRepository(f.pool)
 	sessions := &endedSessions{}
 	tokens := postgresadapter.NewUserTokenRepository(f.pool)
+	photos := postgresadapter.NewReferencePhotoRepository(f.pool)
 	erasure := usecase.NewAccountErasureUsecase(
 		f.pool, f.users, customerProfiles, f.carts, f.orders, postgresadapter.NewConversationRepository(f.pool),
-		postgresadapter.NewAssistantRepository(f.pool), postgresadapter.NewSavedProductRepository(f.pool), postgresadapter.NewReviewRepository(f.pool), audit, tokens, sessions,
-		auditlogger.NewService(audit), fixtureHasher{},
+		postgresadapter.NewAssistantRepository(f.pool), postgresadapter.NewSavedProductRepository(f.pool), postgresadapter.NewReviewRepository(f.pool),
+		photos, audit, tokens, sessions, auditlogger.NewService(audit), fixtureHasher{},
 	)
 
 	t.Run("erases_the_details_and_keeps_the_orders", func(t *testing.T) {
@@ -75,6 +78,14 @@ func TestAccountErasure_Integration(t *testing.T) {
 			Type: domainorder.TypeInstant, SubtotalCents: 300, TotalCents: 300,
 		})
 		require.NoError(t, err)
+		require.NoError(t, f.orders.CreateItems(ctx, []port.CreateOrderItemParams{{
+			OrderID: collected.ID, LineType: domaincart.LineTypeProduct, ProductID: &f.pastry, Name: "Pastry", Slug: "pastry",
+			Quantity: 1, UnitPriceCents: 300, LineTotalCents: 300, Customization: &domainorder.Customization{
+				Options:           []domainorder.ChosenOption{{Group: domainproduct.OptionFlavor, Label: "Matcha"}},
+				Message:           "Happy birthday Mai",
+				ReferenceImageURL: "https://res.cloudinary.com/demo/image/upload/v1/boms/references/" + customer.String() + "/a.jpg",
+			},
+		}}))
 		clerk := f.newWorker(t, domainuser.RoleStaff)
 		note := "Mai said the box was crushed"
 		reported, err := f.orders.AddIncident(ctx, port.AddOrderIncidentParams{
@@ -120,6 +131,21 @@ func TestAccountErasure_Integration(t *testing.T) {
 		require.Len(t, incidents[collected.ID], 1, "the incident stays in the log")
 		assert.Equal(t, reported.ID, incidents[collected.ID][0].ID)
 		assert.Nil(t, incidents[collected.ID][0].Note, "what staff wrote about the customer goes")
+		lines, err := f.orders.ListItemsByOrderID(ctx, collected.ID)
+		require.NoError(t, err)
+		require.Len(t, lines, 1)
+		require.NotNil(t, lines[0].Customization)
+		assert.Empty(t, lines[0].Customization.ReferenceImageURL, "the photo is about the customer")
+		assert.Empty(t, lines[0].Customization.Message, "and the message on the cake, which may name them")
+		assert.Equal(t, []domainorder.ChosenOption{{Group: domainproduct.OptionFlavor, Label: "Matcha"}}, lines[0].Customization.Options,
+			"what was made stays on the sales record")
+		due, err := photos.ListErasuresDue(ctx, 100)
+		require.NoError(t, err)
+		assert.Contains(t, due, customer, "the worker deletes the photos from Cloudinary")
+		require.NoError(t, photos.MarkErased(ctx, customer))
+		due, err = photos.ListErasuresDue(ctx, 100)
+		require.NoError(t, err)
+		assert.NotContains(t, due, customer, "done once")
 
 		trail, err := audit.ListForSubject(ctx, customer, nil, 100)
 		require.NoError(t, err)

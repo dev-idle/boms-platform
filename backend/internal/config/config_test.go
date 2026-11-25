@@ -90,19 +90,16 @@ func TestValidate_HSTSBounds(t *testing.T) {
 	}
 }
 
+// The API signs uploads and the worker deletes an erased customer's photos:
+// once deployed, both need Cloudinary's credentials.
 func TestValidate_ProductionRequiresCloudinary(t *testing.T) {
 	t.Parallel()
 	cfg := minimalProductionConfig()
-	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "cloudinary") {
-		t.Fatalf("expected cloudinary validation error, got: %v", err)
-	}
-	cfg.Cloudinary = config.CloudinaryConfig{
-		CloudName: "demo",
-		APIKey:    "key",
-		APISecret: "secret",
-	}
-	if err := cfg.Validate(); err != nil {
-		t.Fatalf("expected valid production config with cloudinary: %v", err)
+	cfg.Cloudinary = config.CloudinaryConfig{}
+	for name, validate := range map[string]func() error{"api": cfg.Validate, "worker": cfg.ValidateWorker} {
+		if err := validate(); err == nil || !strings.Contains(err.Error(), "cloudinary") {
+			t.Fatalf("%s: expected cloudinary validation error, got: %v", name, err)
+		}
 	}
 }
 
@@ -179,6 +176,7 @@ func defaultAssistant() config.AssistantConfig {
 		ReasoningEffort: "none",
 		ReplyTimeout:    500 * time.Millisecond,
 		Retention:       60 * 24 * time.Hour,
+		Concurrency:     2,
 	}
 }
 
@@ -205,6 +203,7 @@ func minimalProductionConfig() *config.Config {
 	cfg.PayPal.WebhookID = "webhook-id-fixture"
 	cfg.Mail.FromAddress = "orders@choux.vn"
 	cfg.Mail.ReplyTo = "hello@choux.vn"
+	cfg.Cloudinary = config.CloudinaryConfig{CloudName: "demo", APIKey: "key", APISecret: "secret"}
 	return cfg
 }
 
@@ -340,14 +339,13 @@ func TestValidate_OutboxBatchIsBounded(t *testing.T) {
 	}
 }
 
-// The worker never holds the API's signing key, internal secret or Cloudinary
-// credentials, so its validation must not ask for them.
-func TestValidateWorker_NeedsOnlyTheStoresAndMail(t *testing.T) {
+// The worker never holds the API's signing key or internal secret, so its
+// validation must not ask for them.
+func TestValidateWorker_NeedsNoAPISecrets(t *testing.T) {
 	t.Parallel()
 	cfg := minimalProductionConfig()
 	cfg.JWT.Ed25519PrivateKey = ""
 	cfg.HTTP.InternalSecret = ""
-	cfg.Cloudinary = config.CloudinaryConfig{}
 	if err := cfg.ValidateWorker(); err != nil {
 		t.Fatalf("expected worker config to be valid without API secrets, got: %v", err)
 	}
@@ -387,6 +385,7 @@ func TestValidate_Assistant(t *testing.T) {
 		"credentials_in_url":    {breakIt: func(c *config.Config) { c.Assistant.BaseURL = "https://user:pass@llm.example.com/v1" }, want: "assistant.base_url"},
 		"no_model":              {breakIt: func(c *config.Config) { c.Assistant.Model = " " }, want: "assistant.model"},
 		"no_reply_timeout":      {breakIt: func(c *config.Config) { c.Assistant.ReplyTimeout = 0 }, want: "assistant.reply_timeout"},
+		"no_concurrency":        {breakIt: func(c *config.Config) { c.Assistant.Concurrency = 0 }, want: "assistant.concurrency"},
 		"outlasts_the_response": {breakIt: func(c *config.Config) { c.Assistant.ReplyTimeout = c.HTTP.WriteTimeout }, want: "below http.write_timeout"},
 		"plain_http_to_another_machine_in_production": {breakIt: func(c *config.Config) {
 			c.App.Env = "production"
@@ -411,7 +410,6 @@ func TestValidate_Assistant(t *testing.T) {
 		t.Parallel()
 		for _, base := range []string{"http://127.0.0.1:11434/v1", "http://localhost:11434/v1", "https://llm.choux.vn/v1"} {
 			cfg := minimalProductionConfig()
-			cfg.Cloudinary = config.CloudinaryConfig{CloudName: "demo", APIKey: "key", APISecret: "secret"}
 			cfg.Assistant.BaseURL = base
 			if err := cfg.Validate(); err != nil {
 				t.Fatalf("%s: unexpected error: %v", base, err)

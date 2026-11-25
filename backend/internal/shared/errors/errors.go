@@ -129,6 +129,7 @@ var (
 	ErrReviewExists                 = New(http.StatusConflict, "review_exists", "You have already reviewed this product on this order")
 	ErrWebhookInvalid               = New(http.StatusBadRequest, "webhook_invalid", "The notice is not signed by the payment provider")
 	ErrAssistantUnavailable         = New(http.StatusServiceUnavailable, "assistant_unavailable", "The assistant cannot answer right now")
+	ErrAssistantBusy                = New(http.StatusServiceUnavailable, "assistant_busy", "The assistant is answering other questions; ask again in a moment")
 )
 
 // ToErrorBody projects an AppError into the HTTP response error body shape.

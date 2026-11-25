@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,11 +26,18 @@ func TestTermsVersion_MatchesTheContract(t *testing.T) {
 	assert.Equal(t, contract.Version, TermsVersion)
 }
 
-func TestRequireAccepted(t *testing.T) {
+func TestTerms_Check(t *testing.T) {
 	t.Parallel()
+	servedSince := time.Date(2026, 11, 25, 8, 0, 0, 0, time.UTC)
+	terms := NewTerms(servedSince)
 
-	require.NoError(t, RequireAccepted(TermsVersion))
+	require.NoError(t, terms.Check(TermsVersion, servedSince.Add(30*24*time.Hour)), "the current version, whenever")
+	require.NoError(t, terms.Check(PreviousTermsVersion, servedSince.Add(PreviousTermsOverlap-time.Second)),
+		"a page opened before the change")
+	require.ErrorIs(t, terms.Check(PreviousTermsVersion, servedSince.Add(PreviousTermsOverlap)), ErrTermsNotAccepted,
+		"a page left open past the overlap")
 	for _, version := range []string{"", "2026-01-01", " " + TermsVersion} {
-		require.ErrorIs(t, RequireAccepted(version), ErrTermsNotAccepted, "version %q", version)
+		require.ErrorIs(t, terms.Check(version, servedSince), ErrTermsNotAccepted, "version %q", version)
 	}
+	assert.NotEqual(t, TermsVersion, PreviousTermsVersion, "the previous version moves on with each change")
 }

@@ -1,6 +1,8 @@
 package conversation
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 
 	domainevent "github.com/boms/backend/internal/domain/event"
@@ -13,7 +15,31 @@ const (
 	// TopicConversationChanged announces a conversation read, resolved or
 	// opened again.
 	TopicConversationChanged domainevent.Topic = "conversation.changed"
+	// TopicRepliesUnread asks for the email telling a customer the counter
+	// replied and they have not read it.
+	TopicRepliesUnread domainevent.Topic = "conversation.replies_unread"
 )
+
+// RepliesUnreadEmailAfter is how long the counter's replies wait unread
+// before their customer is emailed about them — once, until they read them.
+const RepliesUnreadEmailAfter = 15 * time.Minute
+
+// RepliesUnreadEvent asks for the email about the replies a customer left
+// unread on conversationID. Its audience is nobody: it reaches the email
+// queue, never an open page.
+func RepliesUnreadEvent(conversationID uuid.UUID) domainevent.Event {
+	return domainevent.New(TopicRepliesUnread, domainevent.Audience{},
+		map[string]string{"conversation_id": conversationID.String()})
+}
+
+// ReplyEmailFor is the conversation an event asks the reply email for.
+func ReplyEmailFor(e domainevent.Event) (uuid.UUID, bool) {
+	if e.Topic != TopicRepliesUnread {
+		return uuid.Nil, false
+	}
+	id, err := uuid.Parse(e.Data["conversation_id"])
+	return id, err == nil
+}
 
 // MessageCreatedEvent tells the customer and the counter that a message
 // arrived on the customer's conversation about orderID, or on their general

@@ -18,6 +18,7 @@ import (
 	"github.com/boms/backend/internal/config"
 	domaincategory "github.com/boms/backend/internal/domain/category"
 	domainorder "github.com/boms/backend/internal/domain/order"
+	domainpolicy "github.com/boms/backend/internal/domain/policy"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	domainuser "github.com/boms/backend/internal/domain/user"
 	"github.com/boms/backend/internal/dto"
@@ -96,7 +97,7 @@ func TestCheckoutRecordsOrderCreated_Integration(t *testing.T) {
 
 	cartUC := usecase.NewCartUsecase(carts, products, combos, discounts, config.CloudinaryConfig{})
 	orderUC := usecase.NewOrderUsecase(users, orders, carts, discounts, cartUC, pool, outbox, store, postgresadapter.NewTicketRepository(pool), postgresadapter.NewPaymentRepository(pool), nil, testPickupCodes,
-		postgresadapter.NewConversationRepository(pool))
+		postgresadapter.NewConversationRepository(pool), domainpolicy.NewTerms(time.Now()))
 
 	customer, err := users.Create(ctx, port.CreateUserParams{
 		Email: "outbox-checkout@example.com", PasswordHash: testPasswordHashFixture, Role: domainuser.RoleCustomer,

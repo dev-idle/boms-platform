@@ -33,6 +33,18 @@ func NewAssistantHandler(uc *usecase.AssistantUsecase, timeout time.Duration, lo
 	return &AssistantHandler{usecase: uc, timeout: timeout, logger: logger}
 }
 
+// answerFailure is the error event for an answer that could not be given.
+func answerFailure(err error) *apperrors.AppError {
+	switch {
+	case errors.Is(err, domainassistant.ErrBusy):
+		return apperrors.ErrAssistantBusy
+	case errors.Is(err, domainassistant.ErrUnavailable):
+		return apperrors.ErrAssistantUnavailable
+	default:
+		return apperrors.ErrInternal
+	}
+}
+
 // Ask answers a question as server-sent events: "session" first, "delta" as
 // the model writes, then "answer" — or "error" when no answer can be given.
 // A question that cannot be asked is refused before the stream starts, with
@@ -50,7 +62,7 @@ func (h *AssistantHandler) Ask(c fiber.Ctx) error {
 	if id, ok := middleware.GetUserID(c); ok {
 		userID = &id
 	}
-	question, err := h.usecase.Ask(c.Context(), userID, req)
+	question, err := h.usecase.Ask(c.Context(), userID, middleware.ClientIP(c), req)
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}
@@ -89,11 +101,13 @@ func (h *AssistantHandler) Ask(c fiber.Ctx) error {
 			return
 		}
 		if err != nil {
-			appErr := apperrors.ErrInternal
-			if errors.Is(err, domainassistant.ErrUnavailable) {
-				appErr = apperrors.ErrAssistantUnavailable
+			appErr := answerFailure(err)
+			if appErr == apperrors.ErrAssistantBusy {
+				// The load the cap is there for, not a failure.
+				h.logger.Warn("assistant_busy", zap.String("request_id", requestID))
+			} else {
+				h.logger.Error("assistant answer failed", zap.String("request_id", requestID), zap.Error(err))
 			}
-			h.logger.Error("assistant answer failed", zap.String("request_id", requestID), zap.Error(err))
 			code, message, _ := appErr.ToErrorBody()
 			send("error", dto.AssistantErrorEvent{Code: code, Message: message})
 			return

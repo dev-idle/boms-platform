@@ -64,8 +64,8 @@ func TestAssistant_Integration(t *testing.T) {
 
 	ask := func(t *testing.T, m *scriptedModel, userID *uuid.UUID, session *string, question string) (*dto.AssistantAnswerResponse, string) {
 		t.Helper()
-		assistant := usecase.NewAssistantUsecase(m, sessions, f.users, products, f.store, f.orders, messages, f.pool)
-		q, err := assistant.Ask(ctx, userID, dto.AskAssistantRequest{SessionID: session, Question: question})
+		assistant := usecase.NewAssistantUsecase(m, sessions, f.users, products, f.store, f.orders, messages, f.pool, 1)
+		q, err := assistant.Ask(ctx, userID, "203.0.113.7", dto.AskAssistantRequest{SessionID: session, Question: question})
 		require.NoError(t, err)
 		answer, err := q.Answer(ctx, func(string) {})
 		require.NoError(t, err)
@@ -214,7 +214,7 @@ func TestAssistant_Integration(t *testing.T) {
 		assert.Equal(t, "assistant", export.Assistant[0].Turns[1].From)
 
 		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, sessions,
-			postgresadapter.NewSavedProductRepository(f.pool), postgresadapter.NewReviewRepository(f.pool), audit,
+			postgresadapter.NewSavedProductRepository(f.pool), postgresadapter.NewReviewRepository(f.pool), postgresadapter.NewReferencePhotoRepository(f.pool), audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})
 		require.NoError(t, erasure.Erase(ctx, customer, fixturePassword))
 		left, err := sessions.ListForUser(ctx, customer)

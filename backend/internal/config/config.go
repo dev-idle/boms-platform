@@ -590,6 +590,7 @@ func load() (*Config, error) {
 			ReasoningEffort: strings.TrimSpace(v.GetString("assistant.reasoning_effort")),
 			ReplyTimeout:    v.GetDuration("assistant.reply_timeout"),
 			Retention:       v.GetDuration("assistant.retention"),
+			Concurrency:     v.GetInt("assistant.concurrency"),
 		},
 	}
 	return cfg, nil
@@ -764,12 +765,14 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("assistant.reasoning_effort", "none")
 	v.SetDefault("assistant.reply_timeout", 20*time.Second)
 	v.SetDefault("assistant.retention", 60*24*time.Hour)
+	v.SetDefault("assistant.concurrency", 2)
 }
 
 // Validate enforces production-safe constraints. Call after Load.
 // ValidateWorker checks only what cmd/worker uses — the database, Redis, the
-// outbox and order settings, PayPal and the mail server — so the worker never
-// has to hold the API's signing key, internal secret or Cloudinary credentials.
+// outbox and order settings, PayPal, Cloudinary (to delete an erased
+// customer's reference photos) and the mail server — so the worker never has
+// to hold the API's signing key or internal secret.
 func (c *Config) ValidateWorker() error {
 	if err := c.validateStores(); err != nil {
 		return err
@@ -792,6 +795,9 @@ func (c *Config) ValidateWorker() error {
 	// Before an overdue order expires, the worker asks PayPal whether it was paid.
 	if err := c.PayPal.validate(c.App.Env); err != nil {
 		return err
+	}
+	if (c.App.Env == "production" || c.App.Env == "staging") && !c.Cloudinary.Enabled() {
+		return fmt.Errorf("cloudinary.cloud_name, cloudinary.api_key, and cloudinary.api_secret are required when app.env is %q: the worker deletes erased customers' reference photos", c.App.Env)
 	}
 	return c.Mail.validate(c.App.Env)
 }

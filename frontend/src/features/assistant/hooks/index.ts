@@ -13,6 +13,9 @@ function failureText(error: unknown): string {
   if (isApiError(error) && error.isRateLimited()) {
     return "You are asking quickly. Wait a moment, then ask again.";
   }
+  if (isApiError(error) && error.code === ApiErrorCode.AssistantBusy) {
+    return "The assistant is answering other questions. Ask again in a moment.";
+  }
   if (isApiError(error) && error.code === ApiErrorCode.AssistantUnavailable) {
     return "The assistant cannot answer right now. Our staff can help you instead.";
   }

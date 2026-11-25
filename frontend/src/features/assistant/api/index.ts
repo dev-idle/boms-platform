@@ -64,7 +64,8 @@ export async function askAssistant(
         return readEvent(assistantAnswerSchema, data);
       case "error": {
         const failure = readEvent(assistantErrorEventSchema, data);
-        throw new ApiError(failure.code === ApiErrorCode.AssistantUnavailable ? 503 : 500, failure);
+        const unavailable = failure.code === ApiErrorCode.AssistantUnavailable || failure.code === ApiErrorCode.AssistantBusy;
+        throw new ApiError(unavailable ? 503 : 500, failure);
       }
     }
   }

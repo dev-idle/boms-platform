@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -70,8 +71,9 @@ func (s *scriptedLLM) toolResult(t *testing.T, id string) map[string]any {
 	return nil
 }
 
-// memorySessions keeps sessions in memory.
+// memorySessions keeps sessions in memory; answers written at once save at once.
 type memorySessions struct {
+	mu     sync.Mutex
 	owners map[uuid.UUID]*uuid.UUID
 	turns  map[uuid.UUID][]domainassistant.Turn
 }
@@ -81,6 +83,8 @@ func newMemorySessions() *memorySessions {
 }
 
 func (m *memorySessions) RecentTurns(_ context.Context, id uuid.UUID, userID *uuid.UUID, _ int32) ([]domainassistant.Turn, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	owner := m.owners[id]
 	if (owner == nil) != (userID == nil) || (owner != nil && *owner != *userID) {
 		return nil, nil
@@ -89,6 +93,8 @@ func (m *memorySessions) RecentTurns(_ context.Context, id uuid.UUID, userID *uu
 }
 
 func (m *memorySessions) SaveTurn(_ context.Context, id uuid.UUID, userID *uuid.UUID, question, answer string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.owners[id] = userID
 	m.turns[id] = append(m.turns[id],
 		domainassistant.Turn{Role: domainassistant.RoleVisitor, Body: question},
@@ -173,12 +179,87 @@ func newAssistantFixture(replies ...port.LLMReply) *assistantFixture {
 }
 
 func (f *assistantFixture) usecase() *usecase.AssistantUsecase {
-	return usecase.NewAssistantUsecase(f.llm, f.sessions, f.users, f.products, fixedStore{}, f.orders, nil, passthroughTxManager{})
+	return usecase.NewAssistantUsecase(f.llm, f.sessions, f.users, f.products, fixedStore{}, f.orders, nil, passthroughTxManager{}, 2)
+}
+
+// heldLLM holds every answer until release closes, and tells started when one begins.
+type heldLLM struct {
+	started chan struct{}
+	release chan struct{}
+}
+
+func (h *heldLLM) Chat(context.Context, []port.LLMMessage, []port.LLMTool, func(string)) (*port.LLMReply, error) {
+	select {
+	case h.started <- struct{}{}:
+	default:
+	}
+	<-h.release
+	return &port.LLMReply{Text: "We open at 07:00."}, nil
+}
+
+func TestAssistantUsecase_RefusesAQuestionPastTheAnswersUnderWay(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	held := &heldLLM{started: make(chan struct{}, 1), release: make(chan struct{})}
+	assistant := usecase.NewAssistantUsecase(held, newMemorySessions(), new(mockUserRepo), menuProducts{}, fixedStore{},
+		&ownedOrders{}, nil, passthroughTxManager{}, 2)
+	ask := func(address string) *usecase.AssistantQuestion {
+		question, err := assistant.Ask(ctx, nil, address, dto.AskAssistantRequest{Question: "When do you open?"})
+		require.NoError(t, err)
+		return question
+	}
+	answering := make(chan error, 2)
+	for _, address := range []string{"203.0.113.7", "198.51.100.4"} {
+		go func() {
+			_, err := ask(address).Answer(ctx, func(string) {})
+			answering <- err
+		}()
+		<-held.started
+	}
+
+	_, err := ask("192.0.2.9").Answer(ctx, func(string) {})
+	require.ErrorIs(t, err, domainassistant.ErrBusy, "every slot taken: refused at once, not queued")
+
+	close(held.release)
+	require.NoError(t, <-answering)
+	require.NoError(t, <-answering)
+	_, err = ask("192.0.2.9").Answer(ctx, func(string) {})
+	require.NoError(t, err, "the slots came back with the answers")
+}
+
+func TestAssistantUsecase_OneAnswerUnderWayForEachCaller(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	held := &heldLLM{started: make(chan struct{}, 1), release: make(chan struct{})}
+	customer := uuid.New()
+	users := new(mockUserRepo)
+	users.On("GetByIDForShare", mock.Anything, customer).Return(&domainuser.User{ID: customer, Role: domainuser.RoleCustomer}, nil)
+	assistant := usecase.NewAssistantUsecase(held, newMemorySessions(), users, menuProducts{}, fixedStore{},
+		&ownedOrders{}, nil, passthroughTxManager{}, 2)
+	ask := func(userID *uuid.UUID, address string) *usecase.AssistantQuestion {
+		question, err := assistant.Ask(ctx, userID, address, dto.AskAssistantRequest{Question: "When do you open?"})
+		require.NoError(t, err)
+		return question
+	}
+	first := make(chan error, 1)
+	go func() {
+		_, err := ask(&customer, "203.0.113.7").Answer(ctx, func(string) {})
+		first <- err
+	}()
+	<-held.started
+
+	_, err := ask(&customer, "198.51.100.4").Answer(ctx, func(string) {})
+	require.ErrorIs(t, err, domainassistant.ErrBusy, "a customer holds one slot, from any address")
+
+	close(held.release)
+	require.NoError(t, <-first)
+	_, err = ask(&customer, "203.0.113.7").Answer(ctx, func(string) {})
+	require.NoError(t, err, "their next question once the answer is in")
 }
 
 func (f *assistantFixture) answer(t *testing.T, userID *uuid.UUID, req dto.AskAssistantRequest) (*dto.AssistantAnswerResponse, string, error) {
 	t.Helper()
-	question, err := f.usecase().Ask(context.Background(), userID, req)
+	question, err := f.usecase().Ask(context.Background(), userID, "203.0.113.7", req)
 	require.NoError(t, err)
 	var streamed strings.Builder
 	answer, err := question.Answer(context.Background(), func(text string) { streamed.WriteString(text) })
@@ -340,7 +421,7 @@ func TestAssistantUsecase(t *testing.T) {
 		}
 		id := session.String()
 
-		question, err := f.usecase().Ask(context.Background(), &f.customer, dto.AskAssistantRequest{SessionID: &id, Question: "Matcha too?"})
+		question, err := f.usecase().Ask(context.Background(), &f.customer, "203.0.113.7", dto.AskAssistantRequest{SessionID: &id, Question: "Matcha too?"})
 		require.NoError(t, err)
 		_, err = question.Answer(context.Background(), func(string) {})
 
@@ -360,7 +441,7 @@ func TestAssistantUsecase(t *testing.T) {
 		f.sessions.turns[session] = []domainassistant.Turn{{Role: domainassistant.RoleVisitor, Body: "A guest's question"}}
 		id := session.String()
 
-		question, err := f.usecase().Ask(context.Background(), &f.customer, dto.AskAssistantRequest{SessionID: &id, Question: "Hi"})
+		question, err := f.usecase().Ask(context.Background(), &f.customer, "203.0.113.7", dto.AskAssistantRequest{SessionID: &id, Question: "Hi"})
 
 		require.NoError(t, err)
 		assert.NotEqual(t, id, question.SessionID())
@@ -374,9 +455,9 @@ func TestAssistantUsecase(t *testing.T) {
 		f := newAssistantFixture()
 		bad := "not-a-uuid"
 
-		_, err := f.usecase().Ask(context.Background(), nil, dto.AskAssistantRequest{Question: "   "})
+		_, err := f.usecase().Ask(context.Background(), nil, "203.0.113.7", dto.AskAssistantRequest{Question: "   "})
 		require.ErrorIs(t, err, domainassistant.ErrInvalidQuestion)
-		_, err = f.usecase().Ask(context.Background(), nil, dto.AskAssistantRequest{SessionID: &bad, Question: "Hi"})
+		_, err = f.usecase().Ask(context.Background(), nil, "203.0.113.7", dto.AskAssistantRequest{SessionID: &bad, Question: "Hi"})
 		var appErr *apperrors.AppError
 		require.ErrorAs(t, err, &appErr)
 		assert.Equal(t, "validation_error", appErr.Code)

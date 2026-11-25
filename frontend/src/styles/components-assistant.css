@@ -22,6 +22,26 @@
     pointer-events: auto;
   }
 
+  /* Replies from our staff left unread: a count after the launcher's label,
+     the cart badge inverted — on-primary on its matcha. The label's tracking
+     is reset, so the count stays square. */
+  .assistant__unread {
+    align-items: center;
+    background-color: var(--theme-on-primary);
+    block-size: 1.25rem;
+    color: var(--color-matcha-500);
+    display: inline-flex;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    justify-content: center;
+    letter-spacing: 0;
+    line-height: 1;
+    min-inline-size: 1.25rem;
+    padding-inline: 0.375rem;
+  }
+
   /* Its top stays clear of the sticky header and, while the page is at its top,
      of the topbar above it (up to 3rem when its note wraps on a phone): 9rem
      holds that, the gaps and the launcher. */

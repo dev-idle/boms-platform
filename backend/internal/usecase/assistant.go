@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -49,8 +50,37 @@ type AssistantUsecase struct {
 	orders   port.OrderRepository
 	messages *ConversationUsecase
 	tx       port.TxManager
+	answers  *answerSlots
 }
 
+// answerSlots are the answers the model is writing: up to size at once, and
+// one for each caller, so no caller holds every slot.
+type answerSlots struct {
+	mu      sync.Mutex
+	size    int
+	callers map[string]struct{}
+}
+
+// take holds a slot for caller; false when every slot is taken, or caller
+// already holds one.
+func (s *answerSlots) take(caller string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, held := s.callers[caller]; held || len(s.callers) >= s.size {
+		return false
+	}
+	s.callers[caller] = struct{}{}
+	return true
+}
+
+func (s *answerSlots) release(caller string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.callers, caller)
+}
+
+// NewAssistantUsecase has the model write up to concurrency answers at once,
+// one for each caller.
 func NewAssistantUsecase(
 	llm port.LLMClient,
 	sessions port.AssistantRepository,
@@ -60,6 +90,7 @@ func NewAssistantUsecase(
 	orders port.OrderRepository,
 	messages *ConversationUsecase,
 	tx port.TxManager,
+	concurrency int,
 ) *AssistantUsecase {
 	return &AssistantUsecase{
 		llm:      llm,
@@ -70,14 +101,17 @@ func NewAssistantUsecase(
 		orders:   orders,
 		messages: messages,
 		tx:       tx,
+		answers:  &answerSlots{size: concurrency, callers: make(map[string]struct{}, concurrency)},
 	}
 }
 
 // AssistantQuestion is a question checked and ready to answer, with the
 // session it continues.
 type AssistantQuestion struct {
-	u         *AssistantUsecase
-	userID    *uuid.UUID
+	u      *AssistantUsecase
+	userID *uuid.UUID
+	// caller is who asks: a customer by their id, a guest by their address.
+	caller    string
 	sessionID uuid.UUID
 	question  string
 	history   []domainassistant.Turn
@@ -86,14 +120,19 @@ type AssistantQuestion struct {
 }
 
 // Ask checks a question from userID — nil for a visitor who is not signed
-// in — and finds the session it continues. A session that is gone, or that
-// is not theirs, is not continued: a new one starts.
-func (u *AssistantUsecase) Ask(ctx context.Context, userID *uuid.UUID, req dto.AskAssistantRequest) (*AssistantQuestion, error) {
+// in, known then by their address — and finds the session it continues. A
+// session that is gone, or that is not theirs, is not continued: a new one
+// starts.
+func (u *AssistantUsecase) Ask(ctx context.Context, userID *uuid.UUID, address string, req dto.AskAssistantRequest) (*AssistantQuestion, error) {
 	question, err := domainassistant.NewQuestion(req.Question)
 	if err != nil {
 		return nil, err
 	}
-	out := &AssistantQuestion{u: u, userID: userID, sessionID: uuid.New(), question: question}
+	caller := "address:" + address
+	if userID != nil {
+		caller = "user:" + userID.String()
+	}
+	out := &AssistantQuestion{u: u, userID: userID, caller: caller, sessionID: uuid.New(), question: question}
 	if req.SessionID == nil {
 		return out, nil
 	}
@@ -121,6 +160,13 @@ func (q *AssistantQuestion) SessionID() string {
 // onText as far as a visitor may read it, and keeps the question and the
 // answer in the session. The answer returned replaces what was streamed.
 func (q *AssistantQuestion) Answer(ctx context.Context, onText func(string)) (*dto.AssistantAnswerResponse, error) {
+	// A question past the answers under way, or asked while the caller's last
+	// is still being written, is refused at once: waiting would spend its
+	// reply time in a queue.
+	if !q.u.answers.take(q.caller) {
+		return nil, domainassistant.ErrBusy
+	}
+	defer q.u.answers.release(q.caller)
 	messages := q.conversation(time.Now())
 	tools := assistantTools(q.userID != nil)
 	stream := domainassistant.NewReplyStream(onText)

@@ -27,7 +27,8 @@ func newAuthUC(t *testing.T, users *mockUserRepo, customerProfiles *mockCustomer
 func newAuthUCWith(t *testing.T, outbox *recordingOutbox, users *mockUserRepo, customerProfiles *mockCustomerProfileRepo, sessions *mockSessionStore, hasher *mockHasher, signer *mockSigner) *usecase.AuthUsecase {
 	t.Helper()
 	hasher.On("Hash", usecase.TimingSafeDummySeed).Return("dummy-hash", nil).Once()
-	uc, err := usecase.NewAuthUsecase(users, customerProfiles, passthroughTxManager{}, outbox, sessions, hasher, signer, nil)
+	uc, err := usecase.NewAuthUsecase(users, customerProfiles, passthroughTxManager{}, outbox, sessions, hasher, signer, nil,
+		domainpolicy.NewTerms(time.Now()))
 	require.NoError(t, err)
 	return uc
 }

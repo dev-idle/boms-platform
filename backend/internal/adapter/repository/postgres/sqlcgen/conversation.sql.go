@@ -208,6 +208,57 @@ func (q *Queries) GetGeneralConversationCustomer(ctx context.Context, customerID
 	return i, err
 }
 
+const getUnreadReplies = `-- name: GetUnreadReplies :one
+SELECT
+  c.order_id,
+  o.code AS order_code,
+  (CASE WHEN c.reply_emailed_at IS NULL THEN 0 ELSE c.unread_by_customer END)::integer AS unread_by_customer,
+  u.email,
+  cp.display_name
+FROM conversations c
+JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL AND u.email_verified_at IS NOT NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+LEFT JOIN orders o ON o.id = c.order_id
+WHERE c.id = $1
+`
+
+type GetUnreadRepliesRow struct {
+	OrderID          *uuid.UUID `json:"orderId"`
+	OrderCode        *string    `json:"orderCode"`
+	UnreadByCustomer int32      `json:"unreadByCustomer"`
+	Email            string     `json:"email"`
+	DisplayName      *string    `json:"displayName"`
+}
+
+// What the email about replies left unread says — who it goes to, the order
+// it is about and how many replies wait — while the account is open and its
+// address confirmed. None wait once the customer read them, even if more came
+// since: the mark that asked for this email went with the read.
+//
+//	SELECT
+//	  c.order_id,
+//	  o.code AS order_code,
+//	  (CASE WHEN c.reply_emailed_at IS NULL THEN 0 ELSE c.unread_by_customer END)::integer AS unread_by_customer,
+//	  u.email,
+//	  cp.display_name
+//	FROM conversations c
+//	JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL AND u.email_verified_at IS NOT NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+//	LEFT JOIN orders o ON o.id = c.order_id
+//	WHERE c.id = $1
+func (q *Queries) GetUnreadReplies(ctx context.Context, id uuid.UUID) (GetUnreadRepliesRow, error) {
+	row := q.db.QueryRow(ctx, getUnreadReplies, id)
+	var i GetUnreadRepliesRow
+	err := row.Scan(
+		&i.OrderID,
+		&i.OrderCode,
+		&i.UnreadByCustomer,
+		&i.Email,
+		&i.DisplayName,
+	)
+	return i, err
+}
+
 const listGeneralMessages = `-- name: ListGeneralMessages :many
 SELECT
   m.id,
@@ -461,9 +512,58 @@ func (q *Queries) ListUnreadByCustomer(ctx context.Context, orderIds []uuid.UUID
 	return items, nil
 }
 
+const listUnreadRepliesDue = `-- name: ListUnreadRepliesDue :many
+SELECT c.id
+FROM conversations c
+JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL AND u.email_verified_at IS NOT NULL
+WHERE c.unread_by_customer > 0
+  AND c.reply_emailed_at IS NULL
+  AND c.last_message_at <= now() - make_interval(secs => $1::double precision)
+ORDER BY c.last_message_at
+LIMIT $2
+`
+
+type ListUnreadRepliesDueParams struct {
+	UnreadSeconds float64 `json:"unreadSeconds"`
+	Limit         int32   `json:"limit"`
+}
+
+// Conversations whose customer has left the counter's replies unread for
+// unread_seconds and has not been emailed about them, the longest waiting
+// first. Only an open account whose address is confirmed is emailed.
+//
+//	SELECT c.id
+//	FROM conversations c
+//	JOIN users u ON u.id = c.customer_id AND u.deleted_at IS NULL AND u.email_verified_at IS NOT NULL
+//	WHERE c.unread_by_customer > 0
+//	  AND c.reply_emailed_at IS NULL
+//	  AND c.last_message_at <= now() - make_interval(secs => $1::double precision)
+//	ORDER BY c.last_message_at
+//	LIMIT $2
+func (q *Queries) ListUnreadRepliesDue(ctx context.Context, arg ListUnreadRepliesDueParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listUnreadRepliesDue, arg.UnreadSeconds, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markConversationReadByCustomer = `-- name: MarkConversationReadByCustomer :execrows
 UPDATE conversations
 SET unread_by_customer = 0,
+    reply_emailed_at = NULL,
     updated_at = now()
 WHERE customer_id = $1
   AND (order_id = $2 OR ($2::uuid IS NULL AND order_id IS NULL))
@@ -475,10 +575,11 @@ type MarkConversationReadByCustomerParams struct {
 	OrderID    *uuid.UUID `json:"orderId"`
 }
 
-// MarkConversationReadByCustomer
+// Reading the replies also lets the next ones email the customer once again.
 //
 //	UPDATE conversations
 //	SET unread_by_customer = 0,
+//	    reply_emailed_at = NULL,
 //	    updated_at = now()
 //	WHERE customer_id = $1
 //	  AND (order_id = $2 OR ($2::uuid IS NULL AND order_id IS NULL))
@@ -521,6 +622,30 @@ func (q *Queries) MarkConversationReadByStaff(ctx context.Context, arg MarkConve
 	return result.RowsAffected(), nil
 }
 
+const markRepliesEmailed = `-- name: MarkRepliesEmailed :execrows
+UPDATE conversations
+SET reply_emailed_at = now()
+WHERE id = $1
+  AND unread_by_customer > 0
+  AND reply_emailed_at IS NULL
+`
+
+// Records that the customer is emailed about the replies they left unread;
+// none when they read them meanwhile, or are emailed already.
+//
+//	UPDATE conversations
+//	SET reply_emailed_at = now()
+//	WHERE id = $1
+//	  AND unread_by_customer > 0
+//	  AND reply_emailed_at IS NULL
+func (q *Queries) MarkRepliesEmailed(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markRepliesEmailed, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const openConversationForCustomerMessage = `-- name: OpenConversationForCustomerMessage :one
 INSERT INTO conversations (customer_id, order_id, unread_by_staff, last_message_at)
 VALUES ($1, $2, 1, now())
@@ -528,6 +653,7 @@ ON CONFLICT (order_id) DO UPDATE
 SET status = 'open',
     unread_by_staff = conversations.unread_by_staff + 1,
     unread_by_customer = 0,
+    reply_emailed_at = NULL,
     last_message_at = GREATEST(conversations.last_message_at, now()),
     updated_at = now()
 RETURNING id
@@ -548,6 +674,7 @@ type OpenConversationForCustomerMessageParams struct {
 //	SET status = 'open',
 //	    unread_by_staff = conversations.unread_by_staff + 1,
 //	    unread_by_customer = 0,
+//	    reply_emailed_at = NULL,
 //	    last_message_at = GREATEST(conversations.last_message_at, now()),
 //	    updated_at = now()
 //	RETURNING id
@@ -605,6 +732,7 @@ ON CONFLICT (customer_id) WHERE order_id IS NULL DO UPDATE
 SET status = 'open',
     unread_by_staff = conversations.unread_by_staff + 1,
     unread_by_customer = 0,
+    reply_emailed_at = NULL,
     last_message_at = GREATEST(conversations.last_message_at, now()),
     updated_at = now()
 RETURNING id
@@ -618,6 +746,7 @@ RETURNING id
 //	SET status = 'open',
 //	    unread_by_staff = conversations.unread_by_staff + 1,
 //	    unread_by_customer = 0,
+//	    reply_emailed_at = NULL,
 //	    last_message_at = GREATEST(conversations.last_message_at, now()),
 //	    updated_at = now()
 //	RETURNING id

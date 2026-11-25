@@ -504,6 +504,22 @@ CREATE TABLE "payment_refund_notices" (
   CONSTRAINT "payment_refund_notices_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "payments" ("id") ON UPDATE NO ACTION ON DELETE RESTRICT
 );
 
+CREATE TABLE "policy_versions" (
+  "version" text NOT NULL,
+  "published_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("version"),
+  CONSTRAINT "policy_versions_version_check" CHECK ((char_length(version) >= 1) AND (char_length(version) <= 32))
+);
+
+CREATE TABLE "reference_photo_erasures" (
+  "user_id" uuid NOT NULL,
+  "requested_at" timestamptz NOT NULL DEFAULT now(),
+  "erased_at" timestamptz NULL,
+  PRIMARY KEY ("user_id"),
+  CONSTRAINT "reference_photo_erasures_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE RESTRICT
+);
+CREATE INDEX "reference_photo_erasures_due_idx" ON "reference_photo_erasures" ("requested_at") WHERE (erased_at IS NULL);
+
 CREATE TYPE "conversation_status" AS ENUM ('open', 'closed');
 
 CREATE TABLE "conversations" (
@@ -514,6 +530,7 @@ CREATE TABLE "conversations" (
   "assigned_staff_id" uuid NULL,
   "unread_by_customer" integer NOT NULL DEFAULT 0,
   "unread_by_staff" integer NOT NULL DEFAULT 0,
+  "reply_emailed_at" timestamptz NULL,
   "last_message_at" timestamptz NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now(),
@@ -526,6 +543,7 @@ CREATE TABLE "conversations" (
 CREATE UNIQUE INDEX "conversations_order_id_idx" ON "conversations" ("order_id");
 CREATE UNIQUE INDEX "conversations_customer_general_idx" ON "conversations" ("customer_id") WHERE (order_id IS NULL);
 CREATE INDEX "conversations_status_last_message_idx" ON "conversations" ("status", "last_message_at");
+CREATE INDEX "conversations_unread_replies_idx" ON "conversations" ("last_message_at") WHERE ((unread_by_customer > 0) AND (reply_emailed_at IS NULL));
 
 CREATE TABLE "messages" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),

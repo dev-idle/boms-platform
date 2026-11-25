@@ -146,7 +146,7 @@ func TestSavedProducts_Integration(t *testing.T) {
 			"a product taken off a list is still held, with when")
 
 		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations, postgresadapter.NewAssistantRepository(f.pool), savedRepo,
-			postgresadapter.NewReviewRepository(f.pool), audit,
+			postgresadapter.NewReviewRepository(f.pool), postgresadapter.NewReferencePhotoRepository(f.pool), audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})
 		require.NoError(t, erasure.Erase(ctx, customer, fixturePassword))
 

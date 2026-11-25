@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -164,6 +165,37 @@ func (r *ConversationRepository) MarkReadByCustomer(ctx context.Context, thread 
 		return false, mapRepoError(err, "mark conversation read by customer")
 	}
 	return n > 0, nil
+}
+
+// ListUnreadRepliesDue implements port.ConversationRepository.
+func (r *ConversationRepository) ListUnreadRepliesDue(ctx context.Context, unreadFor time.Duration, limit int32) ([]uuid.UUID, error) {
+	ids, err := r.q(ctx).ListUnreadRepliesDue(ctx, sqlcgen.ListUnreadRepliesDueParams{
+		UnreadSeconds: unreadFor.Seconds(), Limit: limit,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "list unread replies due")
+	}
+	return ids, nil
+}
+
+// MarkRepliesEmailed implements port.ConversationRepository.
+func (r *ConversationRepository) MarkRepliesEmailed(ctx context.Context, conversationID uuid.UUID) (bool, error) {
+	n, err := r.q(ctx).MarkRepliesEmailed(ctx, conversationID)
+	if err != nil {
+		return false, mapRepoError(err, "mark replies emailed")
+	}
+	return n == 1, nil
+}
+
+// UnreadReplies implements port.ConversationRepository.
+func (r *ConversationRepository) UnreadReplies(ctx context.Context, conversationID uuid.UUID) (*port.UnreadReplies, error) {
+	row, err := r.q(ctx).GetUnreadReplies(ctx, conversationID)
+	if err != nil {
+		return nil, mapRepoError(err, "get unread replies")
+	}
+	return &port.UnreadReplies{
+		OrderID: row.OrderID, OrderCode: row.OrderCode, Count: row.UnreadByCustomer, Email: row.Email, Name: row.DisplayName,
+	}, nil
 }
 
 // MarkReadByStaff implements port.ConversationRepository.

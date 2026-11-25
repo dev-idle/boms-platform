@@ -40,6 +40,7 @@ type AuthUsecase struct {
 	hasher              port.PasswordHasher
 	signer              port.TokenSigner
 	log                 *zap.Logger
+	terms               domainpolicy.Terms
 	dummyHash           string
 }
 
@@ -54,6 +55,7 @@ func NewAuthUsecase(
 	hasher port.PasswordHasher,
 	signer port.TokenSigner,
 	log *zap.Logger,
+	terms domainpolicy.Terms,
 ) (*AuthUsecase, error) {
 	dummyHash, err := hasher.Hash(TimingSafeDummySeed)
 	if err != nil {
@@ -68,6 +70,7 @@ func NewAuthUsecase(
 		hasher:              hasher,
 		signer:              signer,
 		log:                 log,
+		terms:               terms,
 		dummyHash:           dummyHash,
 	}, nil
 }
@@ -76,7 +79,7 @@ func NewAuthUsecase(
 // policies the customer accepted. The account starts unconfirmed: the same
 // transaction asks for an email with a link that confirms the address.
 func (a *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*domainuser.User, error) {
-	if err := domainpolicy.RequireAccepted(req.TermsVersion); err != nil {
+	if err := a.terms.Check(req.TermsVersion, time.Now()); err != nil {
 		return nil, err
 	}
 	req.Email = utils.NormalizeEmail(req.Email)

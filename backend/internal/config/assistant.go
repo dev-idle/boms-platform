@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -22,7 +23,14 @@ type AssistantConfig struct {
 	ReasoningEffort string
 	ReplyTimeout    time.Duration
 	Retention       time.Duration
+	// Concurrency is how many answers one API process has the model write at
+	// once, one for each caller; a question past them is refused at once
+	// rather than left waiting.
+	Concurrency int
 }
+
+// maxAssistantConcurrency bounds the answers one process asks the model for at once.
+const maxAssistantConcurrency = 32
 
 // validate checks what the API needs to ask the model. A deployed site
 // sends customers' questions and their orders to a model on another machine
@@ -41,6 +49,9 @@ func (c AssistantConfig) validate(env string, writeTimeout time.Duration) error 
 	}
 	if c.ReplyTimeout <= 0 || c.ReplyTimeout >= writeTimeout {
 		return errors.New("assistant.reply_timeout must be positive and below http.write_timeout: an answer streams within one response")
+	}
+	if c.Concurrency < 1 || c.Concurrency > maxAssistantConcurrency {
+		return fmt.Errorf("assistant.concurrency must be between 1 and %d", maxAssistantConcurrency)
 	}
 	return nil
 }

@@ -289,6 +289,93 @@ func TestConversations_Integration(t *testing.T) {
 		}, conversationNotices(t, f, customer.String(), customer))
 	})
 
+	t.Run("replies_left_unread_email_the_customer_once_until_they_read", func(t *testing.T) {
+		raw, err := pgxpool.New(ctx, f.connStr)
+		require.NoError(t, err)
+		t.Cleanup(raw.Close)
+		replied := func(t *testing.T) (uuid.UUID, uuid.UUID) {
+			t.Helper()
+			customer := f.newCustomer(t, nil, nil)
+			_, err := customerSide.Post(ctx, customer, nil, dto.PostMessageRequest{Body: "Do you make vegan cakes?"})
+			require.NoError(t, err)
+			_, err = counter.Post(ctx, f.clerk, usecase.GeneralThread(customer), dto.PostMessageRequest{Body: "We do: ask for the vegan sponge."})
+			require.NoError(t, err)
+			var id uuid.UUID
+			require.NoError(t, raw.QueryRow(ctx, "SELECT id FROM conversations WHERE customer_id = $1 AND order_id IS NULL", customer).Scan(&id))
+			return customer, id
+		}
+		leftUnread := func(t *testing.T, id uuid.UUID) {
+			t.Helper()
+			_, err := raw.Exec(ctx, "UPDATE conversations SET last_message_at = now() - interval '16 minutes' WHERE id = $1", id)
+			require.NoError(t, err)
+		}
+		due := func(t *testing.T, id uuid.UUID) bool {
+			t.Helper()
+			ids, err := conversations.ListUnreadRepliesDue(ctx, domainconversation.RepliesUnreadEmailAfter, 1000)
+			require.NoError(t, err)
+			for _, due := range ids {
+				if due == id {
+					return true
+				}
+			}
+			return false
+		}
+		// emailsAsked runs the job, then counts the emails the conversation has
+		// asked for so far: the events stay in the outbox, unpublished.
+		emailsAsked := func(t *testing.T, id uuid.UUID) int {
+			t.Helper()
+			_, err := customerSide.EmailUnreadReplies(ctx)
+			require.NoError(t, err)
+			var events []domainevent.Event
+			require.NoError(t, f.pool.WithTx(ctx, func(txCtx context.Context) error {
+				var err error
+				events, err = f.outbox.ClaimUnpublished(txCtx, 0, 1000)
+				return err
+			}))
+			asked := 0
+			for _, e := range events {
+				if conversationID, ok := domainconversation.ReplyEmailFor(e); ok && conversationID == id {
+					asked++
+				}
+			}
+			return asked
+		}
+
+		customer, id := replied(t)
+		assert.False(t, due(t, id), "a reply just written may still be read")
+		leftUnread(t, id)
+		require.True(t, due(t, id))
+		assert.Equal(t, 1, emailsAsked(t, id))
+		replies, err := conversations.UnreadReplies(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), replies.Count)
+		assert.Nil(t, replies.OrderID, "the general conversation")
+		assert.NotEmpty(t, replies.Email)
+
+		assert.False(t, due(t, id), "emailed once")
+		_, err = counter.Post(ctx, f.clerk, usecase.GeneralThread(customer), dto.PostMessageRequest{Body: "And the frosting is vegan too."})
+		require.NoError(t, err)
+		leftUnread(t, id)
+		assert.Equal(t, 1, emailsAsked(t, id), "a later reply before they read adds no email")
+
+		require.NoError(t, customerSide.MarkRead(ctx, customer, nil))
+		_, err = counter.Post(ctx, f.clerk, usecase.GeneralThread(customer), dto.PostMessageRequest{Body: "We have a new flavour."})
+		require.NoError(t, err)
+		replies, err = conversations.UnreadReplies(ctx, id)
+		require.NoError(t, err)
+		assert.Zero(t, replies.Count, "an email still queued from before they read sends nothing")
+		leftUnread(t, id)
+		assert.Equal(t, 2, emailsAsked(t, id), "once read, the next replies email them once again")
+
+		unconfirmed, other := replied(t)
+		_, err = raw.Exec(ctx, "UPDATE users SET email_verified_at = NULL WHERE id = $1", unconfirmed)
+		require.NoError(t, err)
+		leftUnread(t, other)
+		assert.False(t, due(t, other), "an address not confirmed is never emailed")
+		_, err = conversations.UnreadReplies(ctx, other)
+		require.ErrorIs(t, err, apperrors.ErrNotFound)
+	})
+
 	t.Run("the_export_carries_the_messages_and_erasure_takes_them", func(t *testing.T) {
 		customer, orderID := confirmedOrder(t, 16)
 		write(t, customer, orderID, "Please cancel, I am travelling")
@@ -317,7 +404,7 @@ func TestConversations_Integration(t *testing.T) {
 		assert.Equal(t, "Do you sell gift cards?", export.Messages[0].Body)
 
 		erasure := usecase.NewAccountErasureUsecase(f.pool, f.users, customerProfiles, f.carts, f.orders, conversations,
-			postgresadapter.NewAssistantRepository(f.pool), postgresadapter.NewSavedProductRepository(f.pool), postgresadapter.NewReviewRepository(f.pool), audit,
+			postgresadapter.NewAssistantRepository(f.pool), postgresadapter.NewSavedProductRepository(f.pool), postgresadapter.NewReviewRepository(f.pool), postgresadapter.NewReferencePhotoRepository(f.pool), audit,
 			postgresadapter.NewUserTokenRepository(f.pool), &endedSessions{}, auditlogger.NewService(audit), fixtureHasher{})
 		require.NoError(t, erasure.Erase(ctx, customer, fixturePassword))
 

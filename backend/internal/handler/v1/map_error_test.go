@@ -3,6 +3,8 @@ package v1
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -135,6 +137,14 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 			assert.Equal(t, tt.wantCode, code)
 		})
 	}
+}
+
+// An answer that fails mid-stream ends with an error event, not an envelope.
+func TestAnswerFailure(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, apperrors.ErrAssistantBusy, answerFailure(fmt.Errorf("answer: %w", domainassistant.ErrBusy)))
+	assert.Equal(t, apperrors.ErrAssistantUnavailable, answerFailure(errors.Join(domainassistant.ErrUnavailable, errors.New("timeout"))))
+	assert.Equal(t, apperrors.ErrInternal, answerFailure(errors.New("save turn: connection reset")))
 }
 
 func TestWriteMapUsecaseError_unmappedReturnsInternal(t *testing.T) {

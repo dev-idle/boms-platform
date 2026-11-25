@@ -63,6 +63,27 @@ type ConversationRepository interface {
 	// EraseForCustomer erases every message of the customer's conversations
 	// and closes them.
 	EraseForCustomer(ctx context.Context, userID uuid.UUID) error
+	// ListUnreadRepliesDue returns up to limit conversations whose customer
+	// has left the counter's replies unread for unreadFor and has not been
+	// emailed about them, the longest waiting first.
+	ListUnreadRepliesDue(ctx context.Context, unreadFor time.Duration, limit int32) ([]uuid.UUID, error)
+	// MarkRepliesEmailed records that the customer is emailed about them;
+	// false when they read them meanwhile or are emailed already.
+	MarkRepliesEmailed(ctx context.Context, conversationID uuid.UUID) (bool, error)
+	// UnreadReplies returns what the email about them says;
+	// apperrors.ErrNotFound when the account is closed or its address not
+	// confirmed.
+	UnreadReplies(ctx context.Context, conversationID uuid.UUID) (*UnreadReplies, error)
+}
+
+// UnreadReplies is the counter's replies a customer left unread on a
+// conversation — about an order, or their general one — and who they are.
+type UnreadReplies struct {
+	OrderID   *uuid.UUID
+	OrderCode *string
+	Count     int32
+	Email     string
+	Name      *string
 }
 
 // ConversationCustomer is who a general conversation is with.

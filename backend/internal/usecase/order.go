@@ -40,6 +40,7 @@ type OrderUsecase struct {
 	payment       *PaymentUsecase
 	pickupCodes   domainorder.PickupCodes
 	conversations port.ConversationRepository
+	terms         domainpolicy.Terms
 	transitions   orderTransitions
 }
 
@@ -57,11 +58,12 @@ func NewOrderUsecase(
 	payment *PaymentUsecase,
 	pickupCodes domainorder.PickupCodes,
 	conversations port.ConversationRepository,
+	terms domainpolicy.Terms,
 ) *OrderUsecase {
 	return &OrderUsecase{
 		users: users, orders: orders, carts: carts, discount: discount, cartUC: cartUC,
 		tx: tx, events: events, store: store, tickets: tickets, payments: payments, payment: payment,
-		pickupCodes: pickupCodes, conversations: conversations,
+		pickupCodes: pickupCodes, conversations: conversations, terms: terms,
 		transitions: orderTransitions{
 			tx: tx, orders: orders, tickets: tickets, discounts: discount, payments: payments, events: events,
 		},
@@ -73,7 +75,7 @@ func NewOrderUsecase(
 // Idempotency-Key: the same key again returns the order it placed, so a retry
 // after a lost answer places nothing twice.
 func (u *OrderUsecase) Checkout(ctx context.Context, userID, checkoutKey uuid.UUID, req dto.CheckoutRequest) (*dto.OrderResponse, error) {
-	if err := domainpolicy.RequireAccepted(req.TermsVersion); err != nil {
+	if err := u.terms.Check(req.TermsVersion, time.Now()); err != nil {
 		return nil, err
 	}
 	if placed, err := u.orders.GetByCheckoutKey(ctx, userID, checkoutKey); err == nil {
