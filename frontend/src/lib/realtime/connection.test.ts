@@ -122,6 +122,19 @@ describe("createRealtimeConnection", () => {
     expect(t.listener.onResync).toHaveBeenCalledTimes(3);
   });
 
+  it("reads everything again when the server says events may have been lost", async () => {
+    const t = setup();
+    t.connection.retain(t.listener);
+    await settle();
+    t.latest().open();
+    const afterOpen = vi.mocked(t.listener.onResync).mock.calls.length;
+
+    t.latest().receive(JSON.stringify({ type: "realtime.resync", data: {} }));
+
+    expect(t.listener.onResync).toHaveBeenCalledTimes(afterOpen + 1);
+    expect(t.listener.onEvent).not.toHaveBeenCalled();
+  });
+
   it("re-tickets at once when the server asks, staying live", async () => {
     const t = setup();
     t.connection.retain(t.listener);

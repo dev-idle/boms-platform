@@ -76,6 +76,11 @@ func TestIncidentType_Source(t *testing.T) {
 	assert.Equal(t, IncidentSourceAuto, IncidentPaymentAnomaly.Source())
 	assert.Equal(t, IncidentSourceAuto, IncidentLeftOpen.Source())
 	assert.True(t, IncidentLeftOpen.Valid(), "the manager filters by it")
+	for _, money := range []IncidentType{IncidentRefundFailed, IncidentPaymentReversed} {
+		assert.Equal(t, IncidentSourceAuto, money.Source(), money)
+		assert.True(t, money.Valid(), "%s: the manager filters by it", money)
+		assert.False(t, money.PaymentProblem(), "%s: a refund matter, not a failed payment", money)
+	}
 	assert.True(t, IncidentPaymentFailed.PaymentProblem())
 	assert.True(t, IncidentPaymentExpired.PaymentProblem())
 	assert.False(t, IncidentPaymentAnomaly.PaymentProblem(), "a flag does not count towards another")

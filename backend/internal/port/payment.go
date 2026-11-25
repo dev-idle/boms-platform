@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -37,13 +38,26 @@ type PaymentRepository interface {
 	// transaction that cancels the order; a payment not taken, or asked for
 	// already, stays as it is.
 	RequestRefund(ctx context.Context, orderID uuid.UUID) error
-	// ListRefundsDue returns up to limit payments whose refund is asked for and
-	// not made yet, the oldest request first.
+	// ListRefundsDue returns up to limit payments whose refund is asked for, not
+	// made yet and due a try, the longest due first.
 	ListRefundsDue(ctx context.Context, limit int32) ([]domainpayment.Payment, error)
+	// RecordRefundFailure counts a refused refund, keeps lastError and puts the
+	// next try off by retryAfter; it returns the tries refused so far.
+	// apperrors.ErrNotFound when the payment was refunded meanwhile.
+	RecordRefundFailure(ctx context.Context, paymentID uuid.UUID, lastError string, retryAfter time.Duration) (int, error)
 	// RecordRefund records the provider's refund of a payment whose refund is
 	// due; refundID is nil when the provider had refunded it already. Any other
 	// is apperrors.ErrNotFound: the refund was recorded already.
 	RecordRefund(ctx context.Context, paymentID uuid.UUID, refundID *string) (*domainpayment.Payment, error)
+	// GetByCaptureID returns the payment the provider took as captureID.
+	GetByCaptureID(ctx context.Context, provider domainpayment.Provider, captureID string) (*domainpayment.Payment, error)
+	// RecordProviderRefund records money the provider gave back on its own
+	// from a payment still taken; apperrors.ErrNotFound when it is refunded
+	// already.
+	RecordProviderRefund(ctx context.Context, paymentID uuid.UUID, refundID string) (*domainpayment.Payment, error)
+	// RecordRefundNotice records a refund the provider told of and reports
+	// whether it is the first notice of it.
+	RecordRefundNotice(ctx context.Context, paymentID uuid.UUID, refundID string) (bool, error)
 	// CreateCash records the cash due for an order staff took.
 	CreateCash(ctx context.Context, orderID uuid.UUID, amountCents int64) error
 	// CollectCash records that the counter took the cash due on the order.
@@ -67,6 +81,23 @@ type PaymentWebhookEvent struct {
 	ID              string
 	ProviderOrderID string
 	Capture         *domainpayment.Capture
+	// Approved is the buyer approving the payment on the provider's page,
+	// whether or not they come back to the shop to have it taken.
+	Approved bool
+	// Refund is money the provider gave back from a capture.
+	Refund *PaymentWebhookRefund
+}
+
+// PaymentWebhookRefund is money the provider gave back from a capture on its
+// own: a refund from its dashboard, or a reversal on the buyer's dispute.
+// TotalRefundedCents is all the capture has given back to date, this refund
+// included, in Currency.
+type PaymentWebhookRefund struct {
+	CaptureID          string
+	RefundID           string
+	TotalRefundedCents int64
+	Currency           string
+	Reversed           bool
 }
 
 // PaymentGateway takes payments through the provider (adapter/paypal).

@@ -12,6 +12,8 @@ export const REALTIME_EVENT_TYPE = {
   productSoldOutChanged: "product.sold_out_changed",
   promotionCreated: "promotion.created",
   promotionSent: "promotion.sent",
+  /** The server's event bus was down and events may be lost: read everything again. */
+  resync: "realtime.resync",
   reviewChanged: "review.changed",
   settingsUpdated: "settings.updated",
   slotsChanged: "slots.changed",

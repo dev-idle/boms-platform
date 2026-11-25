@@ -80,13 +80,55 @@ WHERE order_id = $1
   AND refund_requested_at IS NULL;
 
 -- name: ListRefundsDue :many
--- Payments whose refund is asked for and not made yet, the oldest first.
+-- Payments whose refund is asked for, not made yet and due a try: a refusal
+-- puts that payment's next try off (refund_retry_at), so the payments behind it
+-- are tried meanwhile. The longest due first.
 SELECT *
 FROM payments
 WHERE status = 'captured'
   AND refund_requested_at IS NOT NULL
-ORDER BY refund_requested_at
+  AND COALESCE(refund_retry_at, refund_requested_at) <= now()
+ORDER BY COALESCE(refund_retry_at, refund_requested_at)
 LIMIT sqlc.arg('max_rows')::int;
+
+-- name: RecordRefundFailure :one
+-- Counts a refund the provider refused, keeps its answer and puts the next try
+-- off by retry_after_seconds; a payment refunded meanwhile is left (no row).
+UPDATE payments
+SET refund_attempts   = refund_attempts + 1,
+    refund_last_error = sqlc.arg('last_error')::text,
+    refund_retry_at   = now() + make_interval(secs => sqlc.arg('retry_after_seconds')::double precision),
+    updated_at        = now()
+WHERE id = sqlc.arg('id')
+  AND status = 'captured'
+  AND refund_requested_at IS NOT NULL
+RETURNING refund_attempts;
+
+-- name: GetPaymentByCaptureID :one
+SELECT *
+FROM payments
+WHERE provider = sqlc.arg('provider')
+  AND capture_id = sqlc.arg('capture_id')::text;
+
+-- name: RecordProviderRefund :one
+-- Records money the provider gave back on its own — a refund from its
+-- dashboard, or a reversal on a dispute — of a payment still taken; one
+-- refunded already stays as it is.
+UPDATE payments
+SET status              = 'refunded',
+    refund_requested_at = COALESCE(refund_requested_at, now()),
+    refund_id           = COALESCE(refund_id, sqlc.arg('refund_id')::text),
+    refunded_at         = now(),
+    updated_at          = now()
+WHERE id = sqlc.arg('id')
+  AND status = 'captured'
+RETURNING *;
+
+-- name: RecordRefundNotice :execrows
+-- Records a refund the provider told of; none when it told of it before.
+INSERT INTO payment_refund_notices (refund_id, payment_id)
+VALUES (sqlc.arg('refund_id'), sqlc.arg('payment_id'))
+ON CONFLICT (refund_id) DO NOTHING;
 
 -- name: RecordPaymentRefund :one
 -- Records the provider's refund of a payment whose refund was asked for; a

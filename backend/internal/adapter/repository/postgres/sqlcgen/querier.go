@@ -881,7 +881,7 @@ type Querier interface {
 	//    $6
 	//  )
 	//  ON CONFLICT (order_id) DO NOTHING
-	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error)
 	//CreateProduct
 	//
@@ -1306,6 +1306,33 @@ type Querier interface {
 	//  FROM orders
 	//  WHERE code = $1 AND user_id = $2::uuid
 	GetOrderByCodeForUser(ctx context.Context, arg GetOrderByCodeForUserParams) (Order, error)
+	// An order by its id alone, for the system acting on what the provider says
+	// of it; a customer reads their own through GetOrderByIDForUser.
+	//
+	//  SELECT
+	//    id,
+	//    user_id,
+	//    status,
+	//    subtotal_cents,
+	//    discount_cents,
+	//    total_cents,
+	//    discount_code_id,
+	//    discount_code_snapshot,
+	//    pickup_at,
+	//    created_at,
+	//    updated_at,
+	//    code,
+	//    order_type,
+	//    terms_accepted_at,
+	//    terms_version,
+	//    checkout_key,
+	//    payment_due_at,
+	//    channel,
+	//    guest_name,
+	//    guest_phone
+	//  FROM orders
+	//  WHERE id = $1
+	GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 	//GetOrderByIDForUser
 	//
 	//  SELECT
@@ -1338,15 +1365,22 @@ type Querier interface {
 	//  FROM order_tickets
 	//  WHERE id = $1
 	GetOrderTicket(ctx context.Context, id uuid.UUID) (OrderTicket, error)
+	//GetPaymentByCaptureID
+	//
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
+	//  FROM payments
+	//  WHERE provider = $1
+	//    AND capture_id = $2::text
+	GetPaymentByCaptureID(ctx context.Context, arg GetPaymentByCaptureIDParams) (Payment, error)
 	//GetPaymentByOrderID
 	//
-	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 	//  FROM payments
 	//  WHERE order_id = $1
 	GetPaymentByOrderID(ctx context.Context, orderID uuid.UUID) (Payment, error)
 	//GetPaymentByProviderOrderID
 	//
-	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 	//  FROM payments
 	//  WHERE provider = $1
 	//    AND provider_order_id = $2::text
@@ -1964,7 +1998,7 @@ type Querier interface {
 	ListOrdersByUserCount(ctx context.Context, arg ListOrdersByUserCountParams) (int64, error)
 	// The payment of each order named that has one, for a personal data export.
 	//
-	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 	//  FROM payments
 	//  WHERE order_id = ANY($1::uuid[])
 	ListPaymentsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]Payment, error)
@@ -2043,13 +2077,16 @@ type Querier interface {
 	//  ORDER BY m.created_at DESC, m.role DESC
 	//  LIMIT $3
 	ListRecentAssistantTurns(ctx context.Context, arg ListRecentAssistantTurnsParams) ([]ListRecentAssistantTurnsRow, error)
-	// Payments whose refund is asked for and not made yet, the oldest first.
+	// Payments whose refund is asked for, not made yet and due a try: a refusal
+	// puts that payment's next try off (refund_retry_at), so the payments behind it
+	// are tried meanwhile. The longest due first.
 	//
-	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 	//  FROM payments
 	//  WHERE status = 'captured'
 	//    AND refund_requested_at IS NOT NULL
-	//  ORDER BY refund_requested_at
+	//    AND COALESCE(refund_retry_at, refund_requested_at) <= now()
+	//  ORDER BY COALESCE(refund_retry_at, refund_requested_at)
 	//  LIMIT $1::int
 	ListRefundsDue(ctx context.Context, maxRows int32) ([]Payment, error)
 	// The customer's reviews of the products on one of their orders.
@@ -2799,7 +2836,7 @@ type Querier interface {
 	//      updated_at  = now()
 	//  WHERE id = $3
 	//    AND status IN ('created', 'pending')
-	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 	RecordPaymentCapture(ctx context.Context, arg RecordPaymentCaptureParams) (Payment, error)
 	// Records the provider's refund of a payment whose refund was asked for; a
 	// payment refunded already stays as it is.
@@ -2812,8 +2849,41 @@ type Querier interface {
 	//  WHERE id = $2
 	//    AND status = 'captured'
 	//    AND refund_requested_at IS NOT NULL
-	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 	RecordPaymentRefund(ctx context.Context, arg RecordPaymentRefundParams) (Payment, error)
+	// Records money the provider gave back on its own — a refund from its
+	// dashboard, or a reversal on a dispute — of a payment still taken; one
+	// refunded already stays as it is.
+	//
+	//  UPDATE payments
+	//  SET status              = 'refunded',
+	//      refund_requested_at = COALESCE(refund_requested_at, now()),
+	//      refund_id           = COALESCE(refund_id, $1::text),
+	//      refunded_at         = now(),
+	//      updated_at          = now()
+	//  WHERE id = $2
+	//    AND status = 'captured'
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
+	RecordProviderRefund(ctx context.Context, arg RecordProviderRefundParams) (Payment, error)
+	// Counts a refund the provider refused, keeps its answer and puts the next try
+	// off by retry_after_seconds; a payment refunded meanwhile is left (no row).
+	//
+	//  UPDATE payments
+	//  SET refund_attempts   = refund_attempts + 1,
+	//      refund_last_error = $1::text,
+	//      refund_retry_at   = now() + make_interval(secs => $2::double precision),
+	//      updated_at        = now()
+	//  WHERE id = $3
+	//    AND status = 'captured'
+	//    AND refund_requested_at IS NOT NULL
+	//  RETURNING refund_attempts
+	RecordRefundFailure(ctx context.Context, arg RecordRefundFailureParams) (int32, error)
+	// Records a refund the provider told of; none when it told of it before.
+	//
+	//  INSERT INTO payment_refund_notices (refund_id, payment_id)
+	//  VALUES ($1, $2)
+	//  ON CONFLICT (refund_id) DO NOTHING
+	RecordRefundNotice(ctx context.Context, arg RecordRefundNoticeParams) (int64, error)
 	// Single use: the token goes as it is redeemed, in one statement, so two
 	// requests with the same link cannot both succeed. An expired token, or one
 	// of a closed account, opens nothing.
@@ -2941,7 +3011,7 @@ type Querier interface {
 	//      updated_at        = now()
 	//  WHERE order_id = $3
 	//    AND status = 'denied'
-	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+	//  RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 	RestartPayment(ctx context.Context, arg RestartPaymentParams) (Payment, error)
 	// Retires the product's options the manager left out. Cart lines may still
 	// name them, so they stay as rows.

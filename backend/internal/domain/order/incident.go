@@ -41,6 +41,12 @@ const (
 	// IncidentLeftOpen is an order the bakery had not got ready when its
 	// pickup day closed, left for staff to settle.
 	IncidentLeftOpen IncidentType = "left_open"
+	// IncidentRefundFailed is a refund the provider refused
+	// domainpayment.RefundFailuresBeforeIncident times; the worker keeps trying.
+	IncidentRefundFailed IncidentType = "refund_failed"
+	// IncidentPaymentReversed is the provider taking a payment back from the
+	// bakery, as on a buyer's dispute.
+	IncidentPaymentReversed IncidentType = "payment_reversed"
 )
 
 const (
@@ -66,7 +72,8 @@ const (
 func (t IncidentType) Valid() bool {
 	switch t {
 	case IncidentBakeryCancelled, IncidentReadyLate, IncidentNoShow, IncidentPaymentFailed, IncidentPaymentExpired,
-		IncidentRefunded, IncidentPaymentAnomaly, IncidentWrongItems, IncidentCustomMismatch, IncidentOther, IncidentLeftOpen:
+		IncidentRefunded, IncidentPaymentAnomaly, IncidentWrongItems, IncidentCustomMismatch, IncidentOther, IncidentLeftOpen,
+		IncidentRefundFailed, IncidentPaymentReversed:
 		return true
 	default:
 		return false

@@ -63,6 +63,8 @@ func (s *fakeSMTP) serve(conn net.Conn) {
 		switch {
 		case strings.HasPrefix(cmd, "EHLO"):
 			reply("250-fake.example")
+			// As real servers do: the class of a refusal rides on its reply.
+			reply("250-ENHANCEDSTATUSCODES")
 			reply("250 8BITMIME")
 		case strings.HasPrefix(cmd, "RCPT TO"):
 			if s.dropAt == "RCPT" {
@@ -193,6 +195,18 @@ func TestSMTPMailer(t *testing.T) {
 		assert.NotContains(t, err.Error(), "mai@example.com", "errors reach logs and the queue: no customer address")
 	})
 
+	t.Run("a_full_mailbox_a_quota_or_a_policy_is_retried", func(t *testing.T) {
+		t.Parallel()
+		for _, reply := range []string{"552 5.2.2 mailbox full", "550 5.4.5 daily sending quota exceeded", "554 5.7.1 rejected by policy"} {
+			server := startFakeSMTP(t, reply, "")
+
+			err := server.mailer(t, config.SMTPTLSNone).Send(ctx, sample)
+
+			require.Error(t, err, reply)
+			assert.NotErrorIs(t, err, port.ErrEmailUndeliverable, "%s: the queue tries it again", reply)
+		}
+	})
+
 	t.Run("try_again_later_is_retried", func(t *testing.T) {
 		t.Parallel()
 		server := startFakeSMTP(t, "451 4.3.0 try again later", "")
@@ -260,4 +274,24 @@ func TestSMTPMailer(t *testing.T) {
 		assert.NotContains(t, err.Error(), "not an address")
 		assert.Empty(t, server.delivered())
 	})
+}
+
+func TestAddressRefused(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		code     int
+		enhanced string
+		final    bool
+	}{
+		{550, "5.1.1", true},
+		{553, "5.1.3", true},
+		{552, "5.2.2", false},
+		{550, "5.4.5", false},
+		{554, "5.7.1", false},
+		{450, "4.2.1", false},
+		{550, "", true},
+		{554, "", false},
+	} {
+		assert.Equal(t, tc.final, addressRefused(tc.code, tc.enhanced), "%d %s", tc.code, tc.enhanced)
+	}
 }

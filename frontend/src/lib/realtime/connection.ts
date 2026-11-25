@@ -1,5 +1,6 @@
 import { reconnectDelay } from "./backoff";
 import {
+  REALTIME_EVENT_TYPE,
   realtimeEventSchema,
   type RealtimeEvent,
   type RealtimeTicket,
@@ -102,8 +103,9 @@ export function createRealtimeConnection({
 
   function handleMessage(data: unknown) {
     const event = parseEvent(data);
-    if (event === null) {
-      // A message this tab cannot read still says something changed.
+    // A message this tab cannot read still says something changed; a resync
+    // says events may have been lost.
+    if (event === null || event.type === REALTIME_EVENT_TYPE.resync) {
       resyncAll();
       return;
     }

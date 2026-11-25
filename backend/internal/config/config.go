@@ -515,6 +515,8 @@ func load() (*Config, error) {
 			ReplyTo:      strings.TrimSpace(v.GetString("mail.reply_to")),
 			SendTimeout:  v.GetDuration("mail.send_timeout"),
 			Concurrency:  v.GetInt("mail.concurrency"),
+
+			PromotionConcurrency: v.GetInt("mail.promotion_concurrency"),
 		},
 		Realtime: RealtimeConfig{
 			Addr:                    v.GetString("realtime.addr"),
@@ -690,6 +692,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("mail.reply_to", "hello@chouxbakery.example")
 	v.SetDefault("mail.send_timeout", 10*time.Second)
 	v.SetDefault("mail.concurrency", 4)
+	v.SetDefault("mail.promotion_concurrency", 1)
 
 	v.SetDefault("outbox.dispatch_timeout", 5*time.Second)
 	v.SetDefault("outbox.sweep_interval", 30*time.Second)

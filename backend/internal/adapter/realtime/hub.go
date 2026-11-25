@@ -81,6 +81,32 @@ func (h *Hub) remove(c *client) {
 	}
 }
 
+// resyncType tells a page to read again everything it shows: events may have
+// been lost while the bus was down (the browser's REALTIME_EVENT_TYPE.resync).
+const resyncType = "realtime.resync"
+
+var resyncPayload = []byte(`{"type":"` + resyncType + `","data":{}}`)
+
+// Resync tells every socket, once each, to read again what its page shows.
+func (h *Hub) Resync() {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	told := make(map[*client]struct{})
+	for _, clients := range h.byChannel {
+		for c := range clients {
+			if _, done := told[c]; done {
+				continue
+			}
+			told[c] = struct{}{}
+			select {
+			case c.send <- resyncPayload:
+			default:
+				c.markSlow()
+			}
+		}
+	}
+}
+
 // Deliver queues payload for every socket on channel. It never blocks: a socket
 // whose queue is full has fallen behind and is dropped; the browser reconnects
 // and refetches what it missed.

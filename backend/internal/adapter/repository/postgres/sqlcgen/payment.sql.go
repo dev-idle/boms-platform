@@ -69,7 +69,7 @@ VALUES (
   $6
 )
 ON CONFLICT (order_id) DO NOTHING
-RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 `
 
 type CreatePaymentParams struct {
@@ -94,7 +94,7 @@ type CreatePaymentParams struct {
 //	  $6
 //	)
 //	ON CONFLICT (order_id) DO NOTHING
-//	RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+//	RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error) {
 	row := q.db.QueryRow(ctx, createPayment,
 		arg.OrderID,
@@ -121,19 +121,66 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (P
 		&i.RefundRequestedAt,
 		&i.RefundID,
 		&i.RefundedAt,
+		&i.RefundAttempts,
+		&i.RefundLastError,
+		&i.RefundRetryAt,
+	)
+	return i, err
+}
+
+const getPaymentByCaptureID = `-- name: GetPaymentByCaptureID :one
+SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
+FROM payments
+WHERE provider = $1
+  AND capture_id = $2::text
+`
+
+type GetPaymentByCaptureIDParams struct {
+	Provider  PaymentProvider `json:"provider"`
+	CaptureID string          `json:"captureId"`
+}
+
+// GetPaymentByCaptureID
+//
+//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
+//	FROM payments
+//	WHERE provider = $1
+//	  AND capture_id = $2::text
+func (q *Queries) GetPaymentByCaptureID(ctx context.Context, arg GetPaymentByCaptureIDParams) (Payment, error) {
+	row := q.db.QueryRow(ctx, getPaymentByCaptureID, arg.Provider, arg.CaptureID)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Provider,
+		&i.ProviderOrderID,
+		&i.ApproveUrl,
+		&i.Status,
+		&i.CaptureID,
+		&i.AmountCents,
+		&i.Currency,
+		&i.CapturedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RefundRequestedAt,
+		&i.RefundID,
+		&i.RefundedAt,
+		&i.RefundAttempts,
+		&i.RefundLastError,
+		&i.RefundRetryAt,
 	)
 	return i, err
 }
 
 const getPaymentByOrderID = `-- name: GetPaymentByOrderID :one
-SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 FROM payments
 WHERE order_id = $1
 `
 
 // GetPaymentByOrderID
 //
-//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 //	FROM payments
 //	WHERE order_id = $1
 func (q *Queries) GetPaymentByOrderID(ctx context.Context, orderID uuid.UUID) (Payment, error) {
@@ -155,12 +202,15 @@ func (q *Queries) GetPaymentByOrderID(ctx context.Context, orderID uuid.UUID) (P
 		&i.RefundRequestedAt,
 		&i.RefundID,
 		&i.RefundedAt,
+		&i.RefundAttempts,
+		&i.RefundLastError,
+		&i.RefundRetryAt,
 	)
 	return i, err
 }
 
 const getPaymentByProviderOrderID = `-- name: GetPaymentByProviderOrderID :one
-SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 FROM payments
 WHERE provider = $1
   AND provider_order_id = $2::text
@@ -173,7 +223,7 @@ type GetPaymentByProviderOrderIDParams struct {
 
 // GetPaymentByProviderOrderID
 //
-//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 //	FROM payments
 //	WHERE provider = $1
 //	  AND provider_order_id = $2::text
@@ -196,19 +246,22 @@ func (q *Queries) GetPaymentByProviderOrderID(ctx context.Context, arg GetPaymen
 		&i.RefundRequestedAt,
 		&i.RefundID,
 		&i.RefundedAt,
+		&i.RefundAttempts,
+		&i.RefundLastError,
+		&i.RefundRetryAt,
 	)
 	return i, err
 }
 
 const listPaymentsByOrderIDs = `-- name: ListPaymentsByOrderIDs :many
-SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 FROM payments
 WHERE order_id = ANY($1::uuid[])
 `
 
 // The payment of each order named that has one, for a personal data export.
 //
-//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 //	FROM payments
 //	WHERE order_id = ANY($1::uuid[])
 func (q *Queries) ListPaymentsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]Payment, error) {
@@ -236,6 +289,9 @@ func (q *Queries) ListPaymentsByOrderIDs(ctx context.Context, orderIds []uuid.UU
 			&i.RefundRequestedAt,
 			&i.RefundID,
 			&i.RefundedAt,
+			&i.RefundAttempts,
+			&i.RefundLastError,
+			&i.RefundRetryAt,
 		); err != nil {
 			return nil, err
 		}
@@ -248,21 +304,25 @@ func (q *Queries) ListPaymentsByOrderIDs(ctx context.Context, orderIds []uuid.UU
 }
 
 const listRefundsDue = `-- name: ListRefundsDue :many
-SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 FROM payments
 WHERE status = 'captured'
   AND refund_requested_at IS NOT NULL
-ORDER BY refund_requested_at
+  AND COALESCE(refund_retry_at, refund_requested_at) <= now()
+ORDER BY COALESCE(refund_retry_at, refund_requested_at)
 LIMIT $1::int
 `
 
-// Payments whose refund is asked for and not made yet, the oldest first.
+// Payments whose refund is asked for, not made yet and due a try: a refusal
+// puts that payment's next try off (refund_retry_at), so the payments behind it
+// are tried meanwhile. The longest due first.
 //
-//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+//	SELECT id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 //	FROM payments
 //	WHERE status = 'captured'
 //	  AND refund_requested_at IS NOT NULL
-//	ORDER BY refund_requested_at
+//	  AND COALESCE(refund_retry_at, refund_requested_at) <= now()
+//	ORDER BY COALESCE(refund_retry_at, refund_requested_at)
 //	LIMIT $1::int
 func (q *Queries) ListRefundsDue(ctx context.Context, maxRows int32) ([]Payment, error) {
 	rows, err := q.db.Query(ctx, listRefundsDue, maxRows)
@@ -289,6 +349,9 @@ func (q *Queries) ListRefundsDue(ctx context.Context, maxRows int32) ([]Payment,
 			&i.RefundRequestedAt,
 			&i.RefundID,
 			&i.RefundedAt,
+			&i.RefundAttempts,
+			&i.RefundLastError,
+			&i.RefundRetryAt,
 		); err != nil {
 			return nil, err
 		}
@@ -308,7 +371,7 @@ SET status      = $1,
     updated_at  = now()
 WHERE id = $3
   AND status IN ('created', 'pending')
-RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 `
 
 type RecordPaymentCaptureParams struct {
@@ -327,7 +390,7 @@ type RecordPaymentCaptureParams struct {
 //	    updated_at  = now()
 //	WHERE id = $3
 //	  AND status IN ('created', 'pending')
-//	RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+//	RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 func (q *Queries) RecordPaymentCapture(ctx context.Context, arg RecordPaymentCaptureParams) (Payment, error) {
 	row := q.db.QueryRow(ctx, recordPaymentCapture, arg.Status, arg.CaptureID, arg.ID)
 	var i Payment
@@ -347,6 +410,9 @@ func (q *Queries) RecordPaymentCapture(ctx context.Context, arg RecordPaymentCap
 		&i.RefundRequestedAt,
 		&i.RefundID,
 		&i.RefundedAt,
+		&i.RefundAttempts,
+		&i.RefundLastError,
+		&i.RefundRetryAt,
 	)
 	return i, err
 }
@@ -360,7 +426,7 @@ SET status      = 'refunded',
 WHERE id = $2
   AND status = 'captured'
   AND refund_requested_at IS NOT NULL
-RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 `
 
 type RecordPaymentRefundParams struct {
@@ -379,7 +445,7 @@ type RecordPaymentRefundParams struct {
 //	WHERE id = $2
 //	  AND status = 'captured'
 //	  AND refund_requested_at IS NOT NULL
-//	RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+//	RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 func (q *Queries) RecordPaymentRefund(ctx context.Context, arg RecordPaymentRefundParams) (Payment, error) {
 	row := q.db.QueryRow(ctx, recordPaymentRefund, arg.RefundID, arg.ID)
 	var i Payment
@@ -399,8 +465,128 @@ func (q *Queries) RecordPaymentRefund(ctx context.Context, arg RecordPaymentRefu
 		&i.RefundRequestedAt,
 		&i.RefundID,
 		&i.RefundedAt,
+		&i.RefundAttempts,
+		&i.RefundLastError,
+		&i.RefundRetryAt,
 	)
 	return i, err
+}
+
+const recordProviderRefund = `-- name: RecordProviderRefund :one
+UPDATE payments
+SET status              = 'refunded',
+    refund_requested_at = COALESCE(refund_requested_at, now()),
+    refund_id           = COALESCE(refund_id, $1::text),
+    refunded_at         = now(),
+    updated_at          = now()
+WHERE id = $2
+  AND status = 'captured'
+RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
+`
+
+type RecordProviderRefundParams struct {
+	RefundID string    `json:"refundId"`
+	ID       uuid.UUID `json:"id"`
+}
+
+// Records money the provider gave back on its own — a refund from its
+// dashboard, or a reversal on a dispute — of a payment still taken; one
+// refunded already stays as it is.
+//
+//	UPDATE payments
+//	SET status              = 'refunded',
+//	    refund_requested_at = COALESCE(refund_requested_at, now()),
+//	    refund_id           = COALESCE(refund_id, $1::text),
+//	    refunded_at         = now(),
+//	    updated_at          = now()
+//	WHERE id = $2
+//	  AND status = 'captured'
+//	RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
+func (q *Queries) RecordProviderRefund(ctx context.Context, arg RecordProviderRefundParams) (Payment, error) {
+	row := q.db.QueryRow(ctx, recordProviderRefund, arg.RefundID, arg.ID)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Provider,
+		&i.ProviderOrderID,
+		&i.ApproveUrl,
+		&i.Status,
+		&i.CaptureID,
+		&i.AmountCents,
+		&i.Currency,
+		&i.CapturedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RefundRequestedAt,
+		&i.RefundID,
+		&i.RefundedAt,
+		&i.RefundAttempts,
+		&i.RefundLastError,
+		&i.RefundRetryAt,
+	)
+	return i, err
+}
+
+const recordRefundFailure = `-- name: RecordRefundFailure :one
+UPDATE payments
+SET refund_attempts   = refund_attempts + 1,
+    refund_last_error = $1::text,
+    refund_retry_at   = now() + make_interval(secs => $2::double precision),
+    updated_at        = now()
+WHERE id = $3
+  AND status = 'captured'
+  AND refund_requested_at IS NOT NULL
+RETURNING refund_attempts
+`
+
+type RecordRefundFailureParams struct {
+	LastError         string    `json:"lastError"`
+	RetryAfterSeconds float64   `json:"retryAfterSeconds"`
+	ID                uuid.UUID `json:"id"`
+}
+
+// Counts a refund the provider refused, keeps its answer and puts the next try
+// off by retry_after_seconds; a payment refunded meanwhile is left (no row).
+//
+//	UPDATE payments
+//	SET refund_attempts   = refund_attempts + 1,
+//	    refund_last_error = $1::text,
+//	    refund_retry_at   = now() + make_interval(secs => $2::double precision),
+//	    updated_at        = now()
+//	WHERE id = $3
+//	  AND status = 'captured'
+//	  AND refund_requested_at IS NOT NULL
+//	RETURNING refund_attempts
+func (q *Queries) RecordRefundFailure(ctx context.Context, arg RecordRefundFailureParams) (int32, error) {
+	row := q.db.QueryRow(ctx, recordRefundFailure, arg.LastError, arg.RetryAfterSeconds, arg.ID)
+	var refund_attempts int32
+	err := row.Scan(&refund_attempts)
+	return refund_attempts, err
+}
+
+const recordRefundNotice = `-- name: RecordRefundNotice :execrows
+INSERT INTO payment_refund_notices (refund_id, payment_id)
+VALUES ($1, $2)
+ON CONFLICT (refund_id) DO NOTHING
+`
+
+type RecordRefundNoticeParams struct {
+	RefundID  string    `json:"refundId"`
+	PaymentID uuid.UUID `json:"paymentId"`
+}
+
+// Records a refund the provider told of; none when it told of it before.
+//
+//	INSERT INTO payment_refund_notices (refund_id, payment_id)
+//	VALUES ($1, $2)
+//	ON CONFLICT (refund_id) DO NOTHING
+func (q *Queries) RecordRefundNotice(ctx context.Context, arg RecordRefundNoticeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, recordRefundNotice, arg.RefundID, arg.PaymentID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const requestPaymentRefund = `-- name: RequestPaymentRefund :exec
@@ -435,7 +621,7 @@ SET provider_order_id = $1::text,
     updated_at        = now()
 WHERE order_id = $3
   AND status = 'denied'
-RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 `
 
 type RestartPaymentParams struct {
@@ -454,7 +640,7 @@ type RestartPaymentParams struct {
 //	    updated_at        = now()
 //	WHERE order_id = $3
 //	  AND status = 'denied'
-//	RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at
+//	RETURNING id, order_id, provider, provider_order_id, approve_url, status, capture_id, amount_cents, currency, captured_at, created_at, updated_at, refund_requested_at, refund_id, refunded_at, refund_attempts, refund_last_error, refund_retry_at
 func (q *Queries) RestartPayment(ctx context.Context, arg RestartPaymentParams) (Payment, error) {
 	row := q.db.QueryRow(ctx, restartPayment, arg.ProviderOrderID, arg.ApproveUrl, arg.OrderID)
 	var i Payment
@@ -474,6 +660,9 @@ func (q *Queries) RestartPayment(ctx context.Context, arg RestartPaymentParams) 
 		&i.RefundRequestedAt,
 		&i.RefundID,
 		&i.RefundedAt,
+		&i.RefundAttempts,
+		&i.RefundLastError,
+		&i.RefundRetryAt,
 	)
 	return i, err
 }

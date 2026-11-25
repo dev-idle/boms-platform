@@ -96,6 +96,41 @@ func (b *beats) Beat(context.Context, time.Time) error {
 
 func (b *beats) LastBeat(context.Context) (*time.Time, error) { return nil, nil }
 
+func TestRun_AStuckJobHoldsNoOtherBack(t *testing.T) {
+	t.Parallel()
+	var stuckEnded, others atomic.Int32
+	orders := []orderJob{
+		{name: "stuck", run: func(ctx context.Context) (int, error) {
+			<-ctx.Done()
+			stuckEnded.Add(1)
+			return 0, ctx.Err()
+		}},
+		{name: "count", run: func(context.Context) (int, error) {
+			others.Add(1)
+			return 0, nil
+		}},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		run(ctx, &fakeJobs{}, &fakeJobs{}, orders, &beats{}, &config.Config{
+			Outbox: config.OutboxConfig{SweepInterval: time.Hour, PruneInterval: time.Hour, SweepBatch: 10},
+			Order:  config.OrderConfig{JobInterval: 10 * time.Millisecond},
+		}, zap.NewNop())
+		close(done)
+	}()
+
+	assert.Eventually(t, func() bool { return others.Load() >= 3 && stuckEnded.Load() >= 1 }, 5*time.Second, 5*time.Millisecond,
+		"the other job keeps its rhythm, and the stuck run ends at its deadline")
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("run did not stop when its context was cancelled")
+	}
+}
+
 func TestRun_SweepsPrunesPurgesAndExpiresUntilStopped(t *testing.T) {
 	t.Parallel()
 	jobs := &fakeJobs{}

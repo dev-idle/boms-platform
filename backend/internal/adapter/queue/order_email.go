@@ -23,9 +23,9 @@ const (
 	// QueueEmail holds the email customers wait for — order updates and
 	// account links — apart from any other work.
 	QueueEmail = "email"
-	// QueuePromotion holds promotions, which the worker sends only while no
-	// email customers wait for is queued: a promotion to every customer never
-	// holds up a reset link.
+	// QueuePromotion holds promotions, which the worker sends on a server of
+	// their own: a promotion to every customer never takes a place an order
+	// update or a reset link needs.
 	QueuePromotion = "promotion"
 
 	// With Asynq's backoff, eight retries span about an hour and a half; past

@@ -57,7 +57,42 @@ type Payment struct {
 	// RefundID is the provider's reference for the money given back.
 	RefundID   *string
 	RefundedAt *time.Time
-	CreatedAt  time.Time
+	// RefundAttempts counts the refund tries the provider refused.
+	RefundAttempts int
+	CreatedAt      time.Time
+}
+
+const (
+	// RefundFailuresBeforeIncident is how many refused refund tries make an
+	// incident: one is a hiccup, five are a payment someone has to look at.
+	RefundFailuresBeforeIncident = 5
+	// maxRefundRetryDelay caps how long a refused refund waits for its next try.
+	maxRefundRetryDelay = 6 * time.Hour
+	// maxRefundErrorLength is the most of the provider's answer a payment keeps.
+	maxRefundErrorLength = 500
+)
+
+// RefundRetryDelay is how long a refund refused attempts times waits for its
+// next try: a minute, doubling with each refusal up to six hours.
+func RefundRetryDelay(attempts int) time.Duration {
+	delay := time.Minute
+	for range attempts - 1 {
+		delay *= 2
+		if delay >= maxRefundRetryDelay {
+			return maxRefundRetryDelay
+		}
+	}
+	return delay
+}
+
+// RefundError is what a payment keeps of a refused refund: the error, cut to
+// the length the column holds.
+func RefundError(err error) string {
+	message := err.Error()
+	if runes := []rune(message); len(runes) > maxRefundErrorLength {
+		return string(runes[:maxRefundErrorLength])
+	}
+	return message
 }
 
 // Capture is the provider's answer to taking the money.

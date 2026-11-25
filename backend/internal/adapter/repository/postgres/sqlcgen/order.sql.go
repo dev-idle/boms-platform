@@ -843,6 +843,86 @@ func (q *Queries) GetOrderByCodeForUser(ctx context.Context, arg GetOrderByCodeF
 	return i, err
 }
 
+const getOrderByID = `-- name: GetOrderByID :one
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
+FROM orders
+WHERE id = $1
+`
+
+// An order by its id alone, for the system acting on what the provider says
+// of it; a customer reads their own through GetOrderByIDForUser.
+//
+//	SELECT
+//	  id,
+//	  user_id,
+//	  status,
+//	  subtotal_cents,
+//	  discount_cents,
+//	  total_cents,
+//	  discount_code_id,
+//	  discount_code_snapshot,
+//	  pickup_at,
+//	  created_at,
+//	  updated_at,
+//	  code,
+//	  order_type,
+//	  terms_accepted_at,
+//	  terms_version,
+//	  checkout_key,
+//	  payment_due_at,
+//	  channel,
+//	  guest_name,
+//	  guest_phone
+//	FROM orders
+//	WHERE id = $1
+func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error) {
+	row := q.db.QueryRow(ctx, getOrderByID, id)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.SubtotalCents,
+		&i.DiscountCents,
+		&i.TotalCents,
+		&i.DiscountCodeID,
+		&i.DiscountCodeSnapshot,
+		&i.PickupAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.OrderType,
+		&i.TermsAcceptedAt,
+		&i.TermsVersion,
+		&i.CheckoutKey,
+		&i.PaymentDueAt,
+		&i.Channel,
+		&i.GuestName,
+		&i.GuestPhone,
+	)
+	return i, err
+}
+
 const getOrderByIDForUser = `-- name: GetOrderByIDForUser :one
 SELECT
   id,

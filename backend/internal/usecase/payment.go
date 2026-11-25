@@ -153,6 +153,12 @@ func (u *PaymentUsecase) Capture(ctx context.Context, userID, orderID uuid.UUID)
 	if err != nil {
 		return "", err
 	}
+	return u.capture(ctx, order, p)
+}
+
+// capture takes the money of a payment approved on the provider's page and
+// confirms its order, answering where the payment stands.
+func (u *PaymentUsecase) capture(ctx context.Context, order *domainorder.Order, p *domainpayment.Payment) (domainpayment.Status, error) {
 	switch p.Status {
 	case domainpayment.StatusCaptured, domainpayment.StatusPending:
 		return p.Status, nil
@@ -184,13 +190,22 @@ func (u *PaymentUsecase) Capture(ctx context.Context, userID, orderID uuid.UUID)
 	return capture.Status, nil
 }
 
-// HandleWebhook applies the provider's signed notice about a capture: one held
-// for review that went through confirms the order, one refused lets the
-// customer pay again. A notice delivered again changes nothing.
+// HandleWebhook applies the provider's signed notice: about a capture — one
+// held for review that went through confirms the order, one refused lets the
+// customer pay again —, a payment the buyer approved, which is taken although
+// they closed the page before coming back, or money the provider gave back on
+// its own. A notice delivered again changes nothing.
 func (u *PaymentUsecase) HandleWebhook(ctx context.Context, header func(name string) string, body []byte) error {
 	event, err := u.gateway.VerifyWebhook(ctx, header, body)
-	if err != nil || event.Capture == nil {
+	switch {
+	case err != nil:
 		return err
+	case event.Approved:
+		return u.captureApproved(ctx, event)
+	case event.Refund != nil:
+		return u.recordProviderRefund(ctx, event.ID, *event.Refund)
+	case event.Capture == nil:
+		return nil
 	}
 	p, err := u.payments.GetByProviderOrderID(ctx, domainpayment.ProviderPayPal, event.ProviderOrderID)
 	if errors.Is(err, apperrors.ErrNotFound) {
@@ -203,6 +218,69 @@ func (u *PaymentUsecase) HandleWebhook(ctx context.Context, header func(name str
 	}
 	return u.tx.WithTx(ctx, func(txCtx context.Context) error {
 		return u.record(txCtx, p, *event.Capture)
+	})
+}
+
+// captureApproved takes a payment the buyer approved, as the return page
+// would have. One past its time to pay is left for the expiry check.
+func (u *PaymentUsecase) captureApproved(ctx context.Context, event port.PaymentWebhookEvent) error {
+	p, err := u.payments.GetByProviderOrderID(ctx, domainpayment.ProviderPayPal, event.ProviderOrderID)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		u.log.Info("payment_webhook_ignored", zap.String("event_id", event.ID))
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	order, err := u.orders.GetByID(ctx, p.OrderID)
+	if err != nil {
+		return err
+	}
+	_, err = u.capture(ctx, order, p)
+	if errors.Is(err, domainpayment.ErrNotPayable) || errors.Is(err, domainpayment.ErrNotCompleted) {
+		u.log.Info("payment_webhook_approval_not_taken", zap.String("event_id", event.ID), zap.Error(err))
+		return nil
+	}
+	return err
+}
+
+// recordProviderRefund records money the provider gave back on its own, once
+// for each refund. All of the payment back, in one refund or over several,
+// refunds it, with its incident; less leaves the payment taken, and the
+// incident tells the manager money moved.
+func (u *PaymentUsecase) recordProviderRefund(ctx context.Context, eventID string, refund port.PaymentWebhookRefund) error {
+	p, err := u.payments.GetByCaptureID(ctx, domainpayment.ProviderPayPal, refund.CaptureID)
+	if errors.Is(err, apperrors.ErrNotFound) {
+		u.log.Info("payment_webhook_ignored", zap.String("event_id", eventID))
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	incident := domainorder.IncidentRefunded
+	if refund.Reversed {
+		incident = domainorder.IncidentPaymentReversed
+	}
+	whole := refund.TotalRefundedCents == p.AmountCents && refund.Currency == p.Currency
+	return u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if first, err := u.payments.RecordRefundNotice(txCtx, p.ID, refund.RefundID); err != nil || !first {
+			// Not the first: a notice delivered again, recorded already.
+			return err
+		}
+		if !whole {
+			_, err := recordIncident(txCtx, u.orders, u.transitions.events, port.AddOrderIncidentParams{
+				OrderID: p.OrderID, Type: incident,
+			})
+			return err
+		}
+		if _, err := u.payments.RecordProviderRefund(txCtx, p.ID, refund.RefundID); err != nil {
+			if errors.Is(err, apperrors.ErrNotFound) {
+				// The worker's own refund, recorded already.
+				return nil
+			}
+			return err
+		}
+		return u.refunded(txCtx, p.OrderID, incident)
 	})
 }
 
@@ -335,10 +413,30 @@ func (u *PaymentUsecase) record(txCtx context.Context, p *domainpayment.Payment,
 	return err
 }
 
-// RefundDue makes the refunds cancelled orders asked for, a batch at a time,
-// and returns how many were made. Each refund stands alone: one the provider
-// refuses is reported with the rest while the others go on, and is asked for
-// again on the next run.
+// refundRefused records a refused refund try on the payment, and the incident
+// once the refusals reach domainpayment.RefundFailuresBeforeIncident.
+func (u *PaymentUsecase) refundRefused(ctx context.Context, p *domainpayment.Payment, refused error) error {
+	return u.tx.WithTx(ctx, func(txCtx context.Context) error {
+		attempts, err := u.payments.RecordRefundFailure(txCtx, p.ID, domainpayment.RefundError(refused),
+			domainpayment.RefundRetryDelay(p.RefundAttempts+1))
+		if errors.Is(err, apperrors.ErrNotFound) {
+			// Refunded meanwhile, by another run or from the provider's dashboard.
+			return nil
+		}
+		if err != nil || attempts != domainpayment.RefundFailuresBeforeIncident {
+			return err
+		}
+		_, err = recordIncident(txCtx, u.orders, u.transitions.events, port.AddOrderIncidentParams{
+			OrderID: p.OrderID, Type: domainorder.IncidentRefundFailed,
+		})
+		return err
+	})
+}
+
+// RefundDue makes the refunds cancelled orders asked for that are due a try, a
+// batch at a time, and returns how many were made. Each refund stands alone:
+// one the provider refuses is reported with the rest while the others go on,
+// and waits for its next try.
 func (u *PaymentUsecase) RefundDue(ctx context.Context) (int, error) {
 	due, err := u.payments.ListRefundsDue(ctx, refundBatch)
 	if err != nil {
@@ -357,7 +455,9 @@ func (u *PaymentUsecase) RefundDue(ctx context.Context) (int, error) {
 }
 
 // refund returns a payment's capture to the buyer, records it with its
-// incident and tells the customer and the counter.
+// incident and tells the customer and the counter. A refusal is counted on the
+// payment with the provider's answer, and puts its next try off while the
+// others go on; repeated refusals make an incident.
 func (u *PaymentUsecase) refund(ctx context.Context, p *domainpayment.Payment) error {
 	var refundID *string
 	id, err := u.gateway.Refund(ctx, *p.CaptureID)
@@ -365,7 +465,7 @@ func (u *PaymentUsecase) refund(ctx context.Context, p *domainpayment.Payment) e
 	case errors.Is(err, domainpayment.ErrAlreadyRefunded):
 		// Refunded from the provider's own dashboard: nothing more goes back.
 	case err != nil:
-		return err
+		return errors.Join(err, u.refundRefused(ctx, p, err))
 	default:
 		refundID = &id
 	}
@@ -377,16 +477,22 @@ func (u *PaymentUsecase) refund(ctx context.Context, p *domainpayment.Payment) e
 			}
 			return err
 		}
-		order, err := u.orders.LockForUpdate(txCtx, p.OrderID)
-		if err != nil {
-			return err
-		}
-		if err := u.transitions.events.Add(txCtx, domainorder.RefundedEvent(*order)); err != nil {
-			return err
-		}
-		_, err = recordIncident(txCtx, u.orders, u.transitions.events, port.AddOrderIncidentParams{
-			OrderID: order.ID, Type: domainorder.IncidentRefunded,
-		})
-		return err
+		return u.refunded(txCtx, p.OrderID, domainorder.IncidentRefunded)
 	})
+}
+
+// refunded tells the customer and the counter the order's money went back, and
+// records it as incident.
+func (u *PaymentUsecase) refunded(txCtx context.Context, orderID uuid.UUID, incident domainorder.IncidentType) error {
+	order, err := u.orders.LockForUpdate(txCtx, orderID)
+	if err != nil {
+		return err
+	}
+	if err := u.transitions.events.Add(txCtx, domainorder.RefundedEvent(*order)); err != nil {
+		return err
+	}
+	_, err = recordIncident(txCtx, u.orders, u.transitions.events, port.AddOrderIncidentParams{
+		OrderID: order.ID, Type: incident,
+	})
+	return err
 }

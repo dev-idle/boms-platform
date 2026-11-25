@@ -140,7 +140,7 @@ func defaultMail() config.MailConfig {
 	return config.MailConfig{
 		SMTPHost: "127.0.0.1", SMTPPort: 1025, SMTPTLS: config.SMTPTLSNone,
 		FromAddress: "orders@chouxbakery.example", FromName: "Choux", ReplyTo: "hello@chouxbakery.example",
-		SendTimeout: 10 * time.Second, Concurrency: 4,
+		SendTimeout: 10 * time.Second, Concurrency: 4, PromotionConcurrency: 1,
 	}
 }
 
@@ -463,6 +463,7 @@ func TestValidateWorker_Mail(t *testing.T) {
 		{"needs_a_send_timeout", false, func(m *config.MailConfig) { m.SendTimeout = 0 }, "mail.send_timeout"},
 		{"sends_within_the_task_deadline", false, func(m *config.MailConfig) { m.SendTimeout = 11 * time.Second }, "mail.send_timeout"},
 		{"bounds_concurrency", false, func(m *config.MailConfig) { m.Concurrency = 0 }, "mail.concurrency"},
+		{"bounds_promotion_concurrency", false, func(m *config.MailConfig) { m.PromotionConcurrency = 0 }, "mail.promotion_concurrency"},
 		{"encrypts_when_deployed", true, func(m *config.MailConfig) { m.SMTPTLS = config.SMTPTLSNone }, "must not be none"},
 		{"authenticates_when_deployed", true, func(m *config.MailConfig) { m.SMTPUsername, m.SMTPPassword = "", "" }, "required in staging/production"},
 	}

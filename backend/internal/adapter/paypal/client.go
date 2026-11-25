@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -122,14 +123,36 @@ func (c *Client) CreateOrder(ctx context.Context, req port.PaymentOrderRequest) 
 	return "", "", errors.New("create paypal order: no page to approve it on")
 }
 
+// captureTries and captureRetryDelay bound the wait for a capture still running
+// under the same request id, as when the return page and the approval notice
+// arrive together.
+const (
+	captureTries      = 6
+	captureRetryDelay = 500 * time.Millisecond
+)
+
 // Capture implements port.PaymentGateway.
 func (c *Client) Capture(ctx context.Context, providerOrderID string) (domainpayment.Capture, error) {
-	var order orderResource
+	var (
+		order  orderResource
+		err    error
+		apiErr *apiError
+	)
 	// The request id makes a retry return the first answer instead of a second
 	// capture; it names the PayPal order, as a restarted payment has a new one.
-	err := c.call(ctx, http.MethodPost, "/v2/checkout/orders/"+url.PathEscape(providerOrderID)+"/capture",
-		"capture-"+providerOrderID, struct{}{}, &order)
-	var apiErr *apiError
+	// One still running under it is asked again until its answer is in.
+	for try := 1; ; try++ {
+		err = c.call(ctx, http.MethodPost, "/v2/checkout/orders/"+url.PathEscape(providerOrderID)+"/capture",
+			"capture-"+providerOrderID, struct{}{}, &order)
+		if try == captureTries || !errors.As(err, &apiErr) || apiErr.issue != "PREVIOUS_REQUEST_IN_PROGRESS" {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return domainpayment.Capture{}, fmt.Errorf("capture paypal order: %w", ctx.Err())
+		case <-time.After(captureRetryDelay):
+		}
+	}
 	if errors.As(err, &apiErr) && apiErr.status == http.StatusUnprocessableEntity {
 		if refusal := captureRefusal(apiErr.issue); refusal != nil {
 			return domainpayment.Capture{}, refusal
@@ -272,6 +295,22 @@ func (c *Client) VerifyWebhook(ctx context.Context, header func(name string) str
 	}
 	out := port.PaymentWebhookEvent{ID: event.ID}
 	switch event.EventType {
+	case "CHECKOUT.ORDER.APPROVED":
+		var resource struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(event.Resource, &resource); err != nil || resource.ID == "" {
+			return port.PaymentWebhookEvent{}, fmt.Errorf("read paypal webhook %s: no order", event.ID)
+		}
+		out.ProviderOrderID = resource.ID
+		out.Approved = true
+	case "PAYMENT.CAPTURE.REFUNDED", "PAYMENT.CAPTURE.REVERSED":
+		refund, err := toWebhookRefund(event.Resource)
+		if err != nil {
+			return port.PaymentWebhookEvent{}, fmt.Errorf("read paypal webhook %s: %w", event.ID, err)
+		}
+		refund.Reversed = event.EventType == "PAYMENT.CAPTURE.REVERSED"
+		out.Refund = &refund
 	case "PAYMENT.CAPTURE.COMPLETED", "PAYMENT.CAPTURE.DENIED":
 		var resource captureResource
 		if err := json.Unmarshal(event.Resource, &resource); err != nil {
@@ -285,6 +324,38 @@ func (c *Client) VerifyWebhook(ctx context.Context, header func(name string) str
 		out.Capture = &capture
 	}
 	return out, nil
+}
+
+// toWebhookRefund reads a refund resource: what went back, and the capture it
+// came from, which its "up" link names.
+func toWebhookRefund(raw json.RawMessage) (port.PaymentWebhookRefund, error) {
+	var resource struct {
+		ID        string `json:"id"`
+		Breakdown struct {
+			TotalRefunded amount `json:"total_refunded_amount"`
+		} `json:"seller_payable_breakdown"`
+		Links []link `json:"links"`
+	}
+	if err := json.Unmarshal(raw, &resource); err != nil {
+		return port.PaymentWebhookRefund{}, err
+	}
+	var captureID string
+	for _, l := range resource.Links {
+		if l.Rel == "up" {
+			captureID = path.Base(l.Href)
+		}
+	}
+	if resource.ID == "" || captureID == "" || captureID == "." || captureID == "/" {
+		return port.PaymentWebhookRefund{}, errors.New("refund names no capture")
+	}
+	total := resource.Breakdown.TotalRefunded
+	cents, err := parseAmount(total.Value)
+	if err != nil {
+		return port.PaymentWebhookRefund{}, fmt.Errorf("refund total: %w", err)
+	}
+	return port.PaymentWebhookRefund{
+		CaptureID: captureID, RefundID: resource.ID, TotalRefundedCents: cents, Currency: total.CurrencyCode,
+	}, nil
 }
 
 // call sends one authenticated request, with in as its JSON body unless nil,

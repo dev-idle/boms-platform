@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
+	domainevent "github.com/boms/backend/internal/domain/event"
 	domainorder "github.com/boms/backend/internal/domain/order"
 	domainpayment "github.com/boms/backend/internal/domain/payment"
 	"github.com/boms/backend/internal/port"
@@ -70,6 +71,14 @@ func (f *paymentOrders) GetByIDForUser(_ context.Context, userID, orderID uuid.U
 	return &order, nil
 }
 
+func (f *paymentOrders) GetByID(_ context.Context, orderID uuid.UUID) (*domainorder.Order, error) {
+	if orderID != f.order.ID {
+		return nil, apperrors.ErrNotFound
+	}
+	order := f.order
+	return &order, nil
+}
+
 func (f *paymentOrders) LockForUpdate(context.Context, uuid.UUID) (*domainorder.Order, error) {
 	order := f.order
 	return &order, nil
@@ -115,6 +124,47 @@ type memoryPayments struct {
 	payment   *domainpayment.Payment
 	createErr error
 	refundID  *string
+	// refundError and retryAfter are the last refused refund as recorded.
+	refundError string
+	retryAfter  time.Duration
+	// notices are the refunds the provider told of.
+	notices map[string]bool
+}
+
+func (f *memoryPayments) RecordRefundNotice(_ context.Context, _ uuid.UUID, refundID string) (bool, error) {
+	if f.notices[refundID] {
+		return false, nil
+	}
+	if f.notices == nil {
+		f.notices = map[string]bool{}
+	}
+	f.notices[refundID] = true
+	return true, nil
+}
+
+func (f *memoryPayments) GetByCaptureID(_ context.Context, _ domainpayment.Provider, captureID string) (*domainpayment.Payment, error) {
+	if f.payment == nil || f.payment.CaptureID == nil || *f.payment.CaptureID != captureID {
+		return nil, apperrors.ErrNotFound
+	}
+	p := *f.payment
+	return &p, nil
+}
+
+func (f *memoryPayments) RecordProviderRefund(_ context.Context, _ uuid.UUID, refundID string) (*domainpayment.Payment, error) {
+	if f.payment.Status != domainpayment.StatusCaptured {
+		return nil, apperrors.ErrNotFound
+	}
+	f.payment.Status, f.refundID = domainpayment.StatusRefunded, &refundID
+	return f.payment, nil
+}
+
+func (f *memoryPayments) RecordRefundFailure(_ context.Context, _ uuid.UUID, lastError string, retryAfter time.Duration) (int, error) {
+	if f.payment.Status != domainpayment.StatusCaptured || f.payment.RefundRequestedAt == nil {
+		return 0, apperrors.ErrNotFound
+	}
+	f.payment.RefundAttempts++
+	f.refundError, f.retryAfter = lastError, retryAfter
+	return f.payment.RefundAttempts, nil
 }
 
 func (f *memoryPayments) Create(_ context.Context, params port.CreatePaymentParams) (*domainpayment.Payment, error) {
@@ -197,10 +247,15 @@ type fakeGateway struct {
 	webhookErr error
 	refunds    int
 	refundErr  error
+	// onRefund runs while the refund is under way, as what happens meanwhile.
+	onRefund func()
 }
 
 func (g *fakeGateway) Refund(context.Context, string) (string, error) {
 	g.refunds++
+	if g.onRefund != nil {
+		g.onRefund()
+	}
 	return "REFUND-1", g.refundErr
 }
 
@@ -566,6 +621,118 @@ func TestPaymentUsecase_HandleWebhook(t *testing.T) {
 			"a notice delivered again records no second failure")
 	})
 
+	t.Run("a_payment_approved_by_a_buyer_who_closed_the_page_is_taken", func(t *testing.T) {
+		t.Parallel()
+		f := newPaymentFixture()
+		f.started(domainpayment.StatusCreated)
+		f.gateway.event = port.PaymentWebhookEvent{ID: "WH-3", ProviderOrderID: "PAYPAL-0", Approved: true}
+
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil), "a notice delivered again takes nothing twice")
+
+		assert.Equal(t, 1, f.gateway.captures)
+		assert.Equal(t, domainpayment.StatusCaptured, f.payments.payment.Status)
+		assert.Equal(t, []domainorder.Status{domainorder.StatusConfirmed}, f.orders.history)
+	})
+
+	t.Run("an_approval_past_the_time_to_pay_is_left_for_the_expiry_check", func(t *testing.T) {
+		t.Parallel()
+		f := newPaymentFixture()
+		past := time.Now().Add(-time.Minute)
+		f.orders.order.PaymentDueAt = &past
+		f.started(domainpayment.StatusCreated)
+		f.gateway.event = port.PaymentWebhookEvent{ID: "WH-3", ProviderOrderID: "PAYPAL-0", Approved: true}
+
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+
+		assert.Zero(t, f.gateway.captures)
+		assert.Equal(t, domainpayment.StatusCreated, f.payments.payment.Status)
+	})
+
+	t.Run("an_approval_paypal_cannot_take_yet_is_acknowledged", func(t *testing.T) {
+		t.Parallel()
+		f := newPaymentFixture()
+		f.started(domainpayment.StatusCreated)
+		f.gateway.event = port.PaymentWebhookEvent{ID: "WH-3", ProviderOrderID: "PAYPAL-0", Approved: true}
+		f.gateway.captureErr = domainpayment.ErrNotCompleted
+
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil), "the return page or the expiry check takes it")
+
+		assert.Equal(t, domainpayment.StatusCreated, f.payments.payment.Status)
+		assert.Empty(t, f.orders.history)
+	})
+
+	refundedAtPayPal := func(totalCents int64, reversed bool) *paymentFixture {
+		f := newPaymentFixture()
+		f.started(domainpayment.StatusCaptured)
+		captureID := "CAPTURE-1"
+		f.payments.payment.CaptureID = &captureID
+		f.orders.order.Status = domainorder.StatusFulfilled
+		f.gateway.event = port.PaymentWebhookEvent{ID: "WH-4", Refund: &port.PaymentWebhookRefund{
+			CaptureID: captureID, RefundID: "REFUND-9", TotalRefundedCents: totalCents, Currency: domainpayment.Currency, Reversed: reversed,
+		}}
+		return f
+	}
+	topics := func(f *paymentFixture) []domainevent.Topic {
+		var out []domainevent.Topic
+		for _, e := range f.outbox.events {
+			out = append(out, e.Topic)
+		}
+		return out
+	}
+
+	t.Run("a_refund_made_at_paypal_is_recorded_once", func(t *testing.T) {
+		t.Parallel()
+		f := refundedAtPayPal(1250, false)
+
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+
+		assert.Equal(t, domainpayment.StatusRefunded, f.payments.payment.Status)
+		require.NotNil(t, f.payments.refundID)
+		assert.Equal(t, "REFUND-9", *f.payments.refundID)
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentRefunded}, f.orders.incidents)
+		assert.Equal(t, []domainevent.Topic{domainorder.TopicOrderRefunded, domainorder.TopicIncidentRecorded}, topics(f))
+	})
+
+	t.Run("the_whole_payment_reversed_refunds_it", func(t *testing.T) {
+		t.Parallel()
+		f := refundedAtPayPal(1250, true)
+
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+
+		assert.Equal(t, domainpayment.StatusRefunded, f.payments.payment.Status)
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentPaymentReversed}, f.orders.incidents)
+		assert.Equal(t, []domainevent.Topic{domainorder.TopicOrderRefunded, domainorder.TopicIncidentRecorded}, topics(f))
+	})
+
+	t.Run("part_of_a_payment_reversed_leaves_it_taken_and_tells_the_manager_once", func(t *testing.T) {
+		t.Parallel()
+		f := refundedAtPayPal(500, true)
+
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil), "a notice delivered again changes nothing")
+
+		assert.Equal(t, domainpayment.StatusCaptured, f.payments.payment.Status)
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentPaymentReversed}, f.orders.incidents)
+		assert.Equal(t, []domainevent.Topic{domainorder.TopicIncidentRecorded}, topics(f))
+	})
+
+	t.Run("parts_that_add_up_to_the_whole_payment_refund_it", func(t *testing.T) {
+		t.Parallel()
+		f := refundedAtPayPal(500, false)
+		f.gateway.event.Refund.RefundID = "REFUND-8"
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+		assert.Equal(t, domainpayment.StatusCaptured, f.payments.payment.Status)
+
+		f.gateway.event.ID, f.gateway.event.Refund.RefundID, f.gateway.event.Refund.TotalRefundedCents = "WH-5", "REFUND-9", 1250
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+
+		assert.Equal(t, domainpayment.StatusRefunded, f.payments.payment.Status)
+		assert.Equal(t, []domainorder.IncidentType{domainorder.IncidentRefunded, domainorder.IncidentRefunded}, f.orders.incidents)
+		assert.Equal(t, []domainevent.Topic{domainorder.TopicIncidentRecorded, domainorder.TopicOrderRefunded, domainorder.TopicIncidentRecorded}, topics(f))
+	})
+
 	t.Run("an_unsigned_delivery_is_refused", func(t *testing.T) {
 		t.Parallel()
 		f := newPaymentFixture()
@@ -585,7 +752,17 @@ func TestPaymentUsecase_HandleWebhook(t *testing.T) {
 		f.gateway.event.ProviderOrderID = "PAYPAL-OTHER"
 		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
 
+		f.gateway.event = port.PaymentWebhookEvent{ID: "WH-3", ProviderOrderID: "PAYPAL-OTHER", Approved: true}
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+
+		f.gateway.event = port.PaymentWebhookEvent{ID: "WH-4", Refund: &port.PaymentWebhookRefund{
+			CaptureID: "CAPTURE-OTHER", RefundID: "REFUND-9", TotalRefundedCents: 1250, Currency: domainpayment.Currency,
+		}}
+		require.NoError(t, f.usecase().HandleWebhook(ctx, nil, nil))
+
 		assert.Equal(t, domainpayment.StatusCreated, f.payments.payment.Status)
+		assert.Zero(t, f.gateway.captures)
+		assert.Empty(t, f.orders.incidents)
 	})
 }
 
@@ -740,5 +917,42 @@ func TestPaymentUsecase_RefundDue(t *testing.T) {
 		assert.Equal(t, domainpayment.StatusCaptured, f.payments.payment.Status, "still due")
 		assert.Empty(t, f.outbox.events)
 		assert.Empty(t, f.orders.incidents, "nothing went back yet")
+		assert.Equal(t, 1, f.payments.payment.RefundAttempts, "the refusal is counted")
+		assert.Equal(t, "paypal unavailable", f.payments.refundError)
+		assert.Equal(t, time.Minute, f.payments.retryAfter, "its next try waits while the others go on")
+	})
+
+	t.Run("a_refusal_for_a_payment_refunded_meanwhile_counts_nothing", func(t *testing.T) {
+		t.Parallel()
+		f := cancelledPaid()
+		down := errors.New("paypal unavailable")
+		f.gateway.refundErr = down
+		f.gateway.onRefund = func() {
+			// Refunded from PayPal's dashboard while the worker asked.
+			now := time.Now()
+			f.payments.payment.Status, f.payments.payment.RefundedAt = domainpayment.StatusRefunded, &now
+		}
+
+		_, err := f.usecase().RefundDue(ctx)
+
+		require.ErrorIs(t, err, down, "the refusal is still reported")
+		assert.Zero(t, f.payments.payment.RefundAttempts)
+		assert.Empty(t, f.orders.incidents)
+	})
+
+	t.Run("refusals_that_keep_coming_make_an_incident_once", func(t *testing.T) {
+		t.Parallel()
+		f := cancelledPaid()
+		f.gateway.refundErr = errors.New("paypal unavailable")
+		f.payments.payment.RefundAttempts = domainpayment.RefundFailuresBeforeIncident - 1
+
+		_, err := f.usecase().RefundDue(ctx)
+
+		require.Error(t, err)
+		require.Len(t, f.orders.incidents, 1)
+		assert.Equal(t, domainorder.IncidentRefundFailed, f.orders.incidents[0])
+		_, err = f.usecase().RefundDue(ctx)
+		require.Error(t, err)
+		assert.Len(t, f.orders.incidents, 1, "the incident is recorded once")
 	})
 }

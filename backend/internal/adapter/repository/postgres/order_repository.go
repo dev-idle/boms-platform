@@ -222,6 +222,15 @@ func (r *OrderRepository) GetByIDForUser(ctx context.Context, userID, orderID uu
 	return mapOrder(row), nil
 }
 
+// GetByID implements port.OrderRepository.
+func (r *OrderRepository) GetByID(ctx context.Context, orderID uuid.UUID) (*domainorder.Order, error) {
+	row, err := r.q(ctx).GetOrderByID(ctx, orderID)
+	if err != nil {
+		return nil, mapRepoError(err, "get order")
+	}
+	return mapOrder(row), nil
+}
+
 func (r *OrderRepository) GetByCodeForUser(ctx context.Context, userID uuid.UUID, code string) (*domainorder.Order, error) {
 	row, err := r.q(ctx).GetOrderByCodeForUser(ctx, sqlcgen.GetOrderByCodeForUserParams{
 		Code:   code,

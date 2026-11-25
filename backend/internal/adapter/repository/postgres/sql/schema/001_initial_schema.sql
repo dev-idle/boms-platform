@@ -476,9 +476,13 @@ CREATE TABLE "payments" (
   "refund_requested_at" timestamptz NULL,
   "refund_id" text NULL,
   "refunded_at" timestamptz NULL,
+  "refund_attempts" integer NOT NULL DEFAULT 0,
+  "refund_last_error" text NULL,
+  "refund_retry_at" timestamptz NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "payments_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE RESTRICT,
   CONSTRAINT "payments_amount_cents_check" CHECK (amount_cents > 0),
+  CONSTRAINT "payments_refund_attempts_check" CHECK ((refund_attempts >= 0) AND ((refund_last_error IS NULL) OR (char_length(refund_last_error) <= 500))),
   CONSTRAINT "payments_capture_check" CHECK ((provider <> 'paypal'::payment_provider) OR (status = 'denied'::payment_status) OR ((status = 'created'::payment_status) = (capture_id IS NULL))),
   CONSTRAINT "payments_provider_check" CHECK ((provider = 'paypal'::payment_provider) = ((provider_order_id IS NOT NULL) AND (approve_url IS NOT NULL))),
   CONSTRAINT "payments_cash_check" CHECK ((provider <> 'cash'::payment_provider) OR ((capture_id IS NULL) AND (status = ANY (ARRAY['created'::payment_status, 'captured'::payment_status])) AND (refund_requested_at IS NULL))),
@@ -491,6 +495,14 @@ CREATE UNIQUE INDEX "payments_capture_idx" ON "payments" ("provider", "capture_i
 CREATE UNIQUE INDEX "payments_order_id_idx" ON "payments" ("order_id");
 CREATE UNIQUE INDEX "payments_provider_order_idx" ON "payments" ("provider", "provider_order_id");
 CREATE INDEX "payments_refund_due_idx" ON "payments" ("refund_requested_at") WHERE ((status = 'captured'::payment_status) AND (refund_requested_at IS NOT NULL));
+
+CREATE TABLE "payment_refund_notices" (
+  "refund_id" text NOT NULL,
+  "payment_id" uuid NOT NULL,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY ("refund_id"),
+  CONSTRAINT "payment_refund_notices_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "payments" ("id") ON UPDATE NO ACTION ON DELETE RESTRICT
+);
 
 CREATE TYPE "conversation_status" AS ENUM ('open', 'closed');
 
@@ -624,7 +636,7 @@ CREATE TABLE "promotions" (
 );
 CREATE INDEX "promotions_created_at_idx" ON "promotions" ("created_at");
 
-CREATE TYPE "order_incident_type" AS ENUM ('bakery_cancelled', 'ready_late', 'no_show', 'payment_failed', 'payment_expired', 'refunded', 'payment_anomaly', 'wrong_items', 'custom_mismatch', 'other', 'left_open');
+CREATE TYPE "order_incident_type" AS ENUM ('bakery_cancelled', 'ready_late', 'no_show', 'payment_failed', 'payment_expired', 'refunded', 'payment_anomaly', 'wrong_items', 'custom_mismatch', 'other', 'left_open', 'refund_failed', 'payment_reversed');
 
 CREATE TABLE "order_incidents" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),

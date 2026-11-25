@@ -210,6 +210,25 @@ func TestPayment_Integration(t *testing.T) {
 		require.ErrorIs(t, err, apperrors.ErrNotFound, "a replaced PayPal order names no payment")
 	})
 
+	t.Run("a_payment_approved_by_a_buyer_who_closed_the_page_is_taken_by_its_notice", func(t *testing.T) {
+		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
+		order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(11, 0)))
+		require.NoError(t, err)
+		_, err = f.paymentUC.Start(ctx, customer, uuid.MustParse(order.ID))
+		require.NoError(t, err)
+		f.paypal.mu.Lock()
+		f.paypal.notice = port.PaymentWebhookEvent{ID: "WH-APPROVED", ProviderOrderID: "PAYPAL-" + order.ID, Approved: true}
+		f.paypal.mu.Unlock()
+
+		require.NoError(t, f.paymentUC.HandleWebhook(ctx, nil, nil))
+
+		paid, err := f.orderUC.Get(ctx, customer, uuid.MustParse(order.ID))
+		require.NoError(t, err)
+		assert.Equal(t, "confirmed", paid.Status)
+		require.NotNil(t, paid.Payment)
+		assert.Equal(t, "captured", paid.Payment.Status)
+	})
+
 	t.Run("an_order_with_nothing_to_pay_is_confirmed_at_once", func(t *testing.T) {
 		newCode("FREEPASTRY", domaindiscount.TypeFixedCents, 300, nil)
 		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
@@ -221,6 +240,74 @@ func TestPayment_Integration(t *testing.T) {
 		assert.Equal(t, "confirmed", order.Status)
 		assert.Nil(t, order.Payment, "nothing to take")
 		assert.True(t, staffSees(order.ID))
+	})
+
+	payments := postgresadapter.NewPaymentRepository(f.pool)
+	cancelledPaid := func(hour int) *domainpayment.Payment {
+		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
+		order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(hour, 30)))
+		require.NoError(t, err)
+		f.pay(t, customer, order.ID)
+		_, err = f.orderUC.Cancel(ctx, customer, uuid.MustParse(order.ID))
+		require.NoError(t, err)
+		p, err := payments.GetByOrderID(ctx, uuid.MustParse(order.ID))
+		require.NoError(t, err)
+		return p
+	}
+	dueIDs := func() []uuid.UUID {
+		due, err := payments.ListRefundsDue(ctx, 100)
+		require.NoError(t, err)
+		ids := make([]uuid.UUID, 0, len(due))
+		for _, p := range due {
+			ids = append(ids, p.ID)
+		}
+		return ids
+	}
+
+	t.Run("a_refused_refund_waits_while_the_others_go_on", func(t *testing.T) {
+		refused, next := cancelledPaid(8), cancelledPaid(9)
+		require.Subset(t, dueIDs(), []uuid.UUID{refused.ID, next.ID})
+
+		attempts, err := payments.RecordRefundFailure(ctx, refused.ID, "paypal unavailable", time.Hour)
+		require.NoError(t, err)
+		assert.Equal(t, 1, attempts)
+		due := dueIDs()
+		assert.NotContains(t, due, refused.ID, "its next try waits an hour")
+		assert.Contains(t, due, next.ID)
+		again, err := payments.RecordRefundFailure(ctx, refused.ID, "paypal unavailable", time.Hour)
+		require.NoError(t, err)
+		assert.Equal(t, 2, again)
+	})
+
+	t.Run("a_refund_made_at_paypal_is_found_by_its_capture_and_recorded_once", func(t *testing.T) {
+		customer := f.newCustomer(t, []uuid.UUID{f.pastry}, nil)
+		order, err := f.orderUC.Checkout(ctx, customer, uuid.New(), acceptingTerms(tomorrowAt(10, 30)))
+		require.NoError(t, err)
+		f.pay(t, customer, order.ID)
+		paid, err := payments.GetByOrderID(ctx, uuid.MustParse(order.ID))
+		require.NoError(t, err)
+		require.NotNil(t, paid.CaptureID)
+
+		found, err := payments.GetByCaptureID(ctx, domainpayment.ProviderPayPal, *paid.CaptureID)
+		require.NoError(t, err)
+		assert.Equal(t, paid.ID, found.ID)
+		first, err := payments.RecordRefundNotice(ctx, paid.ID, "REFUND-AT-PAYPAL")
+		require.NoError(t, err)
+		assert.True(t, first)
+		again, err := payments.RecordRefundNotice(ctx, paid.ID, "REFUND-AT-PAYPAL")
+		require.NoError(t, err)
+		assert.False(t, again, "a notice delivered again finds its refund")
+		refunded, err := payments.RecordProviderRefund(ctx, paid.ID, "REFUND-AT-PAYPAL")
+
+		require.NoError(t, err)
+		assert.Equal(t, domainpayment.StatusRefunded, refunded.Status)
+		require.NotNil(t, refunded.RefundRequestedAt)
+		require.NotNil(t, refunded.RefundID)
+		assert.Equal(t, "REFUND-AT-PAYPAL", *refunded.RefundID)
+		_, err = payments.RecordProviderRefund(ctx, paid.ID, "REFUND-AGAIN")
+		require.ErrorIs(t, err, apperrors.ErrNotFound, "a payment refunded already stays as it is")
+		_, err = payments.RecordRefundFailure(ctx, paid.ID, "paypal unavailable", time.Hour)
+		require.ErrorIs(t, err, apperrors.ErrNotFound, "a refusal after the refund counts nothing")
 	})
 }
 

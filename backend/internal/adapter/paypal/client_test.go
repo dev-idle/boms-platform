@@ -104,6 +104,27 @@ func TestClient_Capture(t *testing.T) {
 		assert.Equal(t, domainpayment.Capture{ID: "CAPTURE-1", Status: domainpayment.StatusCaptured, AmountCents: 1250, Currency: "USD"}, capture)
 	})
 
+	t.Run("a_capture_still_running_under_its_id_is_asked_again_for_its_answer", func(t *testing.T) {
+		t.Parallel()
+		var calls atomic.Int32
+		client, _ := fakePayPal(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "capture-PAYPAL-ORDER", r.Header.Get("PayPal-Request-Id"), "the same capture, never a second")
+			if calls.Add(1) == 1 {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				_, _ = io.WriteString(w, `{"name":"UNPROCESSABLE_ENTITY","debug_id":"d4","details":[{"issue":"PREVIOUS_REQUEST_IN_PROGRESS"}]}`)
+				return
+			}
+			w.WriteHeader(http.StatusCreated)
+			_, _ = io.WriteString(w, completedOrder)
+		})
+
+		capture, err := client.Capture(ctx, "PAYPAL-ORDER")
+
+		require.NoError(t, err)
+		assert.Equal(t, domainpayment.StatusCaptured, capture.Status)
+		assert.Equal(t, int32(2), calls.Load())
+	})
+
 	t.Run("a_capture_held_for_review_is_pending", func(t *testing.T) {
 		t.Parallel()
 		client, _ := fakePayPal(t, func(w http.ResponseWriter, _ *http.Request) {
@@ -290,6 +311,65 @@ func TestClient_VerifyWebhook(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, event.Capture)
 		assert.Equal(t, domainpayment.StatusDenied, event.Capture.Status)
+	})
+
+	signedBy := func(t *testing.T) *Client {
+		client, _ := fakePayPal(t, func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = io.WriteString(w, `{"verification_status":"SUCCESS"}`)
+		})
+		return client
+	}
+
+	t.Run("reads_a_payment_the_buyer_approved", func(t *testing.T) {
+		t.Parallel()
+		approved := []byte(`{"id":"WH-3","event_type":"CHECKOUT.ORDER.APPROVED","resource":{"id":"PAYPAL-ORDER","status":"APPROVED"}}`)
+
+		event, err := signedBy(t).VerifyWebhook(ctx, signed, approved)
+
+		require.NoError(t, err)
+		assert.True(t, event.Approved)
+		assert.Equal(t, "PAYPAL-ORDER", event.ProviderOrderID)
+		assert.Nil(t, event.Capture)
+	})
+
+	t.Run("reads_a_refund_or_a_reversal_made_at_paypal", func(t *testing.T) {
+		t.Parallel()
+		for eventType, reversed := range map[string]bool{"PAYMENT.CAPTURE.REFUNDED": false, "PAYMENT.CAPTURE.REVERSED": true} {
+			refund := []byte(`{"id":"WH-4","event_type":"` + eventType + `","resource":{"id":"REFUND-9","status":"COMPLETED",
+				"amount":{"currency_code":"USD","value":"5.00"},
+				"seller_payable_breakdown":{"total_refunded_amount":{"currency_code":"USD","value":"12.50"}},
+				"links":[{"href":"https://api.sandbox.paypal.com/v2/payments/captures/CAPTURE-1","rel":"up"},
+				         {"href":"https://api.sandbox.paypal.com/v2/payments/refunds/REFUND-9","rel":"self"}]}}`)
+
+			event, err := signedBy(t).VerifyWebhook(ctx, signed, refund)
+
+			require.NoError(t, err, eventType)
+			require.NotNil(t, event.Refund, eventType)
+			assert.Equal(t, port.PaymentWebhookRefund{
+				CaptureID: "CAPTURE-1", RefundID: "REFUND-9", TotalRefundedCents: 1250, Currency: "USD", Reversed: reversed,
+			}, *event.Refund, eventType, "all the capture gave back so far, not this refund alone")
+		}
+	})
+
+	t.Run("a_refund_without_its_total_is_an_error", func(t *testing.T) {
+		t.Parallel()
+		refund := []byte(`{"id":"WH-6","event_type":"PAYMENT.CAPTURE.REFUNDED","resource":{"id":"REFUND-9",
+			"amount":{"currency_code":"USD","value":"12.50"},
+			"links":[{"href":"https://api.sandbox.paypal.com/v2/payments/captures/CAPTURE-1","rel":"up"}]}}`)
+
+		_, err := signedBy(t).VerifyWebhook(ctx, signed, refund)
+
+		require.Error(t, err)
+	})
+
+	t.Run("a_refund_naming_no_capture_is_an_error", func(t *testing.T) {
+		t.Parallel()
+		refund := []byte(`{"id":"WH-5","event_type":"PAYMENT.CAPTURE.REFUNDED","resource":{"id":"REFUND-9",
+			"amount":{"currency_code":"USD","value":"12.50"},"links":[]}}`)
+
+		_, err := signedBy(t).VerifyWebhook(ctx, signed, refund)
+
+		require.Error(t, err)
 	})
 
 	t.Run("refuses_a_delivery_paypal_did_not_sign", func(t *testing.T) {

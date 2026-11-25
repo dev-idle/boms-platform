@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -132,11 +133,37 @@ func startEmails(
 	accountEmails := usecase.NewAccountEmailUsecase(users, postgresrepo.NewUserTokenRepository(pool), accountComposer, mailer, log)
 	promotions := usecase.NewPromotionEmailUsecase(postgresrepo.NewPromotionRepository(pool), queue.NewEmailQueue(rdb), pool,
 		postgresrepo.NewOutboxRepository(pool), promotionComposer, mailer, unsubscribeTokens, log)
-	server := asynq.NewServerFromRedisClient(rdb, asynq.Config{
-		Concurrency: cfg.Concurrency,
-		Queues:      map[string]int{queue.QueueEmail: 2, queue.QueuePromotion: 1},
-		// A promotion goes out only while no order update or account link waits.
-		StrictPriority: true,
+	// Order and account email and promotions each have their own server: a
+	// promotion going out never takes a place an order email needs.
+	emailServer := newEmailServer(rdb, cfg, cfg.Concurrency, queue.QueueEmail, log)
+	promotionServer := newEmailServer(rdb, cfg, cfg.PromotionConcurrency, queue.QueuePromotion, log)
+	emails := asynq.NewServeMux()
+	emails.Handle(queue.TypeOrderEmail, queue.OrderEmailHandler(orderEmails))
+	emails.Handle(queue.TypeAccountEmail, queue.AccountEmailHandler(accountEmails))
+	promotionTasks := asynq.NewServeMux()
+	promotionTasks.Handle(queue.TypePromotion, queue.PromotionHandler(promotions))
+	promotionTasks.Handle(queue.TypePromotionEmail, queue.PromotionEmailHandler(promotions))
+	if err := emailServer.Start(emails); err != nil {
+		return nil, fmt.Errorf("start email queue: %w", err)
+	}
+	if err := promotionServer.Start(promotionTasks); err != nil {
+		emailServer.Shutdown()
+		return nil, fmt.Errorf("start promotion queue: %w", err)
+	}
+	return func() {
+		// Neither takes a new task while the other finishes its own.
+		emailServer.Stop()
+		promotionServer.Stop()
+		emailServer.Shutdown()
+		promotionServer.Shutdown()
+	}, nil
+}
+
+// newEmailServer sends the tasks of one queue, concurrency at a time.
+func newEmailServer(rdb *redis.Client, cfg config.MailConfig, concurrency int, queueName string, log *zap.Logger) *asynq.Server {
+	return asynq.NewServerFromRedisClient(rdb, asynq.Config{
+		Concurrency: concurrency,
+		Queues:      map[string]int{queueName: 1},
 		// zap's sugared logger has the methods Asynq logs through.
 		Logger: log.Sugar(),
 		ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
@@ -160,15 +187,6 @@ func startEmails(
 		// A send already under way takes up to twice the send timeout.
 		ShutdownTimeout: 2*cfg.SendTimeout + 5*time.Second,
 	})
-	mux := asynq.NewServeMux()
-	mux.Handle(queue.TypeOrderEmail, queue.OrderEmailHandler(orderEmails))
-	mux.Handle(queue.TypeAccountEmail, queue.AccountEmailHandler(accountEmails))
-	mux.Handle(queue.TypePromotion, queue.PromotionHandler(promotions))
-	mux.Handle(queue.TypePromotionEmail, queue.PromotionEmailHandler(promotions))
-	if err := server.Start(mux); err != nil {
-		return nil, fmt.Errorf("start email queue: %w", err)
-	}
-	return server.Shutdown, nil
 }
 
 // outboxJobs is the outbox work the worker schedules.
@@ -212,8 +230,10 @@ func newOrderJobs(cfg *config.Config, pool *postgresrepo.Pool, codes domainorder
 	}
 }
 
-// run sweeps, prunes and runs the order jobs on their intervals until ctx is
-// cancelled. Each round of order jobs is recorded as the worker's last run.
+// run runs each job in a loop of its own, on its own interval, until ctx is
+// cancelled: a job that is slow or stuck never holds the others back. Each run
+// has its interval as its deadline, so the next one starts on time. Each round
+// of an order job is recorded as the worker's last run.
 func run(
 	ctx context.Context,
 	jobs outboxJobs,
@@ -223,40 +243,51 @@ func run(
 	cfg *config.Config,
 	log *zap.Logger,
 ) {
-	// A restarted worker recovers at once instead of one interval later.
-	sweep(ctx, jobs, cfg.Outbox, log)
-
-	sweepTicker := time.NewTicker(cfg.Outbox.SweepInterval)
-	defer sweepTicker.Stop()
-	pruneTicker := time.NewTicker(cfg.Outbox.PruneInterval)
-	defer pruneTicker.Stop()
-	orderTicker := time.NewTicker(cfg.Order.JobInterval)
-	defer orderTicker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-sweepTicker.C:
-			sweep(ctx, jobs, cfg.Outbox, log)
-		case <-orderTicker.C:
-			// What a job could not do is still due, so the next tick tries it again.
-			for _, job := range orders {
-				moved, err := job.run(ctx)
-				if err != nil {
-					log.Error("order_job_failed", zap.String("job", job.name), zap.Error(err))
-				}
-				if moved > 0 {
-					log.Info("order_job_done", zap.String("job", job.name), zap.Int("orders", moved))
+	var loops sync.WaitGroup
+	every := func(interval time.Duration, now bool, work func(ctx context.Context)) {
+		loops.Go(func() {
+			// A restarted worker recovers at once instead of one interval later.
+			if now {
+				within(ctx, interval, work)
+			}
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					within(ctx, interval, work)
 				}
 			}
+		})
+	}
+	every(cfg.Outbox.SweepInterval, true, func(ctx context.Context) { sweep(ctx, jobs, cfg.Outbox, log) })
+	every(cfg.Outbox.PruneInterval, false, func(ctx context.Context) { prune(ctx, jobs, assistant, cfg, log) })
+	for _, job := range orders {
+		every(cfg.Order.JobInterval, false, func(runCtx context.Context) {
+			// What a job could not do is still due, so its next run tries it again.
+			moved, err := job.run(runCtx)
+			if err != nil {
+				log.Error("order_job_failed", zap.String("job", job.name), zap.Error(err))
+			}
+			if moved > 0 {
+				log.Info("order_job_done", zap.String("job", job.name), zap.Int("orders", moved))
+			}
+			// The loop's context: a run cut at its deadline still shows the worker alive.
 			if err := heartbeat.Beat(ctx, time.Now()); err != nil {
 				log.Warn("worker_heartbeat_failed", zap.Error(err))
 			}
-		case <-pruneTicker.C:
-			prune(ctx, jobs, assistant, cfg, log)
-		}
+		})
 	}
+	loops.Wait()
+}
+
+// within runs work with a deadline of its own.
+func within(ctx context.Context, deadline time.Duration, work func(ctx context.Context)) {
+	ctx, cancel := context.WithTimeout(ctx, deadline)
+	defer cancel()
+	work(ctx)
 }
 
 // prune deletes what has passed its retention: delivered outbox events, and

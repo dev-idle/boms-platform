@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	netmail "net/mail"
+	"strings"
 
 	"github.com/wneessen/go-mail"
 
@@ -45,9 +46,10 @@ func NewSMTPMailer(cfg config.MailConfig) *SMTPMailer {
 	return &SMTPMailer{cfg: cfg, opts: opts}
 }
 
-// Send implements port.Mailer. Only a 5xx reply — the server refusing the
-// message for good — wraps port.ErrEmailUndeliverable; a dropped connection,
-// a timeout or a "try again later" may pass on a retry.
+// Send implements port.Mailer. Only the server refusing the address itself
+// wraps port.ErrEmailUndeliverable; a full mailbox, a sending quota, a policy
+// refusal, a dropped connection, a timeout or a "try again later" may pass on
+// a retry.
 //
 // go-mail applies SendTimeout once to connecting and once to sending, so one
 // call takes up to twice that.
@@ -104,14 +106,25 @@ func sendFailure(err error) error {
 	if !errors.As(err, &refused) {
 		return fmt.Errorf("send mail: %w", err)
 	}
-	code := refused.ErrorCode()
-	described := fmt.Errorf("smtp %s failed: %d %s", refused.Reason, code, refused.EnhancedStatusCode())
-	// go-mail reports a dropped connection as a failed step with no reply
-	// code; only an actual 5xx means the server will never take the message.
-	if code >= 500 && code < 600 {
+	code, enhanced := refused.ErrorCode(), refused.EnhancedStatusCode()
+	described := fmt.Errorf("smtp %s failed: %d %s", refused.Reason, code, enhanced)
+	if addressRefused(code, enhanced) {
 		return fmt.Errorf("%w: %w", port.ErrEmailUndeliverable, described)
 	}
 	return described
+}
+
+// addressRefused reports whether the server refused the address itself — a
+// mailbox or domain that does not exist — which no retry changes: an enhanced
+// status of class 5.1, or, from a server that gives none, a bare 550, 551 or
+// 553. Any other refusal, a 5xx included, may pass later: a full mailbox
+// (5.2.2), a sending quota (5.4.5, 4.7.x) or a policy (5.7.x). go-mail reports
+// a dropped connection as a failed step with no reply code.
+func addressRefused(code int, enhanced string) bool {
+	if enhanced != "" {
+		return strings.HasPrefix(enhanced, "5.1.")
+	}
+	return code == 550 || code == 551 || code == 553
 }
 
 var _ port.Mailer = (*SMTPMailer)(nil)

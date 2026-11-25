@@ -90,6 +90,33 @@ SELECT
 FROM orders
 WHERE id = sqlc.arg('id') AND user_id = sqlc.arg('user_id')::uuid;
 
+-- name: GetOrderByID :one
+-- An order by its id alone, for the system acting on what the provider says
+-- of it; a customer reads their own through GetOrderByIDForUser.
+SELECT
+  id,
+  user_id,
+  status,
+  subtotal_cents,
+  discount_cents,
+  total_cents,
+  discount_code_id,
+  discount_code_snapshot,
+  pickup_at,
+  created_at,
+  updated_at,
+  code,
+  order_type,
+  terms_accepted_at,
+  terms_version,
+  checkout_key,
+  payment_due_at,
+  channel,
+  guest_name,
+  guest_phone
+FROM orders
+WHERE id = $1;
+
 -- name: GetOrderByCodeForUser :one
 -- One of the customer's orders, by the code they read on it.
 SELECT

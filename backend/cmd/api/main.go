@@ -631,7 +631,7 @@ func startRealtime(
 	busDone := make(chan struct{})
 	go func() {
 		defer close(busDone)
-		eventbus.Subscribe(busCtx, rdb, log, hub.Deliver)
+		eventbus.Subscribe(busCtx, rdb, log, hub.Deliver, hub.Resync)
 	}()
 	go func() {
 		log.Info("realtime_listen", zap.String("addr", cfg.Realtime.Addr))

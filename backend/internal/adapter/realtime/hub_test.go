@@ -25,6 +25,21 @@ func TestHub(t *testing.T) {
 		assert.Empty(t, customer.send)
 	})
 
+	t.Run("tells_every_socket_once_to_read_again", func(t *testing.T) {
+		t.Parallel()
+		hub := NewHub(5)
+		staff := newClient(uuid.New(), []string{"user:a", "role:staff"}, 4)
+		customer := newClient(uuid.New(), []string{"user:b"}, 4)
+		require.True(t, hub.add(staff))
+		require.True(t, hub.add(customer))
+
+		hub.Resync()
+
+		assert.JSONEq(t, `{"type":"realtime.resync","data":{}}`, string(<-staff.send))
+		assert.Empty(t, staff.send, "once, though it listens on two channels")
+		assert.JSONEq(t, `{"type":"realtime.resync","data":{}}`, string(<-customer.send))
+	})
+
 	t.Run("caps_sockets_per_user", func(t *testing.T) {
 		t.Parallel()
 		hub := NewHub(2)

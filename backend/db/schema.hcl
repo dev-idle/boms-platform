@@ -1722,6 +1722,21 @@ table "payments" {
     type = timestamptz
     null = true
   }
+  // The refund tries the provider refused, the last refusal, and when the
+  // worker tries again: a refusal puts that payment back, never the others.
+  column "refund_attempts" {
+    type    = integer
+    null    = false
+    default = 0
+  }
+  column "refund_last_error" {
+    type = text
+    null = true
+  }
+  column "refund_retry_at" {
+    type = timestamptz
+    null = true
+  }
   column "created_at" {
     type    = timestamptz
     null    = false
@@ -1748,7 +1763,7 @@ table "payments" {
     unique  = true
     columns = [column.provider, column.provider_order_id]
   }
-  // Refunds the worker still has to make, oldest request first.
+  // Refunds the worker still has to make, a handful at any time.
   index "payments_refund_due_idx" {
     columns = [column.refund_requested_at]
     where   = "status = 'captured'::payment_status AND refund_requested_at IS NOT NULL"
@@ -1781,8 +1796,38 @@ table "payments" {
   check "payments_refunded_at_check" {
     expr = "(status = 'refunded') = (refunded_at IS NOT NULL)"
   }
+  check "payments_refund_attempts_check" {
+    expr = "refund_attempts >= 0 AND (refund_last_error IS NULL OR char_length(refund_last_error) <= 500)"
+  }
   check "payments_refund_requested_check" {
     expr = "(refund_requested_at IS NULL OR captured_at IS NOT NULL) AND (refunded_at IS NULL OR refund_requested_at IS NOT NULL)"
+  }
+}
+
+// The refunds the provider told of by webhook, by its refund id: a notice
+// delivered again finds its refund here and changes nothing.
+table "payment_refund_notices" {
+  schema = schema.public
+  column "refund_id" {
+    type = text
+    null = false
+  }
+  column "payment_id" {
+    type = uuid
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    null    = false
+    default = sql("now()")
+  }
+  primary_key {
+    columns = [column.refund_id]
+  }
+  foreign_key "payment_refund_notices_payment_id_fkey" {
+    columns     = [column.payment_id]
+    ref_columns = [table.payments.column.id]
+    on_delete   = RESTRICT
   }
 }
 
@@ -2294,11 +2339,11 @@ table "promotions" {
 
 enum "order_incident_type" {
   schema = schema.public
-  values = ["bakery_cancelled", "ready_late", "no_show", "payment_failed", "payment_expired", "refunded", "payment_anomaly", "wrong_items", "custom_mismatch", "other", "left_open"]
+  values = ["bakery_cancelled", "ready_late", "no_show", "payment_failed", "payment_expired", "refunded", "payment_anomaly", "wrong_items", "custom_mismatch", "other", "left_open", "refund_failed", "payment_reversed"]
 }
 
-// Something that went wrong with an order: the system records the first seven
-// types as they happen, staff report the last three.
+// Something that went wrong with an order: staff report wrong_items,
+// custom_mismatch and other; the system records every other type as it happens.
 table "order_incidents" {
   schema = schema.public
   column "id" {

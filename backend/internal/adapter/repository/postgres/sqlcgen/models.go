@@ -238,6 +238,8 @@ const (
 	OrderIncidentTypeCustomMismatch  OrderIncidentType = "custom_mismatch"
 	OrderIncidentTypeOther           OrderIncidentType = "other"
 	OrderIncidentTypeLeftOpen        OrderIncidentType = "left_open"
+	OrderIncidentTypeRefundFailed    OrderIncidentType = "refund_failed"
+	OrderIncidentTypePaymentReversed OrderIncidentType = "payment_reversed"
 )
 
 func (e *OrderIncidentType) Scan(src interface{}) error {
@@ -956,6 +958,9 @@ type Payment struct {
 	RefundRequestedAt *time.Time      `json:"refundRequestedAt"`
 	RefundID          *string         `json:"refundId"`
 	RefundedAt        *time.Time      `json:"refundedAt"`
+	RefundAttempts    int32           `json:"refundAttempts"`
+	RefundLastError   *string         `json:"refundLastError"`
+	RefundRetryAt     *time.Time      `json:"refundRetryAt"`
 }
 
 type Product struct {

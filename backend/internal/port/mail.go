@@ -6,9 +6,8 @@ import (
 )
 
 // ErrEmailUndeliverable marks an email no retry can send: the mail server
-// refused it for good (an address that does not exist, a message it will never
-// accept), or it could not be written. Every other error from sending may pass
-// on a retry.
+// refused the address itself (a mailbox or domain that does not exist), or it
+// could not be written. Every other error from sending may pass on a retry.
 var ErrEmailUndeliverable = errors.New("email undeliverable")
 
 // Email is one message, ready to send.

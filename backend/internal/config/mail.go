@@ -40,8 +40,11 @@ type MailConfig struct {
 	// address the mail is sent from.
 	ReplyTo     string
 	SendTimeout time.Duration
-	// Concurrency is how many emails the worker sends at once.
+	// Concurrency is how many order and account emails the worker sends at once.
 	Concurrency int
+	// PromotionConcurrency is how many promotions it sends at once, apart from
+	// those: a promotion going out never takes a place an order email needs.
+	PromotionConcurrency int
 }
 
 func (c MailConfig) validate(env string) error {
@@ -75,6 +78,9 @@ func (c MailConfig) validate(env string) error {
 	}
 	if c.Concurrency < 1 || c.Concurrency > maxMailConcurrency {
 		return fmt.Errorf("mail.concurrency must be between 1 and %d", maxMailConcurrency)
+	}
+	if c.PromotionConcurrency < 1 || c.PromotionConcurrency > maxMailConcurrency {
+		return fmt.Errorf("mail.promotion_concurrency must be between 1 and %d", maxMailConcurrency)
 	}
 	if deployed {
 		if c.SMTPTLS == SMTPTLSNone {

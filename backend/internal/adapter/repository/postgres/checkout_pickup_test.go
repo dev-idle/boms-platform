@@ -126,13 +126,21 @@ func newCheckoutFixture(t *testing.T, maxConns int32) *checkoutFixture {
 }
 
 // paidPayPal stands in for PayPal with a buyer who approves every payment and
-// pays it in full; a webhook call panics. taken holds the captures the shop
-// never heard of, by PayPal order.
+// pays it in full. taken holds the captures the shop never heard of, by PayPal
+// order; notice is the webhook delivery PayPal signed.
 type paidPayPal struct {
 	port.PaymentGateway
 	mu      sync.Mutex
 	amounts map[string]int64
 	taken   map[string]domainpayment.Status
+	notice  port.PaymentWebhookEvent
+}
+
+// VerifyWebhook hands over notice.
+func (p *paidPayPal) VerifyWebhook(context.Context, func(string) string, []byte) (port.PaymentWebhookEvent, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.notice, nil
 }
 
 func (p *paidPayPal) CreateOrder(_ context.Context, req port.PaymentOrderRequest) (string, string, error) {

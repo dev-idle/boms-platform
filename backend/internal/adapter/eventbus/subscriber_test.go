@@ -3,6 +3,7 @@ package eventbus
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -40,7 +41,7 @@ func TestSubscribe(t *testing.T) {
 			mu.Lock()
 			defer mu.Unlock()
 			got = append(got, delivery{channel: channel, payload: string(payload)})
-		})
+		}, func() { t.Error("the first subscription has missed nothing") })
 	}()
 	require.Eventually(t, func() bool {
 		n, err := rdb.PubSubNumPat(context.Background()).Result()
@@ -77,4 +78,33 @@ func TestSubscribe(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Subscribe must return once its context ends")
 	}
+}
+
+// Events published while the subscription was down are lost: once it is made
+// again, the sockets are told to read again — the first time it is made, not.
+func TestSubscribe_TellsTheSocketsToReadAgainAfterADrop(t *testing.T) {
+	t.Parallel()
+	server := miniredis.RunT(t)
+	rdb := goredis.NewClient(&goredis.Options{Addr: server.Addr(), MaxRetries: -1})
+	t.Cleanup(func() { _ = rdb.Close() })
+	var resyncs atomic.Int32
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		Subscribe(ctx, rdb, zap.NewNop(), func(string, []byte) {}, func() { resyncs.Add(1) })
+	}()
+	subscribed := func() bool {
+		n, err := rdb.PubSubNumPat(context.Background()).Result()
+		return err == nil && n == 1
+	}
+	require.Eventually(t, subscribed, 5*time.Second, 10*time.Millisecond)
+	assert.Zero(t, resyncs.Load())
+
+	server.Close()
+	require.NoError(t, server.Restart())
+
+	require.Eventually(t, func() bool { return subscribed() && resyncs.Load() == 1 }, 10*time.Second, 20*time.Millisecond)
+	cancel()
+	<-done
 }

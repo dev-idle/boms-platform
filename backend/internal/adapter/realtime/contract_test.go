@@ -53,6 +53,7 @@ func TestRealtimeContractMatchesTheFrontend(t *testing.T) {
 		for _, topic := range publishedTopics {
 			require.True(t, known[string(topic)], "add %q to REALTIME_EVENT_TYPE in frontend/src/lib/realtime/events.ts", topic)
 		}
+		require.True(t, known[resyncType], "add %q to REALTIME_EVENT_TYPE in frontend/src/lib/realtime/events.ts", resyncType)
 	})
 
 	t.Run("the_reauthenticate_code_matches", func(t *testing.T) {

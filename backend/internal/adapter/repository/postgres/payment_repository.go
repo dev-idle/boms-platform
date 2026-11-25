@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -149,8 +150,54 @@ func mapPayment(row sqlcgen.Payment) *domainpayment.Payment {
 		RefundRequestedAt: row.RefundRequestedAt,
 		RefundID:          row.RefundID,
 		RefundedAt:        row.RefundedAt,
+		RefundAttempts:    int(row.RefundAttempts),
 		CreatedAt:         row.CreatedAt,
 	}
+}
+
+// GetByCaptureID implements port.PaymentRepository.
+func (r *PaymentRepository) GetByCaptureID(ctx context.Context, provider domainpayment.Provider, captureID string) (*domainpayment.Payment, error) {
+	row, err := r.q(ctx).GetPaymentByCaptureID(ctx, sqlcgen.GetPaymentByCaptureIDParams{
+		Provider: sqlcgen.PaymentProvider(provider), CaptureID: captureID,
+	})
+	if err != nil {
+		return nil, mapRepoError(err, "get payment by capture")
+	}
+	return mapPayment(row), nil
+}
+
+// RecordProviderRefund implements port.PaymentRepository.
+func (r *PaymentRepository) RecordProviderRefund(ctx context.Context, paymentID uuid.UUID, refundID string) (*domainpayment.Payment, error) {
+	row, err := r.q(ctx).RecordProviderRefund(ctx, sqlcgen.RecordProviderRefundParams{ID: paymentID, RefundID: refundID})
+	if err != nil {
+		return nil, mapRepoError(err, "record provider refund")
+	}
+	return mapPayment(row), nil
+}
+
+// RecordRefundNotice implements port.PaymentRepository.
+func (r *PaymentRepository) RecordRefundNotice(ctx context.Context, paymentID uuid.UUID, refundID string) (bool, error) {
+	n, err := r.q(ctx).RecordRefundNotice(ctx, sqlcgen.RecordRefundNoticeParams{RefundID: refundID, PaymentID: paymentID})
+	if err != nil {
+		return false, mapRepoError(err, "record refund notice")
+	}
+	return n == 1, nil
+}
+
+// RecordRefundFailure implements port.PaymentRepository.
+func (r *PaymentRepository) RecordRefundFailure(
+	ctx context.Context,
+	paymentID uuid.UUID,
+	lastError string,
+	retryAfter time.Duration,
+) (int, error) {
+	attempts, err := r.q(ctx).RecordRefundFailure(ctx, sqlcgen.RecordRefundFailureParams{
+		ID: paymentID, LastError: lastError, RetryAfterSeconds: retryAfter.Seconds(),
+	})
+	if err != nil {
+		return 0, mapRepoError(err, "record refund failure")
+	}
+	return int(attempts), nil
 }
 
 // ListByOrderIDs implements port.PaymentRepository.
