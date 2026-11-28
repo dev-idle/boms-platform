@@ -40,10 +40,10 @@ export function ManagerSalesCategories({ range }: ManagerSalesCategoriesProps) {
           </colgroup>
           <thead>
             <tr>
-              <th>Category</th>
-              <th className="db-table-num">Quantity</th>
-              <th className="db-table-num">Sales</th>
-              <th className="db-table-num">Share</th>
+              <th scope="col">Category</th>
+              <th scope="col" className="db-table-num">Quantity</th>
+              <th scope="col" className="db-table-num">Sales</th>
+              <th scope="col" className="db-table-num">Share</th>
             </tr>
           </thead>
           <tbody>
@@ -53,6 +53,7 @@ export function ManagerSalesCategories({ range }: ManagerSalesCategoriesProps) {
               entityLabel="categories"
               isEmpty={categories.length === 0}
               isError={reportQuery.isError}
+              onRetry={() => void reportQuery.refetch()}
               initialLoading={initialLoading}
             />
             {!initialLoading && !reportQuery.isError

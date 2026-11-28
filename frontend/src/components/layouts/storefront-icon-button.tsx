@@ -9,7 +9,7 @@ type StorefrontIconButtonProps = {
   children: ReactNode;
   href?: string;
   onClick?: () => void;
-  pressed?: boolean;
+  expanded?: boolean;
   ref?: Ref<HTMLButtonElement>;
   "aria-controls"?: string;
 };
@@ -20,15 +20,11 @@ export function StorefrontIconButton({
   children,
   href,
   onClick,
-  pressed,
+  expanded,
   ref,
   "aria-controls": ariaControls,
 }: StorefrontIconButtonProps) {
-  const classes = cn(
-    "storefront-header-icon",
-    pressed && "storefront-header-icon-pressed",
-    className,
-  );
+  const classes = cn("storefront-header-icon", className);
 
   if (href) {
     return (
@@ -43,7 +39,7 @@ export function StorefrontIconButton({
       ref={ref}
       aria-controls={ariaControls}
       aria-label={label}
-      aria-pressed={pressed}
+      aria-expanded={expanded}
       className={classes}
       onClick={onClick}
       title={label}

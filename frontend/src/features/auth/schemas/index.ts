@@ -39,7 +39,7 @@ export const registerSchema = z.object({
   password: newPasswordZodString(),
   accept_terms: z
     .boolean()
-    .refine((accepted) => accepted, "Accept the terms and the privacy policy to create an account"),
+    .refine((accepted) => accepted, "Accept the terms of sale and the privacy policy to create an account"),
   /** Agreeing to promotions is the customer's own choice, unticked until they tick it. */
   marketing_opt_in: z.boolean(),
 });

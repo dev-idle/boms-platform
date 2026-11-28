@@ -13,7 +13,7 @@ type brand struct {
 
 var choux = brand{
 	Name:         "Choux",
-	AddressLine:  "123 Greige Lane",
-	ContactEmail: "hello@chouxbakery.example",
-	ContactPhone: "(555) 123-4567",
+	AddressLine:  "Ninh Kieu, Can Tho",
+	ContactEmail: "nghiantgcc19224@fpt.edu.vn",
+	ContactPhone: "0123 456 789",
 }

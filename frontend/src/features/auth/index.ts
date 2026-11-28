@@ -17,9 +17,9 @@ export {
   PublicSessionGate,
   RegisterForm,
   ResetPasswordForm,
+  SignOutDialog,
   StaffGate,
   UnsubscribeView,
   VerifyEmailView,
 } from "./components";
-export { useLogout } from "./hooks";
 export { AUTH_FORM_COPY } from "./lib/auth-form-copy";

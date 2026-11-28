@@ -10,21 +10,14 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-  createClosedDate,
   createOperational,
-  cancelStrandedPickups,
-  deleteClosedDate,
   getAdminDashboard,
-  getStrandedPickups,
   disableUser,
   enableUser,
   getNextEmployeeCode,
-  getStoreSettings,
   getUserById,
-  listClosedDates,
   listUsers,
   listUserActivity,
-  patchStoreSettings,
   resetUserPassword,
   revokeUserSessions,
   updateRole,
@@ -34,13 +27,9 @@ import {
   userActivityFilterSchema,
   type AdminUser,
   type AdminResetPasswordResponse,
-  type CancelStrandedFormInput,
-  type ClosedDateFormInput,
-  type StrandingChange,
   type CreateOperationalInput,
   type CreateOperationalResponse,
   type ListFilterInput,
-  type StoreSettingsPatch,
   type UpdateRoleInput,
   type UserActivityFilterInput,
 } from "../schemas";
@@ -112,6 +101,7 @@ export function useCreateOperational() {
       setTempPasswordData(data);
       hydrateUserCaches(queryClient, data.user);
       void queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
       void queryClient.invalidateQueries({ queryKey: adminQueryKeys.nextEmployeeCode });
       toast.success("User created");
     },
@@ -143,6 +133,7 @@ function invalidateUserDetailCaches(
   userId: string,
 ): void {
   void queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
+  void queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
   void queryClient.invalidateQueries({ queryKey: adminQueryKeys.user(userId) });
   void queryClient.invalidateQueries({
     queryKey: adminQueryKeys.userActivityRoot(userId),
@@ -223,71 +214,5 @@ export function useAdminDashboard() {
     queryKey: adminQueryKeys.dashboard,
     queryFn: getAdminDashboard,
     refetchInterval: DASHBOARD_REFRESH_MS,
-  });
-}
-
-export function useStoreSettings() {
-  return useQuery({
-    queryKey: adminQueryKeys.storeSettings,
-    queryFn: getStoreSettings,
-  });
-}
-
-export function usePatchStoreSettings() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (changes: StoreSettingsPatch) => patchStoreSettings(changes),
-    onSuccess: (settings) => {
-      queryClient.setQueryData(adminQueryKeys.storeSettings, settings);
-      toast.success("Pickup rules saved");
-    },
-  });
-}
-
-export function useClosedDates() {
-  return useQuery({
-    queryKey: adminQueryKeys.closedDates,
-    queryFn: listClosedDates,
-  });
-}
-
-export function useCreateClosedDate() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: ClosedDateFormInput) => createClosedDate(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.closedDates });
-      toast.success("Closed day added");
-    },
-  });
-}
-
-/** The orders a change would strand, read fresh each time it is asked. */
-export function useStrandedPickups(change: StrandingChange) {
-  return useQuery({
-    queryKey: adminQueryKeys.strandedPickups(change),
-    queryFn: () => getStrandedPickups(change),
-    staleTime: 0,
-  });
-}
-
-/** Cancels the orders a change would strand; the dialog shows a failure. */
-export function useCancelStrandedPickups(change: StrandingChange) {
-  return useMutation({
-    mutationFn: (input: CancelStrandedFormInput) => cancelStrandedPickups(change, input),
-    onSuccess: (cancelled) => {
-      toast.success(cancelled === 1 ? "1 order cancelled" : `${cancelled} orders cancelled`);
-    },
-  });
-}
-
-export function useDeleteClosedDate() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => deleteClosedDate(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.closedDates });
-      toast.success("The bakery is open that day again");
-    },
   });
 }

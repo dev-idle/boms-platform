@@ -313,6 +313,7 @@ func (r *OrderRepository) StaffList(ctx context.Context, params port.StaffListOr
 	rows, err := r.q(ctx).StaffListOrders(ctx, sqlcgen.StaffListOrdersParams{
 		Status:     status,
 		OpenBefore: params.OpenBefore,
+		Search:     params.Search,
 		Limit:      params.Limit,
 		Offset:     params.Offset,
 	})
@@ -388,12 +389,14 @@ func (r *OrderRepository) StaffListPickupsCount(ctx context.Context, from, to ti
 	return count, nil
 }
 
-func (r *OrderRepository) StaffListCount(ctx context.Context, status *domainorder.Status, openBefore *time.Time) (int64, error) {
-	statusSQL, err := optionalOrderStatus(status)
+func (r *OrderRepository) StaffListCount(ctx context.Context, params port.StaffListOrdersParams) (int64, error) {
+	status, err := optionalOrderStatus(params.Status)
 	if err != nil {
 		return 0, err
 	}
-	count, err := r.q(ctx).StaffListOrdersCount(ctx, sqlcgen.StaffListOrdersCountParams{Status: statusSQL, OpenBefore: openBefore})
+	count, err := r.q(ctx).StaffListOrdersCount(ctx, sqlcgen.StaffListOrdersCountParams{
+		Status: status, OpenBefore: params.OpenBefore, Search: params.Search,
+	})
 	if err != nil {
 		return 0, mapRepoError(err, "staff list orders count")
 	}
@@ -507,10 +510,11 @@ func (r *OrderRepository) ListItemsByOrderID(ctx context.Context, orderID uuid.U
 	}
 	out := make([]domainorder.Item, 0, len(rows))
 	for _, row := range rows {
-		item, err := mapOrderItem(row)
+		item, err := mapOrderItem(row.OrderItem)
 		if err != nil {
 			return nil, err
 		}
+		item.ImageURL = row.ImageUrl
 		out = append(out, item)
 	}
 	return out, nil
@@ -563,11 +567,12 @@ func (r *OrderRepository) ListItemsByOrderIDs(
 	}
 	out := make(map[uuid.UUID][]domainorder.Item, len(orderIDs))
 	for _, row := range rows {
-		item, err := mapOrderItem(row)
+		item, err := mapOrderItem(row.OrderItem)
 		if err != nil {
 			return nil, err
 		}
-		out[row.OrderID] = append(out[row.OrderID], item)
+		item.ImageURL = row.ImageUrl
+		out[row.OrderItem.OrderID] = append(out[row.OrderItem.OrderID], item)
 	}
 	return out, nil
 }

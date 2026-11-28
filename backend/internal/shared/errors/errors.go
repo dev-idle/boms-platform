@@ -88,6 +88,7 @@ var (
 	ErrCategoryHasProducts          = New(http.StatusUnprocessableEntity, "category_has_products", "Category still has products")
 	ErrSlugExists                   = New(http.StatusConflict, "slug_exists", "Slug already exists")
 	ErrCodeExists                   = New(http.StatusConflict, "code_exists", "Code already exists")
+	ErrDiscountNotFound             = New(http.StatusNotFound, "discount_not_found", "Discount code not found")
 	ErrDiscountInactive             = New(http.StatusUnprocessableEntity, "discount_inactive", "Discount code is inactive")
 	ErrDiscountExpired              = New(http.StatusUnprocessableEntity, "discount_expired", "Discount code has expired")
 	ErrDiscountExhausted            = New(http.StatusUnprocessableEntity, "discount_exhausted", "Discount code has no uses remaining")

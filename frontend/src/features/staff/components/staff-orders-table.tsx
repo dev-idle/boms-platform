@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
+import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
@@ -13,11 +14,13 @@ import {
   orderStatusToPillVariant,
   StatusPill,
 } from "@/components/ui/status-pill";
-import { DASHBOARD_STAFF_ORDERS_PAGE_SIZE } from "@/constants/dashboard-table";
+import { DASHBOARD_TABLE_PAGE_SIZE, dashboardTableEmptyFiltersMessage } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
+import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -25,7 +28,7 @@ import { useStaffOrders } from "../hooks";
 import { StaffCustomerCell } from "./staff-customer-cell";
 import type { StaffOrdersStatusFilter } from "../schemas";
 
-const PAGE_SIZE = DASHBOARD_STAFF_ORDERS_PAGE_SIZE;
+const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 
 const STATUS_FILTERS: Array<{ value: StaffOrdersStatusFilter | undefined; label: string }> = [
   { value: undefined, label: "All" },
@@ -40,16 +43,17 @@ const STATUS_FILTERS: Array<{ value: StaffOrdersStatusFilter | undefined; label:
 ];
 
 export function StaffOrdersTable() {
-  const [page, setPage] = useState(1);
+  const { clear, input, page, search, setInput, setPage } = useDebouncedTableSearch();
   const [status, setStatus] = useState<StaffOrdersStatusFilter | undefined>(undefined);
   const filter = useMemo(
-    () => ({ page, page_size: PAGE_SIZE, status }),
-    [page, status],
+    () => ({ page, page_size: PAGE_SIZE, status, search }),
+    [page, search, status],
   );
   const ordersQuery = useStaffOrders(filter);
   const { initialLoading, refetching } = getQuerySurface(ordersQuery);
   const orders = ordersQuery.data?.orders ?? [];
   const pagination = ordersQuery.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     orders.length,
     pagination,
@@ -58,7 +62,14 @@ export function StaffOrdersTable() {
 
   return (
     <div className="dashboard-page-body">
-      <div className="db-table-filters db-table-filters--end">
+      <div className="db-table-filters">
+        <DashboardSearchField
+          label="Search orders"
+          onChange={setInput}
+          onClear={clear}
+          placeholder="Search order code, name, email"
+          value={input}
+        />
         <DashboardFilterGroup
           aria-label="Filter by status"
           onChange={(next) => {
@@ -71,33 +82,34 @@ export function StaffOrdersTable() {
       </div>
 
       <DashboardTableWrap refetching={refetching}>
-        <table className="db-table db-table--staff-orders db-table--comfortable">
+        <table className="db-table db-table--staff-orders">
           <colgroup>
             <col className="db-table-col-code" />
             <col />
-            <col />
-            <col />
-            <col />
-            <col />
+            <col className="db-table-col-pickup" />
+            <col className="db-table-col-number" />
+            <col className="db-table-col-status" />
+            <col className="db-table-col-actions" />
           </colgroup>
           <thead>
             <tr>
-              <th>Order</th>
-              <th>Customer</th>
-              <th>Pickup</th>
-              <th className="db-table-num">Total</th>
-              <th className="db-table-status">Status</th>
-              <th className="db-table-detail">Detail</th>
+              <th scope="col">Order</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Pickup</th>
+              <th scope="col" className="db-table-num">Total</th>
+              <th scope="col" className="db-table-status">Status</th>
+              <th scope="col" className="db-table-detail">Detail</th>
             </tr>
           </thead>
           <tbody>
             <DashboardTableStateRows
               columnCount={6}
-              emptyFilteredMessage="No orders match this filter."
+              emptyFilteredMessage={dashboardTableEmptyFiltersMessage("orders")}
               entityLabel="orders"
-              hasActiveFilter={status !== undefined}
+              hasActiveFilter={status !== undefined || search !== ""}
               isEmpty={orders.length === 0}
               isError={ordersQuery.isError}
+              onRetry={() => void ordersQuery.refetch()}
               initialLoading={initialLoading}
             />
             {!initialLoading && !ordersQuery.isError && orders.length > 0
@@ -109,7 +121,7 @@ export function StaffOrdersTable() {
                     <td>
                       <StaffCustomerCell channel={order.channel} customer={order.customer} />
                     </td>
-                    <td className="text-muted">
+                    <td className="whitespace-nowrap text-muted">
                       {order.pickup_at
                         ? formatPickupDateTime(order.pickup_at)
                         : "Not scheduled"}
@@ -127,7 +139,7 @@ export function StaffOrdersTable() {
                       <DashboardTableRowActions>
                         <DashboardTableActionLink
                           href={ROUTE.staff.orderDetail(order.id)}
-                          label={`Open order ${order.id}`}
+                          label={`Open order ${order.code}`}
                           showArrow
                           text="Open"
                         />

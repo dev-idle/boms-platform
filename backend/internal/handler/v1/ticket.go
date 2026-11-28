@@ -27,7 +27,7 @@ func (h *BakerTicketHandler) List(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	page := utils.ParseQueryInt32(c.Query("page", "1"), 1)
 	pageSize := utils.ParseQueryInt32(c.Query("page_size", usecase.OrderListDefaultPageSizeQuery), usecase.OrderListDefaultPageSize)
-	items, total, page, pageSize, err := h.usecase.List(c.Context(), page, pageSize, c.Query("status", ""), c.Query("date", ""))
+	items, total, page, pageSize, err := h.usecase.List(c.Context(), page, pageSize, c.Query("status"), c.Query("date"), c.Query("search"))
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

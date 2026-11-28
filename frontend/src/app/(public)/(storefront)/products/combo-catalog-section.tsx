@@ -8,7 +8,7 @@ export function ComboCatalogSection() {
   return (
     <ComboCatalog
       renderPurchaseActions={(comboId) => (
-        <ProductPurchaseActions comboId={comboId} label="Add combo to cart" />
+        <ProductPurchaseActions comboId={comboId} secondary />
       )}
     />
   );

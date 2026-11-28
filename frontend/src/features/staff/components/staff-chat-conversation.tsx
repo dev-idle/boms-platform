@@ -27,7 +27,7 @@ export function StaffChatConversation({ orderId = "" }: StaffChatConversationPro
   if (orderId === "") {
     state = <p className="text-sm text-muted">Choose a conversation to read it.</p>;
   } else if (!z.uuid().safeParse(orderId).success) {
-    state = <p className="text-sm text-muted">Invalid conversation link.</p>;
+    state = <p className="text-sm text-muted">This link does not lead to a conversation.</p>;
   } else if (orderQuery.isPending) {
     state = <InlineLoadingState />;
   } else if (orderQuery.isError || !order) {

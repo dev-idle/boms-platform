@@ -3,23 +3,20 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { StorefrontEmptyState, StorefrontErrorState } from "@/components/layouts/storefront-state";
 import { AsyncPanel } from "@/components/ui/async-panel";
 import { Button } from "@/components/ui/button";
-import { InlineLoadingState } from "@/components/ui/loading-state";
-import {
-  formatOrderStatusLabel,
-  orderStatusToPillVariant,
-  StatusPill,
-} from "@/components/ui/status-pill";
+import { orderStatusToPillVariant, StatusPill } from "@/components/ui/status-pill";
 import { ROUTE } from "@/constants/routes";
-import { STOREFRONT_NAV_COPY } from "@/constants/storefront-nav-copy";
-import { isApiError } from "@/lib/errors";
+import { CatalogPagination } from "@/features/catalog";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { formatDateTime } from "@/lib/validation/datetime";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
+import { plural } from "@/lib/utils";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useOrders } from "../hooks";
+import { orderHeadline } from "../lib/order-progress";
 import { OrderHistoryFilters, type OrderHistoryFilterValue } from "./order-history-filters";
 
 const NO_FILTERS: OrderHistoryFilterValue = { status: undefined, from: "", to: "" };
@@ -43,11 +40,13 @@ export function OrderList() {
   }
 
   if (ordersQuery.isPending) {
-    return <InlineLoadingState />;
-  }
-
-  if (ordersQuery.isError && isApiError(ordersQuery.error) && ordersQuery.error.isAuthError()) {
-    return <p className="text-sm text-error">Sign in to view your orders.</p>;
+    return (
+      <div aria-busy="true" className="storefront-orders__list">
+        {[0, 1, 2].map((row) => (
+          <span className="skeleton block h-16 w-full" key={row} />
+        ))}
+      </div>
+    );
   }
 
   // Kept while a filtered request fails, so the filter that caused it can be changed.
@@ -56,14 +55,15 @@ export function OrderList() {
 
   if (!ordersQuery.isError && orders.length === 0 && !filtered && !refetching) {
     return (
-      <div className="storefront-empty-state storefront-empty-state--card">
-        <p className="storefront-empty-state__message">
-          You have not placed any orders yet.
-        </p>
-        <Button asChild variant="outline">
-          <Link href={ROUTE.products}>{STOREFRONT_NAV_COPY.returnToShop}</Link>
-        </Button>
-      </div>
+      <StorefrontEmptyState
+        action={
+          <Button asChild>
+            <Link href={ROUTE.products}>Browse all products</Link>
+          </Button>
+        }
+        message="Your orders and their pickups appear here once you place one."
+        title="No orders yet"
+      />
     );
   }
 
@@ -73,49 +73,40 @@ export function OrderList() {
 
       <AsyncPanel refetching={refetching}>
         {ordersQuery.isError ? (
-          <div className="storefront-empty-state">
-            <p className="storefront-empty-state__message text-error">Failed to load orders.</p>
-            <Button type="button" variant="outline" onClick={() => void ordersQuery.refetch()}>
-              Try again
-            </Button>
-          </div>
+          <StorefrontErrorState onRetry={() => void ordersQuery.refetch()} title="We could not load your orders" />
         ) : orders.length === 0 ? (
-          <div className="storefront-empty-state">
-            <p className="storefront-empty-state__message">No orders match these filters.</p>
-            <Button type="button" variant="outline" onClick={() => changeFilters(NO_FILTERS)}>
-              Clear filters
-            </Button>
-          </div>
+          <StorefrontEmptyState
+            action={
+              <Button onClick={() => changeFilters(NO_FILTERS)} size="sm" type="button" variant="outline">
+                Clear filters
+              </Button>
+            }
+            title="No orders match these filters"
+          />
         ) : (
           <ul className="storefront-orders__list">
             {orders.map((order) => (
               <li key={order.id}>
-                <Link className="storefront-order-card" href={ROUTE.orderDetail(order.id)}>
-                  <div className="storefront-order-card__main">
-                    <p className="text-order-code">{order.code}</p>
-                    <div className="storefront-order-card__top">
-                      <p className="storefront-order-card__price text-price">
-                        {formatPriceCents(order.total_cents)}
-                      </p>
-                      <StatusPill
-                        label={formatOrderStatusLabel(order.status)}
-                        variant={orderStatusToPillVariant(order.status)}
-                      />
-                    </div>
-                    <p className="storefront-order-card__meta text-caption">
-                      {formatDateTime(order.created_at)} · {order.item_count} item
-                      {order.item_count === 1 ? "" : "s"}
-                      {order.pickup_at
-                        ? ` · Pickup ${formatPickupDateTime(order.pickup_at)}`
-                        : ""}
-                    </p>
+                <Link className="storefront-order-row" href={ROUTE.orderDetail(order.id)}>
+                  <span className="storefront-order-row__id">
+                    <span className="text-order-code">{order.code}</span>
+                    <span className="storefront-line-meta">
+                      Placed {formatDateTime(order.created_at)} · {plural(order.item_count, "item")}
+                    </span>
                     {order.unread_messages > 0 ? (
-                      <p className="storefront-order-card__unread">
-                        {order.unread_messages} new {order.unread_messages === 1 ? "message" : "messages"}
-                      </p>
+                      <span className="storefront-order-row__unread">
+                        {plural(order.unread_messages, "new message")}
+                      </span>
                     ) : null}
-                  </div>
-                  <span className="storefront-order-card__cta" aria-hidden="true">
+                  </span>
+                  <span className="storefront-order-row__pickup">
+                    {order.pickup_at ? `Pickup ${formatPickupDateTime(order.pickup_at)}` : "Pickup at the counter"}
+                  </span>
+                  <span className="storefront-order-row__total text-price">{formatPriceCents(order.total_cents)}</span>
+                  <span className="storefront-order-row__status">
+                    <StatusPill label={orderHeadline(order.status)} variant={orderStatusToPillVariant(order.status)} />
+                  </span>
+                  <span aria-hidden="true" className="storefront-order-row__go">
                     →
                   </span>
                 </Link>
@@ -125,28 +116,8 @@ export function OrderList() {
         )}
       </AsyncPanel>
 
-      {pagination && pagination.total_pages > 1 ? (
-        <div className="storefront-orders__pagination">
-          <Button
-            disabled={page <= 1}
-            type="button"
-            variant="outline"
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-          >
-            Previous
-          </Button>
-          <span className="text-caption">
-            Page {pagination.page} of {pagination.total_pages}
-          </span>
-          <Button
-            disabled={page >= pagination.total_pages}
-            type="button"
-            variant="outline"
-            onClick={() => setPage((current) => current + 1)}
-          >
-            Next
-          </Button>
-        </div>
+      {pagination ? (
+        <CatalogPagination onPageChange={setPage} page={page} totalPages={pagination.total_pages} />
       ) : null}
     </div>
   );

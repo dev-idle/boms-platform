@@ -2,75 +2,40 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ROUTE } from "@/constants/routes";
-import { primaryCatalogProductImageUrl } from "@/lib/cloudinary/config";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import type { CatalogProduct } from "@/lib/schemas/catalog";
 
+import { CatalogTile } from "./catalog-tile";
+
 type ProductCardProps = {
   product: CatalogProduct;
-  /** Shown when the catalog item has no manager-provided image URL. */
-  fallbackImageUrl?: string;
   /** Hide category label when the browse view already filters by category. */
   showCategory?: boolean;
-  /** Controls laid over the photo, beside the card's link rather than in it. */
-  actions?: ReactNode;
+  /** The save toggles, at the end of the price row. */
+  saves?: ReactNode;
+  /** The purchase action that closes the card. */
+  purchase?: ReactNode;
 };
 
-export function ProductCard({
-  product,
-  fallbackImageUrl,
-  showCategory = true,
-  actions,
-}: ProductCardProps) {
-  const imageSources =
-    product.image_urls.length > 0
-      ? product.image_urls
-      : fallbackImageUrl
-        ? [fallbackImageUrl]
-        : [];
-  const imageUrl = primaryCatalogProductImageUrl(imageSources, 720);
-
+/**
+ * A product in a grid: the photo and the name link to its page; the price row
+ * and the purchase sit outside that link, so each control is its own target.
+ */
+export function ProductCard({ product, showCategory = true, saves, purchase }: ProductCardProps) {
   return (
-    <article className="catalog-product-card group">
-      <Link
-        className="catalog-product-card__link"
-        href={ROUTE.productDetail(product.id)}
-      >
-        <div className="catalog-product-card__media">
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are external manager-provided links
-            <img
-              alt={product.name}
-              className="catalog-product-card__image"
-              src={imageUrl}
-            />
-          ) : (
-            <div aria-hidden="true" className="catalog-product-card__placeholder">
-              No image
-            </div>
-          )}
-        </div>
-        <div className="catalog-product-card__body">
-          {showCategory ? (
-            <p className="catalog-product-card__eyebrow">
-              {product.category_name}
-            </p>
-          ) : null}
-          <h3 className="catalog-product-card__name">{product.name}</h3>
-          {product.sold_out_today ? <p className="catalog-sold-out">Sold out today</p> : null}
-          <div className="catalog-product-card__footer">
-            <p className="catalog-product-card__price text-price">
-              {formatPriceCents(product.price_cents)}
-            </p>
-            {/* The whole card links to the detail page — there is no add-to-cart here. */}
-            <span className="catalog-product-card__action">
-              {product.is_customizable ? "Customize" : "Add"}
-            </span>
-          </div>
-        </div>
+    <article className="catalog-product-card">
+      <Link className="catalog-product-card__link" href={ROUTE.productDetail(product.id)}>
+        <CatalogTile name={product.name} scale="card" url={product.image_urls[0]} />
+        {showCategory ? <p className="catalog-product-card__eyebrow">{product.category_name}</p> : null}
+        <h3 className="catalog-product-card__name">{product.name}</h3>
+        {product.sold_out_today ? <p className="catalog-sold-out">Sold out today</p> : null}
       </Link>
-      {actions ? <div className="catalog-product-card__actions">{actions}</div> : null}
+      <div className="catalog-product-card__footer">
+        <p className="catalog-product-card__price text-price">{formatPriceCents(product.price_cents)}</p>
+        {saves}
+      </div>
+      {purchase ? <div className="catalog-product-card__purchase">{purchase}</div> : null}
     </article>
   );
 }

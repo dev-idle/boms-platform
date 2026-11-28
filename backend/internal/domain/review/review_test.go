@@ -60,9 +60,27 @@ func TestNewModeration(t *testing.T) {
 	}
 }
 
+func TestPublicName(t *testing.T) {
+	t.Parallel()
+	for given, want := range map[string]string{
+		"Mai Tran":        "Mai T.",
+		"  Mai   tran  ":  "Mai T.",
+		"Nguyễn Văn Ánh":  "Nguyễn Á.",
+		"Mai":             "Mai",
+		"Mai Thi Thu Tra": "Mai T.",
+	} {
+		got := PublicName(&given)
+		require.NotNil(t, got, "%q", given)
+		assert.Equal(t, want, *got, "%q", given)
+	}
+	blank := "   "
+	assert.Nil(t, PublicName(&blank))
+	assert.Nil(t, PublicName(nil))
+}
+
 func TestStatusValid(t *testing.T) {
 	t.Parallel()
-	assert.True(t, StatusPending.Valid())
+	assert.False(t, Status("pending").Valid(), "nothing waits for a manager")
 	assert.True(t, StatusPublished.Valid())
 	assert.True(t, StatusHidden.Valid())
 	assert.False(t, Status("deleted").Valid())

@@ -40,7 +40,7 @@ export function DashboardTableEditLink({
   return (
     <Link
       aria-label={label}
-      className={cn("db-table-action db-table-action--edit", className)}
+      className={cn("db-table-action", className)}
       href={href}
     >
       {text}

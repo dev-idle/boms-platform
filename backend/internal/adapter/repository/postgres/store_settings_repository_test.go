@@ -15,7 +15,7 @@ import (
 )
 
 // The migration seeds the rules that were constants before, and the row round
-// trips what an admin saves.
+// trips what a manager saves.
 func TestStoreSettingsRepository_Settings_Integration(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -32,7 +32,7 @@ func TestStoreSettingsRepository_Settings_Integration(t *testing.T) {
 	assert.Equal(t, 10, seeded.SlotCapacity)
 	assert.Equal(t, 20*time.Minute, seeded.InstantPrep)
 	assert.Equal(t, 15*time.Minute, seeded.PaymentHold)
-	require.NoError(t, seeded.Validate(), "the migration seeds rules an admin could save")
+	require.NoError(t, seeded.Validate(), "the migration seeds rules a manager could save")
 
 	edited := domainstore.Settings{
 		OpensAt: 7*time.Hour + 30*time.Minute, ClosesAt: 22 * time.Hour,

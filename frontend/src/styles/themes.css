@@ -36,6 +36,7 @@
   --field-border-hover: var(--color-ink-2);
   --field-border-readonly: var(--color-border);
   --field-text-readonly: var(--color-muted);
+  --field-autofill-ground: var(--color-db-bg);
   --field-control-height: 2.625rem;
   --field-control-font-size: 0.875rem;
   --field-control-padding-inline: 0.125rem;
@@ -59,11 +60,16 @@
   --db-table-thumb-padding-block: 0.75rem;
   /* A stacked timestamp: the date line, the gap, the smaller time line. */
   --db-table-datetime-height: calc(1.1375rem + 0.125rem + 1.05rem);
+  /* A row's text action or status pill: the 28px inline action target. */
+  --db-table-action-height: 1.75rem;
+  /* A stacked cell: the 20px primary line, the gap, the 18px caption line. */
+  --db-table-stacked-height: calc(1.25rem + var(--db-space-1) + 1.125rem);
   /* 76px leading icon/thumb column — the only width shared by every table. */
   --db-table-col-lead: 4.75rem;
   --db-table-col-status-pill: 9rem;
   --db-table-col-actions-pair: 10.5rem;
-  --db-table-col-actions-group: 17rem;
+  /* Three text actions — the users table's Disable, Revoke, Detail. */
+  --db-table-col-actions-group: 16rem;
   /* Three text actions — the pickup schedule's Ready, Hand over, Order →. */
   --db-table-col-actions-triple: 18rem;
   /* What the counter gets ready on a pickup: two or three items on a line. */
@@ -72,11 +78,14 @@
   --db-table-col-check: 12rem;
   /* A health status pill: "Needs attention" with its dot, plus the cell padding. */
   --db-table-col-health-status: 12.5rem;
-  --db-table-col-role: 9.25rem;
+  /* "Customer" as a micro-label plus the cell padding. */
+  --db-table-col-role: 7rem;
   /* "Counter" as a micro-label plus the cell padding. */
   --db-table-col-station: 7.5rem;
   /* A number column: the widest value ("$1,234.00") plus the 24px cell padding. */
   --db-table-col-number: 8rem;
+  /* A count column: "Items" over a number of two digits, plus that padding. */
+  --db-table-col-count: 5.25rem;
   /* A timestamp column: "Sep 25, 2026" with its time below, plus that padding. */
   --db-table-col-datetime: 9.75rem;
   /* An order code column: "CH-260928-001" in 12px mono, plus that padding. */
@@ -85,12 +94,8 @@
   --db-table-col-sender: 12rem;
   /* A rating column: five 14px stars, then "4.5" in mono, plus that padding. */
   --db-table-col-rating: 10.25rem;
-  --db-table-admin-fixed-cols: calc(
-    var(--db-table-col-lead) + var(--db-table-col-role) +
-      var(--db-table-col-status-pill) + var(--db-table-col-actions-group)
-  );
-  --db-table-admin-email-share: 0.58;
-  --db-table-admin-name-share: 0.42;
+  /* A day column: "Sep 25, 2026" in 13px mono, plus the cell padding. */
+  --db-table-col-date: 7.75rem;
 
   /* Filter group = segmented control with hairline dividers */
   --db-filter-chip-font: var(--label-size);

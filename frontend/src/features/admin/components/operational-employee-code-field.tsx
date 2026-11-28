@@ -50,7 +50,7 @@ export function OperationalEmployeeCodeField({
         </div>
       ) : previewQuery.isError && !code ? (
         <div className="employee-id-field-error">
-          <p className="form-field-hint">Unable to load the next employee code.</p>
+          <p className="form-field-hint">We could not load the next employee code.</p>
           <button
             className="employee-id-field-retry"
             onClick={() => void previewQuery.refetch()}

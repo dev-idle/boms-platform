@@ -3,10 +3,10 @@ package store
 import domainuser "github.com/boms/backend/internal/domain/user"
 
 const (
-	AuditActionAdminUpdatedSettings   domainuser.AuditAction = "admin.updated_store_settings"
-	AuditActionAdminAddedClosedDate   domainuser.AuditAction = "admin.added_closed_date"
-	AuditActionAdminRemovedClosedDate domainuser.AuditAction = "admin.removed_closed_date"
-	// AuditActionAdminCancelledStrandedOrder is an admin cancelling an order a
+	AuditActionManagerUpdatedSettings   domainuser.AuditAction = "manager.updated_store_settings"
+	AuditActionManagerAddedClosedDate   domainuser.AuditAction = "manager.added_closed_date"
+	AuditActionManagerRemovedClosedDate domainuser.AuditAction = "manager.removed_closed_date"
+	// AuditActionManagerCancelledStrandedOrder is a manager cancelling an order a
 	// closed day or new opening hours would strand.
-	AuditActionAdminCancelledStrandedOrder domainuser.AuditAction = "admin.cancelled_stranded_order"
+	AuditActionManagerCancelledStrandedOrder domainuser.AuditAction = "manager.cancelled_stranded_order"
 )

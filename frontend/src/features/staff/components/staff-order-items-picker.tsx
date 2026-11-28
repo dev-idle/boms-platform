@@ -112,7 +112,7 @@ export function StaffOrderItemsPicker({ lines, onChange, disabled }: StaffOrderI
                 {offer.name}
                 <span className="staff-order-items__meta">
                   {offer.kind === "combo" ? "Combo" : null}
-                  {offer.soldOutToday ? <span className="staff-order-items__sold-out">Sold out today</span> : null}
+                  {offer.soldOutToday ? <span>Sold out today</span> : null}
                 </span>
               </span>
               <span className="staff-order-items__price">{formatPriceCents(offer.unitPriceCents)}</span>

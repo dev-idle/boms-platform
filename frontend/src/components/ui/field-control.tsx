@@ -15,7 +15,7 @@ type FieldControlProps = {
   hint?: string;
   hintId?: string;
   label: string;
-  /** Inline action opposite the label (e.g. "Forgot?"), baseline-aligned. */
+  /** Inline action opposite the label (e.g. "Forgot password?"), baseline-aligned. */
   labelAction?: ReactNode;
   /** Renders a muted “(optional)” suffix on the field label. */
   optional?: boolean;

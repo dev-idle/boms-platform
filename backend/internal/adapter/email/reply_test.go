@@ -27,7 +27,7 @@ func TestReplyComposer(t *testing.T) {
 			"staff may have written first: no reply is claimed")
 		assert.Equal(t, "Mai", email.ToName)
 		for _, part := range []string{email.Text, email.HTML} {
-			assert.Contains(t, part, "Hi Mai,")
+			assert.Contains(t, part, "Hello Mai,")
 			assert.Contains(t, part, "About your order CH-261125-004, our staff wrote you 2 messages")
 			assert.Contains(t, part, "our staff at Choux wrote to you")
 			assert.Contains(t, part, "https://shop.example/orders/"+orderID.String())

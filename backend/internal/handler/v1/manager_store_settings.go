@@ -11,16 +11,16 @@ import (
 	"github.com/boms/backend/internal/usecase"
 )
 
-type AdminStoreSettingsHandler struct {
-	usecase *usecase.AdminStoreSettingsUsecase
+type ManagerStoreSettingsHandler struct {
+	usecase *usecase.ManagerStoreSettingsUsecase
 }
 
-func NewAdminStoreSettingsHandler(uc *usecase.AdminStoreSettingsUsecase) *AdminStoreSettingsHandler {
-	return &AdminStoreSettingsHandler{usecase: uc}
+func NewManagerStoreSettingsHandler(uc *usecase.ManagerStoreSettingsUsecase) *ManagerStoreSettingsHandler {
+	return &ManagerStoreSettingsHandler{usecase: uc}
 }
 
-// Get handles GET /api/v1/admin/settings.
-func (h *AdminStoreSettingsHandler) Get(c fiber.Ctx) error {
+// Get handles GET /api/v1/manager/settings.
+func (h *ManagerStoreSettingsHandler) Get(c fiber.Ctx) error {
 	out, err := h.usecase.GetSettings(c.Context())
 	if err != nil {
 		return writeMapUsecaseError(c, err)
@@ -28,8 +28,8 @@ func (h *AdminStoreSettingsHandler) Get(c fiber.Ctx) error {
 	return response.OK(c, out)
 }
 
-// Patch handles PATCH /api/v1/admin/settings.
-func (h *AdminStoreSettingsHandler) Patch(c fiber.Ctx) error {
+// Patch handles PATCH /api/v1/manager/settings.
+func (h *ManagerStoreSettingsHandler) Patch(c fiber.Ctx) error {
 	actorID, actorRole, err := actorFromCtx(c)
 	if err != nil {
 		return err
@@ -45,8 +45,8 @@ func (h *AdminStoreSettingsHandler) Patch(c fiber.Ctx) error {
 	return response.OK(c, out)
 }
 
-// ListClosedDates handles GET /api/v1/admin/closed-dates.
-func (h *AdminStoreSettingsHandler) ListClosedDates(c fiber.Ctx) error {
+// ListClosedDates handles GET /api/v1/manager/closed-dates.
+func (h *ManagerStoreSettingsHandler) ListClosedDates(c fiber.Ctx) error {
 	out, err := h.usecase.ListClosedDates(c.Context())
 	if err != nil {
 		return writeMapUsecaseError(c, err)
@@ -54,8 +54,8 @@ func (h *AdminStoreSettingsHandler) ListClosedDates(c fiber.Ctx) error {
 	return response.OK(c, out)
 }
 
-// CreateClosedDate handles POST /api/v1/admin/closed-dates.
-func (h *AdminStoreSettingsHandler) CreateClosedDate(c fiber.Ctx) error {
+// CreateClosedDate handles POST /api/v1/manager/closed-dates.
+func (h *ManagerStoreSettingsHandler) CreateClosedDate(c fiber.Ctx) error {
 	actorID, actorRole, err := actorFromCtx(c)
 	if err != nil {
 		return err
@@ -74,10 +74,10 @@ func (h *AdminStoreSettingsHandler) CreateClosedDate(c fiber.Ctx) error {
 	return response.Created(c, out)
 }
 
-// StrandedPickups handles GET /api/v1/admin/settings/stranded-pickups: the
+// StrandedPickups handles GET /api/v1/manager/settings/stranded-pickups: the
 // orders a closed day (?closed_date=) or new hours (?opens_at=&closes_at=)
 // would strand.
-func (h *AdminStoreSettingsHandler) StrandedPickups(c fiber.Ctx) error {
+func (h *ManagerStoreSettingsHandler) StrandedPickups(c fiber.Ctx) error {
 	out, err := h.usecase.StrandedPickups(c.Context(), dto.StrandedPickupsQuery{
 		ClosedDate: c.Query("closed_date"), OpensAt: c.Query("opens_at"), ClosesAt: c.Query("closes_at"),
 	})
@@ -87,8 +87,8 @@ func (h *AdminStoreSettingsHandler) StrandedPickups(c fiber.Ctx) error {
 	return response.OK(c, out)
 }
 
-// CancelStrandedPickups handles POST /api/v1/admin/settings/stranded-pickups/cancel.
-func (h *AdminStoreSettingsHandler) CancelStrandedPickups(c fiber.Ctx) error {
+// CancelStrandedPickups handles POST /api/v1/manager/settings/stranded-pickups/cancel.
+func (h *ManagerStoreSettingsHandler) CancelStrandedPickups(c fiber.Ctx) error {
 	actorID, actorRole, err := actorFromCtx(c)
 	if err != nil {
 		return err
@@ -107,8 +107,8 @@ func (h *AdminStoreSettingsHandler) CancelStrandedPickups(c fiber.Ctx) error {
 	return response.OK(c, out)
 }
 
-// DeleteClosedDate handles DELETE /api/v1/admin/closed-dates/:id.
-func (h *AdminStoreSettingsHandler) DeleteClosedDate(c fiber.Ctx) error {
+// DeleteClosedDate handles DELETE /api/v1/manager/closed-dates/:id.
+func (h *ManagerStoreSettingsHandler) DeleteClosedDate(c fiber.Ctx) error {
 	actorID, actorRole, err := actorFromCtx(c)
 	if err != nil {
 		return err

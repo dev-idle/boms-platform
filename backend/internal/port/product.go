@@ -77,8 +77,11 @@ type CatalogListProduct struct {
 // SoldOutOn narrows the page to the products out on that bakery day.
 type StaffListProductsParams struct {
 	SoldOutOn *time.Time
-	Limit     int32
-	Offset    int32
+	// Search narrows the page to products whose name or category holds it;
+	// empty lists them all.
+	Search string
+	Limit  int32
+	Offset int32
 }
 
 // StaffProduct is a product as the counter marks it sold out.
@@ -108,7 +111,8 @@ type ProductRepository interface {
 	// counted by the products they hold.
 	FulfillmentOf(ctx context.Context, productIDs, comboIDs []uuid.UUID, today time.Time) (domainorder.Fulfillment, error)
 	StaffList(ctx context.Context, params StaffListProductsParams) ([]StaffProduct, error)
-	StaffListCount(ctx context.Context, soldOutOn *time.Time) (int64, error)
+	// StaffListCount counts what StaffList pages; Limit and Offset are not read.
+	StaffListCount(ctx context.Context, params StaffListProductsParams) (int64, error)
 	// SetSoldOut marks an active product sold out on a bakery day, or back in
 	// with nil. Any other product is apperrors.ErrNotFound.
 	SetSoldOut(ctx context.Context, id uuid.UUID, day *time.Time) (*StaffProduct, error)

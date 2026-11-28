@@ -57,7 +57,7 @@ export function ProductSaveButtons({ product }: ProductSaveButtonsProps) {
             className="saved-toggle"
             disabled={!savedQuery.isSuccess || toggle.isPending}
             key={list}
-            title={savedQuery.isError ? "We could not load your lists" : title}
+            title={savedQuery.isError ? "We could not load your saved lists" : title}
             type="button"
             onClick={() => toggle.mutate({ list, product, onList })}
           >

@@ -3,6 +3,7 @@ package order
 import domainuser "github.com/boms/backend/internal/domain/user"
 
 const (
+	AuditActionStaffCreatedOrder        domainuser.AuditAction = "staff.created_order"
 	AuditActionStaffUpdatedOrderStatus  domainuser.AuditAction = "staff.updated_order_status"
 	AuditActionStaffUpdatedTicketStatus domainuser.AuditAction = "staff.updated_ticket_status"
 	AuditActionBakerUpdatedTicketStatus domainuser.AuditAction = "baker.updated_ticket_status"

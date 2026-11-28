@@ -9,6 +9,7 @@ import { ApiErrorCode, isApiError } from "@/lib/errors";
 
 import { useLinkToken, useUnsubscribe } from "../hooks";
 import { AUTH_FORM_COPY } from "../lib/auth-form-copy";
+import { focusOnMount } from "../lib/focus-on-mount";
 import { AuthFormShell } from "./auth-form-shell";
 import { AuthFormSkeleton } from "./auth-form-skeleton";
 
@@ -34,11 +35,13 @@ export function UnsubscribeView() {
     return <AuthFormSkeleton {...AUTH_FORM_COPY.unsubscribe} fields={0} />;
   }
 
+  // Each outcome replaces the skeleton, so its title takes the focus and is read out.
   if (unsubscribe.isSuccess) {
     return (
       <AuthFormShell
-        description="We will email you no more promotions. Emails about your orders still come. Changed your mind? Turn them back on from your account."
+        description="You will no longer get promotion emails. Order emails continue. You can turn promotions back on in your account."
         title="You are unsubscribed"
+        titleRef={focusOnMount}
       >
         <Button asChild className="w-full">
           <Link href={ROUTE.products}>Continue shopping</Link>
@@ -53,11 +56,17 @@ export function UnsubscribeView() {
     <AuthFormShell
       description={
         linkUnusable
-          ? "This link is not one of ours. You can turn promotions off from your account instead."
+          ? "This unsubscribe link is incomplete or no longer valid. You can turn promotions off in your account."
           : "We could not unsubscribe you just now. Please try the link again in a moment."
       }
       title={linkUnusable ? "This link does not work" : "Something went wrong"}
+      titleRef={focusOnMount}
     >
+      {token && !linkUnusable ? (
+        <Button className="w-full" onClick={() => unsubscribe.mutate(token)} type="button">
+          Try again
+        </Button>
+      ) : null}
       <Button asChild className="w-full" variant="outline">
         <Link href={ROUTE.customer.account.profile}>Go to your account</Link>
       </Button>

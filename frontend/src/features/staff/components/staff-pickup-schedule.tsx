@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
 import { DashboardTableActionButton } from "@/components/ui/dashboard-table-action-button";
 import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { DashboardTableRowActions } from "@/components/ui/dashboard-table-actions";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
-import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
+import { DashboardStepGroup } from "@/components/ui/dashboard-step-group";
 import {
   formatOrderStatusLabel,
   orderStatusToPillVariant,
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/status-pill";
 import { ROUTE } from "@/constants/routes";
 import { useNow } from "@/lib/hooks/use-now";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import type { OrderStatus } from "@/lib/schemas/order";
 import { formatTicketItems } from "@/lib/schemas/ticket";
@@ -72,6 +72,7 @@ export function StaffPickupSchedule() {
   const pickups = pickupsQuery.data?.pickups ?? [];
   const slotMinutes = pickupsQuery.data?.slot_minutes ?? 0;
   const pagination = pickupsQuery.data?.pagination;
+  keepPageInRange(page, (next) => setPaging({ day, page: next }), pagination?.total_pages);
   const showState = initialLoading || pickupsQuery.isError || pickups.length === 0;
 
   function showDay(next: string): void {
@@ -82,35 +83,16 @@ export function StaffPickupSchedule() {
     <div className="dashboard-page-body">
       <div className="db-table-filters">
         <div className="db-table-day">
-          <Input
-            aria-label="Pickup day"
-            type="date"
-            value={day}
-            variant="inline"
-            onChange={(event) => {
-              const parsed = z.iso.date().safeParse(event.target.value);
-              if (parsed.success) {
-                showDay(parsed.data);
-              }
-            }}
-          />
-          <Button size="sm" type="button" variant="outline" onClick={() => showDay(shiftDay(day, -1))}>
-            Previous day
-          </Button>
-          <Button
-            disabled={day === today}
-            size="sm"
-            title={day === today ? "Already showing today" : undefined}
-            type="button"
-            variant="outline"
-            onClick={() => showDay(today)}
-          >
-            Today
-          </Button>
-          <Button size="sm" type="button" variant="outline" onClick={() => showDay(shiftDay(day, 1))}>
-            Next day
-          </Button>
+          <DateInput id="staff-pickups-day" label="Pickup day" placeholder="Choose a day" required value={day} onChange={showDay} />
         </div>
+        <DashboardStepGroup
+          aria-label="Step the pickup day"
+          steps={[
+            { label: "Previous day", direction: "previous", onClick: () => showDay(shiftDay(day, -1)) },
+            { label: "Today", blockedReason: day === today ? "Already showing today" : undefined, onClick: () => showDay(today) },
+            { label: "Next day", direction: "next", onClick: () => showDay(shiftDay(day, 1)) },
+          ]}
+        />
       </div>
 
       <DashboardTableWrap refetching={refetching}>
@@ -124,11 +106,11 @@ export function StaffPickupSchedule() {
           </colgroup>
           <thead>
             <tr>
-              <th>Order</th>
-              <th>Customer</th>
-              <th>Counter</th>
-              <th className="db-table-status">Status</th>
-              <th className="db-table-detail">Actions</th>
+              <th scope="col">Order</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Counter</th>
+              <th scope="col" className="db-table-status">Status</th>
+              <th scope="col" className="db-table-detail">Actions</th>
             </tr>
           </thead>
           {showState ? (
@@ -139,6 +121,7 @@ export function StaffPickupSchedule() {
                 entityLabel="pickups"
                 isEmpty={pickups.length === 0}
                 isError={pickupsQuery.isError}
+                onRetry={() => void pickupsQuery.refetch()}
                 initialLoading={initialLoading}
               />
             </tbody>

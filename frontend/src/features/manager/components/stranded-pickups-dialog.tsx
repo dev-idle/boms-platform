@@ -16,7 +16,7 @@ import { formatPickupDateTime } from "@/lib/validation/pickup";
 import { useCancelStrandedPickups, useStrandedPickups } from "../hooks";
 import { cancelStrandedFormSchema, type CancelStrandedFormInput, type StrandingChange } from "../schemas";
 
-const FORM_ID = "admin-cancel-stranded";
+const FORM_ID = "manager-cancel-stranded";
 const FIELDS = ["reason"] as const;
 
 type StrandedPickupsDialogProps = {
@@ -28,7 +28,7 @@ type StrandedPickupsDialogProps = {
 
 /**
  * The orders a closed day or new opening hours would leave without a pickup,
- * for the admin to cancel — each refunded in full and its customer emailed the
+ * for the manager to cancel — each refunded in full and its customer emailed the
  * reason — before the change is saved.
  */
 export function StrandedPickupsDialog({ change, onCleared, onClose }: StrandedPickupsDialogProps) {
@@ -122,7 +122,7 @@ export function StrandedPickupsDialog({ change, onCleared, onClose }: StrandedPi
               onSuccess: onCleared,
               onError: (error) => {
                 void strandedQuery.refetch();
-                applyApiFormFieldErrors(form, error, FIELDS, "Failed to cancel the orders");
+                applyApiFormFieldErrors(form, error, FIELDS, "We could not cancel the orders. Please try again.");
               },
             }),
           )}
@@ -132,7 +132,7 @@ export function StrandedPickupsDialog({ change, onCleared, onClose }: StrandedPi
             name="reason"
             render={({ field }) => (
               <FormItem>
-                <FieldControl hint="Up to 200 characters." hintId="admin-stranded-reason-hint" label="Reason">
+                <FieldControl hint="Up to 200 characters." hintId="manager-stranded-reason-hint" label="Reason">
                   <Input {...field} autoComplete="off" maxLength={200} />
                 </FieldControl>
                 <FormMessage />

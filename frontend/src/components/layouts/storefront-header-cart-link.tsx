@@ -1,36 +1,69 @@
 "use client";
 
 import Link from "next/link";
+import { useId, useRef, useState } from "react";
 
 import { CartIcon } from "@/components/icons/storefront-icons";
+import { USER_ROLE } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
-import { useCart } from "@/features/customer";
+import { cartItemCount, MiniCart, useCart } from "@/features/customer";
+import { cn, plural } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 
-function cartItemCount(items: { quantity: number }[]): number {
-  return items.reduce((total, item) => total + item.quantity, 0);
-}
+import { useStorefrontHeaderPanel } from "./use-storefront-header-panel";
 
-/** Cart affordance with matcha count badge; the label shows from 40rem. */
+/**
+ * The cart in the header: a signed-in customer drops it open under the icon,
+ * which fills in matcha with the count beside the bag once it holds something;
+ * a guest goes to the cart page, which asks them to sign in.
+ */
 export function StorefrontHeaderCartLink() {
-  const isAuthenticated = useAuthStore((state) => state.status === "authenticated");
-  const cartQuery = useCart({ enabled: isAuthenticated });
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const signedIn = useAuthStore(
+    (state) => state.status === "authenticated" && state.user?.role === USER_ROLE.customer,
+  );
+  const cartQuery = useCart({ enabled: signedIn });
   const itemCount = cartQuery.data ? cartItemCount(cartQuery.data.items) : 0;
+  const label = itemCount > 0 ? `Cart, ${plural(itemCount, "item")}` : "Cart";
+
+  // Closed from inside, the focus goes back to the icon instead of the page.
+  function close(): void {
+    if (panelRef.current?.contains(document.activeElement)) {
+      toggleRef.current?.focus();
+    }
+    setOpen(false);
+  }
+
+  useStorefrontHeaderPanel({ open, onClose: close, panelRef, toggleRef, focusRef: panelRef });
+
+  if (!signedIn) {
+    return (
+      <Link aria-label={label} className="storefront-header-cart" href={ROUTE.cart}>
+        <CartIcon />
+      </Link>
+    );
+  }
 
   return (
-    <Link
-      aria-busy={cartQuery.isPending || undefined}
-      aria-label={
-        itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"
-      }
-      className="storefront-header-cart"
-      href={ROUTE.cart}
-    >
-      <CartIcon />
-      <span className="sr-only sm:not-sr-only">Cart</span>
-      {itemCount > 0 ? (
-        <span className="storefront-header-cart__badge">{itemCount}</span>
-      ) : null}
-    </Link>
+    <>
+      <button
+        aria-busy={cartQuery.isPending || undefined}
+        aria-controls={open ? panelId : undefined}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={label}
+        className={cn("storefront-header-cart", itemCount > 0 && "storefront-header-cart--filled")}
+        onClick={() => setOpen((current) => !current)}
+        ref={toggleRef}
+        type="button"
+      >
+        <CartIcon />
+        {itemCount > 0 ? <span className="storefront-header-cart__count">{itemCount}</span> : null}
+      </button>
+      {open ? <MiniCart id={panelId} onNavigate={() => setOpen(false)} panelRef={panelRef} /> : null}
+    </>
   );
 }

@@ -11,7 +11,7 @@ type CreateReviewRequest struct {
 }
 
 // ReviewResponse is the customer's review of a product on their order, with
-// where it stands with the manager.
+// whether the storefront shows it.
 type ReviewResponse struct {
 	ID        string    `json:"id"`
 	ProductID string    `json:"product_id"`
@@ -32,16 +32,18 @@ type ProductReviewsResponse struct {
 }
 
 // PublishedReviewResponse is a review as the storefront shows it: from a
-// customer who picked the product up, without their name.
+// customer who picked the product up, under the short form of the name they
+// gave (review.PublicName), null when they gave none.
 type PublishedReviewResponse struct {
-	ID        string    `json:"id"`
-	Rating    int16     `json:"rating"`
-	Comment   *string   `json:"comment"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         string    `json:"id"`
+	Rating     int16     `json:"rating"`
+	Comment    *string   `json:"comment"`
+	CreatedAt  time.Time `json:"created_at"`
+	AuthorName *string   `json:"author_name"`
 }
 
-// ManagerReviewResponse is a review as a manager moderates it. ModeratorName
-// is null while it is pending.
+// ManagerReviewResponse is a review as a manager reads it. ModeratorName is
+// null on a review no manager has hidden.
 type ManagerReviewResponse struct {
 	ID            string    `json:"id"`
 	OrderCode     string    `json:"order_code"`
@@ -54,17 +56,16 @@ type ManagerReviewResponse struct {
 	ModeratorName *string   `json:"moderator_name"`
 }
 
-// ModerateReviewRequest publishes a review or hides it.
+// ModerateReviewRequest hides a review or publishes it again.
 type ModerateReviewRequest struct {
 	Status string `json:"status" validate:"required,oneof=published hidden"`
 }
 
 // ReviewSummaryResponse is the customers' feedback for a manager: every
-// review not hidden, how many wait for a manager, how many gave each rating
-// (Stars[0] one star), and each product's, the lowest average first.
+// review not hidden, how many gave each rating (Stars[0] one star), and each
+// product's, the lowest average first.
 type ReviewSummaryResponse struct {
 	ReviewCount   int64                   `json:"review_count"`
-	PendingCount  int64                   `json:"pending_count"`
 	AverageRating *float64                `json:"average_rating"`
 	Stars         []int64                 `json:"stars"`
 	Products      []ProductRatingResponse `json:"products"`

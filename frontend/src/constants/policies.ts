@@ -6,7 +6,7 @@
  * for an hour after it first serves this one, so change it only together with
  * the pages, moving the old value into `PreviousTermsVersion`.
  */
-export const TERMS_VERSION = "2026-11-25.3";
+export const TERMS_VERSION = "2026-11-28.1";
 
 /** The day the current version took effect, as the policy pages state it. */
-export const POLICIES_EFFECTIVE = "25 November 2026";
+export const POLICIES_EFFECTIVE = "November 28, 2026";

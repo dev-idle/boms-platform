@@ -49,7 +49,7 @@ export function DeleteAccountCard() {
         }
         toast.error(
           isApiError(error) && error.code === ApiErrorCode.AccountHasOpenOrders
-            ? "You have an order that is not collected or cancelled yet. You can delete your account once it is."
+            ? "You have an order that is not picked up or cancelled yet. You can delete your account once it is."
             : "We could not delete your account. Please try again.",
         );
       },
@@ -66,9 +66,10 @@ export function DeleteAccountCard() {
           onSubmit={form.handleSubmit(() => setOpen(true))}
         >
           <p className="storefront-account-danger__copy">
-            We erase your name, phone number and email and sign you out everywhere.
-            Your past orders stay in our sales records without your details. This
-            cannot be undone, and waits until no order of yours is still open.
+            We erase your name, phone number and email, your messages, reviews, saved
+            lists and reference photos, and sign you out on every device. Past orders
+            stay in our sales records without your details. You can delete your account
+            once every order is picked up or cancelled.
           </p>
           <FormField
             control={form.control}
@@ -76,7 +77,7 @@ export function DeleteAccountCard() {
             render={({ field }) => (
               <FormItem>
                 <FieldControl
-                  hint="Erasing cannot be undone, so we check it is you."
+                  hint="We check it is you before erasing anything."
                   label="Current password"
                 >
                   <PasswordInput autoComplete="current-password" {...field} />
@@ -100,7 +101,7 @@ export function DeleteAccountCard() {
         cancelLabel="Keep account"
         confirmLabel="Delete account"
         confirmVariant="destructive"
-        description="Your personal details are erased and you are signed out everywhere. This cannot be undone."
+        description="Your personal details are erased and you are signed out on every device. This cannot be undone."
         isPending={mutation.isPending}
         onCancel={() => setOpen(false)}
         onConfirm={erase}

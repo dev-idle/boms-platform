@@ -12,7 +12,7 @@ import (
 	"github.com/boms/backend/internal/usecase"
 )
 
-// ManagerReviewHandler is a manager moderating reviews and reading feedback.
+// ManagerReviewHandler is a manager reading reviews, hiding one, and reading feedback.
 type ManagerReviewHandler struct {
 	usecase *usecase.ManagerReviewUsecase
 }
@@ -46,7 +46,7 @@ func (h *ManagerReviewHandler) Summary(c fiber.Ctx) error {
 	return response.OK(c, out)
 }
 
-// Moderate publishes a review or hides it.
+// Moderate hides a review or publishes it again.
 func (h *ManagerReviewHandler) Moderate(c fiber.Ctx) error {
 	response.EnsureRequestID(c)
 	actorID, actorRole, err := actorFromCtx(c)

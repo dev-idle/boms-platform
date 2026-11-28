@@ -3,11 +3,12 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef, useState } from "react";
 
 import { LogOutIcon } from "@/components/icons/dashboard-nav-icons";
 import { DashboardChevronUpIcon } from "@/components/icons/dashboard-ui-icons";
-import { useLogout } from "@/features/auth";
-import { userDisplayName, userInitials } from "@/lib/user-initials";
+import { SignOutDialog } from "@/features/auth";
+import { userDisplayName, userInitial } from "@/lib/user-initials";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -27,7 +28,10 @@ export function DashboardAccountMenu({
 }: DashboardAccountMenuProps) {
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
-  const logout = useLogout();
+  const [signingOut, setSigningOut] = useState(false);
+  // Asked for from the menu, and opened once the menu has closed and given
+  // focus back to its trigger — where the dialog returns it when it closes.
+  const signOutAsked = useRef(false);
   const displayName = userDisplayName(user);
   const email = user?.email ?? "";
   // No nav item owns the account routes any more, so the trigger carries "you are here".
@@ -47,7 +51,7 @@ export function DashboardAccountMenu({
         )}
       >
         <span aria-hidden className="dashboard-avatar">
-          {userInitials(user)}
+          {userInitial(user)}
         </span>
         <span className="dashboard-account-meta">
           <span className="dashboard-account-name" title={displayName}>
@@ -68,6 +72,12 @@ export function DashboardAccountMenu({
           className="dashboard-account-popover"
           side="top"
           sideOffset={8}
+          onCloseAutoFocus={() => {
+            if (signOutAsked.current) {
+              signOutAsked.current = false;
+              setSigningOut(true);
+            }
+          }}
         >
           <DropdownMenu.Label className="dashboard-account-popover__label">
             Account
@@ -81,26 +91,20 @@ export function DashboardAccountMenu({
 
           <DropdownMenu.Separator className="dashboard-account-separator" />
 
-          {/* The menu stays open while the request runs: closing it first would take
-              the only place the wait could be shown, and signing out is slow enough
-              to be worth saying. The redirect closes it. */}
           <DropdownMenu.Item
-            aria-busy={logout.isPending || undefined}
             className="dashboard-account-item dashboard-account-item--signout"
-            disabled={logout.isPending}
-            title={logout.isPending ? "Signing out…" : undefined}
-            onSelect={(event) => {
-              event.preventDefault();
-              logout.mutate();
+            onSelect={() => {
+              signOutAsked.current = true;
             }}
           >
-            {logout.isPending ? "Signing out…" : "Sign out"}
+            Sign out
             {/* Trailing so both labels keep one left rail; the only glyph in the
                 menu, so it reads as punctuation rather than a column of icons. */}
             <LogOutIcon className="dashboard-account-item__mark" />
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
+      <SignOutDialog open={signingOut} onClose={() => setSigningOut(false)} />
     </DropdownMenu.Root>
   );
 }

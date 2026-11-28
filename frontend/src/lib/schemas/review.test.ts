@@ -7,8 +7,8 @@ describe("productReviewsSchema", () => {
     review_count: 2,
     average_rating: 4.5,
     reviews: [
-      { id: "0b6c8f5e-3c1d-4a8e-9f0a-2d7e6c5b4a39", rating: 5, comment: "Flaky\nand buttery", created_at: "2026-10-02T09:00:00+07:00" },
-      { id: "1c7d9a6f-4d2e-4b9f-8a1b-3e8f7d6c5b4a", rating: 4, comment: null, created_at: "2026-10-01T09:00:00+07:00" },
+      { id: "0b6c8f5e-3c1d-4a8e-9f0a-2d7e6c5b4a39", rating: 5, comment: "Flaky\nand buttery", created_at: "2026-10-02T09:00:00+07:00", author_name: "Mai T." },
+      { id: "1c7d9a6f-4d2e-4b9f-8a1b-3e8f7d6c5b4a", rating: 4, comment: null, created_at: "2026-10-01T09:00:00+07:00", author_name: null },
     ],
     has_more: false,
   };

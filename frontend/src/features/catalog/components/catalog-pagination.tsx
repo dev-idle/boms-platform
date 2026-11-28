@@ -1,15 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 type CatalogPaginationProps = {
-  className?: string;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
 };
 
 export function CatalogPagination({
-  className,
   page,
   totalPages,
   onPageChange,
@@ -19,10 +16,7 @@ export function CatalogPagination({
   }
 
   return (
-    <nav
-      aria-label="Pagination"
-      className={cn("catalog-pagination", className)}
-    >
+    <nav aria-label="Pagination" className="catalog-pagination">
       <Button
         disabled={page <= 1}
         onClick={() => onPageChange(Math.max(1, page - 1))}

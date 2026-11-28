@@ -36,8 +36,8 @@ export function ManagerOperationsWork() {
             </colgroup>
             <thead>
               <tr>
-                <th>Status</th>
-                <th className="db-table-num">Orders</th>
+                <th scope="col">Status</th>
+                <th scope="col" className="db-table-num">Orders</th>
               </tr>
             </thead>
             <tbody>
@@ -46,6 +46,7 @@ export function ManagerOperationsWork() {
                 entityLabel="orders"
                 isEmpty={false}
                 isError={operationsQuery.isError}
+                onRetry={() => void operationsQuery.refetch()}
                 initialLoading={initialLoading}
               />
               {loaded
@@ -78,10 +79,10 @@ export function ManagerOperationsWork() {
             </colgroup>
             <thead>
               <tr>
-                <th>Station</th>
-                <th className="db-table-num">Queued</th>
-                <th className="db-table-num">In progress</th>
-                <th className="db-table-num">Ready</th>
+                <th scope="col">Station</th>
+                <th scope="col" className="db-table-num">Queued</th>
+                <th scope="col" className="db-table-num">In progress</th>
+                <th scope="col" className="db-table-num">Ready</th>
               </tr>
             </thead>
             <tbody>
@@ -90,6 +91,7 @@ export function ManagerOperationsWork() {
                 entityLabel="stations"
                 isEmpty={false}
                 isError={operationsQuery.isError}
+                onRetry={() => void operationsQuery.refetch()}
                 initialLoading={initialLoading}
               />
               {loaded

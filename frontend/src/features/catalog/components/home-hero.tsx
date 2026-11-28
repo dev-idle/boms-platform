@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { BRAND } from "@/constants/brand";
 import { Button } from "@/components/ui/button";
 import { ROUTE } from "@/constants/routes";
 import { STOREFRONT_HERO_IMAGE_URL } from "@/constants/storefront-imagery";
@@ -23,16 +22,15 @@ export function HomeHero() {
           </h1>
           <div aria-hidden="true" className="storefront-hero__rule" />
           <p className="storefront-hero__lead">
-            Handcrafted pastries and celebration cakes, baked in small batches
-            each morning. Order online and choose the pickup window that suits
-            you.
+            Handcrafted pastries and celebration cakes. Order online and choose
+            the pickup time that suits you.
           </p>
           <div className="storefront-hero__actions">
             <Button asChild showArrow size="lg">
               <Link href={ROUTE.products}>Shop the collection</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href={CUSTOM_CAKE_BROWSE_HREF}>Custom cake</Link>
+              <Link href={CUSTOM_CAKE_BROWSE_HREF}>Custom cakes</Link>
             </Button>
           </div>
         </div>
@@ -49,10 +47,8 @@ export function HomeHero() {
             />
           </div>
           <p className="storefront-hero__stat">
-            <span className="storefront-hero__stat-value">
-              {BRAND.yearsInBusiness}
-            </span>
-            <span className="storefront-hero__stat-label">years of baking</span>
+            <span className="storefront-hero__stat-value">7</span>
+            <span className="storefront-hero__stat-label">days a week</span>
           </p>
         </div>
       </div>

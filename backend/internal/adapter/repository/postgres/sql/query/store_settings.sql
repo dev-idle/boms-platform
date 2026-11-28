@@ -4,7 +4,7 @@ FROM store_settings
 WHERE id = 1;
 
 -- name: GetStoreSettingsForUpdate :one
--- Locks the row so two admins editing at once cannot undo each other.
+-- Locks the row so two managers editing at once cannot undo each other.
 SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, payment_hold_minutes, updated_at
 FROM store_settings
 WHERE id = 1

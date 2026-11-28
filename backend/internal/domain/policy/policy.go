@@ -8,11 +8,11 @@ import "time"
 // with the published pages whenever what a customer agrees to changes; every
 // acceptance records the version it was given, so a later change never
 // rewrites what someone agreed to.
-const TermsVersion = "2026-11-25.3"
+const TermsVersion = "2026-11-28.1"
 
 // PreviousTermsVersion is the version TermsVersion replaced; when TermsVersion
 // changes, the version it had moves here.
-const PreviousTermsVersion = "2026-11-25.2"
+const PreviousTermsVersion = "2026-11-25.3"
 
 // PreviousTermsOverlap is how long after TermsVersion is first served the
 // version before it is still accepted: a change reaches an open page only when

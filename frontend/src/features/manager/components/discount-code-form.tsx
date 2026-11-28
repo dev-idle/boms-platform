@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
+import { DashboardFormCancelLink } from "@/components/ui/dashboard-form-cancel-link";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
 import {
@@ -30,6 +31,7 @@ import {
 import { DashboardDatetimeInput } from "@/components/ui/dashboard-datetime-input";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 import { CATALOG_INTEGER_MAX } from "@/lib/validation/catalog";
@@ -106,7 +108,7 @@ export function DiscountCodeForm({
       onSuccess: () => onSuccess?.(),
       onError: (error) => {
         if (!isApiError(error)) {
-          toast.error("Something went wrong");
+          toast.error("We could not save the discount code. Please try again.");
           return;
         }
         if (error.isCodeExists()) {
@@ -157,15 +159,10 @@ export function DiscountCodeForm({
                     const nextType = event.target
                       .value as DiscountCodeFormInput["discount_type"];
                     field.onChange(nextType);
-                    if (nextType === DISCOUNT_TYPE.percent) {
-                      const currentValue = form.getValues("value");
-                      if (
-                        currentValue !== undefined &&
-                        currentValue > 100
-                      ) {
-                        form.setValue("value", 100, { shouldValidate: true });
-                      }
-                    } else {
+                    // The number is a percent in one type and money in the other:
+                    // it is entered again rather than read in the new unit.
+                    form.resetField("value", { defaultValue: undefined });
+                    if (nextType !== DISCOUNT_TYPE.percent) {
                       form.setValue("max_discount_cents", null, {
                         shouldValidate: true,
                       });
@@ -174,9 +171,7 @@ export function DiscountCodeForm({
                   value={field.value}
                 >
                   <option value={DISCOUNT_TYPE.percent}>Percent</option>
-                  <option value={DISCOUNT_TYPE.fixedCents}>
-                    Fixed amount (cents)
-                  </option>
+                  <option value={DISCOUNT_TYPE.fixedCents}>Fixed amount</option>
                 </Select>
               </FieldControl>
               <FormMessage />
@@ -355,6 +350,7 @@ export function DiscountCodeForm({
             isPending={isPending}
             pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
           />
+          <DashboardFormCancelLink href={ROUTE.manager.discountCodes} />
         </div>
       </form>
     </Form>

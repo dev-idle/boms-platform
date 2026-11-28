@@ -35,6 +35,18 @@ type CatalogListCategoriesParams struct {
 	Offset int32
 }
 
+// CatalogCategory is a category as the shop lists it.
+type CatalogCategory struct {
+	ID        uuid.UUID
+	Name      string
+	Slug      string
+	SortOrder int32
+	// ProductCount is how many products the shop shows in it.
+	ProductCount int64
+	// ImageURL is the first photo of the first product (by name) that has one; nil until then.
+	ImageURL *string
+}
+
 type CategoryRepository interface {
 	Create(ctx context.Context, params CreateCategoryParams) (*domaincategory.Category, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domaincategory.Category, error)
@@ -42,6 +54,6 @@ type CategoryRepository interface {
 	SoftDeleteIfNoProducts(ctx context.Context, id uuid.UUID) (int64, error)
 	ManagerList(ctx context.Context, params ManagerListCategoriesParams) ([]domaincategory.Category, error)
 	ManagerListCount(ctx context.Context, search *string) (int64, error)
-	CatalogList(ctx context.Context, params CatalogListCategoriesParams) ([]domaincategory.Category, error)
+	CatalogList(ctx context.Context, params CatalogListCategoriesParams) ([]CatalogCategory, error)
 	CatalogListCount(ctx context.Context) (int64, error)
 }

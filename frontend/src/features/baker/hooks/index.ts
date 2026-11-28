@@ -9,7 +9,7 @@ import {
 import { z } from "zod";
 import { toast } from "sonner";
 
-import { isApiError } from "@/lib/errors";
+import { userFacingErrorMessage } from "@/lib/errors";
 import {
   ticketChangeMessage,
   type PatchTicketStatusInput,
@@ -27,21 +27,7 @@ import {
 } from "../api";
 import { bakerQueryKeys } from "./query-options";
 
-const defaultTicketsFilter: StationTicketsListFilterInput = {
-  page: 1,
-  page_size: 20,
-};
-
-function bakerMutationErrorMessage(error: unknown, fallback: string): string {
-  if (isApiError(error)) {
-    return error.message;
-  }
-  return fallback;
-}
-
-export function useKitchenTickets(
-  input: StationTicketsListFilterInput = defaultTicketsFilter,
-) {
+export function useKitchenTickets(input: StationTicketsListFilterInput) {
   const filter = stationTicketsListFilterSchema.parse(input);
   return useQuery({
     queryKey: bakerQueryKeys.tickets(filter),
@@ -70,7 +56,7 @@ export function usePatchKitchenTicketStatus(ticketId: string) {
       toast.success(ticketChangeMessage(change));
     },
     onError: (error) => {
-      toast.error(bakerMutationErrorMessage(error, "Failed to update the ticket"));
+      toast.error(userFacingErrorMessage(error, "We could not update the ticket. Please try again."));
     },
   });
 }

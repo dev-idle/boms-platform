@@ -1,12 +1,10 @@
 /**
- * Admin feature — the admin home, operational user management and store
- * settings (admin-only).
+ * Admin feature — the admin home and operational user management (admin-only).
  *
  * Internal: api/, components/, hooks/, lib/, schemas/
  */
 export {
   AdminDashboard,
-  AdminStoreSettings,
   AdminUserDetail,
   AdminUsersTable,
   CreateOperationalUserForm,

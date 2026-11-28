@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import { DashboardFormCancelLink } from "@/components/ui/dashboard-form-cancel-link";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Select } from "@/components/ui/select";
 import { ASSIGNABLE_OPERATIONAL_ROLES, roleDisplayLabel } from "@/constants/roles";
+import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { applyApiFormFieldErrors } from "@/lib/validation";
 
@@ -46,7 +48,7 @@ export function CreateOperationalUserForm() {
           form,
           error,
           CREATE_OPERATIONAL_FORM_FIELDS,
-          "Failed to create user",
+          "We could not create user. Please try again.",
         );
       },
     });
@@ -135,6 +137,7 @@ export function CreateOperationalUserForm() {
               isPending={createUser.isPending}
               pendingLabel="Creating…"
             />
+            <DashboardFormCancelLink href={ROUTE.admin.users} />
           </div>
         </form>
       </Form>

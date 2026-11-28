@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { CatalogImageListField } from "@/components/ui/catalog-image-list-field";
 import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields";
+import { DashboardFormCancelLink } from "@/components/ui/dashboard-form-cancel-link";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/form";
 import { DashboardDatetimeInput } from "@/components/ui/dashboard-datetime-input";
 import { MoneyFieldInput } from "@/components/ui/money-field-input";
+import { ROUTE } from "@/constants/routes";
 import { isCloudinaryConfigured } from "@/lib/cloudinary/config";
 import { cloudinaryComboImageFieldHint } from "@/lib/cloudinary/messages";
 import { isApiError } from "@/lib/errors";
@@ -51,6 +53,7 @@ type ComboFormProps = {
 const COMBO_FORM_FIELDS = [
   "name",
   "slug",
+  "image_url",
   "price_cents",
   "starts_at",
   "ends_at",
@@ -96,7 +99,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
       onSuccess: () => onSuccess?.(),
       onError: (error) => {
         if (!isApiError(error)) {
-          toast.error("Something went wrong");
+          toast.error("We could not save the combo. Please try again.");
           return;
         }
         if (error.isSlugExists()) {
@@ -237,6 +240,7 @@ export function ComboForm({ mode, combo, onSuccess }: ComboFormProps) {
             isPending={isSavePending}
             pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
           />
+          <DashboardFormCancelLink href={ROUTE.manager.combos} />
         </div>
       </form>
     </Form>

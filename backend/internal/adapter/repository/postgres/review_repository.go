@@ -150,10 +150,9 @@ func (r *ReviewRepository) RatingCounts(ctx context.Context) (port.RatingCounts,
 		return port.RatingCounts{}, mapRepoError(err, "count review ratings")
 	}
 	return port.RatingCounts{
-		Count:   row.ReviewCount,
-		Pending: row.PendingCount,
-		Total:   row.RatingTotal,
-		Stars:   [domainreview.MaxRating]int64{row.OneStar, row.TwoStars, row.ThreeStars, row.FourStars, row.FiveStars},
+		Count: row.ReviewCount,
+		Total: row.RatingTotal,
+		Stars: [domainreview.MaxRating]int64{row.OneStar, row.TwoStars, row.ThreeStars, row.FourStars, row.FiveStars},
 	}, nil
 }
 

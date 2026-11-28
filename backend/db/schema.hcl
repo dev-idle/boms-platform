@@ -2220,11 +2220,12 @@ table "saved_products" {
 
 enum "review_status" {
   schema = schema.public
-  values = ["pending", "published", "hidden"]
+  values = ["published", "hidden"]
 }
 
 // A customer's review of a product they collected: one per product per order,
-// held for a manager to publish or hide before anyone else reads it.
+// shown on the product's page from the moment it is written until a manager
+// hides it.
 table "reviews" {
   schema = schema.public
   column "id" {
@@ -2256,9 +2257,9 @@ table "reviews" {
   column "status" {
     type    = enum.review_status
     null    = false
-    default = "pending"
+    default = "published"
   }
-  // The manager who last published or hid it, and when.
+  // The manager who last hid it or published it again, and when.
   column "moderated_by" {
     type = uuid
     null = true
@@ -2313,7 +2314,7 @@ table "reviews" {
     columns = [column.product_id, column.created_at]
     where   = "((status = 'published'::review_status) AND (deleted_at IS NULL))"
   }
-  // The moderation queue, by status, latest first.
+  // The manager's list by status, latest first.
   index "reviews_status_created_idx" {
     columns = [column.status, column.created_at]
     where   = "(deleted_at IS NULL)"
@@ -2328,7 +2329,7 @@ table "reviews" {
     expr = "comment IS NULL OR char_length(comment) BETWEEN 1 AND 1000"
   }
   check "reviews_moderation_check" {
-    expr = "(moderated_by IS NULL) = (moderated_at IS NULL) AND (status = 'pending') = (moderated_at IS NULL)"
+    expr = "(moderated_by IS NULL) = (moderated_at IS NULL) AND (status = 'published' OR moderated_at IS NOT NULL)"
   }
 }
 

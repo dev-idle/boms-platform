@@ -2,117 +2,96 @@
 
 import { useMemo, type ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
-import { AsyncPanel } from "@/components/ui/async-panel";
 import { StorefrontPageHeader } from "@/components/layouts/storefront-page-header";
-
-import {
-  CATALOG_COMBOS_PAGE_SIZE,
-  CATALOG_PRODUCTS_PAGE_SIZE,
-} from "@/constants/catalog";
-import { catalogProductFallbackImageUrl } from "@/constants/storefront-imagery";
+import { StorefrontEmptyState, StorefrontErrorState } from "@/components/layouts/storefront-state";
+import { AsyncPanel } from "@/components/ui/async-panel";
+import { Button } from "@/components/ui/button";
+import { CATALOG_PRODUCTS_PAGE_SIZE } from "@/constants/catalog";
+import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import type { CatalogProduct } from "@/lib/schemas/catalog";
+import { plural } from "@/lib/utils";
 
-import { toCatalogProductsFilter } from "../lib/catalog-browse-params";
 import {
   useCatalogBrowseFilters,
   useCatalogCategories,
-  useCatalogCombos,
   useCatalogProducts,
+  useCombosOnSale,
 } from "../hooks";
+import { toCatalogProductsFilter } from "../lib/catalog-browse-params";
+import { groupByCategory } from "../lib/group-by-category";
 import { CatalogCategoryFilters } from "./catalog-category-filters";
 import { CatalogPagination } from "./catalog-pagination";
 import { ProductCard } from "./product-card";
 import { ProductCatalogLoading } from "./product-catalog-loading";
 
-const CATALOG_PAGE_LEAD =
-  "Everything we bake today, in one place. Availability updates through the morning as each batch leaves the oven.";
-
 type ProductCatalogProps = {
-  /** What each product's card offers a visitor, from the slice that owns it. */
-  renderProductActions?: (product: CatalogProduct) => ReactNode;
+  /** The save toggles and the purchase on each product's card, from the slice that owns them. */
+  renderProductSaves?: (product: CatalogProduct) => ReactNode;
+  renderProductPurchase?: (product: CatalogProduct) => ReactNode;
+  /** The combo bundles, under the products in the same column. */
+  combos?: ReactNode;
 };
 
-export function ProductCatalog({ renderProductActions }: ProductCatalogProps) {
-  const {
-    params,
-    setCategory,
-    setPage,
-    clearFilters,
-    hasActiveFilters,
-  } = useCatalogBrowseFilters();
+export function ProductCatalog({ renderProductSaves, renderProductPurchase, combos }: ProductCatalogProps) {
+  const { params, setCategory, setPage, setSearch, clearFilters, hasActiveFilters } = useCatalogBrowseFilters();
 
-  const productsFilter = useMemo(
-    () => toCatalogProductsFilter(params, CATALOG_PRODUCTS_PAGE_SIZE),
-    [params],
-  );
+  const productsFilter = useMemo(() => toCatalogProductsFilter(params, CATALOG_PRODUCTS_PAGE_SIZE), [params]);
 
   const categoriesQuery = useCatalogCategories();
-  // The page the combos section itself renders, so one query answers both.
-  const combosQuery = useCatalogCombos({
-    page: 1,
-    page_size: CATALOG_COMBOS_PAGE_SIZE,
-  });
+  const showCombosLink = useCombosOnSale();
   const productsQuery = useCatalogProducts(productsFilter);
 
   const categories = categoriesQuery.data?.categories ?? [];
   const products = productsQuery.data?.products ?? [];
   const pagination = productsQuery.data?.pagination;
-  const showResultsMeta =
-    !productsQuery.isPending && !productsQuery.isError && pagination;
   const activeSearch = params.search.trim();
-  const showCombosLink =
-    !combosQuery.isPending && (combosQuery.data?.pagination.total ?? 0) > 0;
-  const {
-    initialLoading: productsInitialLoading,
-    refetching: productsRefetching,
-  } = getQuerySurface(productsQuery);
-  const catalogInitialLoading =
-    categoriesQuery.isPending || productsInitialLoading;
+  const category = categories.find((candidate) => candidate.id === params.category);
+  const { initialLoading: productsInitialLoading, refetching: productsRefetching } = getQuerySurface(productsQuery);
 
-  if (catalogInitialLoading) {
+  if (categoriesQuery.isPending || productsInitialLoading) {
     return <ProductCatalogLoading />;
   }
 
   return (
-    <div className="catalog-page">
-      <div className="storefront-container catalog-page__intro">
-        <StorefrontPageHeader
-          eyebrow="The collection"
-          lead={CATALOG_PAGE_LEAD}
-          title="All products"
-        />
+    <div className="storefront-container storefront-page">
+      <div className="catalog-page__top">
+        <StorefrontPageHeader title={category?.name ?? PAGE_TITLES.shop} />
+        {categoriesQuery.isError ? null : (
+          <CatalogCategoryFilters
+            categories={categories}
+            onSelectCategory={setCategory}
+            selectedCategoryId={params.category}
+            showCombosLink={showCombosLink}
+          />
+        )}
       </div>
 
-      <div className="storefront-container catalog-page__body">
-        <aside aria-label="Filters" className="catalog-sidebar">
-          {categoriesQuery.isError ? (
-            <p className="text-sm text-error">Failed to load categories.</p>
-          ) : (
-            <CatalogCategoryFilters
-              categories={categories}
-              onSelectCategory={setCategory}
-              selectedCategoryId={params.category}
-              showCombosLink={showCombosLink}
-            />
-          )}
-        </aside>
+      <div className="catalog-page__body">
+        {categoriesQuery.isError ? (
+          <StorefrontErrorState
+            onRetry={() => void categoriesQuery.refetch()}
+            title="We could not load the categories"
+          />
+        ) : null}
 
         <div className="catalog-page__content">
           <div className="catalog-page__toolbar">
-            <p className="catalog-page__count">
-              {showResultsMeta
-                ? `${pagination.total} ${pagination.total === 1 ? "product" : "products"}`
-                : null}
-            </p>
+            {pagination && !productsQuery.isError && activeSearch ? (
+              <p className="catalog-page__count">
+                {plural(pagination.total, "product")} for &ldquo;{activeSearch}&rdquo;
+              </p>
+            ) : null}
+            {activeSearch ? (
+              <button
+                className="storefront-text-action storefront-text-action--warning"
+                onClick={() => setSearch("")}
+                type="button"
+              >
+                Clear search
+              </button>
+            ) : null}
           </div>
-
-          {activeSearch ? (
-            <p className="catalog-page__search-note">
-              Showing results for &ldquo;{activeSearch}&rdquo;
-            </p>
-          ) : null}
 
           <AsyncPanel
             className="catalog-page__results-panel"
@@ -120,54 +99,84 @@ export function ProductCatalog({ renderProductActions }: ProductCatalogProps) {
             overlayOnInitialLoad={false}
             refetching={productsRefetching}
           >
-            <section aria-label="Products" className="catalog-page__results">
+            <section aria-label="Products">
               {productsQuery.isError ? (
-                <p className="text-sm text-error">Failed to load products.</p>
+                <StorefrontErrorState
+                  onRetry={() => void productsQuery.refetch()}
+                  title="We could not load the products"
+                />
               ) : products.length === 0 ? (
-                <div className="catalog-empty-state">
-                  <h2 className="text-empty-title">
-                    {hasActiveFilters
-                      ? "No products match your filters"
-                      : "No products available"}
-                  </h2>
-                  <p className="catalog-empty-state__hint text-caption">
-                    {hasActiveFilters
-                      ? "Try another category or clear filters."
-                      : "Check back soon — we refresh the menu daily."}
-                  </p>
-                  {hasActiveFilters ? (
-                    <Button
-                      onClick={clearFilters}
-                      type="button"
-                      variant="outline"
-                    >
-                      Clear filters
-                    </Button>
-                  ) : null}
-                </div>
+                <StorefrontEmptyState
+                  action={
+                    // A search is cleared from the toolbar above, so it gets no second button here.
+                    hasActiveFilters && !activeSearch ? (
+                      <Button onClick={clearFilters} size="sm" type="button" variant="outline">
+                        Clear filters
+                      </Button>
+                    ) : undefined
+                  }
+                  message={
+                    activeSearch
+                      ? "Check the spelling or clear the search."
+                      : hasActiveFilters
+                        ? "Try another category, or clear the filters."
+                        : "Please check back later."
+                  }
+                  title={
+                    activeSearch
+                      ? `No products match “${activeSearch}”`
+                      : hasActiveFilters
+                        ? "No products match"
+                        : "No products yet"
+                  }
+                />
+              ) : hasActiveFilters ? (
+                <>
+                  {/* The cards' h3 titles sit under a section heading, as in the grouped view. */}
+                  <h2 className="sr-only">Results</h2>
+                  <div className="catalog-product-grid">
+                    {products.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        purchase={renderProductPurchase?.(product)}
+                        saves={renderProductSaves?.(product)}
+                        showCategory={params.category === undefined}
+                      />
+                    ))}
+                  </div>
+                </>
               ) : (
-                <div className="catalog-product-grid">
-                  {products.map((product, index) => (
-                    <ProductCard
-                      key={product.id}
-                      actions={renderProductActions?.(product)}
-                      fallbackImageUrl={catalogProductFallbackImageUrl(index)}
-                      product={product}
-                      showCategory={params.category === undefined}
-                    />
-                  ))}
-                </div>
+                groupByCategory(products).map((section) => (
+                  <section aria-labelledby={`catalog-section-${section.id}`} className="catalog-section" key={section.id}>
+                    <div className="catalog-section__head">
+                      <h2 className="catalog-section__title" id={`catalog-section-${section.id}`}>
+                        {section.name}
+                      </h2>
+                      <span className="catalog-section__count">{plural(section.products.length, "product")}</span>
+                    </div>
+                    <div className="catalog-product-grid">
+                      {section.products.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          purchase={renderProductPurchase?.(product)}
+                          saves={renderProductSaves?.(product)}
+                          showCategory={false}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))
               )}
 
               {pagination ? (
-                <CatalogPagination
-                  onPageChange={setPage}
-                  page={params.page}
-                  totalPages={pagination.total_pages}
-                />
+                <CatalogPagination onPageChange={setPage} page={params.page} totalPages={pagination.total_pages} />
               ) : null}
             </section>
           </AsyncPanel>
+
+          {combos}
         </div>
       </div>
     </div>

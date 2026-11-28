@@ -94,7 +94,7 @@ func (r *CategoryRepository) ManagerListCount(ctx context.Context, search *strin
 	return count, nil
 }
 
-func (r *CategoryRepository) CatalogList(ctx context.Context, params port.CatalogListCategoriesParams) ([]domaincategory.Category, error) {
+func (r *CategoryRepository) CatalogList(ctx context.Context, params port.CatalogListCategoriesParams) ([]port.CatalogCategory, error) {
 	rows, err := r.q(ctx).CatalogListCategories(ctx, sqlcgen.CatalogListCategoriesParams{
 		Limit:  params.Limit,
 		Offset: params.Offset,
@@ -102,15 +102,19 @@ func (r *CategoryRepository) CatalogList(ctx context.Context, params port.Catalo
 	if err != nil {
 		return nil, mapRepoError(err, "catalog list categories")
 	}
-	out := make([]domaincategory.Category, 0, len(rows))
+	out := make([]port.CatalogCategory, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, domaincategory.Category{
-			ID:        row.ID,
-			Name:      row.Name,
-			Slug:      row.Slug,
-			SortOrder: row.SortOrder,
-			IsActive:  true,
-		})
+		category := port.CatalogCategory{
+			ID:           row.ID,
+			Name:         row.Name,
+			Slug:         row.Slug,
+			SortOrder:    row.SortOrder,
+			ProductCount: row.ProductCount,
+		}
+		if row.ImageUrl != "" {
+			category.ImageURL = &row.ImageUrl
+		}
+		out = append(out, category)
 	}
 	return out, nil
 }

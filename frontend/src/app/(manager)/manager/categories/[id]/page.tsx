@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { use } from "react";
 
 import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
+import { DashboardLoadError } from "@/components/ui/dashboard-load-error";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import { CategoryForm, managerCategoriesBreadcrumb, useCategory } from "@/features/manager";
 import { ROUTE } from "@/constants/routes";
+import { isApiError } from "@/lib/errors";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 type PageProps = {
@@ -24,16 +26,16 @@ export default function ManagerEditCategoryPage({ params }: PageProps) {
   }
 
   if (categoryQuery.isError) {
-    return <p className="text-sm text-error">Failed to load category.</p>;
-  }
-
-  if (!categoryQuery.data) {
-    return <p className="text-sm text-muted">Category not found.</p>;
+    return isApiError(categoryQuery.error) && categoryQuery.error.status === 404 ? (
+      <DashboardLoadError message="Category not found." />
+    ) : (
+      <DashboardLoadError message="We could not load this category." onRetry={() => void categoryQuery.refetch()} />
+    );
   }
 
   return (
     <DashboardFormPage
-      breadcrumbItems={managerCategoriesBreadcrumb(PAGE_TITLES.editCategory)}
+      breadcrumbItems={managerCategoriesBreadcrumb(categoryQuery.data.name)}
       description="Update how this category appears in the catalog."
       title={PAGE_TITLES.editCategory}
     >

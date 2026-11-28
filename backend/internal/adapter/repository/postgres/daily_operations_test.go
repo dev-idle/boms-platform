@@ -40,8 +40,7 @@ func TestDailyOperations_Integration(t *testing.T) {
 	discounts := postgresadapter.NewDiscountCodeRepository(f.pool)
 	payments := postgresadapter.NewPaymentRepository(f.pool)
 	managerUC := usecase.NewManagerOrderUsecase(f.orders, f.tickets, discounts, payments, f.pool, f.outbox, audit)
-	admin := f.newWorker(t, domainuser.RoleAdmin)
-	settingsUC := usecase.NewAdminStoreSettingsUsecase(f.store, f.orders, f.tickets, discounts, payments, f.paymentUC, f.pool, f.outbox, audit, zap.NewNop())
+	settingsUC := usecase.NewManagerStoreSettingsUsecase(f.store, f.orders, f.tickets, discounts, payments, f.paymentUC, f.pool, f.outbox, audit, zap.NewNop())
 	audited := func(action, orderID string) int {
 		var rows int
 		require.NoError(t, raw.QueryRow(ctx, "SELECT count(*) FROM audit_logs WHERE action = $1 AND target_id = $2", action, orderID).Scan(&rows))
@@ -123,7 +122,7 @@ func TestDailyOperations_Integration(t *testing.T) {
 		again, err := f.orderUC.FlagLeftOpen(ctx)
 		require.NoError(t, err)
 		assert.Zero(t, again, "an order is flagged once")
-		listed, total, _, _, err := f.staff.List(ctx, 1, 100, usecase.StaffOrderFilterLeftOpen)
+		listed, total, _, _, err := f.staff.List(ctx, 1, 100, usecase.StaffOrderFilterLeftOpen, "")
 		require.NoError(t, err)
 		ids := make([]string, 0, len(listed))
 		for _, row := range listed {
@@ -170,7 +169,7 @@ func TestDailyOperations_Integration(t *testing.T) {
 		assert.Contains(t, codes, early.Code, "08:00 is before the new opening")
 		assert.NotContains(t, codes, midday.Code)
 		opens := "09:00"
-		_, err = settingsUC.PatchSettings(ctx, admin, domainuser.RoleAdmin, dto.PatchStoreSettingsRequest{OpensAt: &opens})
+		_, err = settingsUC.PatchSettings(ctx, manager, domainuser.RoleManager, dto.PatchStoreSettingsRequest{OpensAt: &opens})
 		require.ErrorIs(t, err, domainstore.ErrPickupsStranded)
 	})
 
@@ -209,12 +208,12 @@ func TestDailyOperations_Integration(t *testing.T) {
 		f.paypal.mu.Unlock()
 		day := domainstore.DayOf(later).Format(domainstore.DayLayout)
 
-		_, err = settingsUC.CancelStrandedPickups(ctx, admin, domainuser.RoleAdmin, dto.CancelStrandedPickupsRequest{
+		_, err = settingsUC.CancelStrandedPickups(ctx, manager, domainuser.RoleManager, dto.CancelStrandedPickupsRequest{
 			StrandedPickupsQuery: dto.StrandedPickupsQuery{ClosedDate: day}, Reason: "Staff training",
 		})
 
 		require.ErrorIs(t, err, domainpayment.ErrUnderReview)
-		_, err = settingsUC.AddClosedDate(ctx, admin, domainuser.RoleAdmin, dto.CreateClosedDateRequest{Date: day, Reason: "Staff training"})
+		_, err = settingsUC.AddClosedDate(ctx, manager, domainuser.RoleManager, dto.CreateClosedDateRequest{Date: day, Reason: "Staff training"})
 		require.ErrorIs(t, err, domainstore.ErrPickupsStranded, "PayPal may still take the money for that day")
 	})
 
@@ -226,7 +225,7 @@ func TestDailyOperations_Integration(t *testing.T) {
 		day := domainstore.DayOf(tomorrowAt(12, 0)).Format(domainstore.DayLayout)
 		closing := dto.CreateClosedDateRequest{Date: day, Reason: "Power cut"}
 
-		_, err = settingsUC.AddClosedDate(ctx, admin, domainuser.RoleAdmin, closing)
+		_, err = settingsUC.AddClosedDate(ctx, manager, domainuser.RoleManager, closing)
 		require.ErrorIs(t, err, domainstore.ErrPickupsStranded)
 		stranded, err := settingsUC.StrandedPickups(ctx, dto.StrandedPickupsQuery{ClosedDate: day})
 		require.NoError(t, err)
@@ -237,7 +236,7 @@ func TestDailyOperations_Integration(t *testing.T) {
 		assert.Contains(t, codes, paid.Code)
 		assert.Contains(t, codes, unpaid.Code, "an unpaid order would be paid for a closed day")
 
-		done, err := settingsUC.CancelStrandedPickups(ctx, admin, domainuser.RoleAdmin, dto.CancelStrandedPickupsRequest{
+		done, err := settingsUC.CancelStrandedPickups(ctx, manager, domainuser.RoleManager, dto.CancelStrandedPickupsRequest{
 			StrandedPickupsQuery: dto.StrandedPickupsQuery{ClosedDate: day}, Reason: "We have a power cut that day.",
 		})
 
@@ -250,8 +249,8 @@ func TestDailyOperations_Integration(t *testing.T) {
 		last := after.Timeline[len(after.Timeline)-1]
 		require.NotNil(t, last.Reason)
 		assert.Equal(t, "We have a power cut that day.", *last.Reason)
-		assert.Equal(t, 1, audited("admin.cancelled_stranded_order", paid.ID), "each cancellation commits with its audit row")
-		_, err = settingsUC.AddClosedDate(ctx, admin, domainuser.RoleAdmin, closing)
+		assert.Equal(t, 1, audited("manager.cancelled_stranded_order", paid.ID), "each cancellation commits with its audit row")
+		_, err = settingsUC.AddClosedDate(ctx, manager, domainuser.RoleManager, closing)
 		require.NoError(t, err, "nothing is stranded any more")
 		require.NoError(t, f.pool.WithTx(ctx, func(txCtx context.Context) error {
 			held, err := f.store.HoldPickupRules(txCtx, domainstore.DayOf(tomorrowAt(12, 0)))

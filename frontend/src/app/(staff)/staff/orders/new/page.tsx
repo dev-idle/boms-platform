@@ -8,7 +8,7 @@ export default function StaffNewOrderPage() {
   return (
     <DashboardFormPage
       breadcrumbItems={staffNewOrderBreadcrumbItems()}
-      description="Take an order at the counter or on the phone. It is paid in cash when it is collected."
+      description="Take an order at the counter or on the phone. It is paid in cash at pickup."
       title={PAGE_TITLES.newOrder}
     >
       <StaffNewOrder />

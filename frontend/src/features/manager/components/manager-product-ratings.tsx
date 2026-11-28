@@ -19,7 +19,7 @@ export function ManagerProductRatings() {
 
   return (
     <DashboardProfileSection
-      description="The lowest average first. A hidden review does not count; a pending one does."
+      description="The lowest average first. A hidden review does not count."
       id="manager-product-ratings"
       title="Ratings by product"
       variant="plain"
@@ -33,9 +33,9 @@ export function ManagerProductRatings() {
           </colgroup>
           <thead>
             <tr>
-              <th>Product</th>
-              <th className="db-table-num">Reviews</th>
-              <th className="db-table-num">Average</th>
+              <th scope="col">Product</th>
+              <th scope="col" className="db-table-num">Reviews</th>
+              <th scope="col" className="db-table-num">Average</th>
             </tr>
           </thead>
           <tbody>
@@ -45,6 +45,7 @@ export function ManagerProductRatings() {
               entityLabel="ratings"
               isEmpty={products.length === 0}
               isError={summaryQuery.isError}
+              onRetry={() => void summaryQuery.refetch()}
               initialLoading={initialLoading}
             />
             {!initialLoading && !summaryQuery.isError

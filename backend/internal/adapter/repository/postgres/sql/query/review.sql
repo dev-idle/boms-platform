@@ -13,10 +13,12 @@ WHERE order_id = sqlc.arg('order_id')
 ORDER BY created_at, id;
 
 -- name: ListPublishedReviews :many
--- A page of a product's published reviews, latest first: the latest, or those
--- written before the review before_id names.
-SELECT r.id, r.rating, r.comment, r.created_at
+-- A page of a product's published reviews, latest first, each with the name
+-- its author gave: the latest, or those written before the review before_id
+-- names.
+SELECT r.id, r.rating, r.comment, r.created_at, cp.display_name AS author_name
 FROM reviews r
+LEFT JOIN customer_profiles cp ON cp.user_id = r.user_id
 WHERE r.product_id = sqlc.arg('product_id')
   AND r.status = 'published'::review_status
   AND r.deleted_at IS NULL
@@ -41,8 +43,8 @@ WHERE product_id = sqlc.arg('product_id')
   AND deleted_at IS NULL;
 
 -- name: ManagerListReviews :many
--- A page of reviews to moderate, latest first, with the product, the order
--- and the name the customer gave.
+-- A page of reviews, latest first, with the product, the order and the name
+-- the customer gave.
 SELECT
   r.id,
   o.code AS order_code,
@@ -85,7 +87,8 @@ WHERE id = $1
 FOR UPDATE;
 
 -- name: ModerateReview :one
--- Publishes or hides a review, and returns it as the moderation list shows it.
+-- Hides a review or publishes it again, and returns it as the manager's list
+-- shows it.
 WITH moderated AS (
   UPDATE reviews
   SET status = sqlc.arg('status'),
@@ -114,11 +117,10 @@ LEFT JOIN customer_profiles cp ON cp.user_id = m.user_id
 LEFT JOIN staff_profiles sp ON sp.user_id = m.moderated_by;
 
 -- name: ReviewRatingCounts :one
--- Every review not hidden of a product the bakery keeps: how many, how many
--- wait for a manager, their ratings added up, and how many of each rating.
+-- Every review not hidden of a product the bakery keeps: how many, their
+-- ratings added up, and how many of each rating.
 SELECT
   count(*)::bigint AS review_count,
-  count(*) FILTER (WHERE r.status = 'pending'::review_status)::bigint AS pending_count,
   COALESCE(sum(r.rating), 0)::bigint AS rating_total,
   count(*) FILTER (WHERE r.rating = 1)::bigint AS one_star,
   count(*) FILTER (WHERE r.rating = 2)::bigint AS two_stars,

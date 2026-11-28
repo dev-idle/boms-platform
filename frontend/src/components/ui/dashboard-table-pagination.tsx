@@ -57,9 +57,7 @@ function ChevronIcon({ direction }: { direction: "left" | "right" }) {
 }
 
 type DashboardTablePaginationProps = {
-  className?: string;
   disabled?: boolean;
-  hideWhenSinglePage?: boolean;
   itemLabel?: string;
   onPageChange: (page: number) => void;
   page: number;
@@ -72,9 +70,7 @@ type DashboardTablePaginationProps = {
 
 /** Dashboard table footer — range summary, page window, prev/next. */
 export function DashboardTablePagination({
-  className,
   disabled = false,
-  hideWhenSinglePage = true,
   itemLabel = "items",
   onPageChange,
   page,
@@ -91,14 +87,15 @@ export function DashboardTablePagination({
   const rangeLabel = formatPaginationRange(range, totalItems, itemLabel);
   const pageWindow = buildPaginationWindow(page, safeTotalPages);
 
-  if (hideWhenSinglePage && (totalItems === 0 || safeTotalPages <= 1)) {
+  // A list on one page keeps the footer for its count, as long as it shows one.
+  if (totalItems === 0 || (safeTotalPages <= 1 && !showRange)) {
     return null;
   }
 
   return (
     <nav
       aria-label="Table pagination"
-      className={cn("dashboard-pagination", className)}
+      className="dashboard-pagination"
     >
       {showRange ? (
         <p className="dashboard-pagination-summary">{rangeLabel}</p>
@@ -106,65 +103,67 @@ export function DashboardTablePagination({
         <span aria-hidden className="dashboard-pagination-summary-spacer" />
       )}
 
-      <div className="dashboard-pagination-controls" role="group" aria-label="Page navigation">
-        <PaginationStep
-          className="dashboard-pagination-step--prev"
-          disabled={!canPrevious}
-          label="Previous page"
-          onClick={() => onPageChange(page - 1)}
-        >
-          <ChevronIcon direction="left" />
-          <span>Prev</span>
-        </PaginationStep>
-
-        {showPageNumbers && safeTotalPages > 1 ? (
-          <div aria-label="Page numbers" className="dashboard-pagination-pages">
-            {pageWindow.map((item, index) =>
-              item === "ellipsis" ? (
-                <span
-                  key={`ellipsis-${index}`}
-                  aria-hidden
-                  className="dashboard-pagination-ellipsis"
-                >
-                  …
-                </span>
-              ) : (
-                <button
-                  key={item}
-                  aria-current={item === page ? "page" : undefined}
-                  aria-label={`Page ${item}`}
-                  className={cn(
-                    "dashboard-pagination-page",
-                    item === page && "dashboard-pagination-page--active",
-                  )}
-                  disabled={disabled || item === page}
-                  onClick={() => onPageChange(item)}
-                  type="button"
-                >
-                  {item}
-                </button>
-              ),
-            )}
-          </div>
-        ) : (
-          <p
-            aria-live="polite"
-            className="dashboard-pagination-meta dashboard-pagination-meta--slot"
+      {safeTotalPages > 1 ? (
+        <div className="dashboard-pagination-controls" role="group" aria-label="Page navigation">
+          <PaginationStep
+            className="dashboard-pagination-step--prev"
+            disabled={!canPrevious}
+            label="Previous page"
+            onClick={() => onPageChange(page - 1)}
           >
-            Page {page} of {safeTotalPages}
-          </p>
-        )}
+            <ChevronIcon direction="left" />
+            <span>Prev</span>
+          </PaginationStep>
 
-        <PaginationStep
-          className="dashboard-pagination-step--next"
-          disabled={!canNext}
-          label="Next page"
-          onClick={() => onPageChange(page + 1)}
-        >
-          <span>Next</span>
-          <ChevronIcon direction="right" />
-        </PaginationStep>
-      </div>
+          {showPageNumbers ? (
+            <div aria-label="Page numbers" className="dashboard-pagination-pages">
+              {pageWindow.map((item, index) =>
+                item === "ellipsis" ? (
+                  <span
+                    key={`ellipsis-${index}`}
+                    aria-hidden
+                    className="dashboard-pagination-ellipsis"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={item}
+                    aria-current={item === page ? "true" : undefined}
+                    aria-label={`Page ${item}`}
+                    className={cn(
+                      "dashboard-pagination-page",
+                      item === page && "dashboard-pagination-page--active",
+                    )}
+                    disabled={disabled || item === page}
+                    onClick={() => onPageChange(item)}
+                    type="button"
+                  >
+                    {item}
+                  </button>
+                ),
+              )}
+            </div>
+          ) : (
+            <p
+              aria-live="polite"
+              className="dashboard-pagination-meta dashboard-pagination-meta--slot"
+            >
+              Page {page} of {safeTotalPages}
+            </p>
+          )}
+
+          <PaginationStep
+            className="dashboard-pagination-step--next"
+            disabled={!canNext}
+            label="Next page"
+            onClick={() => onPageChange(page + 1)}
+          >
+            <span>Next</span>
+            <ChevronIcon direction="right" />
+          </PaginationStep>
+        </div>
+      ) : null}
     </nav>
   );
 }

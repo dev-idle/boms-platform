@@ -35,6 +35,9 @@ export async function listKitchenTickets(
   if (filter.date) {
     params.set("date", filter.date);
   }
+  if (filter.search) {
+    params.set("search", filter.search);
+  }
   const result = await browserRequestWithMeta<StationTicket[]>(
     `/api/v1/baker/tickets?${params.toString()}`,
     { method: "GET", schema: z.array(stationTicketSchema) },

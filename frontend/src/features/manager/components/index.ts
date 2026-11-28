@@ -13,4 +13,5 @@ export { ManagerProductsTable } from "./manager-products-table";
 export { ManagerPromotionsTable } from "./manager-promotions-table";
 export { ManagerReviews } from "./manager-reviews";
 export { ManagerSalesReport } from "./manager-sales-report";
+export { ManagerStoreSettings } from "./manager-store-settings";
 export { ProductForm } from "./product-form";

@@ -19,7 +19,7 @@ export function StaffChatGeneral({ customerId }: StaffChatGeneralProps) {
   if (!z.uuid().safeParse(customerId).success) {
     return (
       <StaffChatState back>
-        <p className="text-sm text-muted">Invalid conversation link.</p>
+        <p className="text-sm text-muted">This link does not lead to a conversation.</p>
       </StaffChatState>
     );
   }

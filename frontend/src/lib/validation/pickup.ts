@@ -92,6 +92,35 @@ export function shiftDay(day: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** Every bakery day from `first` to `last` (YYYY-MM-DD, both included); none while either is unknown. */
+export function pickupDaysBetween(first: string, last: string): string[] {
+  const days: string[] = [];
+  if (first === "" || last === "") {
+    return days;
+  }
+  for (let day = first; day <= last; day = shiftDay(day, 1)) {
+    days.push(day);
+  }
+  return days;
+}
+
+// A bakery day is a calendar date, so it is read at noon UTC and named in UTC.
+const DAY_WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
+const DAY_NUMBER = new Intl.DateTimeFormat("en-US", { day: "numeric", timeZone: "UTC" });
+const DAY_MONTH = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
+const DAY_MONTH_LONG = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" });
+
+/** The parts a day choice is written with: "Thu", "26", "Nov", "November". */
+export function formatPickupDayChoice(day: string): { weekday: string; date: string; month: string; monthLong: string } {
+  const noon = new Date(`${day}T12:00:00Z`);
+  return {
+    weekday: DAY_WEEKDAY.format(noon),
+    date: DAY_NUMBER.format(noon),
+    month: DAY_MONTH.format(noon),
+    monthLong: DAY_MONTH_LONG.format(noon),
+  };
+}
+
 /** Serializes a bakery-local `datetime-local` value to an RFC3339 instant. */
 export function bakeryPickupISOFromLocalInput(localValue: string): string {
   return `${localValue}:00${bakeryOffsetSuffix()}`;
@@ -215,6 +244,15 @@ export function formatPickupDateTime(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: PICKUP_ZONE.timeZone,
+  }).format(new Date(iso));
+}
+
+/** Pickup day in bakery time, e.g. "Nov 26" — the kitchen queue's label over a time on another day. */
+export function formatPickupDay(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
     timeZone: PICKUP_ZONE.timeZone,
   }).format(new Date(iso));
 }

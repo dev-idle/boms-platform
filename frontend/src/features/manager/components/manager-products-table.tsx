@@ -20,7 +20,6 @@ import {
 import { CatalogAvailabilityPill } from "@/components/ui/status-pill";
 import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
-import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolbar-meta";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -28,6 +27,7 @@ import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useDeleteProduct, useProducts } from "../hooks";
@@ -57,6 +57,7 @@ export function ManagerProductsTable() {
   const { initialLoading, refetching } = getQuerySurface(query);
   const products = query.data?.products ?? [];
   const pagination = query.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     products.length,
     pagination,
@@ -79,17 +80,12 @@ export function ManagerProductsTable() {
       <div className="dashboard-page-body">
         <div className="db-table-filters">
           <DashboardSearchField
+            label="Search products"
             onChange={setInput}
             onClear={clear}
             placeholder="Search name or slug"
             value={input}
           />
-          {pagination ? (
-            <DashboardTableToolbarMeta>
-              {pagination.total}{" "}
-              {pagination.total === 1 ? "product" : "products"}
-            </DashboardTableToolbarMeta>
-          ) : null}
         </div>
 
         <DashboardTableWrap refetching={refetching}>
@@ -99,14 +95,14 @@ export function ManagerProductsTable() {
             </colgroup>
             <thead>
               <tr>
-                <th className="db-table-cell-thumb">
+                <th scope="col" className="db-table-cell-thumb">
                   <span className="sr-only">Image</span>
                 </th>
-                <th>Product</th>
-                <th>Category</th>
-                <th className="db-table-num">Price</th>
-                <th className="db-table-status">Status</th>
-                <th className="db-table-detail">Actions</th>
+                <th scope="col">Product</th>
+                <th scope="col">Category</th>
+                <th scope="col" className="db-table-num">Price</th>
+                <th scope="col" className="db-table-status">Status</th>
+                <th scope="col" className="db-table-detail">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -116,6 +112,7 @@ export function ManagerProductsTable() {
                 hasActiveFilter={Boolean(search)}
                 isEmpty={products.length === 0}
                 isError={query.isError}
+                onRetry={() => void query.refetch()}
                 initialLoading={initialLoading}
               />
               {!initialLoading && !query.isError && products.length > 0
@@ -125,8 +122,10 @@ export function ManagerProductsTable() {
                     name={product.name}
                     url={product.image_urls[0]}
                   />
-                  <td className="db-table-cell-primary">{product.name}</td>
-                  <td className="text-muted">
+                  <td className="db-table-cell-primary db-table-cell-truncate" title={product.name}>
+                    {product.name}
+                  </td>
+                  <td className="db-table-cell-truncate text-muted" title={product.category_name ?? undefined}>
                     {product.category_name ?? (
                       <span className="db-table-cell-placeholder">—</span>
                     )}
@@ -139,10 +138,6 @@ export function ManagerProductsTable() {
                   </td>
                   <td className="db-table-detail">
                     <DashboardTableRowActions>
-                      <DashboardTableEditLink
-                        href={ROUTE.manager.productDetail(product.id)}
-                        label={`Edit ${product.name}`}
-                      />
                       <DashboardTableDeleteButton
                         label={`Delete ${product.name}`}
                         onClick={() =>
@@ -151,6 +146,10 @@ export function ManagerProductsTable() {
                             name: product.name,
                           })
                         }
+                      />
+                      <DashboardTableEditLink
+                        href={ROUTE.manager.productDetail(product.id)}
+                        label={`Edit ${product.name}`}
                       />
                     </DashboardTableRowActions>
                   </td>
@@ -191,7 +190,7 @@ export function ManagerProductsTable() {
               toast.error(
                 isApiError(error)
                   ? error.message
-                  : "Failed to delete product",
+                  : "We could not delete product. Please try again.",
               );
             },
           });

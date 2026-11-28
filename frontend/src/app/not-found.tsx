@@ -1,23 +1,26 @@
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { ThemeScope } from "@/components/theme/theme-scope";
+import { Button } from "@/components/ui/button";
 import { APP_THEME } from "@/constants/themes";
 import { ROUTE } from "@/constants/routes";
 
 export default function NotFound() {
   return (
     <ThemeScope theme={APP_THEME.storefront}>
-      <div className="mx-auto flex max-w-lg flex-col gap-4 px-6 py-24 text-center">
-        <h1 className="text-empty-title text-foreground">
-          Page not found
-        </h1>
-        <p className="text-sm text-muted">The requested resource does not exist.</p>
-        <Link
-          className="text-sm font-medium text-foreground underline underline-offset-4"
-          href={ROUTE.home}
-        >
-          Return home
-        </Link>
+      {/* Outside the storefront layout: the logo is the way back the header would give. */}
+      <div className="storefront-container storefront-page grid justify-items-center gap-10">
+        <BrandLogo size="md" />
+        <div className="storefront-state w-full">
+          <h1 className="storefront-state__title">Page not found</h1>
+          <p className="storefront-state__message">The link may be mistyped, or the page has moved.</p>
+          <div className="storefront-state__action">
+            <Button asChild>
+              <Link href={ROUTE.home}>Back to home</Link>
+            </Button>
+          </div>
+        </div>
       </div>
     </ThemeScope>
   );

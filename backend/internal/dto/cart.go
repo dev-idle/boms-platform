@@ -40,6 +40,10 @@ type CartItemResponse struct {
 	IsAvailable    bool    `json:"is_available"`
 	// Customization is how the line is configured, null for a plain line.
 	Customization *CustomizationResponse `json:"customization"`
+	// ImageURL is the product's first photo or the combo's photo, null
+	// without one; CategoryName is the product's category, null for a combo.
+	ImageURL     *string `json:"image_url"`
+	CategoryName *string `json:"category_name"`
 }
 
 type CartDiscountResponse struct {

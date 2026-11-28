@@ -37,7 +37,8 @@ function formatLead(minutes: number): string {
   return parts.filter(Boolean).join(" ");
 }
 
-function hoursRange(pickupWindow: PickupWindow): string {
+/** Opening to closing time, e.g. "8:00 AM–6:00 PM". */
+export function hoursRange(pickupWindow: PickupWindow): string {
   return `${formatClockMinutes(pickupWindow.opensAtMinutes)}–${formatClockMinutes(pickupWindow.closesAtMinutes)}`;
 }
 

@@ -67,7 +67,13 @@ export function ManagerHandover() {
             className="dashboard-profile-form"
             method="post"
             noValidate
-            onSubmit={form.handleSubmit((values) => setCode(values.code))}
+            onSubmit={form.handleSubmit((values) => {
+              if (values.code === code) {
+                void lookup.refetch();
+                return;
+              }
+              setCode(values.code);
+            })}
           >
             <FormField
               control={form.control}

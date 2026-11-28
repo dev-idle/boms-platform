@@ -60,6 +60,9 @@ func mapOrderItemsToDTO(items []domainorder.Item) []dto.OrderItemResponse {
 			id := item.ComboID.String()
 			row.ComboID = &id
 		}
+		if item.ImageURL != "" {
+			row.ImageURL = &item.ImageURL
+		}
 		out = append(out, row)
 	}
 	return out

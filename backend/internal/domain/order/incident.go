@@ -116,7 +116,7 @@ func NewReportedIncident(incidentType, note string) (IncidentType, string, error
 // MoveIncident is the incident an order's move from one status to another
 // records, if any: the bakery cancelling an order it had accepted, a missed
 // pickup, or an unpaid order expiring. byBakery reports whether someone at the
-// bakery made the move — staff, or an admin closing a day.
+// bakery made the move — staff, or a manager closing a day.
 func MoveIncident(from, to Status, byBakery bool) (IncidentType, bool) {
 	switch {
 	case to == StatusCancelled && byBakery && (from == StatusConfirmed || from == StatusInProduction || from == StatusReady):

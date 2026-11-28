@@ -1,4 +1,5 @@
 import { USER_ROLE } from "@/constants/roles";
+import { initialOf } from "@/lib/user-initials";
 
 import type { AdminUser } from "../schemas";
 
@@ -10,28 +11,28 @@ export function adminUserDisplayName(user: AdminUser): string {
   return user.full_name?.trim() || user.email.split("@")[0] || user.email;
 }
 
-/** Table name column — empty profile fields render as em dash. */
-export function adminUserListName(user: AdminUser): string {
-  if (user.role === USER_ROLE.customer) {
-    return user.display_name?.trim() || "—";
-  }
-
-  return user.full_name?.trim() || "—";
+function profileName(user: AdminUser): string | undefined {
+  const name = user.role === USER_ROLE.customer ? user.display_name : user.full_name;
+  return name?.trim() || undefined;
 }
 
-/** Up to two letters for the admin table avatar cell; email is the fallback. */
-export function adminUserInitials(user: AdminUser): string {
-  const name = adminUserListName(user);
-  if (name !== "—") {
-    const parts = name.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      return `${parts[0]!.slice(0, 1)}${parts[1]!.slice(0, 1)}`.toUpperCase();
-    }
-    if (parts.length === 1) {
-      return parts[0]!.slice(0, 2).toUpperCase();
-    }
+/**
+ * The line under an account's email in the users table: the most useful fact
+ * there is about it, so the line is never blank.
+ */
+export function adminUserAccountNote(user: AdminUser, currentUserId: string | undefined): string {
+  const name = profileName(user);
+  if (name) {
+    return user.employee_code ? `${name} · ${user.employee_code}` : name;
   }
+  if (!user.email_verified) {
+    return "Email not verified";
+  }
+  return user.id === currentUserId ? "Admin — this is you" : "No name on file";
+}
 
-  return user.email.slice(0, 2).toUpperCase();
+/** The admin table's avatar letter. */
+export function adminUserInitial(user: AdminUser): string {
+  return initialOf(profileName(user), user.email);
 }
 

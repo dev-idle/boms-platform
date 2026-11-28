@@ -19,7 +19,6 @@ import {
 import { EntityActivePill } from "@/components/ui/status-pill";
 import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
-import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolbar-meta";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
@@ -28,6 +27,7 @@ import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pa
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { STATION_LABEL } from "@/lib/schemas/ticket";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
 
 import { useCategories, useDeleteCategory } from "../hooks";
 
@@ -56,6 +56,7 @@ export function ManagerCategoriesTable() {
   const { initialLoading, refetching } = getQuerySurface(query);
   const categories = query.data?.categories ?? [];
   const pagination = query.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     categories.length,
     pagination,
@@ -78,17 +79,12 @@ export function ManagerCategoriesTable() {
       <div className="dashboard-page-body">
         <div className="db-table-filters">
           <DashboardSearchField
+            label="Search categories"
             onChange={setInput}
             onClear={clear}
             placeholder="Search name or slug"
             value={input}
           />
-          {pagination ? (
-            <DashboardTableToolbarMeta>
-              {pagination.total}{" "}
-              {pagination.total === 1 ? "category" : "categories"}
-            </DashboardTableToolbarMeta>
-          ) : null}
         </div>
 
         <DashboardTableWrap refetching={refetching}>
@@ -103,12 +99,12 @@ export function ManagerCategoriesTable() {
             </colgroup>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Slug</th>
-                <th>Station</th>
-                <th className="db-table-num">Order</th>
-                <th className="db-table-status">Status</th>
-                <th className="db-table-detail">Actions</th>
+                <th scope="col">Name</th>
+                <th scope="col">Slug</th>
+                <th scope="col">Station</th>
+                <th scope="col" className="db-table-num">Order</th>
+                <th scope="col" className="db-table-status">Status</th>
+                <th scope="col" className="db-table-detail">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -118,6 +114,7 @@ export function ManagerCategoriesTable() {
                 hasActiveFilter={Boolean(search)}
                 isEmpty={categories.length === 0}
                 isError={query.isError}
+                onRetry={() => void query.refetch()}
                 initialLoading={initialLoading}
               />
               {!initialLoading && !query.isError && categories.length > 0
@@ -137,10 +134,6 @@ export function ManagerCategoriesTable() {
                     </td>
                     <td className="db-table-detail">
                       <DashboardTableRowActions>
-                        <DashboardTableEditLink
-                          href={ROUTE.manager.categoryDetail(category.id)}
-                          label={`Edit ${category.name}`}
-                        />
                         <DashboardTableDeleteButton
                           label={`Delete ${category.name}`}
                           onClick={() =>
@@ -149,6 +142,10 @@ export function ManagerCategoriesTable() {
                               name: category.name,
                             })
                           }
+                        />
+                        <DashboardTableEditLink
+                          href={ROUTE.manager.categoryDetail(category.id)}
+                          label={`Edit ${category.name}`}
                         />
                       </DashboardTableRowActions>
                     </td>
@@ -198,7 +195,7 @@ export function ManagerCategoriesTable() {
               toast.error(
                 isApiError(error)
                   ? error.message
-                  : "Failed to delete category",
+                  : "We could not delete category. Please try again.",
               );
             },
           });

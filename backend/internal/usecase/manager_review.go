@@ -21,8 +21,8 @@ import (
 // reviewSummaryProductLimit is how many products the feedback summary lists.
 const reviewSummaryProductLimit int32 = 100
 
-// ManagerReviewUsecase is a manager reading what customers think and deciding
-// which reviews the storefront shows.
+// ManagerReviewUsecase is a manager reading what customers think and hiding
+// the reviews the storefront should not show.
 type ManagerReviewUsecase struct {
 	reviews port.ReviewRepository
 	tx      port.TxManager
@@ -42,7 +42,7 @@ func NewManagerReviewUsecase(
 }
 
 // List returns a page of reviews, latest first. statusFilter narrows it to
-// pending, published or hidden reviews.
+// published or hidden reviews.
 func (u *ManagerReviewUsecase) List(
 	ctx context.Context,
 	page, pageSize int32,
@@ -53,7 +53,7 @@ func (u *ManagerReviewUsecase) List(
 	if trimmed := strings.TrimSpace(statusFilter); trimmed != "" {
 		parsed := domainreview.Status(trimmed)
 		if !parsed.Valid() {
-			return nil, 0, page, pageSize, apperrors.ErrValidation.WithDetail("status", "must be pending, published or hidden")
+			return nil, 0, page, pageSize, apperrors.ErrValidation.WithDetail("status", "must be published or hidden")
 		}
 		status = &parsed
 	}
@@ -80,8 +80,7 @@ func (u *ManagerReviewUsecase) List(
 }
 
 // Summary adds up every review not hidden of a product the bakery keeps:
-// overall, by rating and by product. A pending review counts — it is a
-// customer's word on a pickup — but one a manager hid does not.
+// overall, by rating and by product.
 func (u *ManagerReviewUsecase) Summary(ctx context.Context) (*dto.ReviewSummaryResponse, error) {
 	var counts port.RatingCounts
 	var products []port.ProductRating
@@ -108,15 +107,14 @@ func (u *ManagerReviewUsecase) Summary(ctx context.Context) (*dto.ReviewSummaryR
 	}
 	return &dto.ReviewSummaryResponse{
 		ReviewCount:   counts.Count,
-		PendingCount:  counts.Pending,
 		AverageRating: averageRating(counts.Count, counts.Total),
 		Stars:         counts.Stars[:],
 		Products:      out,
 	}, nil
 }
 
-// Moderate publishes a review on the storefront or hides it; managers and the
-// author hear of it.
+// Moderate hides a review from the storefront or publishes it again; managers
+// and the author hear of it.
 func (u *ManagerReviewUsecase) Moderate(
 	ctx context.Context,
 	actorID uuid.UUID,

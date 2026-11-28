@@ -78,7 +78,7 @@ func TestReviews_Integration(t *testing.T) {
 		flaky, err := write(customer, orderID, f.pastry, 5, new("  Flaky and buttery\r\nWill order again  "))
 		require.NoError(t, err)
 		assert.Equal(t, "Flaky and buttery\nWill order again", *flaky.Comment)
-		assert.Equal(t, string(domainreview.StatusPending), flaky.Status, "nothing shows before a manager reads it")
+		assert.Equal(t, string(domainreview.StatusPublished), flaky.Status, "it shows from the moment it is written")
 		rated, err := write(customer, orderID, f.cake, 4, new("   "))
 		require.NoError(t, err)
 		assert.Nil(t, rated.Comment, "a rating alone is a review")
@@ -93,7 +93,7 @@ func TestReviews_Integration(t *testing.T) {
 		require.Len(t, mine, 2)
 		assert.Equal(t, flaky.ID, mine[0].ID)
 		assert.Equal(t, []domainevent.Audience{toAuthorAndManagers(customer)}, reviewAudiences(t, f, f.pastry),
-			"managers hear of a review waiting, and the author's other pages")
+			"managers hear of a review written, and the author's other pages")
 	})
 
 	t.Run("only_a_product_line_picked_up_by_its_customer_is_reviewed", func(t *testing.T) {
@@ -110,7 +110,7 @@ func TestReviews_Integration(t *testing.T) {
 		require.ErrorIs(t, err, domainorder.ErrNotFound)
 	})
 
-	t.Run("the_storefront_shows_what_a_manager_published", func(t *testing.T) {
+	t.Run("the_storefront_shows_a_review_until_a_manager_hides_it", func(t *testing.T) {
 		tart := newSavedTestProduct(t, raw, f.checkoutFixture, "Lemon tart")
 		var written []*dto.ReviewResponse
 		var authors []uuid.UUID
@@ -121,20 +121,29 @@ func TestReviews_Integration(t *testing.T) {
 			written = append(written, review)
 			authors = append(authors, customer)
 		}
+		_, err := postgresadapter.NewCustomerProfileRepository(f.pool).Create(ctx, port.UpsertCustomerProfileParams{
+			UserID: authors[2], DisplayName: new("Mai Tran"),
+		})
+		require.NoError(t, err)
 		before, err := reviews.ProductReviews(ctx, tart, nil)
 		require.NoError(t, err)
-		assert.Zero(t, before.ReviewCount)
-		assert.Nil(t, before.AverageRating)
-		assert.Empty(t, before.Reviews)
+		assert.Equal(t, int64(3), before.ReviewCount, "no manager is waited for")
+		assert.InDelta(t, 3.7, *before.AverageRating, 0)
+		require.Len(t, before.Reviews, 3)
+		assert.Equal(t, written[2].ID, before.Reviews[0].ID, "latest first")
+		assert.Equal(t, "Mai T.", *before.Reviews[0].AuthorName, "the short form of the name its author gave")
+		assert.Nil(t, before.Reviews[1].AuthorName, "an author who gave no name has none")
 
 		hidden := moderate(t, written[0].ID, "hidden")
 		assert.Equal(t, "Hoa Pham", *hidden.ModeratorName)
-		moderate(t, written[1].ID, "published")
-		moderate(t, written[2].ID, "published")
+		restored := moderate(t, written[1].ID, "hidden")
+		assert.Equal(t, "hidden", restored.Status)
+		restored = moderate(t, written[1].ID, "published")
+		assert.Equal(t, "published", restored.Status, "a hidden review is published again")
 		assert.Equal(t, []domainevent.Audience{
 			toAuthorAndManagers(authors[0]), toAuthorAndManagers(authors[1]), toAuthorAndManagers(authors[2]),
-			toAuthorAndManagers(authors[0]), toAuthorAndManagers(authors[1]), toAuthorAndManagers(authors[2]),
-		}, reviewAudiences(t, f, tart), "a review read tells managers and its author, as one written does")
+			toAuthorAndManagers(authors[0]), toAuthorAndManagers(authors[1]), toAuthorAndManagers(authors[1]),
+		}, reviewAudiences(t, f, tart), "a review hidden or published again tells managers and its author, as one written does")
 
 		shown, err := reviews.ProductReviews(ctx, tart, nil)
 		require.NoError(t, err)
@@ -156,7 +165,6 @@ func TestReviews_Integration(t *testing.T) {
 		assert.Equal(t, int64(2), rated.ReviewCount, "a hidden review does not count")
 		assert.InDelta(t, 4.5, rated.AverageRating, 0)
 		assert.Len(t, summary.Stars, domainreview.MaxRating)
-		assert.GreaterOrEqual(t, summary.PendingCount, int64(2), "the reviews written first still wait")
 
 		hiddenOnes, _, _, _, err := moderation.List(ctx, 1, 100, "hidden")
 		require.NoError(t, err)
@@ -169,7 +177,7 @@ func TestReviews_Integration(t *testing.T) {
 		assert.Equal(t, "validation_error", appErr.Code)
 
 		_, err = moderation.Moderate(ctx, manager, domainuser.RoleManager, uuid.MustParse(written[1].ID), dto.ModerateReviewRequest{Status: "pending"})
-		require.ErrorIs(t, err, domainreview.ErrInvalidStatus, "a review read is never pending again")
+		require.ErrorIs(t, err, domainreview.ErrInvalidStatus, "a review never waits for a manager")
 		_, err = moderation.Moderate(ctx, manager, domainuser.RoleManager, uuid.New(), dto.ModerateReviewRequest{Status: "hidden"})
 		require.ErrorIs(t, err, domainreview.ErrNotFound)
 
@@ -186,9 +194,8 @@ func TestReviews_Integration(t *testing.T) {
 		cake := newSavedTestProduct(t, raw, f.checkoutFixture, "Plum cake")
 		for i := range 11 {
 			customer, orderID := pickedUp(t, []uuid.UUID{cake}, nil, 9+i%5)
-			review, err := write(customer, orderID, cake, 5, nil)
+			_, err := write(customer, orderID, cake, 5, nil)
 			require.NoError(t, err)
-			moderate(t, review.ID, "published")
 		}
 
 		latest, err := reviews.ProductReviews(ctx, cake, nil)
@@ -210,7 +217,6 @@ func TestReviews_Integration(t *testing.T) {
 		customer, orderID := pickedUp(t, []uuid.UUID{f.pastry}, nil, 16)
 		review, err := write(customer, orderID, f.pastry, 3, new("A little dry"))
 		require.NoError(t, err)
-		moderate(t, review.ID, "published")
 
 		customerProfiles := postgresadapter.NewCustomerProfileRepository(f.pool)
 		audit := postgresadapter.NewAuditLogRepository(f.pool)

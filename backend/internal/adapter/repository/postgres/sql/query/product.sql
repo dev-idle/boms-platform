@@ -187,6 +187,7 @@ WHERE p.deleted_at IS NULL
   );
 
 -- name: CatalogGetProductsByIDs :many
+-- The cart's products, each with its gallery for the line's photo.
 SELECT
     p.id,
     p.category_id,
@@ -197,9 +198,15 @@ SELECT
     p.is_customizable,
     p.sold_out_on,
     c.name AS category_name,
-    c.slug AS category_slug
+    c.slug AS category_slug,
+    COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
 FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+LEFT JOIN LATERAL (
+    SELECT array_agg(pi.image_url ORDER BY pi.sort_order) AS urls
+    FROM product_images pi
+    WHERE pi.product_id = p.id
+) img ON true
 WHERE p.id = ANY(sqlc.arg('product_ids')::uuid[])
   AND p.deleted_at IS NULL
   AND p.is_active = true;
@@ -259,6 +266,12 @@ WHERE p.deleted_at IS NULL
     sqlc.narg('sold_out_on')::date IS NULL
     OR p.sold_out_on = sqlc.narg('sold_out_on')::date
   )
+  -- Found by the product's or its category's name.
+  AND (
+    sqlc.arg('search')::text = ''
+    OR p.name ILIKE '%' || sqlc.arg('search') || '%'
+    OR c.name ILIKE '%' || sqlc.arg('search') || '%'
+  )
 ORDER BY c.sort_order ASC, p.name ASC, p.id ASC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
@@ -271,6 +284,12 @@ WHERE p.deleted_at IS NULL
   AND (
     sqlc.narg('sold_out_on')::date IS NULL
     OR p.sold_out_on = sqlc.narg('sold_out_on')::date
+  )
+  -- Found by the product's or its category's name.
+  AND (
+    sqlc.arg('search')::text = ''
+    OR p.name ILIKE '%' || sqlc.arg('search') || '%'
+    OR c.name ILIKE '%' || sqlc.arg('search') || '%'
   );
 
 -- name: SetProductSoldOut :one

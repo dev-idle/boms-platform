@@ -46,9 +46,9 @@ export function ManagerSalesDiscounts({ range }: ManagerSalesDiscountsProps) {
           </colgroup>
           <thead>
             <tr>
-              <th>Code</th>
-              <th className="db-table-num">Orders</th>
-              <th className="db-table-num">Discount</th>
+              <th scope="col">Code</th>
+              <th scope="col" className="db-table-num">Orders</th>
+              <th scope="col" className="db-table-num">Discount</th>
             </tr>
           </thead>
           <tbody>
@@ -58,6 +58,7 @@ export function ManagerSalesDiscounts({ range }: ManagerSalesDiscountsProps) {
               entityLabel="discount codes"
               isEmpty={codes.length === 0}
               isError={reportQuery.isError}
+              onRetry={() => void reportQuery.refetch()}
               initialLoading={initialLoading}
             />
             {!initialLoading && !reportQuery.isError

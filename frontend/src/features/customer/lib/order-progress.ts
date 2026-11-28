@@ -3,10 +3,34 @@ import type { OrderStatus, OrderTimelineEntry } from "@/lib/schemas/order";
 export const ORDER_PROGRESS_STEPS = [
   { key: "awaiting_payment", label: "Placed" },
   { key: "confirmed", label: "Confirmed" },
-  { key: "in_production", label: "In production" },
-  { key: "ready", label: "Ready" },
+  { key: "in_production", label: "Being made" },
+  { key: "ready", label: "Ready for pickup" },
   { key: "fulfilled", label: "Picked up" },
 ] as const satisfies ReadonlyArray<{ key: OrderStatus; label: string }>;
+
+/** The order's state as the page's title reads it. */
+export function orderHeadline(status: OrderStatus): string {
+  switch (status) {
+    case "awaiting_payment":
+      return "Awaiting payment";
+    case "pending":
+      return "Awaiting our review";
+    case "confirmed":
+      return "Confirmed";
+    case "in_production":
+      return "Being made";
+    case "ready":
+      return "Ready for pickup";
+    case "fulfilled":
+      return "Picked up";
+    case "cancelled":
+      return "Cancelled";
+    case "expired":
+      return "Expired";
+    case "no_show":
+      return "Not picked up";
+  }
+}
 
 export function activeOrderProgressIndex(status: OrderStatus): number {
   if (isUncollected(status)) {

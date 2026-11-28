@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
 import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
-import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
+import { DashboardStepGroup } from "@/components/ui/dashboard-step-group";
 import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { useNow } from "@/lib/hooks/use-now";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
@@ -26,50 +25,37 @@ export function ManagerIncidents() {
   return (
     <div className="dashboard-page-stack">
       <DashboardPageHeader
-        actions={
-          <div className="db-table-day">
-            <Input
-              aria-label="Week starting"
-              max={today}
-              type="date"
-              value={week}
-              variant="inline"
-              onChange={(event) => {
-                const parsed = z.iso.date().safeParse(event.target.value);
-                if (parsed.success && parsed.data <= today) {
-                  setWeek(weekStartOf(parsed.data));
-                }
-              }}
-            />
-            <Button size="sm" type="button" variant="outline" onClick={() => setWeek(shiftDay(week, -7))}>
-              Previous week
-            </Button>
-            <Button
-              disabled={week === thisWeek}
-              size="sm"
-              title={week === thisWeek ? "Already showing this week" : undefined}
-              type="button"
-              variant="outline"
-              onClick={() => setWeek(thisWeek)}
-            >
-              This week
-            </Button>
-            <Button
-              disabled={week === thisWeek}
-              size="sm"
-              title={week === thisWeek ? "No later week yet" : undefined}
-              type="button"
-              variant="outline"
-              onClick={() => setWeek(shiftDay(week, 7))}
-            >
-              Next week
-            </Button>
-          </div>
-        }
         description="What the system recorded as it happened and what the counter reported, Monday to Sunday."
         eyebrow={DASHBOARD_PAGE_EYEBROW.operations}
         title={PAGE_TITLES.incidents}
       />
+      {/* The week, as the pickup schedule shows its day: the field left, the steps right. */}
+      <div className="db-table-filters">
+        <div className="db-table-day">
+          <DateInput
+            id="manager-incidents-week"
+            label="Week of"
+            max={today}
+            placeholder="Choose a day"
+            required
+            value={week}
+            onChange={(next) => setWeek(weekStartOf(next))}
+          />
+        </div>
+        <DashboardStepGroup
+          aria-label="Step the week"
+          steps={[
+            { label: "Previous week", direction: "previous", onClick: () => setWeek(shiftDay(week, -7)) },
+            { label: "This week", blockedReason: week === thisWeek ? "Already showing this week" : undefined, onClick: () => setWeek(thisWeek) },
+            {
+              label: "Next week",
+              direction: "next",
+              blockedReason: week === thisWeek ? "No later week yet" : undefined,
+              onClick: () => setWeek(shiftDay(week, 7)),
+            },
+          ]}
+        />
+      </div>
       <ManagerIncidentKpis week={week} />
       <div className="dashboard-page-body">
         {/* A new week starts on the first page with every type. */}

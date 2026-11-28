@@ -102,7 +102,7 @@ func writeMapUsecaseError(c fiber.Ctx, err error) error {
 	case errors.Is(err, domaincombo.ErrSlugExists):
 		return writeAppError(c, apperrors.ErrSlugExists)
 	case errors.Is(err, domaindiscount.ErrNotFound):
-		return writeAppError(c, apperrors.ErrNotFound)
+		return writeAppError(c, apperrors.ErrDiscountNotFound)
 	case errors.Is(err, domaindiscount.ErrCodeExists):
 		return writeAppError(c, apperrors.ErrCodeExists)
 	case errors.Is(err, domaindiscount.ErrInactive):

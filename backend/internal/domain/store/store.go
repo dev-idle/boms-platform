@@ -1,5 +1,5 @@
 // Package store holds the bakery's operating settings: when it hands out
-// pickups and which days it is closed. Admins edit them; checkout enforces them.
+// pickups and which days it is closed. Managers edit them; checkout enforces them.
 package store
 
 import (
@@ -20,14 +20,14 @@ var Location = time.FixedZone("Asia/Ho_Chi_Minh", 7*60*60)
 // DayLayout is how a calendar day is written in the API.
 const DayLayout = "2006-01-02"
 
-// MaxAdvanceDaysLimit is the longest booking window an admin may set, so the
+// MaxAdvanceDaysLimit is the longest booking window a manager may set, so the
 // closed days a checkout can meet are known before the settings are read.
 const MaxAdvanceDaysLimit = 90
 
-// MaxPreorderMinLead is the longest pre-order notice an admin may require.
+// MaxPreorderMinLead is the longest pre-order notice a manager may require.
 const MaxPreorderMinLead = 7 * 24 * time.Hour
 
-// slotLengths are the pickup slot lengths an admin may choose: each divides an
+// slotLengths are the pickup slot lengths a manager may choose: each divides an
 // hour, so slots start at times people say.
 var slotLengths = []time.Duration{10 * time.Minute, 15 * time.Minute, 20 * time.Minute, 30 * time.Minute, time.Hour}
 
@@ -165,7 +165,7 @@ func ClosedDateWindow(now time.Time) (from, to time.Time) {
 	return from, from.AddDate(0, 0, maxClosedDateAhead)
 }
 
-// NewClosedDate checks a closure an admin is adding and returns its trimmed reason.
+// NewClosedDate checks a closure a manager is adding and returns its trimmed reason.
 func NewClosedDate(day time.Time, reason string, now time.Time) (string, error) {
 	from, to := ClosedDateWindow(now)
 	if day.Before(from) || day.After(to) {

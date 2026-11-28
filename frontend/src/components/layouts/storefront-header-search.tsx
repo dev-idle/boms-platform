@@ -73,7 +73,7 @@ export function StorefrontHeaderSearch({
             name="search"
             onChange={(event) => onQueryChange(event.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search pastries, cakes, gifts…"
+            placeholder="Search products…"
             role="combobox"
             spellCheck={false}
             type="search"

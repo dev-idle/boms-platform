@@ -11,7 +11,6 @@ export default function StaffAvailabilityPage() {
       <DashboardPageHeader
         description="Mark what has run out today. It can still be ordered for a later day."
         eyebrow={DASHBOARD_PAGE_EYEBROW.operations}
-        leadAside
         title={PAGE_TITLES.availability}
       />
       <StaffAvailability />

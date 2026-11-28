@@ -11,6 +11,7 @@ import type {
   PromotionListFilterInput,
   ReviewListFilterInput,
   SalesReportFilterInput,
+  StrandingChange,
 } from "../schemas";
 
 /** List queries: align with global default; explicit for manager catalog tables. */
@@ -50,6 +51,9 @@ export const managerQueryKeys = {
   incidentsRoot: ["manager", "incidents"] as const,
   incidents: (filter: IncidentListFilterInput) => [...managerQueryKeys.incidentsRoot, filter] as const,
   incidentSummary: (week: string) => [...managerQueryKeys.incidentsRoot, "summary", week] as const,
+  storeSettings: ["manager", "store-settings"] as const,
+  closedDates: ["manager", "closed-dates"] as const,
+  strandedPickups: (change: StrandingChange) => ["manager", "stranded-pickups", change] as const,
 };
 
 /** Everything pushed events can change in a manager tab, refetched after a gap. */

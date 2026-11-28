@@ -30,8 +30,8 @@ export function AdminAccounts() {
           </colgroup>
           <thead>
             <tr>
-              <th>Role</th>
-              <th className="db-table-num">Accounts</th>
+              <th scope="col">Role</th>
+              <th scope="col" className="db-table-num">Accounts</th>
             </tr>
           </thead>
           <tbody>
@@ -41,6 +41,7 @@ export function AdminAccounts() {
               initialLoading={initialLoading}
               isEmpty={false}
               isError={dashboardQuery.isError}
+              onRetry={() => void dashboardQuery.refetch()}
             />
             {loaded
               ? dashboardQuery.data.accounts.by_role.map((row) => (

@@ -31,27 +31,28 @@ export function OrderReschedule({ id, orderId, fulfillment, onDone }: OrderResch
   }
 
   return (
-    <div className="storefront-order-detail__reschedule" id={id}>
+    <div className="storefront-order-changes__reschedule" id={id}>
       <div>
         <PickupSlotPicker {...choice.picker} errorId={ERROR_ID} />
         <p className="storefront-pickup-picker__error text-caption" id={ERROR_ID} role="status">
           {choice.message}
         </p>
       </div>
-      <div className="storefront-order-detail__change-actions">
+      <div className="storefront-order-changes__actions">
         <Button
           aria-busy={reschedule.isPending || undefined}
           disabled={!choice.ready || reschedule.isPending}
+          size="sm"
           type="button"
           onClick={move}
         >
-          {reschedule.isPending ? "Moving pickup…" : "Move pickup"}
+          {reschedule.isPending ? "Saving…" : "Save pickup time"}
         </Button>
-        <Button disabled={reschedule.isPending} type="button" variant="outline" onClick={onDone}>
-          Keep time
+        <Button disabled={reschedule.isPending} size="sm" type="button" variant="outline" onClick={onDone}>
+          Keep current time
         </Button>
         {choice.retry ? (
-          <Button type="button" variant="outline" onClick={choice.retry}>
+          <Button size="sm" type="button" variant="outline" onClick={choice.retry}>
             Try again
           </Button>
         ) : null}

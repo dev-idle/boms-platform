@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields";
+import { DashboardFormCancelLink } from "@/components/ui/dashboard-form-cancel-link";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import {
@@ -16,6 +17,7 @@ import {
 import { FormPublishSwitch } from "@/components/ui/form-publish-switch";
 import { IntegerFieldInput } from "@/components/ui/integer-field-input";
 import { Select } from "@/components/ui/select";
+import { ROUTE } from "@/constants/routes";
 import {
   FORM_FIELD_HINT,
   FORM_SWITCH_HINT,
@@ -70,7 +72,7 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
       onSuccess: () => onSuccess?.(),
       onError: (error) => {
         if (!isApiError(error)) {
-          toast.error("Failed to save category");
+          toast.error("We could not save category. Please try again.");
           return;
         }
         if (error.hasValidationDetails()) {
@@ -172,6 +174,7 @@ export function CategoryForm({ mode, category, onSuccess }: CategoryFormProps) {
             isPending={isPending}
             pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
           />
+          <DashboardFormCancelLink href={ROUTE.manager.categories} />
         </div>
       </form>
     </Form>

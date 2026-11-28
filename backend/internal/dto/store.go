@@ -35,7 +35,7 @@ type PublicClosedDateResponse struct {
 	Reason string `json:"reason"`
 }
 
-// StoreSettingsResponse is the settings an admin edits.
+// StoreSettingsResponse is the settings a manager edits.
 type StoreSettingsResponse struct {
 	OpensAt                string `json:"opens_at"`
 	ClosesAt               string `json:"closes_at"`
@@ -60,7 +60,7 @@ type PatchStoreSettingsRequest struct {
 	PaymentHoldMinutes     *int    `json:"payment_hold_minutes"`
 }
 
-// ClosedDateResponse is a closed day as admins manage it.
+// ClosedDateResponse is a closed day as managers keep it.
 type ClosedDateResponse struct {
 	ID        string `json:"id"`
 	Date      string `json:"date"`

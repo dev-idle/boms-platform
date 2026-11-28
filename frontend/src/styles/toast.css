@@ -121,19 +121,20 @@
 }
 
 /* Sonner's close is a round badge hung off the top-left corner. Here it is a
-   glyph centred on the right edge — no fill, no ring, ink on hover. */
+   glyph centred on the right edge — no fill, no ring, ink on hover — in a 44px
+   target that stays inside the toast's right padding. */
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button] {
   background: transparent;
   border: 0;
   border-radius: 0;
   color: var(--color-muted);
-  height: 1.75rem;
+  height: 2.75rem;
   left: auto;
-  right: 0.625rem;
+  right: 0.125rem;
   top: 50%;
   transform: translateY(-50%);
   transition: color var(--duration-micro) var(--ease-luxury);
-  width: 1.75rem;
+  width: 2.75rem;
 }
 
 [data-sonner-toaster]

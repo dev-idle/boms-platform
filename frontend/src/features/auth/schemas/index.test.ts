@@ -38,7 +38,7 @@ describe("registration consent", () => {
   it("refuses a sign-up that has not accepted the policies", () => {
     const result = registerSchema.safeParse({ email: "mai@example.com", password: PASSWORD, accept_terms: false, marketing_opt_in: false });
     expect(result.success ? undefined : result.error.issues[0]?.message).toBe(
-      "Accept the terms and the privacy policy to create an account",
+      "Accept the terms of sale and the privacy policy to create an account",
     );
   });
 

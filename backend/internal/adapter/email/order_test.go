@@ -51,7 +51,7 @@ func TestOrderComposer(t *testing.T) {
 		assert.Equal(t, "mai@example.com", email.To)
 		assert.Equal(t, "Mai", email.ToName)
 		for _, part := range []string{email.HTML, email.Text} {
-			assert.Contains(t, part, "Hi Mai,")
+			assert.Contains(t, part, "Hello Mai,")
 			assert.Contains(t, part, "CH-260930-007")
 			assert.Contains(t, part, "Wednesday, September 30 at 11:30 AM", "pickup in the bakery's time")
 			assert.Contains(t, part, "Almond Croissant")
@@ -60,7 +60,7 @@ func TestOrderComposer(t *testing.T) {
 			assert.Contains(t, part, "−$2.45")
 			assert.Contains(t, part, "$22.05")
 			assert.Contains(t, part, "https://shop.example/orders/5b0c7a4e-3c1d-4b8e-9f2a-6d7e8f901234")
-			assert.Contains(t, part, "123 Greige Lane")
+			assert.Contains(t, part, "Ninh Kieu, Can Tho")
 		}
 	})
 
@@ -86,7 +86,7 @@ func TestOrderComposer(t *testing.T) {
 		}
 		placed, err := newComposer(t).ComposeOrderEmail(phone(domainorder.NoticePlaced))
 		require.NoError(t, err)
-		assert.Contains(t, placed.Text, "You pay in cash when you collect it")
+		assert.Contains(t, placed.Text, "You pay in cash when you pick it up")
 		ready, err := newComposer(t).ComposeOrderEmail(phone(domainorder.NoticeReady))
 		require.NoError(t, err)
 		assert.Contains(t, ready.Text, "pay at the counter")
@@ -100,7 +100,7 @@ func TestOrderComposer(t *testing.T) {
 		t.Parallel()
 		ready, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeReady))
 		require.NoError(t, err)
-		assert.Equal(t, "Your order CH-260930-007 is ready to collect", ready.Subject)
+		assert.Equal(t, "Your order CH-260930-007 is ready for pickup", ready.Subject)
 		assert.Contains(t, ready.Text, "give your pickup code at the counter")
 		assert.NotContains(t, ready.Text, "Subtotal")
 
@@ -148,7 +148,7 @@ func TestOrderComposer(t *testing.T) {
 		t.Parallel()
 		missed, err := newComposer(t).ComposeOrderEmail(orderEmail(domainorder.NoticeNoShow))
 		require.NoError(t, err)
-		assert.Equal(t, "Your order CH-260930-007 was not collected", missed.Subject)
+		assert.Equal(t, "Your order CH-260930-007 was not picked up", missed.Subject)
 		assert.Contains(t, missed.Text, "is not refunded")
 	})
 

@@ -140,6 +140,17 @@ FROM (
       sqlc.narg('pickup_from')::timestamptz IS NULL
       OR (o.pickup_at >= sqlc.narg('pickup_from')::timestamptz AND o.pickup_at < sqlc.narg('pickup_to')::timestamptz)
     )
+    -- Found by what the counter or the kitchen calls it: the order's code, the
+    -- customer's name, or an item on the ticket.
+    AND (
+      sqlc.arg('search')::text = ''
+      OR o.code ILIKE '%' || sqlc.arg('search') || '%'
+      OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || sqlc.arg('search') || '%'
+      OR EXISTS (
+        SELECT 1 FROM order_ticket_items i
+        WHERE i.ticket_id = t.id AND i.name ILIKE '%' || sqlc.arg('search') || '%'
+      )
+    )
   ORDER BY o.pickup_at ASC NULLS LAST, t.created_at ASC, t.id ASC
   LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
 ) page
@@ -155,6 +166,7 @@ SELECT count(*)::bigint AS count
 FROM order_tickets t
 INNER JOIN orders o ON o.id = t.order_id
 LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
   AND t.station = sqlc.arg('station')::station
   AND t.status <> 'cancelled'::ticket_status
@@ -166,4 +178,15 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
   AND (
     sqlc.narg('pickup_from')::timestamptz IS NULL
     OR (o.pickup_at >= sqlc.narg('pickup_from')::timestamptz AND o.pickup_at < sqlc.narg('pickup_to')::timestamptz)
+  )
+  -- Found by what the counter or the kitchen calls it: the order's code, the
+  -- customer's name, or an item on the ticket.
+  AND (
+    sqlc.arg('search')::text = ''
+    OR o.code ILIKE '%' || sqlc.arg('search') || '%'
+    OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || sqlc.arg('search') || '%'
+    OR EXISTS (
+      SELECT 1 FROM order_ticket_items i
+      WHERE i.ticket_id = t.id AND i.name ILIKE '%' || sqlc.arg('search') || '%'
+    )
   );

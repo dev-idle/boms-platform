@@ -1,5 +1,6 @@
 import type { QueryKey } from "@tanstack/react-query";
 
+import { pickupQueryKeys } from "@/features/customer";
 import { REALTIME_EVENT_TYPE, type RealtimeEvent } from "@/lib/realtime/events";
 
 import type {
@@ -36,6 +37,7 @@ export const staffLiveQueryKeys: readonly QueryKey[] = [
   staffQueryKeys.productsRoot,
   staffQueryKeys.conversationsRoot,
   staffQueryKeys.messagesRoot,
+  ...pickupQueryKeys,
 ];
 
 /**
@@ -70,6 +72,10 @@ export function staffQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
     }
     case REALTIME_EVENT_TYPE.orderRefunded:
       return [staffQueryKeys.ordersRoot];
+    // The picker in a new order or a moved pickup: a slot filling, or the rules changing.
+    case REALTIME_EVENT_TYPE.slotsChanged:
+    case REALTIME_EVENT_TYPE.settingsUpdated:
+      return [...pickupQueryKeys];
     case REALTIME_EVENT_TYPE.ticketChanged: {
       const orderId = event.data.order_id;
       return orderId

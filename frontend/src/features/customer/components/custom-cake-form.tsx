@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -10,17 +10,17 @@ import { CheckboxField } from "@/components/ui/checkbox-field";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { CLOUDINARY_MAX_IMAGE_BYTES } from "@/lib/cloudinary/config";
 import { formatCloudinaryMaxImageSize } from "@/lib/cloudinary/format";
 import { CLOUDINARY_UPLOAD_COPY } from "@/lib/cloudinary/messages";
-import { isApiError } from "@/lib/errors";
+import { isApiError, userFacingErrorMessage } from "@/lib/errors";
 import {
   CAKE_MESSAGE_MAX,
   PRODUCT_OPTION_GROUP_LABEL,
   productOptionGroupSchema,
   type CatalogProduct,
 } from "@/lib/schemas/catalog";
+import { cn } from "@/lib/utils";
 import { applyFormFieldErrors } from "@/lib/validation";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
@@ -32,14 +32,18 @@ const FIELDS = ["option_ids", "message", "reference_image_url", "reference_right
 
 type CustomCakeFormProps = {
   product: CatalogProduct;
+  /** What stands beside the submit. */
+  children?: ReactNode;
+  /** Told what the chosen options add to the product's price, as they change. */
+  onOptionsCentsChange?: (cents: number) => void;
 };
 
 /**
  * A custom cake configured before it goes in the cart: one option from each
  * group it offers, a message for the cake, and a reference photo the customer
- * uploads and says they may share. The price follows the choices.
+ * uploads and says they may share. The page's price follows the choices.
  */
-export function CustomCakeForm({ product }: CustomCakeFormProps) {
+export function CustomCakeForm({ product, children, onOptionsCentsChange }: CustomCakeFormProps) {
   const groups = productOptionGroupSchema.options.filter((group) =>
     product.options.some((option) => option.group === group),
   );
@@ -55,24 +59,31 @@ export function CustomCakeForm({ product }: CustomCakeFormProps) {
   });
   const addCartItem = useAddCartItem();
   const [uploading, setUploading] = useState(false);
-  const chosen = useWatch({ control: form.control, name: "option_ids" });
   const photo = useWatch({ control: form.control, name: "reference_image_url" });
-  const price = product.options
-    .filter((option) => chosen.includes(option.id))
-    .reduce((total, option) => total + option.price_delta_cents, product.price_cents);
   const busy = uploading || addCartItem.isPending;
+
+  /** What the chosen options add to the price once optionId is the choice of group index. */
+  function optionsCents(index: number, optionId: string): number {
+    const chosen = form.getValues("option_ids").map((id, at) => (at === index ? optionId : id));
+    return product.options
+      .filter((option) => chosen.includes(option.id))
+      .reduce((total, option) => total + option.price_delta_cents, 0);
+  }
 
   function onSubmit(values: CartCustomizationInput): void {
     addCartItem.mutate(
       { product_id: product.id, quantity: 1, customization: values },
       {
-        onSuccess: () => form.reset(empty),
+        onSuccess: () => {
+          form.reset(empty);
+          onOptionsCentsChange?.(0);
+        },
         onError: (error) => {
           if (isApiError(error) && error.hasValidationDetails()) {
             applyFormFieldErrors(form, error.details!, FIELDS);
             return;
           }
-          toast.error(isApiError(error) ? error.message : "Failed to add to cart");
+          toast.error(userFacingErrorMessage(error, "We could not add it to your cart. Please try again."));
         },
       },
     );
@@ -93,20 +104,40 @@ export function CustomCakeForm({ product }: CustomCakeFormProps) {
             name={`option_ids.${index}`}
             render={({ field }) => (
               <FormItem>
-                <FieldControl label={PRODUCT_OPTION_GROUP_LABEL[group]}>
-                  <Select disabled={busy} value={field.value} onChange={field.onChange}>
-                    <option value="">{`Choose a ${PRODUCT_OPTION_GROUP_LABEL[group].toLowerCase()}`}</option>
-                    {product.options
-                      .filter((option) => option.group === group)
-                      .map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.price_delta_cents > 0
-                            ? `${option.label} (+${formatPriceCents(option.price_delta_cents)})`
-                            : option.label}
-                        </option>
-                      ))}
-                  </Select>
-                </FieldControl>
+                {/* One tile per option, so every choice and its price shows at once;
+                    FormControl ties the group to its error message. */}
+                <FormControl>
+                  <fieldset className="option-tiles" disabled={busy}>
+                    <legend className="option-tiles__legend text-form-label">{PRODUCT_OPTION_GROUP_LABEL[group]}</legend>
+                    <div className="option-tiles__grid">
+                      {product.options
+                        .filter((option) => option.group === group)
+                        .map((option) => (
+                          <label
+                            className={cn("option-tile", field.value === option.id && "option-tile--selected")}
+                            key={option.id}
+                          >
+                            <input
+                              checked={field.value === option.id}
+                              className="sr-only"
+                              name={field.name}
+                              onBlur={field.onBlur}
+                              onChange={() => {
+                                field.onChange(option.id);
+                                onOptionsCentsChange?.(optionsCents(index, option.id));
+                              }}
+                              type="radio"
+                              value={option.id}
+                            />
+                            <span className="option-tile__label">{option.label}</span>
+                            <span className="option-tile__note">
+                              {option.price_delta_cents > 0 ? `+${formatPriceCents(option.price_delta_cents)}` : "Included"}
+                            </span>
+                          </label>
+                        ))}
+                    </div>
+                  </fieldset>
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -184,8 +215,9 @@ export function CustomCakeForm({ product }: CustomCakeFormProps) {
         </p>
         <div className="dashboard-profile-form-actions">
           <Button aria-busy={addCartItem.isPending || undefined} disabled={busy} type="submit">
-            {addCartItem.isPending ? "Adding…" : `Add to cart · ${formatPriceCents(price)}`}
+            {addCartItem.isPending ? "Adding…" : "Add to cart"}
           </Button>
+          {children}
         </div>
       </form>
     </Form>

@@ -3,6 +3,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
+import { CATALOG_COMBOS_PAGE_SIZE } from "@/constants/catalog";
 import type {
   CatalogCategoriesListFilterInput,
   CatalogCombosListFilterInput,
@@ -50,4 +51,13 @@ export function useProductReviews(productId: string) {
 
 export function useCatalogCombos(input: CatalogCombosListFilterInput) {
   return useQuery(catalogCombosQueryOptions(input));
+}
+
+/**
+ * Whether any combo is on sale, read from the first page the combos section
+ * shows, so the links to that section and the section share one request.
+ */
+export function useCombosOnSale(): boolean {
+  const combosQuery = useCatalogCombos({ page: 1, page_size: CATALOG_COMBOS_PAGE_SIZE });
+  return (combosQuery.data?.pagination.total ?? 0) > 0;
 }

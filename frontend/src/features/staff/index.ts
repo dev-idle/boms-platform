@@ -11,4 +11,4 @@ export {
 } from "./components";
 export { useStaffConversationCounts } from "./hooks";
 export { staffOrderSummarySchema, type StaffOrderSummary } from "./schemas";
-export { staffNewOrderBreadcrumbItems, staffOrderDetailBreadcrumbItems } from "./lib/staff-breadcrumbs";
+export { staffNewOrderBreadcrumbItems } from "./lib/staff-breadcrumbs";

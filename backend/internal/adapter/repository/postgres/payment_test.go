@@ -33,7 +33,7 @@ func TestPayment_Integration(t *testing.T) {
 		testPickupCodes, newHandoffAttempts(), handoffLimit)
 	discounts := postgresadapter.NewDiscountCodeRepository(f.pool)
 	staffSees := func(orderID string) bool {
-		list, _, _, _, err := staff.List(ctx, 1, 100, "")
+		list, _, _, _, err := staff.List(ctx, 1, 100, "", "")
 		require.NoError(t, err)
 		for _, order := range list {
 			if order.ID == orderID {

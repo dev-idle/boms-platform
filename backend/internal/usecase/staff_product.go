@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,11 +40,13 @@ func NewStaffProductUsecase(
 }
 
 // List returns a page of the products the counter sells, by category and
-// name; soldOutToday narrows it to those out today.
+// name; soldOutToday narrows it to those out today, search to those whose
+// name or category holds it.
 func (u *StaffProductUsecase) List(
 	ctx context.Context,
 	page, pageSize int32,
 	soldOutToday bool,
+	search string,
 ) ([]dto.StaffProductResponse, int64, int32, int32, error) {
 	page, pageSize = normalizeCatalogListPage(page, pageSize)
 	today := domainstore.DayOf(time.Now())
@@ -51,16 +54,18 @@ func (u *StaffProductUsecase) List(
 	if soldOutToday {
 		soldOutOn = &today
 	}
+	params := port.StaffListProductsParams{
+		SoldOutOn: soldOutOn,
+		Search:    strings.TrimSpace(search),
+		Limit:     pageSize,
+		Offset:    utils.PageOffset(page, pageSize),
+	}
 	rows, total, err := listWithTotal(ctx,
 		func(ctx context.Context) ([]port.StaffProduct, error) {
-			return u.products.StaffList(ctx, port.StaffListProductsParams{
-				SoldOutOn: soldOutOn,
-				Limit:     pageSize,
-				Offset:    utils.PageOffset(page, pageSize),
-			})
+			return u.products.StaffList(ctx, params)
 		},
 		func(ctx context.Context) (int64, error) {
-			return u.products.StaffListCount(ctx, soldOutOn)
+			return u.products.StaffListCount(ctx, params)
 		},
 	)
 	if err != nil {

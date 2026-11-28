@@ -6,6 +6,8 @@ import { useForm } from "react-hook-form";
 
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import { Button } from "@/components/ui/button";
+import { DashboardFormCancelLink } from "@/components/ui/dashboard-form-cancel-link";
+import { ROUTE } from "@/constants/routes";
 import { PickupSlotPicker, usePickupChoice } from "@/features/customer";
 import { isApiError } from "@/lib/errors";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -86,7 +88,13 @@ export function StaffNewOrder() {
           mode={mode}
           onChannelChange={setChannel}
           onGuestSubmit={submit}
-          onLookup={setLookedUp}
+          onLookup={(email) => {
+            if (email === lookedUp) {
+              void customerQuery.refetch();
+              return;
+            }
+            setLookedUp(email);
+          }}
           onModeChange={setMode}
         />
       </DashboardProfileSection>
@@ -120,6 +128,7 @@ export function StaffNewOrder() {
         <Button aria-busy={create.isPending || undefined} disabled={create.isPending} type="button" onClick={submit}>
           {create.isPending ? "Taking the order…" : "Take order"}
         </Button>
+        <DashboardFormCancelLink href={ROUTE.staff.orders} />
         {priced ? (
           <p aria-busy={pricing || undefined} className={pricing ? "text-sm text-muted" : "text-sm"}>
             Cash due at pickup{" "}

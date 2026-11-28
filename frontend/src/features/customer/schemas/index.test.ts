@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   cartCustomizationInputSchema,
+  cartSchema,
   orderSchema,
   ordersListFilterSchema,
   paymentStartSchema,
@@ -118,6 +119,69 @@ describe("orderSchema pickup code", () => {
     for (const pickup_code of [undefined, "427", "04a7"]) {
       expect(orderSchema.safeParse({ ...order, pickup_code }).success).toBe(false);
     }
+  });
+});
+
+// Each line shows its own photo, or its monogram when the API says it has none.
+describe("line photos", () => {
+  const photo = "https://res.cloudinary.com/demo/image/upload/v1/boms/products/cake.jpg";
+  const line = {
+    id: "00000000-0000-4000-8000-000000000011",
+    line_type: "product",
+    product_id: "00000000-0000-4000-8000-000000000012",
+    name: "Matcha cake",
+    slug: "matcha-cake",
+    quantity: 1,
+    unit_price_cents: 4500,
+    line_total_cents: 4500,
+    customization: null,
+  };
+  const cart = (item: Record<string, unknown>) => ({
+    id: "00000000-0000-4000-8000-000000000010",
+    items: [item],
+    subtotal_cents: 4500,
+    discount_cents: 0,
+    total_cents: 4500,
+    checkout_ready: true,
+    fulfillment: { has_kitchen_items: true, lead_minutes: 0, sold_out_on: null },
+  });
+  const order = (item: Record<string, unknown>) => ({
+    id: "00000000-0000-4000-8000-000000000001",
+    code: "CH-261001-001",
+    status: "confirmed",
+    order_type: "pre_order",
+    subtotal_cents: 4500,
+    discount_cents: 0,
+    total_cents: 4500,
+    items: [item],
+    timeline: [],
+    tickets: [],
+    payment: null,
+    fulfillment: null,
+    payment_due_at: null,
+    pickup_code: null,
+    can_message: true,
+    created_at: "2026-10-01T09:00:00+07:00",
+    updated_at: "2026-10-01T09:05:00+07:00",
+  });
+
+  it("reads a cart line's photo and category, or null for none", () => {
+    const item = { ...line, is_available: true };
+    const read = cartSchema.parse(cart({ ...item, image_url: photo, category_name: "Cakes" })).items[0];
+    expect([read.image_url, read.category_name]).toEqual([photo, "Cakes"]);
+    const bare = cartSchema.parse(cart({ ...item, image_url: null, category_name: null })).items[0];
+    expect([bare.image_url, bare.category_name]).toEqual([null, null]);
+  });
+
+  it("reads an order item's photo, or null for none", () => {
+    expect(orderSchema.parse(order({ ...line, image_url: photo })).items[0].image_url).toBe(photo);
+    expect(orderSchema.parse(order({ ...line, image_url: null })).items[0].image_url).toBeNull();
+  });
+
+  it("rejects a line the API sent without them", () => {
+    expect(cartSchema.safeParse(cart({ ...line, is_available: true, category_name: null })).success).toBe(false);
+    expect(cartSchema.safeParse(cart({ ...line, is_available: true, image_url: null })).success).toBe(false);
+    expect(orderSchema.safeParse(order(line)).success).toBe(false);
   });
 });
 

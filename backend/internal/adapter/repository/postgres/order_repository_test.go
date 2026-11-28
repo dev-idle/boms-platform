@@ -157,19 +157,43 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 
 		all, err := orders.StaffList(ctx, port.StaffListOrdersParams{Limit: 100})
 		require.NoError(t, err)
-		allCount, err := orders.StaffListCount(ctx, nil, nil)
+		allCount, err := orders.StaffListCount(ctx, port.StaffListOrdersParams{})
 		require.NoError(t, err)
 		assert.Equal(t, int64(len(all)), allCount)
 		assert.Greater(t, allCount, int64(1), "an unset status lists every order")
 
 		filtered, err := orders.StaffList(ctx, port.StaffListOrdersParams{Status: &status, Limit: 100})
 		require.NoError(t, err)
-		filteredCount, err := orders.StaffListCount(ctx, &status, nil)
+		filteredCount, err := orders.StaffListCount(ctx, port.StaffListOrdersParams{Status: &status})
 		require.NoError(t, err)
 		require.Len(t, filtered, 1)
 		assert.Equal(t, int64(1), filteredCount)
 		assert.Equal(t, confirmed.ID, filtered[0].Order.ID)
 		assert.Equal(t, &customer.Email, filtered[0].CustomerEmail)
+
+		for _, term := range []string{"260101-003", "ch-260101-003"} {
+			byCode := port.StaffListOrdersParams{Search: term, Limit: 100}
+			found, err := orders.StaffList(ctx, byCode)
+			require.NoError(t, err)
+			foundCount, err := orders.StaffListCount(ctx, byCode)
+			require.NoError(t, err)
+			require.Len(t, found, 1, "a code is found whole or in part, in any case: %q", term)
+			assert.Equal(t, int64(1), foundCount)
+			assert.Equal(t, confirmed.ID, found[0].Order.ID)
+		}
+		byEmail := port.StaffListOrdersParams{Search: customer.Email, Limit: 100}
+		found, err := orders.StaffList(ctx, byEmail)
+		require.NoError(t, err)
+		foundCount, err := orders.StaffListCount(ctx, byEmail)
+		require.NoError(t, err)
+		assert.Equal(t, int64(len(found)), foundCount)
+		require.NotEmpty(t, found)
+		for _, row := range found {
+			assert.Equal(t, &customer.Email, row.CustomerEmail, "only that customer's orders")
+		}
+		none, err := orders.StaffListCount(ctx, port.StaffListOrdersParams{Search: "no such order"})
+		require.NoError(t, err)
+		assert.Zero(t, none)
 	})
 
 	t.Run("staff_see_the_phone_on_an_order_but_not_across_the_list", func(t *testing.T) {
@@ -218,5 +242,63 @@ func TestOrderCheckoutRepositories_Integration(t *testing.T) {
 		sums, err := orders.SumItemQuantitiesByOrderIDs(ctx, []uuid.UUID{order.ID, uuid.New()})
 		require.NoError(t, err)
 		assert.Equal(t, map[uuid.UUID]int32{order.ID: 3}, sums)
+	})
+
+	t.Run("items_carry_their_product_or_combo_photo", func(t *testing.T) {
+		cakePhoto := "https://res.cloudinary.com/demo/image/upload/boms/products/matcha-cake-1.jpg"
+		require.NoError(t, products.ReplaceProductImages(ctx, cake.ID, []string{
+			cakePhoto,
+			"https://res.cloudinary.com/demo/image/upload/boms/products/matcha-cake-2.jpg",
+		}))
+		boxPhoto := "https://res.cloudinary.com/demo/image/upload/boms/combos/tea-box.jpg"
+		now := time.Now().UTC()
+		combos := postgresadapter.NewComboRepository(pool)
+		box, err := combos.Create(ctx, port.CreateComboParams{
+			Name: "Tea box", Slug: "tea-box", PriceCents: 7000, ImageURL: &boxPhoto,
+			StartsAt: now.Add(-time.Hour), EndsAt: now.Add(24 * time.Hour), IsActive: true,
+		})
+		require.NoError(t, err)
+		order, err := orders.Create(ctx, port.CreateOrderParams{
+			Code: "CH-260101-006", Type: domainorder.TypePreOrder, UserID: &customer.ID, Channel: domainorder.ChannelOnline, Status: domainorder.StatusPending, SubtotalCents: 14700, TotalCents: 14700,
+		})
+		require.NoError(t, err)
+		require.NoError(t, orders.CreateItems(ctx, []port.CreateOrderItemParams{
+			{
+				OrderID: order.ID, LineType: domaincart.LineTypeProduct, ProductID: &cake.ID,
+				Name: cake.Name, Slug: cake.Slug, Quantity: 1, UnitPriceCents: 4500, LineTotalCents: 4500,
+			},
+			{
+				OrderID: order.ID, LineType: domaincart.LineTypeProduct, ProductID: &tart.ID,
+				Name: tart.Name, Slug: tart.Slug, Quantity: 1, UnitPriceCents: 3200, LineTotalCents: 3200,
+			},
+			{
+				OrderID: order.ID, LineType: domaincart.LineTypeCombo, ComboID: &box.ID,
+				Name: box.Name, Slug: box.Slug, Quantity: 1, UnitPriceCents: 7000, LineTotalCents: 7000,
+			},
+		}))
+
+		photosOf := func(items []domainorder.Item) map[string]string {
+			photos := make(map[string]string, len(items))
+			for _, item := range items {
+				photos[item.Name] = item.ImageURL
+			}
+			return photos
+		}
+		items, err := orders.ListItemsByOrderID(ctx, order.ID)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{cake.Name: cakePhoto, tart.Name: "", box.Name: boxPhoto}, photosOf(items))
+
+		exported, err := orders.ListItemsByOrderIDs(ctx, []uuid.UUID{order.ID})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{cake.Name: cakePhoto, tart.Name: "", box.Name: boxPhoto}, photosOf(exported[order.ID]),
+			"the data export reads the same photos")
+
+		// Last subtest: the cake and the box are deleted for good here.
+		require.NoError(t, products.SoftDelete(ctx, cake.ID))
+		require.NoError(t, combos.SoftDelete(ctx, box.ID))
+		items, err = orders.ListItemsByOrderID(ctx, order.ID)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{cake.Name: "", tart.Name: "", box.Name: ""}, photosOf(items),
+			"a deleted product or combo no longer lends its photo")
 	})
 }

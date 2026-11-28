@@ -115,7 +115,7 @@ export function ResetPasswordForm() {
             disabled={confirm.isPending}
             type="submit"
           >
-            {confirm.isPending ? "Saving…" : "Save the new password"}
+            {confirm.isPending ? "Saving…" : "Save password"}
           </Button>
         </form>
       </Form>

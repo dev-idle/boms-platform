@@ -95,18 +95,18 @@ function profileFacts(user: AdminUser): ProfileFact[] {
  */
 export function AdminUserAccountStatus({ user }: AdminUserAccountStatusProps) {
   return (
-    <aside aria-labelledby={PROFILE_TITLE_ID} className="admin-user-profile">
-      <h2 className="admin-user-profile__title" id={PROFILE_TITLE_ID}>
+    <aside aria-labelledby={PROFILE_TITLE_ID} className="dashboard-detail-rail">
+      <h2 className="dashboard-detail-rail__title" id={PROFILE_TITLE_ID}>
         Profile
       </h2>
-      <dl className="admin-user-profile__facts" id="admin-user-profile">
+      <dl className="dashboard-detail-rail__facts" id="admin-user-profile">
         {profileFacts(user).map((fact) => (
           <div
-            className={cn(fact.startsGroup && "admin-user-profile__group")}
+            className={cn(fact.startsGroup && "dashboard-detail-rail__group")}
             key={fact.label}
           >
             <dt>{fact.label}</dt>
-            <dd className={cn(fact.mono && "admin-user-profile__value--mono")}>
+            <dd className={cn(fact.mono && "dashboard-detail-rail__value--mono")}>
               {fact.value}
             </dd>
           </div>

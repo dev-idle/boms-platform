@@ -12,11 +12,35 @@ import (
 )
 
 const catalogListCategories = `-- name: CatalogListCategories :many
-SELECT id, name, slug, sort_order
-FROM categories
-WHERE deleted_at IS NULL
-  AND is_active = true
-ORDER BY sort_order ASC, name ASC
+SELECT
+    c.id,
+    c.name,
+    c.slug,
+    c.sort_order,
+    shown.product_count,
+    -- sqlc reads a lateral column as non-null; '' stands for "no photo yet".
+    COALESCE(cover.image_url, '')::text AS image_url
+FROM categories c
+CROSS JOIN LATERAL (
+    SELECT count(*)::bigint AS product_count
+    FROM products p
+    WHERE p.category_id = c.id
+      AND p.deleted_at IS NULL
+      AND p.is_active = true
+) shown
+LEFT JOIN LATERAL (
+    SELECT pi.image_url
+    FROM products p
+    INNER JOIN product_images pi ON pi.product_id = p.id
+    WHERE p.category_id = c.id
+      AND p.deleted_at IS NULL
+      AND p.is_active = true
+    ORDER BY p.name ASC, pi.sort_order ASC
+    LIMIT 1
+) cover ON true
+WHERE c.deleted_at IS NULL
+  AND c.is_active = true
+ORDER BY c.sort_order ASC, c.name ASC
 LIMIT $1 OFFSET $2
 `
 
@@ -26,19 +50,46 @@ type CatalogListCategoriesParams struct {
 }
 
 type CatalogListCategoriesRow struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-	SortOrder int32     `json:"sortOrder"`
+	ID           uuid.UUID `json:"id"`
+	Name         string    `json:"name"`
+	Slug         string    `json:"slug"`
+	SortOrder    int32     `json:"sortOrder"`
+	ProductCount int64     `json:"productCount"`
+	ImageUrl     string    `json:"imageUrl"`
 }
 
-// CatalogListCategories
+// Each category carries how many products the shop shows in it and a cover:
+// the first photo of the first product (by name) that has one.
 //
-//	SELECT id, name, slug, sort_order
-//	FROM categories
-//	WHERE deleted_at IS NULL
-//	  AND is_active = true
-//	ORDER BY sort_order ASC, name ASC
+//	SELECT
+//	    c.id,
+//	    c.name,
+//	    c.slug,
+//	    c.sort_order,
+//	    shown.product_count,
+//	    -- sqlc reads a lateral column as non-null; '' stands for "no photo yet".
+//	    COALESCE(cover.image_url, '')::text AS image_url
+//	FROM categories c
+//	CROSS JOIN LATERAL (
+//	    SELECT count(*)::bigint AS product_count
+//	    FROM products p
+//	    WHERE p.category_id = c.id
+//	      AND p.deleted_at IS NULL
+//	      AND p.is_active = true
+//	) shown
+//	LEFT JOIN LATERAL (
+//	    SELECT pi.image_url
+//	    FROM products p
+//	    INNER JOIN product_images pi ON pi.product_id = p.id
+//	    WHERE p.category_id = c.id
+//	      AND p.deleted_at IS NULL
+//	      AND p.is_active = true
+//	    ORDER BY p.name ASC, pi.sort_order ASC
+//	    LIMIT 1
+//	) cover ON true
+//	WHERE c.deleted_at IS NULL
+//	  AND c.is_active = true
+//	ORDER BY c.sort_order ASC, c.name ASC
 //	LIMIT $1 OFFSET $2
 func (q *Queries) CatalogListCategories(ctx context.Context, arg CatalogListCategoriesParams) ([]CatalogListCategoriesRow, error) {
 	rows, err := q.db.Query(ctx, catalogListCategories, arg.Limit, arg.Offset)
@@ -54,6 +105,8 @@ func (q *Queries) CatalogListCategories(ctx context.Context, arg CatalogListCate
 			&i.Name,
 			&i.Slug,
 			&i.SortOrder,
+			&i.ProductCount,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}

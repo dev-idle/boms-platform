@@ -99,7 +99,7 @@ function AdminUserDetailRoleFormBody({
             toast.error("This role change is not allowed.");
             return;
           }
-          applyApiFormFieldErrors(form, error, ROLE_FORM_FIELDS, "Failed to save changes");
+          applyApiFormFieldErrors(form, error, ROLE_FORM_FIELDS, "We could not save changes. Please try again.");
         },
       },
     );

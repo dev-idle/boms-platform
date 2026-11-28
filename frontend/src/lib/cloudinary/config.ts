@@ -172,10 +172,3 @@ export function catalogProductImageUrl(
   }
   return `${prefix}f_auto,q_auto,w_${width}/${publicIdPath}`;
 }
-
-export function primaryCatalogProductImageUrl(
-  urls: string[] | null | undefined,
-  width = 800,
-): string | undefined {
-  return catalogProductImageUrl(urls?.[0], width);
-}

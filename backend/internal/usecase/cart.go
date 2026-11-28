@@ -158,7 +158,8 @@ func (u *CartUsecase) RemoveItem(ctx context.Context, userID, itemID uuid.UUID) 
 func (u *CartUsecase) ApplyDiscount(ctx context.Context, userID uuid.UUID, req dto.ApplyCartDiscountRequest) (*dto.CartResponse, error) {
 	code, err := domaindiscount.NormalizeCode(req.Code)
 	if err != nil {
-		return nil, apperrors.ErrValidation.WithDetail("code", "must be 3-64 uppercase letters, numbers, hyphens, or underscores")
+		// No code is spelled this way, so the customer hears what any unknown code tells them.
+		return nil, domaindiscount.ErrNotFound
 	}
 	cart, err := u.getOrCreateCart(ctx, userID)
 	if err != nil {
@@ -425,6 +426,12 @@ func (u *CartUsecase) buildCartResponseFromLines(
 		if line.Item.ComboID != nil {
 			id := line.Item.ComboID.String()
 			item.ComboID = &id
+		}
+		if line.ImageURL != "" {
+			item.ImageURL = &line.ImageURL
+		}
+		if line.CategoryName != "" {
+			item.CategoryName = &line.CategoryName
 		}
 		resp.Items = append(resp.Items, item)
 	}

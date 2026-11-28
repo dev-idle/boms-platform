@@ -28,23 +28,13 @@
     text-transform: uppercase;
   }
 
+  /* Storefront prices read as part of the copy: the body face, tabular figures. */
   .text-price {
     color: var(--color-ink);
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
     font-variant-numeric: tabular-nums;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-  }
-
-  .text-empty-title {
-    color: var(--color-ink);
-    font-family: var(--font-display);
-    font-optical-sizing: auto;
-    font-size: 1.75rem;
-    font-weight: 500;
-    line-height: 1.2;
-    text-wrap: balance;
+    font-weight: 600;
   }
 
   .text-form-label {
@@ -55,6 +45,15 @@
     letter-spacing: var(--label-tracking-sm);
     line-height: 1.4;
     text-transform: uppercase;
+  }
+
+  /* A storefront field's label reads as words over its box, not a micro-label. */
+  [data-theme="storefront"] .text-form-label {
+    color: var(--color-ink);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
   }
 
   .text-form-input {
@@ -75,23 +74,6 @@
     letter-spacing: -0.01em;
     line-height: 1.1;
     text-wrap: balance;
-  }
-
-  .text-section-heading {
-    color: var(--color-ink);
-    font-family: var(--font-body);
-    font-size: 0.9375rem;
-    font-weight: 500;
-    letter-spacing: 0;
-    line-height: 1.4;
-  }
-
-  .text-table-cell {
-    font-family: var(--font-body);
-    font-size: 0.875rem;
-    font-variant-numeric: tabular-nums;
-    font-weight: 400;
-    line-height: 1.5;
   }
 
   .text-caption-dashboard {
@@ -355,8 +337,11 @@
     cursor: not-allowed;
   }
 
+  /* Storefront buttons read as words: sentence case in the body face. */
   [data-theme="storefront"] .btn-chrome {
-    letter-spacing: 0.18em;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
   }
 
   /* The arrow is the only ornament permitted on a button. */
@@ -369,7 +354,7 @@
   }
 
   [data-theme="storefront"] .btn-chrome--sm {
-    --btn-control-font-size: 0.6875rem;
+    --btn-control-font-size: 0.875rem;
     --btn-control-min-height: 2.75rem;
     --btn-control-min-width: 2.75rem;
     --btn-control-padding-inline: 1.5rem;
@@ -378,7 +363,7 @@
   /* A label never wraps, so below 40rem the side padding gives way instead: the longest
      ("Start a custom order", with its arrow) still fits a 320px screen. */
   [data-theme="storefront"] .btn-chrome--lg {
-    --btn-control-font-size: 0.8125rem;
+    --btn-control-font-size: 1rem;
     --btn-control-min-height: 3.5rem;
     --btn-control-min-width: 3.5rem;
     --btn-control-padding-inline: 1.25rem;
@@ -487,10 +472,6 @@
     --btn-control-padding-inline: 1.25rem;
   }
 
-  [data-theme="storefront"] .catalog-combo-card__actions .btn-primary {
-    width: 100%;
-  }
-
   /* -----------------------------------------------------------------------------
      Brand lockup — no hover choreography; a colour deepens, nothing moves.
      ----------------------------------------------------------------------------- */
@@ -565,7 +546,7 @@
     background-color: var(--color-paper-4);
   }
 
-  /* Section header — eyebrow + display heading + optional link. */
+  /* Section header — the display heading and an optional link. */
   .storefront-section-header {
     align-items: flex-end;
     display: flex;
@@ -579,17 +560,6 @@
     flex-direction: column;
     gap: 0.75rem;
     min-width: 0;
-  }
-
-  .storefront-section-header__eyebrow {
-    color: var(--color-brass);
-    font-family: var(--font-body);
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    letter-spacing: 0.26em;
-    line-height: 1.4;
-    margin: 0;
-    text-transform: uppercase;
   }
 
   .storefront-section-header__heading {
@@ -620,7 +590,7 @@
     font-family: var(--font-body);
     font-size: var(--label-size);
     font-weight: var(--label-weight);
-    letter-spacing: 0.18em;
+    letter-spacing: var(--label-tracking);
     line-height: 1.4;
     min-height: 2.75rem;
     padding-bottom: 0.375rem;
@@ -635,11 +605,6 @@
   .storefront-section-header__link:hover {
     border-bottom-color: var(--color-matcha-500);
     color: var(--color-matcha-500);
-  }
-
-  .storefront-section-header--ruled {
-    border-bottom: 1px solid var(--color-line);
-    padding-bottom: 1.75rem;
   }
 
   /* -----------------------------------------------------------------------------
@@ -658,7 +623,7 @@
   @media (min-width: 64rem) {
     .storefront-hero__grid {
       gap: 0;
-      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
     }
   }
 
@@ -738,9 +703,8 @@
   }
 
   .storefront-hero__media {
-    aspect-ratio: 4 / 5;
+    aspect-ratio: 5 / 4;
     background-color: var(--color-matcha-100);
-    max-block-size: 22.5rem;
     overflow: hidden;
   }
 
@@ -776,7 +740,7 @@
     font-family: var(--font-body);
     font-size: var(--label-size);
     font-weight: var(--label-weight);
-    letter-spacing: 0.18em;
+    letter-spacing: var(--label-tracking);
     line-height: 1.5;
     text-transform: uppercase;
   }
@@ -786,7 +750,7 @@
      ----------------------------------------------------------------------------- */
   .storefront-usp-section {
     border-top: 1px solid var(--color-border);
-    padding-block: 4.5rem;
+    padding-block: 2.5rem;
   }
 
   .storefront-usp {
@@ -872,103 +836,73 @@
   }
 
   /* -----------------------------------------------------------------------------
-     Home categories — gap:1px on a line ground yields true hairline cells.
+     Home categories
      ----------------------------------------------------------------------------- */
+  /* Home categories: a photo (or monogram) per category with its name and how many
+     products it holds — six across from 64rem. */
   .storefront-category-grid {
-    background-color: var(--color-line);
-    border: 1px solid var(--color-line);
     display: grid;
-    gap: 1px;
-    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem 1.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     list-style: none;
     margin: 0;
     padding: 0;
   }
 
-  @media (min-width: 40rem) {
+  @media (min-width: 48rem) {
     .storefront-category-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
   @media (min-width: 64rem) {
     .storefront-category-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
     }
   }
 
-  .storefront-category-grid > li {
-    display: flex;
-  }
-
   .storefront-category-tile {
-    background-color: var(--color-bg);
-    border: none;
+    color: var(--color-ink);
     display: flex;
-    flex: 1;
     flex-direction: column;
-    gap: 3rem;
-    justify-content: space-between;
-    min-height: 11.875rem;
-    padding: 1.75rem;
+    gap: 0.875rem;
     text-decoration: none;
-    transition: background-color var(--duration-micro) var(--ease-luxury);
   }
 
-  .storefront-category-tile:hover {
+  /* On the tinted band a tile without a photo stands out as the white surface. */
+  .storefront-category-tile .catalog-tile {
+    aspect-ratio: 4 / 5;
     background-color: var(--color-surface);
-  }
-
-  .storefront-category-tile__ordinal {
-    color: var(--color-brass);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    line-height: 1.45;
-  }
-
-  .storefront-category-tile__body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
+    block-size: auto;
+    inline-size: 100%;
   }
 
   .storefront-category-tile__name {
-    color: var(--color-ink);
     display: block;
     font-family: var(--font-display);
-    font-optical-sizing: auto;
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 500;
-    line-height: 1.2;
+    line-height: 1.15;
+    transition: color var(--duration-micro) var(--ease-luxury);
   }
 
-  .storefront-category-tile__cta {
+  .storefront-category-tile:hover .storefront-category-tile__name {
     color: var(--color-matcha-500);
+  }
+
+  .storefront-category-tile__count {
+    color: var(--color-muted);
     display: block;
-    font-family: var(--font-body);
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    letter-spacing: 0.16em;
-    line-height: 1.4;
-    text-transform: uppercase;
+    font-size: 0.8125rem;
+    margin-top: 0.25rem;
   }
 
   /* -----------------------------------------------------------------------------
      CTA band — matcha-100 tint, exactly one per page.
      ----------------------------------------------------------------------------- */
-  /* The band closes the home page and meets the footer with no rule between:
-     it covers the footer's top hairline by its last pixel. Done here rather
-     than from the page around it, which also holds the pages the router keeps
-     hidden. */
   .storefront-cta {
     background-color: var(--color-matcha-100);
-    margin-bottom: -1px;
     padding-block: 5.5rem;
-    position: relative;
-    z-index: 1;
   }
 
   .storefront-cta__inner {
@@ -990,17 +924,6 @@
     gap: 0;
   }
 
-  .storefront-cta__eyebrow {
-    color: var(--color-brass);
-    font-family: var(--font-body);
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    letter-spacing: 0.26em;
-    line-height: 1.4;
-    margin: 0;
-    text-transform: uppercase;
-  }
-
   .storefront-cta__heading {
     color: var(--color-ink);
     font-family: var(--font-display);
@@ -1009,7 +932,7 @@
     font-weight: 300;
     letter-spacing: -0.01em;
     line-height: 1.08;
-    margin: 1.25rem 0 0;
+    margin: 0;
     text-wrap: balance;
   }
 
@@ -1029,23 +952,13 @@
     gap: 0.875rem;
   }
 
-  /* On matcha-100 the primary stays matcha; secondary rests on a sage hairline. */
-  .storefront-cta .btn-variant-outline:not(:hover, :active, :disabled) {
-    border-color: var(--color-line-sage);
-  }
-
   /* -----------------------------------------------------------------------------
      Storefront header — logo left, nav on the same row, actions right.
      ----------------------------------------------------------------------------- */
   .storefront-header {
     background-color: var(--color-bg);
-    border-bottom: 1px solid transparent;
+    border-bottom: 1px solid var(--color-border);
     overflow: visible;
-    transition: border-color var(--duration-standard) var(--ease-luxury);
-  }
-
-  .storefront-header-scrolled {
-    border-bottom-color: var(--color-border);
   }
 
   .storefront-topbar {
@@ -1056,53 +969,36 @@
   .storefront-topbar__inner {
     align-items: center;
     display: flex;
-    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    gap: 0.25rem 0.75rem;
     justify-content: center;
+    line-height: 1.4;
+    margin-block: 0;
     min-height: 2.375rem;
     padding-block: 0.5rem;
-  }
-
-  @media (min-width: 40rem) {
-    .storefront-topbar__inner {
-      justify-content: space-between;
-    }
-  }
-
-  .storefront-topbar__note {
-    font-size: var(--label-size);
-    font-weight: 500;
-    letter-spacing: 0.18em;
-    line-height: 1.4;
-    margin: 0;
     text-align: center;
-    text-transform: uppercase;
   }
 
-  .storefront-topbar__phone {
-    color: var(--color-brass);
-    display: none;
-    flex-shrink: 0;
-    font-size: var(--label-size);
+  .storefront-topbar__inner strong {
     font-variant-numeric: tabular-nums;
-    font-weight: 500;
-    letter-spacing: 0.18em;
-    text-decoration: none;
-    transition: color var(--duration-micro) var(--ease-luxury);
+    font-weight: 600;
   }
 
-  .storefront-topbar__phone:hover {
+  .storefront-topbar__link {
+    border-bottom: 1px solid currentColor;
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .storefront-topbar__link:hover {
     color: var(--color-matcha-700);
   }
 
-  @media (min-width: 40rem) {
-    .storefront-topbar__phone {
-      display: inline;
-    }
-  }
-
-  /* Below 40rem the slot between logo and actions is empty (the nav waits for 48rem and
-     the search lies over the toolbar), so a small gap lets the logo and three 44px icons
-     fit from 320px without scrolling sideways. */
+  /* Below 40rem the slot between logo and actions is empty (the nav waits for 64rem and
+     the search lies over the toolbar), so a small gap lets the menu button, the logo and
+     three 44px icons fit from 320px without scrolling sideways. */
   .storefront-header-toolbar {
     align-items: center;
     display: flex;
@@ -1125,13 +1021,13 @@
     }
   }
 
-  /* The separate nav row is gone (--storefront-nav-height: 0); below 48rem the
-     category strip is dropped rather than crushed into the toolbar. */
+  /* Below 64rem the links would be squeezed into a hidden scroll, so the menu button
+     opens them instead. */
   .storefront-header-nav {
     display: none;
   }
 
-  @media (min-width: 48rem) {
+  @media (min-width: 64rem) {
     .storefront-header-nav {
       display: flex;
       flex: 1 1 auto;
@@ -1143,7 +1039,7 @@
     -ms-overflow-style: none;
     align-items: center;
     display: flex;
-    gap: 2.5rem;
+    gap: 2rem;
     list-style: none;
     margin: 0;
     min-width: 0;
@@ -1156,27 +1052,33 @@
     display: none;
   }
 
+  /* A link is quiet at rest and ink under the pointer; the page the customer is
+     on reads in ink at 600 — weight and colour say it, with no rule under it. */
   .storefront-header-nav__link {
     align-items: center;
-    border-bottom: 1px solid transparent;
     color: var(--color-ink-2);
     display: inline-flex;
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    letter-spacing: 0.18em;
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    font-weight: 500;
     line-height: 1.4;
     min-height: 2.75rem;
     text-decoration: none;
-    text-transform: uppercase;
-    transition:
-      border-color var(--duration-micro) var(--ease-luxury),
-      color var(--duration-micro) var(--ease-luxury);
+    transition: color var(--duration-micro) var(--ease-luxury);
     white-space: nowrap;
   }
 
-  .storefront-header-nav__link:hover {
-    border-bottom-color: var(--color-ink);
+  .storefront-header-nav__link:hover,
+  .storefront-header-nav__trigger--active {
     color: var(--color-ink);
+  }
+
+  /* The page on screen reads the same way on both: ink at 600. A category page
+     marks the menu that holds it, since the trigger is a button, not a link. */
+  .storefront-header-nav__link[aria-current="page"],
+  .storefront-header-nav__trigger--current {
+    color: var(--color-ink);
+    font-weight: 600;
   }
 
   /* The menu trigger reads as a nav link with a caret, never as a button. */
@@ -1184,11 +1086,6 @@
     background: transparent;
     cursor: pointer;
     gap: 0.5rem;
-  }
-
-  .storefront-header-nav__trigger--active {
-    border-bottom-color: var(--color-brass);
-    color: var(--color-ink);
   }
 
   .storefront-header-nav__chevron {
@@ -1200,7 +1097,8 @@
   }
 
   .storefront-header-nav__trigger:hover .storefront-header-nav__chevron,
-  .storefront-header-nav__trigger--active .storefront-header-nav__chevron {
+  .storefront-header-nav__trigger--active .storefront-header-nav__chevron,
+  .storefront-header-nav__trigger--current .storefront-header-nav__chevron {
     color: var(--color-ink);
   }
 
@@ -1236,25 +1134,71 @@
       padding-block var(--duration-standard) var(--ease-luxury);
   }
 
+  /* Open, it scrolls on its own when a phone is shorter than the menu — but
+     only once it has opened: while the panel grows, its content is taller than
+     it, and scrolling then would flash a scrollbar. Closing clips at once. */
   .storefront-header-menu--open .storefront-header-menu__inner {
+    max-height: calc(100dvh - var(--storefront-header-height));
     opacity: 1;
-    padding-block: 2rem 2.5rem;
+    overflow-y: auto;
+    padding-block: 1rem 2rem;
+    transition:
+      opacity var(--duration-standard) var(--ease-luxury),
+      padding-block var(--duration-standard) var(--ease-luxury),
+      overflow 0s var(--duration-standard) allow-discrete;
+  }
+
+  @media (min-width: 64rem) {
+    .storefront-header-menu--open .storefront-header-menu__inner {
+      padding-block: 2rem 2.5rem;
+    }
+  }
+
+  .storefront-header-menu__head {
+    align-items: baseline;
+    display: flex;
+    gap: 1.5rem;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
   }
 
   .storefront-header-menu__label {
     color: var(--color-muted);
-    font-size: var(--label-size-sm);
+    font-size: var(--label-size);
     font-weight: var(--label-weight);
-    letter-spacing: var(--label-tracking-sm);
-    line-height: 1;
-    margin: 0 0 1.25rem;
+    letter-spacing: var(--label-tracking);
+    line-height: 1.4;
+    margin: 0;
     text-transform: uppercase;
   }
 
+  /* A 44px target, its brass rule drawn under the text rather than at the box's
+     foot. */
+  .storefront-header-menu__all {
+    align-items: center;
+    color: var(--color-ink);
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    min-height: 2.75rem;
+    text-decoration: underline;
+    text-decoration-color: var(--color-brass);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.375rem;
+    transition:
+      color var(--duration-micro) var(--ease-luxury),
+      text-decoration-color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .storefront-header-menu__all:hover {
+    color: var(--color-matcha-500);
+    text-decoration-color: var(--color-matcha-500);
+  }
+
+  /* On a phone the categories are rows, as in the menu's other links; from 64rem they
+     spread into columns under the toolbar. */
   .storefront-header-menu__list {
     display: grid;
-    gap: 0;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
     list-style: none;
     margin: 0;
     padding: 0;
@@ -1262,23 +1206,90 @@
 
   .storefront-header-menu__link {
     align-items: center;
-    border-top: 1px solid var(--color-line-soft);
-    color: var(--color-ink-2);
+    border-bottom: 1px solid var(--color-line-soft);
+    color: var(--color-ink);
     display: flex;
-    font-size: 0.9375rem;
-    letter-spacing: 0.01em;
+    gap: 0.875rem;
+    min-height: 2.75rem;
+    padding-block: 0.625rem;
+    text-decoration: none;
+  }
+
+  .storefront-header-menu__link .catalog-tile {
+    block-size: 3.5rem;
+    flex-shrink: 0;
+    inline-size: 3.5rem;
+  }
+
+  .storefront-header-menu__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
+  .storefront-header-menu__name {
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.3;
+    transition: color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .storefront-header-menu__link:hover .storefront-header-menu__name,
+  .storefront-header-menu__row:hover {
+    color: var(--color-matcha-500);
+  }
+
+  .storefront-header-menu__count {
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+  }
+
+  .storefront-header-menu__more {
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+  }
+
+  .storefront-header-menu__row {
+    align-items: center;
+    border-bottom: 1px solid var(--color-line-soft);
+    color: var(--color-ink);
+    display: flex;
+    font-size: 1rem;
+    font-weight: 500;
     min-height: 3rem;
-    padding-inline-end: 1.5rem;
     text-decoration: none;
     transition: color var(--duration-micro) var(--ease-luxury);
   }
 
-  .storefront-header-menu__link:hover {
-    color: var(--color-matcha-500);
-  }
+  @media (min-width: 64rem) {
+    .storefront-header-menu__list {
+      gap: 1rem 2rem;
+      grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    }
 
-  .storefront-header-menu__link--all {
-    color: var(--color-muted);
+    .storefront-header-menu__link {
+      border-bottom: 0;
+      gap: 1.125rem;
+      padding-block: 0;
+    }
+
+    .storefront-header-menu__link .catalog-tile {
+      block-size: 4.5rem;
+      inline-size: 4.5rem;
+    }
+
+    .storefront-header-menu__name {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      line-height: 1.15;
+    }
+
+    /* From 64rem Combos sits in the toolbar and custom cakes in the footer. */
+    .storefront-header-menu__more {
+      display: none;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1288,105 +1299,350 @@
     }
   }
 
-  .storefront-header-nav__link[aria-current="page"] {
-    border-bottom-color: var(--color-brass);
-    color: var(--color-ink);
-  }
-
-  /* Below 40rem account and cart are 44px icons side by side; from 40rem they are
-     labelled links. */
+  /* Search and cart are 44px icons; a hairline sets the account apart at the end,
+     which spells out the first name, or Sign in, from 64rem. */
   .storefront-header-actions {
     align-items: center;
     display: inline-flex;
     flex-shrink: 0;
+    gap: 0.25rem;
     overflow: visible;
   }
 
+  .storefront-header-actions__rule {
+    display: none;
+  }
+
   @media (min-width: 40rem) {
-    .storefront-header-actions {
-      gap: 1.625rem;
+    .storefront-header-actions__rule {
+      background-color: var(--color-border);
+      block-size: 1.5rem;
+      display: block;
+      inline-size: 1px;
+      margin-inline: 0.625rem;
     }
   }
 
   .storefront-header-account {
     align-items: center;
-    color: var(--color-ink-2);
+    color: var(--color-ink);
     display: inline-flex;
     font-family: var(--font-body);
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    gap: 0.5rem;
     justify-content: center;
-    letter-spacing: 0.16em;
     line-height: 1.4;
     min-height: 2.75rem;
     min-width: 2.75rem;
+    padding-inline: 0.5rem;
     text-decoration: none;
-    text-transform: uppercase;
-    transition: color var(--duration-micro) var(--ease-luxury);
+    transition:
+      background-color var(--duration-micro) var(--ease-luxury),
+      color var(--duration-micro) var(--ease-luxury);
     white-space: nowrap;
   }
 
   .storefront-header-account:hover {
+    background-color: var(--color-paper-4);
+  }
+
+  /* The customer's initial as a monogram in a quiet hairline square. */
+  .storefront-header-account__initial {
+    align-items: center;
+    block-size: 1.75rem;
+    border: 1px solid var(--color-line-strong);
+    color: var(--color-ink-2);
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    inline-size: 1.75rem;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  /* The icon held in place while the session restores: not a control, so no hover. */
+  .storefront-header-account--pending:hover {
+    background-color: transparent;
+  }
+
+  button.storefront-header-account {
+    background-color: transparent;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .storefront-header-account__name,
+  .storefront-header-account__chevron {
+    display: none;
+  }
+
+  .storefront-header-account__chevron {
+    color: var(--color-muted);
+    transition: transform var(--duration-micro) var(--ease-luxury);
+  }
+
+  /* The name and its caret wait for 64rem: below it the menu button, logo and icons fill
+     the phone's toolbar. A long name is cut short rather than pushing the row. */
+  @media (min-width: 64rem) {
+    .storefront-header-account__name,
+    .storefront-header-account__chevron {
+      display: block;
+    }
+
+    .storefront-header-account__name {
+      color: var(--color-ink-2);
+      font-size: 0.875rem;
+      max-width: 8rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .storefront-header-account[data-state="open"] .storefront-header-account__chevron {
+    transform: rotate(180deg);
+  }
+
+  /* On the customer's own pages the name reads as the nav's current link does. */
+  .storefront-header-account--current .storefront-header-account__name {
     color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  /* The customer's account menu: the dashboard's menu at a fixed width, opening with
+     who is signed in and the next order to collect. */
+  .dashboard-account-popover.storefront-account-popover {
+    width: 18rem;
+  }
+
+  /* Its rows read in the storefront's menu type, not the dashboard's tracked 13px. */
+  .storefront-account-popover .dashboard-account-item {
+    font-size: 0.875rem;
+    letter-spacing: 0;
+  }
+
+  .storefront-account-popover__who {
+    color: var(--color-muted);
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8125rem;
+    gap: 0.125rem;
+    line-height: 1.5;
+    padding: 0.625rem 0.75rem 0.75rem;
+  }
+
+  .storefront-account-popover__who span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .storefront-account-popover__name {
+    color: var(--color-ink);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .storefront-account-popover__next {
+    background-color: var(--color-matcha-100);
+    color: var(--color-ink);
+    display: grid;
+    gap: 0.125rem;
+    margin: 0 0.75rem 0.5rem;
+    padding: 0.75rem 0.875rem;
+    text-decoration: none;
+  }
+
+  .storefront-account-popover__next:hover,
+  .storefront-account-popover__next[data-highlighted] {
+    outline: 1px solid var(--color-matcha-500);
+  }
+
+  .storefront-account-popover__next-label {
+    color: var(--color-matcha-500);
+    font-size: 0.8125rem;
+  }
+
+  .storefront-account-popover__next-time {
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .storefront-account-popover__next-code {
+    color: var(--color-ink-2);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .storefront-account-popover__meta {
+    color: var(--color-brass);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-inline-start: auto;
   }
 
   .storefront-header-cart {
     align-items: center;
+    background-color: transparent;
+    border: 0;
     color: var(--color-ink);
+    cursor: pointer;
     display: inline-flex;
-    font-family: var(--font-body);
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    gap: 0.625rem;
+    gap: 0.5rem;
     justify-content: center;
-    letter-spacing: 0.16em;
-    line-height: 1.4;
     min-height: 2.75rem;
     min-width: 2.75rem;
-    position: relative;
-    text-decoration: none;
-    text-transform: uppercase;
-    transition: color var(--duration-micro) var(--ease-luxury);
-    white-space: nowrap;
+    transition:
+      background-color var(--duration-micro) var(--ease-luxury),
+      color var(--duration-micro) var(--ease-luxury);
   }
 
-  @media (min-width: 40rem) {
-    .storefront-header-cart {
-      border-inline-start: 1px solid var(--color-border);
-      padding-inline-start: 1.625rem;
-    }
+  .storefront-header-cart:hover,
+  .storefront-header-cart[aria-expanded="true"] {
+    background-color: var(--color-paper-4);
   }
 
-  .storefront-header-cart:hover {
+  /* Holding something, the cart takes the matcha tint: the bag and the count
+     beside it in matcha, read at a glance without weighing on the header. A
+     hairline answers the pointer. */
+  .storefront-header-cart--filled {
+    background-color: var(--color-matcha-100);
     color: var(--color-matcha-500);
+    padding-inline: 0.75rem;
   }
 
-  /* On the icon's top corner, clear of its handle, below 40rem; after the label from
-     there. */
-  .storefront-header-cart__badge {
-    align-items: center;
-    background-color: var(--color-matcha-500);
-    block-size: 1.25rem;
-    color: var(--theme-on-primary);
-    display: inline-flex;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+  .storefront-header-cart--filled:hover,
+  .storefront-header-cart--filled[aria-expanded="true"] {
+    background-color: var(--color-matcha-100);
+    box-shadow: inset 0 0 0 1px var(--color-matcha-500);
+  }
+
+  .storefront-header-cart__count {
+    font-size: 0.875rem;
     font-variant-numeric: tabular-nums;
-    font-weight: 500;
-    inset-block-start: 0.5rem;
-    inset-inline-start: calc(50% + 0.25rem);
-    justify-content: center;
-    letter-spacing: 0;
+    font-weight: 600;
     line-height: 1;
-    min-inline-size: 1.25rem;
-    padding-inline: 0.375rem;
-    position: absolute;
   }
 
-  @media (min-width: 40rem) {
-    .storefront-header-cart__badge {
-      position: static;
+  /* The mini cart drops from the header's end, as tall as its lines and no
+     taller than the screen, without a scrim: the page stays in use beneath it. */
+  .storefront-mini-cart {
+    animation: storefront-mini-cart-in var(--duration-standard) var(--ease-luxury);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-overlay);
+    display: flex;
+    flex-direction: column;
+    inset-block-start: calc(100% + 0.5rem);
+    inset-inline-end: 0;
+    max-height: calc(100dvh - var(--storefront-header-height) - 2rem);
+    position: absolute;
+    width: min(23.75rem, 100%);
+  }
+
+  @keyframes storefront-mini-cart-in {
+    from {
+      opacity: 0;
+      transform: translateY(-0.25rem);
     }
+  }
+
+  .storefront-mini-cart:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .storefront-mini-cart__title {
+    align-items: baseline;
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem 0;
+  }
+
+  .storefront-mini-cart__heading {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 1.4;
+  }
+
+  .storefront-mini-cart__count {
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .storefront-mini-cart__lines {
+    flex: 1;
+    list-style: none;
+    margin: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 1.25rem;
+  }
+
+  .storefront-mini-cart__line {
+    display: grid;
+    gap: 0.875rem;
+    grid-template-columns: 4rem minmax(0, 1fr);
+    padding-block: 1rem;
+  }
+
+  .storefront-mini-cart__line + .storefront-mini-cart__line {
+    border-top: 1px solid var(--color-line-soft);
+  }
+
+  .storefront-mini-cart__line .catalog-tile {
+    block-size: 4rem;
+    inline-size: 4rem;
+  }
+
+  .storefront-mini-cart__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .storefront-mini-cart__head {
+    display: flex;
+    font-size: 0.9375rem;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin: 0;
+  }
+
+  .storefront-mini-cart__name {
+    font-weight: 500;
+  }
+
+  .storefront-mini-cart__meta {
+    align-items: center;
+    color: var(--color-muted);
+    display: flex;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    gap: 0.75rem;
+    justify-content: space-between;
+  }
+
+  .storefront-mini-cart__footer {
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1rem 1.25rem 1.25rem;
+  }
+
+  .storefront-mini-cart__subtotal {
+    display: flex;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    justify-content: space-between;
+    margin: 0;
   }
 
   .storefront-icon {
@@ -1402,7 +1658,7 @@
     align-items: center;
     background-color: transparent;
     border: none;
-    color: var(--color-ink-2);
+    color: var(--color-ink);
     cursor: pointer;
     display: inline-flex;
     height: 2.75rem;
@@ -1414,227 +1670,285 @@
   }
 
   .storefront-header-icon:hover {
-    color: var(--color-ink);
+    background-color: var(--color-paper-4);
   }
 
-  /* Active control = matcha tint + ink, the same signal as an active nav item. */
-  .storefront-header-icon-pressed {
-    background-color: var(--color-matcha-100);
-    color: var(--color-matcha-500);
+  /* The phone menu button: from 64rem the toolbar shows the nav instead. */
+  @media (min-width: 64rem) {
+    .storefront-header-menu-toggle {
+      display: none;
+    }
   }
 
   /* -----------------------------------------------------------------------------
-     Customer area (account, orders, cart shells)
+     Storefront page frame — the space under the header and above the footer,
+     the page header (with the way one step up, where there is one) and its content.
      ----------------------------------------------------------------------------- */
-  .storefront-customer-page {
-    padding-block: 2rem 4.5rem;
+  .storefront-page {
+    padding-block: 1.5rem 4.5rem;
   }
 
   @media (min-width: 40rem) {
-    .storefront-customer-page {
-      padding-block: 2.5rem 6rem;
+    .storefront-page {
+      padding-block: 2.25rem 6rem;
     }
   }
 
-  .storefront-customer-layout {
-    display: grid;
+  .storefront-page-stack {
+    display: flex;
+    flex-direction: column;
     gap: 2rem;
+    min-width: 0;
+  }
+
+  /* The account sections in one 760px column beside the side menu. */
+  .storefront-account-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 47.5rem;
+  }
+
+  /* A family of sibling pages (the customer's own, the policies): the page
+     header, the family's menu as a row of tabs, then the page. From 64rem the
+     menu stands on the left of both, so it never reads as the page's content. */
+  .storefront-subnav-shell {
+    display: grid;
+    gap: 2rem 4rem;
+    grid-template-areas:
+      "head"
+      "nav"
+      "main";
+    grid-template-columns: minmax(0, 1fr);
   }
 
   @media (min-width: 64rem) {
-    .storefront-customer-layout {
+    .storefront-subnav-shell {
       align-items: start;
-      gap: 3.5rem;
-      grid-template-columns: 13rem minmax(0, 1fr);
+      grid-template-areas:
+        "nav head"
+        "nav main";
+      grid-template-columns: 13.75rem minmax(0, 1fr);
     }
   }
 
-  /* Eyebrow and live status share one micro-label row above the nav. */
-  .storefront-customer-nav__header {
-    align-items: baseline;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-    justify-content: space-between;
-    margin: 0 0 1rem;
+  .storefront-subnav-shell > .storefront-page-head {
+    grid-area: head;
   }
 
-  .storefront-customer-nav__eyebrow {
-    color: var(--color-brass);
-    font-size: var(--label-size-sm);
-    font-weight: var(--label-weight);
-    letter-spacing: var(--label-tracking-sm);
-    line-height: 1.4;
-    margin: 0;
-    text-transform: uppercase;
+  .storefront-subnav-shell__main {
+    grid-area: main;
+    min-width: 0;
   }
 
-  .storefront-customer-nav__list {
+  .storefront-subnav {
+    border-bottom: 1px solid var(--color-border);
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    flex-direction: column;
+    grid-area: nav;
+  }
+
+  .storefront-subnav__list {
+    display: flex;
+    gap: 1.5rem;
     list-style: none;
     margin: 0;
     padding: 0;
   }
 
-  .storefront-customer-nav__list > li {
+  /* A tab's rule covers the row's hairline instead of sitting on it. */
+  .storefront-subnav__link {
+    align-items: center;
+    border-bottom: 2px solid transparent;
+    color: var(--color-ink);
     display: flex;
-    min-inline-size: 0;
+    font-size: 0.9375rem;
+    gap: 0.5rem;
+    margin-bottom: -1px;
+    min-height: 2.75rem;
+    text-decoration: none;
+    transition:
+      background-color var(--duration-micro) var(--ease-luxury),
+      border-color var(--duration-micro) var(--ease-luxury);
   }
 
+  /* The hover underline takes the text's colour (01-FOUNDATION §1.5b). */
+  .storefront-subnav__link:hover {
+    border-bottom-color: currentColor;
+  }
+
+  .storefront-subnav__link[aria-current="page"],
+  .storefront-subnav__link[aria-current="page"]:hover {
+    border-bottom-color: var(--color-matcha-500);
+    font-weight: 600;
+  }
+
+  .storefront-subnav__meta {
+    color: var(--color-brass);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  /* On a phone and a tablet, Sign out stays in the header's account menu. */
+  .storefront-subnav__signout {
+    background: none;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-ink-2);
+    cursor: pointer;
+    display: none;
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    margin-top: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.75rem 0.875rem 0;
+    text-align: start;
+  }
+
+  /* From 64rem the menu is a sidebar: the current page in matcha tint with a
+     1px leading rail, as the dashboard sidebar. */
   @media (min-width: 64rem) {
-    .storefront-customer-nav {
-      border: none;
-      padding-inline-end: 0;
+    .storefront-subnav {
+      border-bottom: 0;
       position: sticky;
       top: calc(var(--storefront-header-height) + 1.5rem);
     }
 
-    .storefront-customer-nav__list {
+    .storefront-subnav__list {
       flex-direction: column;
-      gap: 0.25rem;
+      gap: 0;
     }
 
-    .storefront-customer-nav__list > li {
-      inline-size: 100%;
+    .storefront-subnav__link {
+      border-bottom: 0;
+      justify-content: space-between;
+      margin-bottom: 0;
+      padding-inline: 0.875rem;
+    }
+
+    .storefront-subnav__link:hover {
+      background-color: var(--color-paper-4);
+    }
+
+    .storefront-subnav__link[aria-current="page"],
+    .storefront-subnav__link[aria-current="page"]:hover {
+      background-color: var(--color-matcha-100);
+      box-shadow: inset 1px 0 0 var(--color-matcha-500);
+    }
+
+    .storefront-subnav__signout {
+      display: block;
     }
   }
 
-  .storefront-customer-nav__link {
-    align-items: center;
-    border: none;
-    box-sizing: border-box;
-    color: var(--color-muted);
-    display: inline-flex;
-    flex: 0 1 auto;
-    font-size: 0.875rem;
-    font-weight: 500;
-    gap: 0.75rem;
-    line-height: 1.4;
-    min-height: 2.75rem;
-    padding: 0.75rem;
-    text-decoration: none;
-    transition:
-      background-color var(--duration-micro) var(--ease-luxury),
-      color var(--duration-micro) var(--ease-luxury);
-  }
-
-  .storefront-customer-nav__icon {
-    align-items: center;
-    block-size: 1.125rem;
-    color: var(--color-muted);
-    display: inline-flex;
-    flex-shrink: 0;
-    inline-size: 1.125rem;
-    justify-content: center;
-    transition: color var(--duration-micro) var(--ease-luxury);
-  }
-
-  .storefront-customer-nav__icon-svg {
-    block-size: 1.125rem;
-    display: block;
-    flex-shrink: 0;
-    inline-size: 1.125rem;
-  }
-
-  .storefront-customer-nav__label {
-    line-height: 1.4;
-  }
-
-  .storefront-customer-nav__link:hover:not(.storefront-customer-nav__link--active) {
-    background-color: var(--color-paper-4);
-    color: var(--color-ink);
-  }
-
-  .storefront-customer-nav__link:hover:not(.storefront-customer-nav__link--active) .storefront-customer-nav__icon {
-    color: var(--color-ink);
-  }
-
-  .storefront-customer-nav__link--active {
-    background-color: var(--color-matcha-100);
-    box-shadow: inset 1px 0 0 var(--color-matcha-500);
-    color: var(--color-ink);
-  }
-
-  .storefront-customer-nav__link--active .storefront-customer-nav__icon {
+  .storefront-subnav__signout:hover {
     color: var(--color-matcha-500);
   }
 
-  @media (min-width: 64rem) {
-    .storefront-customer-nav__link {
-      flex: 1;
-      inline-size: 100%;
+  /* A section inside a cart, order or account page: the body face at 18/600;
+     the display face stays for page titles. */
+  .storefront-section-heading,
+  .storefront-cart-summary__title,
+  .storefront-account-section__title {
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  /* Empty and failed reads (02-COMPONENTS §12): one framed message each. */
+  .storefront-state {
+    align-items: center;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 3.5rem 1.5rem;
+    text-align: center;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-state {
+      padding: 4.5rem 2.5rem;
     }
   }
 
-  .storefront-customer-nav__footer {
-    border-top: 1px solid var(--color-line-soft);
-    display: flex;
-    margin-block-start: 0.75rem;
-    padding-block-start: 0.75rem;
+  /* Inside a framed section or panel the message keeps that frame's edge
+     instead of drawing a box in a box. */
+  .storefront-account-section .storefront-state:not(.storefront-state--error),
+  .storefront-mini-cart .storefront-state:not(.storefront-state--error) {
+    border: 0;
+    padding-block: 2rem;
   }
 
-  .storefront-customer-nav__signout {
-    cursor: pointer;
-    flex: 1;
-    inline-size: 100%;
-    text-align: start;
-  }
-
-  /* Same rule as the dashboard account menu: a destructive row hovers on the danger
-     tint, which matches --color-paper-4 in lightness and differs only in hue. */
-  .storefront-customer-nav__signout:hover:not(:disabled) {
-    background-color: var(--color-danger-tint);
-  }
-
-  .storefront-customer-nav__signout:hover:not(:disabled),
-  .storefront-customer-nav__signout:hover:not(:disabled)
-    .storefront-customer-nav__icon {
-    color: var(--color-danger-text);
-  }
-
-  .storefront-customer-nav__signout:disabled,
-  .storefront-customer-nav__signout:disabled .storefront-customer-nav__icon {
-    color: var(--color-disabled);
-    cursor: default;
-  }
-
-  .storefront-customer-main {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    min-width: 0;
-  }
-
-  .storefront-customer-main > .storefront-back-nav {
-    margin-block-end: 0;
-  }
-
-  .storefront-customer-section {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    min-width: 0;
-  }
-
-  /* Archetype D on the storefront: one 640px column of sections. */
-  .storefront-customer-section--account {
-    gap: 2rem;
-    max-width: 40rem;
-  }
-
-  /* One line high before the email arrives, so nothing below it moves. */
-  .storefront-account-signed-in {
-    color: var(--color-muted);
-    font-size: 0.8125rem;
-    margin: 0;
-    min-block-size: 1lh;
-  }
-
-  .storefront-account-signed-in strong {
+  .storefront-state__title {
     color: var(--color-ink);
-    font-weight: 400;
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-size: 1.75rem;
+    font-weight: 500;
+    line-height: 1.15;
+    margin: 0;
+  }
+
+  .storefront-state__message {
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin: 0;
+    max-width: 42ch;
+  }
+
+  .storefront-state__action {
+    margin-top: 0.75rem;
+  }
+
+  .storefront-state--error {
+    align-items: flex-start;
+    border-color: var(--color-danger);
+    padding: 1.5rem;
+    text-align: left;
+  }
+
+  .storefront-state--error .storefront-state__title {
+    color: var(--color-danger-text);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .storefront-state--error .storefront-state__message {
+    color: var(--color-ink-2);
+    line-height: 1.6;
+  }
+
+  /* The one step up from a page: a brass arrow and the place's name, ink-2 at
+     rest and ink on hover. Its 44px height is target, not space, so the block
+     margin takes it back out of the page's rhythm. */
+  .storefront-back-link {
+    align-items: center;
+    color: var(--color-ink-2);
+    display: flex;
+    inline-size: fit-content;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: 0.625rem;
+    line-height: 1.4;
+    margin-block: -0.75rem;
+    min-height: 2.75rem;
+    text-decoration: none;
+    transition: color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .storefront-back-link:hover {
+    color: var(--color-ink);
+  }
+
+  .storefront-back-link__arrow {
+    color: var(--color-brass);
   }
 
   /* An account whose address is not confirmed: one hairline block with the
@@ -1674,35 +1988,21 @@
     align-self: flex-start;
   }
 
+  /* Each account section is its own card on the page ground. */
   .storefront-account-section {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.5rem;
+    padding: 1.75rem;
     scroll-margin-top: calc(var(--storefront-header-height) + 1.5rem);
-  }
-
-  /* Sections after the first are divided by one hairline (56px above, 48px below). */
-  .storefront-account-section + .storefront-account-section {
-    border-top: 1px solid var(--color-border);
-    margin-top: 3.5rem;
-    padding-top: 3rem;
   }
 
   .storefront-account-section__header {
     display: flex;
     flex-direction: column;
     gap: 0.625rem;
-  }
-
-  .storefront-account-section__title {
-    color: var(--color-ink);
-    font-family: var(--font-display);
-    font-optical-sizing: auto;
-    font-size: 2.125rem;
-    font-weight: 400;
-    letter-spacing: 0;
-    line-height: 1.1;
-    margin: 0;
   }
 
   .storefront-account-section__lead {
@@ -1714,16 +2014,12 @@
   }
 
   /* Destructive zone: the whole set carries a 1px danger border. */
-  .storefront-account-section--danger,
-  .storefront-account-section + .storefront-account-section--danger {
-    border: 1px solid var(--color-danger);
-    gap: 1.5rem;
-    padding: 2rem;
+  .storefront-account-section--danger {
+    border-color: var(--color-danger);
   }
 
   .storefront-account-section--danger .storefront-account-section__title {
     color: var(--color-danger-text);
-    font-size: 1.75rem;
   }
 
   .storefront-account-danger__copy,
@@ -1776,17 +2072,7 @@
     align-self: flex-start;
   }
 
-  .storefront-page-header {
-    align-items: flex-end;
-    border-bottom: 1px solid var(--color-border);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem 3rem;
-    justify-content: space-between;
-    padding-bottom: 1.75rem;
-  }
-
-  .storefront-page-header__main {
+  .storefront-page-head {
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -1796,78 +2082,39 @@
     color: var(--color-ink);
     font-family: var(--font-display);
     font-optical-sizing: auto;
-    font-size: clamp(2.375rem, 2.4vw + 1.4rem, 3.375rem);
-    font-weight: 300;
-    letter-spacing: -0.012em;
-    line-height: 1.04;
+    font-size: clamp(2rem, 1.4vw + 1.5rem, 2.75rem);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.08;
     margin: 0;
     text-wrap: balance;
   }
 
   .storefront-page-lead {
     color: var(--color-ink-2);
-    font-size: 0.875rem;
-    line-height: 1.75;
+    font-size: 0.9375rem;
+    line-height: 1.6;
     margin: 0;
-    max-width: 46ch;
+    max-width: 60ch;
   }
 
-  /* Policy pages (terms, privacy, refunds): archetype A, one reading column
-     under the page header. */
+  /* Policy pages (terms, privacy, refunds): one reading column beside the
+     policies' menu, opened by the date and version in force. */
   .storefront-policy {
     display: grid;
-    gap: 2rem;
+    gap: 3rem;
+    max-width: 46rem;
   }
 
   .storefront-policy__meta {
-    align-items: center;
     color: var(--color-muted);
-    display: flex;
-    flex-wrap: wrap;
     font-size: 0.8125rem;
-    gap: 0.5rem 2.5rem;
-    justify-content: space-between;
-  }
-
-  .storefront-policy__meta p {
     margin: 0;
   }
 
   .storefront-policy__version {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-  }
-
-  .storefront-policy__nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 1.75rem;
-  }
-
-  /* Micro-label links; the current page is ink. */
-  .storefront-policy__nav a {
-    align-items: center;
-    color: var(--color-muted);
-    display: inline-flex;
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    letter-spacing: var(--label-tracking);
-    min-height: 2.75rem;
-    text-decoration: none;
-    text-transform: uppercase;
-    transition: color var(--duration-micro) var(--ease-luxury);
-  }
-
-  .storefront-policy__nav a:hover,
-  .storefront-policy__nav a:focus-visible,
-  .storefront-policy__nav a[aria-current="page"] {
-    color: var(--color-ink);
-  }
-
-  .storefront-policy__body {
-    display: grid;
-    gap: 3rem;
-    max-width: 46rem;
   }
 
   .storefront-policy__section {
@@ -1931,38 +2178,22 @@
     color: var(--color-matcha-500);
   }
 
-  .storefront-panel {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    padding: 1.75rem;
-  }
-
+  /* A link that ends a sentence, as the auth pages' switch link: ink on a brass
+     hairline, matcha on hover. */
   .storefront-inline-link {
+    border-bottom: 1px solid var(--color-brass);
     color: var(--color-ink);
     font-size: 0.875rem;
     font-weight: 500;
     text-decoration: none;
-    transition: color var(--duration-micro) var(--ease-luxury);
+    transition:
+      border-color var(--duration-micro) var(--ease-luxury),
+      color var(--duration-micro) var(--ease-luxury);
   }
 
   .storefront-inline-link:hover {
+    border-bottom-color: var(--color-matcha-500);
     color: var(--color-matcha-500);
-  }
-
-  .storefront-empty-state {
-    align-items: flex-start;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding-block: 1rem;
-  }
-
-  .storefront-empty-state__message {
-    color: var(--color-muted);
-    font-size: 0.875rem;
-    line-height: 1.7;
-    margin: 0;
-    max-width: 42ch;
   }
 
   /* The reference photo, its preview beside the buttons that change it. */
@@ -1990,220 +2221,12 @@
     margin: 0;
   }
 
-  /* Empty state — bordered, centred, 72px band. */
-  .storefront-empty-state--card {
-    align-items: center;
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    padding: 4.5rem 2.5rem;
-    text-align: center;
-  }
-
   /* -----------------------------------------------------------------------------
-     Cart — line items left, summary panel right.
+     Line rows — cart, saved and order lines share one anatomy: the tile, then
+     a category eyebrow, the name and a muted meta line.
      ----------------------------------------------------------------------------- */
-  .storefront-cart {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-  }
-
-  .storefront-cart-layout {
-    display: grid;
-    gap: 3rem;
-  }
-
-  /* Archetype C track — shared with Admin User Detail; do not invent a third. */
-  @media (min-width: 64rem) {
-    .storefront-cart-layout {
-      align-items: start;
-      gap: 4rem;
-      grid-template-columns: minmax(0, 1fr) 24.5rem;
-    }
-  }
-
-  .storefront-cart__main {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    min-width: 0;
-  }
-
-  .storefront-cart__aside {
-    min-width: 0;
-  }
-
-  @media (min-width: 64rem) {
-    .storefront-cart__aside {
-      position: sticky;
-      top: calc(var(--storefront-header-height) + 1.5rem);
-    }
-  }
-
-  .storefront-cart__lines {
-    display: flex;
-    flex-direction: column;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* Rows are separated on one axis only — no four-sided boxes. */
-  .storefront-cart-line {
-    border-block-end: 1px solid var(--color-line-soft);
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding-block: 1.5rem;
-  }
-
-  .storefront-cart-line__header {
-    align-items: flex-start;
-    display: flex;
-    gap: 1rem;
-    justify-content: space-between;
-  }
-
-  .storefront-cart-line__copy {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    min-width: 0;
-  }
-
-  .storefront-cart-line__name {
-    color: var(--color-ink);
-    font-size: 0.9375rem;
-    font-weight: 500;
-    line-height: 1.4;
-    margin: 0;
-  }
-
-  .storefront-cart-line__meta {
-    margin: 0;
-  }
-
-  .storefront-cart-line__total {
-    flex-shrink: 0;
-    margin: 0;
-  }
-
-  .storefront-cart-line__warning {
-    color: var(--color-warning);
-    margin: 0;
-  }
-
-  .storefront-cart-line__actions {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  .storefront-cart-line__qty {
-    inline-size: 4.5rem;
-  }
-
-  /* Row action = text link with a hairline, not a chip. */
-  .storefront-cart-remove {
-    align-items: center;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid transparent;
-    color: var(--color-danger);
-    cursor: pointer;
-    display: inline-flex;
-    font-family: var(--font-body);
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    letter-spacing: var(--label-tracking);
-    line-height: 1.4;
-    min-height: 2.75rem;
-    padding: 0;
-    text-transform: uppercase;
-    transition:
-      border-color var(--duration-micro) var(--ease-luxury),
-      color var(--duration-micro) var(--ease-luxury);
-  }
-
-  .storefront-cart-remove:hover:not(:disabled) {
-    border-bottom-color: var(--color-danger);
-    color: var(--color-danger);
-  }
-
-  .storefront-cart-remove:disabled {
-    color: var(--color-disabled);
-    cursor: not-allowed;
-  }
-
-  .storefront-cart-remove--code {
-    flex-shrink: 0;
-  }
-
-  /* The 2px brass top edge is the only 2px accent border in the design: it marks
-     the panel that holds the money. Do not reuse it. */
-  .storefront-cart-summary {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-top: 2px solid var(--color-brass);
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-    padding: 2rem 2rem 1.75rem;
-  }
-
-  .storefront-cart-summary__title {
-    color: var(--color-ink);
-    font-family: var(--font-display);
-    font-optical-sizing: auto;
-    font-size: 1.875rem;
-    font-weight: 400;
-    letter-spacing: 0;
-    line-height: 1.2;
-    margin: 0 0 0.5rem;
-  }
-
-  .storefront-cart-summary__row {
-    align-items: baseline;
-    display: flex;
-    font-size: 0.875rem;
-    justify-content: space-between;
-  }
-
-  .storefront-cart-summary__row--discount {
-    color: var(--color-success);
-  }
-
-  .storefront-cart-summary__row--total {
-    border-block-start: 1px solid var(--color-border);
-    font-size: 0.9375rem;
-    font-weight: 500;
-    margin-block-start: 0.5rem;
-    padding-block-start: 1rem;
-  }
-
-  .storefront-cart-summary__row--total .text-price {
-    font-size: 1.75rem;
-    line-height: 1.2;
-  }
-
-  .storefront-cart-summary__checkout {
-    margin-block-start: 0.5rem;
-  }
-
-  .storefront-cart-summary__checkout-btn {
-    inline-size: 100%;
-    min-height: 3.5rem;
-  }
-
-  .storefront-cart-discount {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .storefront-cart-discount__label {
-    color: var(--color-muted);
+  .storefront-line-eyebrow {
+    color: var(--color-brass);
     font-size: var(--label-size-sm);
     font-weight: var(--label-weight);
     letter-spacing: var(--label-tracking-sm);
@@ -2212,17 +2235,447 @@
     text-transform: uppercase;
   }
 
-  .storefront-cart-discount__controls {
+  /* Body type on a phone; the display face from 40rem, where it reaches 28px. */
+  .storefront-line-name {
+    color: var(--color-ink);
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-line-name {
+      font-family: var(--font-display);
+      font-optical-sizing: auto;
+      font-size: 1.75rem;
+      font-weight: 400;
+      line-height: 1.15;
+    }
+  }
+
+  /* Where the name is the link to its product (cart, saved). */
+  a.storefront-line-name {
+    text-decoration: none;
+    transition: color var(--duration-micro) var(--ease-luxury);
+  }
+
+  a.storefront-line-name:hover,
+  a.storefront-line-name:focus-visible {
+    color: var(--color-matcha-500);
+  }
+
+  .storefront-line-meta {
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .storefront-line-meta .text-price {
+    color: var(--color-ink-2);
+  }
+
+  /* An inline text action — sentence case like the storefront's buttons,
+     underlined on hover, 28px tall (a compact exception). */
+  .storefront-text-action {
+    background: none;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    min-height: 1.75rem;
+    padding: 0;
+    transition:
+      border-color var(--duration-micro) var(--ease-luxury),
+      color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .storefront-text-action:hover:not(:disabled),
+  .storefront-text-action:focus-visible {
+    border-bottom-color: var(--color-matcha-500);
+    color: var(--color-matcha-500);
+  }
+
+  .storefront-text-action:disabled {
+    color: var(--color-disabled);
+    cursor: not-allowed;
+  }
+
+  .storefront-text-action--danger,
+  .storefront-text-action--danger:hover:not(:disabled),
+  .storefront-text-action--danger:focus-visible {
+    color: var(--color-danger-text);
+  }
+
+  .storefront-text-action--danger:hover:not(:disabled),
+  .storefront-text-action--danger:focus-visible {
+    border-bottom-color: var(--color-danger-text);
+  }
+
+  .storefront-text-action--warning {
+    color: var(--color-warning);
+  }
+
+  .storefront-text-action--warning:hover:not(:disabled),
+  .storefront-text-action--warning:focus-visible {
+    border-bottom-color: var(--color-warning-hover);
+    color: var(--color-warning-hover);
+  }
+
+  /* Saved lists: the line row with the purchase and the remove at its end. */
+  .storefront-saved-lines {
+    border-top: 1px solid var(--color-border);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .storefront-saved-line {
+    align-items: start;
+    border-block-end: 1px solid var(--color-line-soft);
+    display: grid;
+    gap: 0.75rem 1rem;
+    grid-template-areas:
+      "tile copy"
+      "tile actions";
+    grid-template-columns: 4rem minmax(0, 1fr);
+    padding-block: 1.25rem;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-saved-line {
+      align-items: center;
+      column-gap: 1.5rem;
+      grid-template-areas: "tile copy actions";
+      grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+    }
+  }
+
+  .storefront-saved-line__tile {
+    display: block;
+    grid-area: tile;
+  }
+
+  .storefront-saved-line__copy {
+    display: grid;
+    gap: 0.375rem;
+    grid-area: copy;
+    min-width: 0;
+  }
+
+  .storefront-saved-line__actions {
     align-items: center;
     display: flex;
-    flex-wrap: wrap;
+    gap: 0.5rem;
+    grid-area: actions;
+  }
+
+  /* -----------------------------------------------------------------------------
+     Cart (04-SCREENS §3) — line items left, the summary that holds the money
+     right.
+     ----------------------------------------------------------------------------- */
+  /* Archetype C — the work, and a 392px rail kept in view from 64rem. The track
+     is shared with Admin User Detail; do not invent a third. */
+  .storefront-detail-layout {
+    display: grid;
+    gap: 3rem;
+  }
+
+  @media (min-width: 64rem) {
+    .storefront-detail-layout {
+      align-items: start;
+      gap: 4rem;
+      grid-template-columns: minmax(0, 1fr) 24.5rem;
+    }
+  }
+
+  .storefront-detail-layout > * {
+    min-width: 0;
+  }
+
+  @media (min-width: 64rem) {
+    .storefront-detail-rail {
+      position: sticky;
+      top: calc(var(--storefront-header-height) + 1.5rem);
+    }
+  }
+
+  /* The lines lay out by the column's width, not the window's: beside the rail
+     at 1024px the column is a phone's width again. */
+  .storefront-cart__main {
+    container-type: inline-size;
+  }
+
+  /* Item, then the quantity and subtotal headers over their own tracks. */
+  .storefront-cart-head {
+    display: none;
+  }
+
+  @container (min-width: 40rem) {
+    .storefront-cart-head {
+      border-bottom: 1px solid var(--color-line-strong);
+      color: var(--color-ink);
+      column-gap: 1.5rem;
+      display: grid;
+      font-size: var(--label-size-sm);
+      font-weight: var(--label-weight);
+      grid-template-columns: minmax(0, 1fr) 8.25rem 6rem 2.75rem;
+      letter-spacing: var(--label-tracking-sm);
+      padding-bottom: 0.875rem;
+      text-transform: uppercase;
+    }
+
+    .storefront-cart-head span:nth-child(3) {
+      text-align: right;
+    }
+  }
+
+  .storefront-cart__lines {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Rows are separated on one axis only — no four-sided boxes. */
+  .storefront-cart-line {
+    border-block-end: 1px solid var(--color-line-soft);
+    display: grid;
+    gap: 0.75rem 1rem;
+    grid-template-areas:
+      "tile copy remove"
+      "qty qty total";
+    grid-template-columns: 4rem minmax(0, 1fr) auto;
+    padding-block: 1.5rem;
+  }
+
+  @container (min-width: 40rem) {
+    .storefront-cart-line {
+      align-items: start;
+      column-gap: 1.5rem;
+      grid-template-areas: "tile copy qty total remove";
+      grid-template-columns: 5.5rem minmax(0, 1fr) 8.25rem 6rem 2.75rem;
+    }
+  }
+
+  .storefront-cart-line > .catalog-tile {
+    grid-area: tile;
+  }
+
+  .storefront-cart-line__copy {
+    display: grid;
+    gap: 0.5rem;
+    grid-area: copy;
+    min-width: 0;
+  }
+
+  .storefront-cart-line__qty {
+    grid-area: qty;
+  }
+
+  .storefront-cart-line__total {
+    align-self: center;
+    font-size: 0.9375rem;
+    grid-area: total;
+    margin: 0;
+    text-align: right;
+  }
+
+  @container (min-width: 40rem) {
+    .storefront-cart-line__total {
+      align-self: start;
+      line-height: 2.75rem;
+    }
+  }
+
+  /* It blocks checkout, so it reads in the danger tone. */
+  .storefront-cart-line__warning {
+    color: var(--color-danger-text);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  /* Remove: a quiet 44px glyph that takes the danger colour when pointed at. */
+  .storefront-line-remove {
+    align-items: center;
+    background: none;
+    block-size: 2.75rem;
+    border: 0;
+    color: var(--color-muted);
+    cursor: pointer;
+    display: inline-flex;
+    inline-size: 2.75rem;
+    justify-content: center;
+    transition: color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .storefront-cart-line > .storefront-line-remove {
+    grid-area: remove;
+    justify-self: end;
+  }
+
+  .storefront-line-remove:hover:not(:disabled),
+  .storefront-line-remove:focus-visible {
+    color: var(--color-danger-text);
+  }
+
+  .storefront-line-remove:disabled {
+    color: var(--color-disabled);
+    cursor: not-allowed;
+  }
+
+  /* One box: minus, the count, plus. */
+  .quantity-stepper {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    display: inline-grid;
+    grid-template-columns: repeat(3, 2.75rem);
+  }
+
+  .quantity-stepper__step,
+  .quantity-stepper__value {
+    align-items: center;
+    block-size: 2.75rem;
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .quantity-stepper__step {
+    background: transparent;
+    border: 0;
+    color: var(--color-ink-2);
+    cursor: pointer;
+    font-size: 1rem;
+    transition:
+      background-color var(--duration-micro) var(--ease-luxury),
+      color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .quantity-stepper__step:hover:not(:disabled),
+  .quantity-stepper__step:focus-visible {
+    background-color: var(--color-paper-4);
+    color: var(--color-ink);
+  }
+
+  .quantity-stepper__step:disabled {
+    color: var(--color-disabled);
+    cursor: not-allowed;
+  }
+
+  .quantity-stepper__step[aria-disabled="true"] {
+    cursor: progress;
+  }
+
+  .quantity-stepper__value {
+    color: var(--color-ink);
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .storefront-cart-summary {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.75rem 1.5rem 1.5rem;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-cart-summary {
+      padding: 2rem 2rem 1.75rem;
+    }
+  }
+
+  .storefront-cart-summary__rows {
+    border-top: 1px solid var(--color-border);
+    display: grid;
+    gap: 0.875rem;
+    margin: 0;
+    padding-top: 1.25rem;
+  }
+
+  .storefront-cart-summary__row {
+    align-items: baseline;
+    color: var(--color-ink-2);
+    display: flex;
+    font-size: 0.875rem;
+    gap: 1rem;
+    justify-content: space-between;
+  }
+
+  .storefront-cart-summary__row dt,
+  .storefront-cart-summary__row dd {
+    margin: 0;
+  }
+
+  .storefront-cart-summary__row .text-price {
+    color: var(--color-ink);
+  }
+
+  .storefront-cart-summary__code {
+    color: var(--color-brass);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+  }
+
+  .storefront-cart-summary__total {
+    align-items: baseline;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    padding-top: 1.125rem;
+  }
+
+  .storefront-cart-summary__total-label {
+    color: var(--color-ink);
+    font-size: var(--label-size);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking);
+    text-transform: uppercase;
+  }
+
+  .storefront-cart-summary__total .text-price {
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+
+  .storefront-cart-summary__checkout {
+    display: grid;
     gap: 1rem;
   }
 
-  .storefront-cart-discount__input {
-    flex: 1 1 10rem;
-    max-width: 16rem;
-    min-width: 8rem;
+  .storefront-cart-summary__checkout-btn {
+    inline-size: 100%;
+  }
+
+  /* Inside the summary the notice is a ruled block, not a box in a box. */
+  .storefront-cart-summary .email-verification-notice {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    padding: 1rem 0 0;
+  }
+
+  .storefront-cart-discount {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  /* Apply stretches to the field's height: a button's own height is fixed, so
+     it is released here. */
+  .storefront-cart-discount__controls {
+    align-items: stretch;
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .storefront-cart-discount__controls > .btn-chrome {
+    height: auto;
   }
 
   /* -----------------------------------------------------------------------------
@@ -2242,10 +2695,13 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* minmax(0, 1fr): a native date input is wider than a phone's half column
+     until its track may shrink below it. */
   .storefront-orders__filter,
   .storefront-pickup-picker__field {
     display: grid;
     gap: 0.625rem;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .storefront-orders__filter--status {
@@ -2276,105 +2732,276 @@
     border-top: 1px solid var(--color-line-soft);
   }
 
-  .storefront-order-card {
+  /* One order a row: who it is, its pickup, its total, where it stands. Two
+     lines on a phone, one from 48rem. */
+  .storefront-order-row {
     align-items: center;
     color: inherit;
-    display: flex;
-    gap: 1rem;
-    justify-content: space-between;
-    padding-block: 1.5rem;
+    display: grid;
+    gap: 0.5rem 1rem;
+    grid-template-areas:
+      "id status"
+      "pickup total";
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-block: 1.125rem;
     text-decoration: none;
   }
 
-  .storefront-order-card:hover .storefront-order-card__price {
+  @media (min-width: 48rem) {
+    .storefront-order-row {
+      column-gap: 1.5rem;
+      grid-template-areas: "id pickup total status go";
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 6rem 9rem 1.25rem;
+    }
+  }
+
+  .storefront-order-row__id {
+    display: grid;
+    gap: 0.25rem;
+    grid-area: id;
+    min-width: 0;
+  }
+
+  .storefront-order-row__unread {
+    align-items: center;
+    color: var(--color-matcha-500);
+    display: inline-flex;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    gap: 0.375rem;
+  }
+
+  .storefront-order-row__unread::before {
+    background-color: currentColor;
+    block-size: 0.375rem;
+    border-radius: var(--radius-pill);
+    content: "";
+    inline-size: 0.375rem;
+  }
+
+  .storefront-order-row__pickup {
+    color: var(--color-ink-2);
+    font-size: 0.875rem;
+    grid-area: pickup;
+  }
+
+  .storefront-order-row__total {
+    grid-area: total;
+    text-align: right;
+    transition: color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .storefront-order-row__status {
+    grid-area: status;
+    justify-self: end;
+  }
+
+  @media (min-width: 48rem) {
+    .storefront-order-row__status {
+      justify-self: start;
+    }
+  }
+
+  .storefront-order-row__go {
+    color: var(--color-brass);
+    display: none;
+    font-size: 1.125rem;
+    grid-area: go;
+    line-height: 1;
+  }
+
+  @media (min-width: 48rem) {
+    .storefront-order-row__go {
+      display: block;
+    }
+  }
+
+  .storefront-order-row:hover .storefront-order-row__total {
     color: var(--color-matcha-500);
   }
 
-  .storefront-order-card__main {
-    display: flex;
-    flex-direction: column;
+  /* -----------------------------------------------------------------------------
+     Order detail (archetype C) — the work on the left: progress, items,
+     reviews, messages; pickup and money in the rail.
+     ----------------------------------------------------------------------------- */
+  .storefront-order-main {
+    display: grid;
+    gap: 3rem;
+  }
+
+  /* A note on where the order stands, in plain text. */
+  .storefront-order-note {
+    color: var(--color-ink-2);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin: 0;
+    max-width: 60ch;
+  }
+
+  .storefront-order-section {
+    display: grid;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  .storefront-order-section__header {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .storefront-order-lines {
+    border-top: 1px solid var(--color-border);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .storefront-order-line {
+    align-items: start;
+    border-block-end: 1px solid var(--color-line-soft);
+    display: grid;
+    gap: 0.75rem 1rem;
+    grid-template-columns: 4rem minmax(0, 1fr) auto;
+    padding-block: 1.25rem;
+  }
+
+  @media (min-width: 40rem) {
+    .storefront-order-line {
+      column-gap: 1.5rem;
+      grid-template-columns: 5.5rem minmax(0, 1fr) 6rem;
+    }
+  }
+
+  .storefront-order-line__copy {
+    display: grid;
     gap: 0.5rem;
     min-width: 0;
   }
 
-  .storefront-order-card__top {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
+  .storefront-order-line__total {
+    font-size: 0.9375rem;
+    margin: 0;
+    text-align: right;
+  }
+
+  /* The rail: one surface, its groups a hairline apart. */
+  .storefront-order-rail {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    display: grid;
+  }
+
+  .storefront-order-rail__group {
+    display: grid;
     gap: 0.75rem;
-    justify-content: space-between;
+    padding: 1.5rem;
   }
 
-  .storefront-order-card__price {
+  @media (min-width: 40rem) {
+    .storefront-order-rail__group {
+      padding: 1.75rem 2rem;
+    }
+  }
+
+  .storefront-order-rail__group + .storefront-order-rail__group {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .storefront-order-rail__label {
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.4;
     margin: 0;
-    transition: color var(--duration-micro) var(--ease-luxury);
   }
 
-  .storefront-order-card__meta {
-    margin: 0;
-  }
-
-  .storefront-order-card__unread {
-    color: var(--color-matcha-500);
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    letter-spacing: var(--label-tracking);
-    margin: 0;
-    text-transform: uppercase;
-  }
-
-  .storefront-order-card__cta {
-    color: var(--color-brass);
-    flex-shrink: 0;
+  .storefront-order-rail__value {
+    color: var(--color-ink);
+    font-family: var(--font-mono);
     font-size: 1.125rem;
-    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    line-height: 1.4;
+    margin: 0;
   }
 
-  .storefront-orders__pagination {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+  .storefront-order-rail__text {
+    color: var(--color-ink-2);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin: 0;
   }
 
-  .storefront-order-detail {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .storefront-order-detail__card {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  /* The order's messages and its reviews: each a panel, its header, then the content. */
-  .storefront-order-messages,
-  .storefront-order-reviews {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .storefront-order-messages__header,
-  .storefront-order-reviews__header {
+  .storefront-order-rail__code {
     display: grid;
     gap: 0.5rem;
+    padding-top: 0.5rem;
   }
 
-  /* The panel frames the thread; a long one scrolls inside it, short enough
-     on a phone to leave the page room to scroll past it. */
-  .storefront-order-messages .message-thread {
-    max-height: min(32rem, 60dvh);
-    overscroll-behavior: auto;
+  /* The code is read out at the counter: the Metric role. Ink, not brass: it
+     proves the order is theirs rather than naming it. */
+  .storefront-order-rail__digits {
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: 1.875rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin: 0;
+  }
+
+  .storefront-order-rail__stations {
+    display: grid;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
     padding: 0;
   }
 
-  .storefront-order-messages__error {
+  .storefront-order-rail__stations li {
+    align-items: center;
+    color: var(--color-ink-2);
+    display: flex;
+    font-size: 0.875rem;
+    gap: 1rem;
+    justify-content: space-between;
+  }
+
+  .storefront-order-rail__rows {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .storefront-order-changes,
+  .storefront-order-changes__reschedule {
     display: grid;
     gap: 0.75rem;
-    justify-items: start;
+  }
+
+  .storefront-order-changes {
+    padding-top: 0.5rem;
+  }
+
+  .storefront-order-changes__actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+  }
+
+  .storefront-order-changes__reschedule .storefront-pickup-picker {
+    margin-block-start: 0;
+  }
+
+  /* A hairline frames the thread, so a long one visibly scrolls inside it —
+     short enough on a phone to leave the page room to scroll past it. */
+  .storefront-order-messages .message-thread {
+    border: 1px solid var(--color-border);
+    max-height: min(32rem, 60dvh);
+    overscroll-behavior: auto;
+    padding: 1rem 1.25rem;
   }
 
   /* Reviews — the customer's on an order, a product's on its page: one per
@@ -2424,127 +3051,163 @@
     min-width: 0;
   }
 
-  .storefront-order-detail__meta {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    justify-content: space-between;
-  }
-
-  /* When, and how the order is prepared, read as one group opposite the status. */
-  .storefront-order-detail__facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-
-  .storefront-order-detail__items {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .storefront-order-detail__item {
-    align-items: flex-start;
-    display: flex;
-    gap: 1rem;
-    justify-content: space-between;
-  }
-
-  /* A section of the order: where each station stands, its payment, or a change of plans. */
-  .storefront-order-detail__preparation,
-  .storefront-order-detail__pickup-code,
-  .storefront-order-detail__payment,
-  .storefront-order-detail__changes,
-  .storefront-order-detail__reschedule {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  /* The section's own gap already sets the picker off its actions. */
-  .storefront-order-detail__reschedule .storefront-pickup-picker {
-    margin-block-start: 0;
-  }
-
-  .storefront-order-detail__change-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-
-  /* The code is read out at the counter: the Metric role. Ink, not brass: it
-     proves the order is theirs rather than naming it. */
-  .storefront-order-detail__pickup-digits {
-    color: var(--color-ink);
-    font-family: var(--font-mono);
-    font-size: 1.875rem;
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-    line-height: 1;
-    margin: 0;
-  }
-
-  .storefront-order-detail__stations {
-    display: grid;
-    gap: 0.5rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* A station: its name opposite its state. */
-  .storefront-order-detail__station {
-    align-items: center;
-    display: flex;
-    gap: 1rem;
-    justify-content: space-between;
-  }
-
-  .storefront-order-detail__totals {
-    border-block-start: 1px solid var(--color-border);
-    padding-block-start: 1rem;
-  }
-
   .storefront-pickup-picker {
     display: grid;
-    gap: 0.625rem;
+    gap: 1.25rem;
     margin-block-start: 1rem;
   }
 
   .storefront-pickup-picker__label {
-    color: var(--color-muted);
-    font-size: var(--label-size-sm);
-    font-weight: var(--label-weight);
-    letter-spacing: var(--label-tracking-sm);
-    line-height: 1.4;
-    text-transform: uppercase;
+    margin: 0;
   }
 
-  /* The hint describes both fields, so it stands apart from their labels. */
+  /* The hint describes both choices, so it stands apart from their labels. */
   .storefront-pickup-picker__hint {
     color: var(--color-muted);
-    margin-block-end: 0.375rem;
+    margin: 0;
   }
 
-  .storefront-pickup-picker__fields {
+  /* Days in one row that scrolls sideways when there are more than fit; the
+     padding keeps the focus ring inside the scroller's clip. Positioned so the
+     days' visually hidden month names stay inside that clip too, instead of
+     widening the page by the hidden days. */
+  .pickup-days {
     display: grid;
-    gap: 1.25rem;
-    grid-template-columns: minmax(0, 1fr);
+    gap: 0.375rem;
+    grid-auto-columns: minmax(min-content, 1fr);
+    grid-auto-flow: column;
+    margin: -0.25rem;
+    overflow-x: auto;
+    padding: 0.25rem;
+    position: relative;
+    scrollbar-width: thin;
   }
 
-  @media (min-width: 40rem) {
-    .storefront-pickup-picker__fields {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  .storefront-pickup-picker__slots {
+  .pickup-day,
+  .pickup-slot {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    color: var(--color-ink);
+    cursor: pointer;
+    font-family: var(--font-body);
     font-variant-numeric: tabular-nums;
+    transition:
+      background-color var(--duration-micro) var(--ease-luxury),
+      border-color var(--duration-micro) var(--ease-luxury),
+      color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .pickup-day {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    justify-content: center;
+    min-height: 3.5rem;
+    min-width: 3rem;
+    padding-inline: 0.375rem;
+    white-space: nowrap;
+  }
+
+  .pickup-day__weekday {
+    font-size: 0.6875rem;
+    font-weight: 500;
+  }
+
+  .pickup-day__date {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  /* Morning, afternoon, evening: tabs over the slots, the open count beside
+     each, so a long day shows one part at a time. */
+  .pickup-periods {
+    border-bottom: 1px solid var(--color-line-soft);
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .pickup-period {
+    align-items: center;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    gap: 0.375rem;
+    margin-bottom: -1px;
+    min-height: 2.75rem;
+    padding: 0;
+  }
+
+  .pickup-period:hover:not(:disabled),
+  .pickup-period[aria-pressed="true"] {
+    color: var(--color-ink);
+  }
+
+  .pickup-period[aria-pressed="true"] {
+    border-bottom-color: var(--color-matcha-500);
+  }
+
+  .pickup-period:disabled {
+    cursor: not-allowed;
+  }
+
+  .pickup-period__count {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pickup-slots {
+    display: grid;
+    gap: 0.375rem;
+    grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
+  }
+
+  .pickup-slot {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    min-height: 2.75rem;
+    padding-inline: 0.25rem;
+  }
+
+  .pickup-day:hover:not(:disabled),
+  .pickup-slot:hover:not(:disabled) {
+    border-color: var(--color-matcha-500);
+  }
+
+  .pickup-day--selected,
+  .pickup-slot--selected {
+    background-color: var(--color-matcha-500);
+    border-color: var(--color-matcha-500);
+    color: var(--theme-on-primary);
+  }
+
+  .pickup-day:disabled:not(.pickup-day--selected),
+  .pickup-slot:disabled:not(.pickup-slot--selected) {
+    background-color: var(--color-paper-3);
+    border-color: var(--color-border);
+    color: var(--color-disabled);
+    cursor: not-allowed;
+  }
+
+  .pickup-slot:disabled:not(.pickup-slot--selected) {
+    text-decoration: line-through;
+  }
+
+  /* A choice checkout would refuse: the chosen button takes the danger tint;
+     the message beside the picker says why. */
+  .pickup-days--invalid .pickup-day--selected,
+  .pickup-slots--invalid .pickup-slot--selected {
+    background-color: var(--color-danger-tint);
+    border-color: var(--color-danger);
+    color: var(--color-danger-text);
   }
 
   .storefront-pickup-picker__type {
@@ -2561,29 +3224,49 @@
     margin-block-start: 0;
   }
 
-  /* Status = 6px dot + micro-label, never a filled pill. */
+  /* Status = 6px dot + micro-label, never a filled pill. The steps stand in a
+     row from the page's left edge, a hairline from each marker to the next:
+     matcha as far as the order has come. */
   .storefront-order-progress {
     display: grid;
-    gap: 0.75rem;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     list-style: none;
     margin: 0;
     padding: 0;
   }
 
-  .storefront-order-progress--cancelled {
-    color: var(--color-danger-text);
+  .storefront-order-progress--ended {
     display: block;
     margin-block: 0.5rem 0;
   }
 
+  /* Only a cancellation reads as a failure; an expired or uncollected order is
+     told in the neutral caption. */
+  .storefront-order-progress--cancelled {
+    color: var(--color-danger-text);
+  }
+
   .storefront-order-progress__step {
-    align-items: center;
+    align-items: flex-start;
     color: var(--color-muted);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    text-align: center;
+    padding-inline-end: 0.75rem;
+    position: relative;
+  }
+
+  .storefront-order-progress__step:not(:last-child)::after {
+    background-color: var(--color-line);
+    block-size: 1px;
+    content: "";
+    inset-block-start: calc((0.375rem - 1px) / 2);
+    inset-inline: 0.875rem 0.5rem;
+    position: absolute;
+  }
+
+  .storefront-order-progress__step--complete:not(:last-child)::after {
+    background-color: var(--color-matcha-500);
   }
 
   .storefront-order-progress__step--complete,
@@ -2613,12 +3296,16 @@
     line-height: 1.4;
   }
 
+  .storefront-order-progress__time span {
+    display: block;
+  }
+
+  /* A step is a status: it reads as the storefront's status pill does, in
+     words and not capitals. */
   .storefront-order-progress__label {
-    font-size: var(--label-size-sm);
-    font-weight: var(--label-weight);
-    letter-spacing: var(--label-tracking-sm);
+    font-size: 0.8125rem;
+    font-weight: 600;
     line-height: 1.4;
-    text-transform: uppercase;
   }
 
   @media (max-width: 29.99rem) {
@@ -2628,14 +3315,23 @@
     }
 
     .storefront-order-progress__step {
+      align-items: center;
       flex-direction: row;
       gap: 0.75rem;
-      text-align: start;
+      padding-inline-end: 0;
+    }
+
+    .storefront-order-progress__step::after {
+      display: none;
     }
 
     .storefront-order-progress__time {
       margin-inline-start: auto;
       white-space: nowrap;
+    }
+
+    .storefront-order-progress__time span {
+      display: inline;
     }
   }
 
@@ -2666,14 +3362,14 @@
     transform: translateX(-0.75rem);
   }
 
-  /* Below 48rem the nav is dropped, so the field spans the whole toolbar instead of the slot:
-     the toolbar is the positioned ancestor there, the slot takes over from 48rem. */
+  /* Below 48rem the slot between logo and actions is too narrow for the field, so it spans
+     the whole toolbar: the toolbar is the positioned ancestor there, the slot from 48rem. */
   .storefront-header-toolbar {
     position: relative;
   }
 
-  /* Opaque like the header: below 48rem the field covers the whole toolbar, so the logo
-     must not show through it. */
+  /* Opaque like the header: below 48rem the field covers the whole toolbar, so the menu
+     button and the logo must not show through it. */
   .storefront-header-search {
     align-items: center;
     background-color: var(--color-bg);
@@ -2742,6 +3438,12 @@
     padding-block: 1.5rem 1.75rem;
   }
 
+  /* Results sit in a 720px column under the search, so a price stays next to its
+     name instead of across the page. */
+  .storefront-header-results__inner.storefront-container {
+    max-width: 45rem;
+  }
+
   /* The caption rules off the list the way a table header does — one line, no
      floating label. */
   .storefront-header-results__head {
@@ -2802,35 +3504,6 @@
   .storefront-header-results__item--active {
     background-color: var(--color-matcha-100);
     color: var(--color-ink);
-  }
-
-  /* Image fallback, scale M — a watermark on an empty frame, never a value. */
-  .storefront-header-results__thumb {
-    align-items: center;
-    background-color: var(--color-paper-3);
-    block-size: 3.25rem;
-    border: 1px solid var(--color-border);
-    display: inline-flex;
-    flex-shrink: 0;
-    inline-size: 3.25rem;
-    justify-content: center;
-    overflow: hidden;
-  }
-
-  .storefront-header-results__initial {
-    color: var(--color-matcha-500);
-    font-family: var(--font-display);
-    font-optical-sizing: auto;
-    font-size: 1.375rem;
-    font-weight: 400;
-    line-height: 1;
-    opacity: 0.5;
-  }
-
-  .storefront-header-results__thumb img {
-    block-size: 100%;
-    inline-size: 100%;
-    object-fit: cover;
   }
 
   .storefront-header-results__copy {
@@ -2931,6 +3604,7 @@
   .auth-page {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     min-height: 100dvh;
     width: 100%;
   }
@@ -2938,16 +3612,29 @@
   @media (min-width: 56rem) {
     .auth-page {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: none;
       /* 840px floor from the spec, but never shorter than the viewport. */
       min-height: max(100dvh, 52.5rem);
+    }
+  }
+
+  /* Below the split the statement panel goes; a paper band keeps the brand. */
+  .auth-page__band {
+    background-color: var(--color-paper-3);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    padding: 1rem 1.5rem;
+  }
+
+  @media (min-width: 56rem) {
+    .auth-page__band {
+      display: none;
     }
   }
 
   .auth-page__aside {
     background-color: var(--color-paper-3);
     display: none;
-    isolation: isolate;
-    position: relative;
   }
 
   @media (min-width: 56rem) {
@@ -2958,36 +3645,6 @@
       justify-content: space-between;
       padding: 4rem 4.5rem 4.5rem;
     }
-  }
-
-  /* Hairline paper grid, drawn once and placed per corner: it fades out before it reaches the
-     copy, so the statement and the caption rule sit on clean paper. */
-  .auth-page__aside::before,
-  .auth-page__aside::after {
-    background-image:
-      linear-gradient(to right, var(--color-line) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
-    background-position: var(--auth-grid-anchor);
-    background-size: 3.25rem 3.25rem;
-    content: "";
-    inset: var(--auth-grid-inset);
-    mask-image: radial-gradient(ellipse 60% 95% at var(--auth-grid-origin), black 25%, transparent 72%);
-    opacity: 0.55;
-    pointer-events: none;
-    position: absolute;
-    z-index: -1;
-  }
-
-  .auth-page__aside::before {
-    --auth-grid-anchor: bottom right;
-    --auth-grid-inset: 35% 0 0;
-    --auth-grid-origin: 100% 100%;
-  }
-
-  .auth-page__aside::after {
-    --auth-grid-anchor: top left;
-    --auth-grid-inset: 0 0 65%;
-    --auth-grid-origin: 0% 0%;
   }
 
   .auth-page__aside-logo {
@@ -3003,7 +3660,7 @@
     color: var(--color-brass);
     font-size: var(--label-size-sm);
     font-weight: var(--label-weight);
-    letter-spacing: 0.3em;
+    letter-spacing: var(--label-tracking-sm);
     line-height: 1.4;
     margin: 0 0 2.125rem;
     text-transform: uppercase;
@@ -3024,49 +3681,32 @@
     font-style: italic;
   }
 
-  /* A caption rule that dissolves: it states where the facts begin, then gets out of the way. */
+  /* The facts under one plain hairline (the specimen's). */
   .auth-page__aside-meta {
+    border-top: 1px solid var(--color-line);
     display: flex;
     flex-wrap: wrap;
-    gap: 1.5rem 4rem;
-    inline-size: fit-content;
-    margin: 3.5rem 0 0;
-    padding-top: 2rem;
-    position: relative;
-  }
-
-  .auth-page__aside-meta::before {
-    background-image: linear-gradient(
-      to right,
-      var(--color-line-strong),
-      var(--color-line) 45%,
-      transparent
-    );
-    block-size: 1px;
-    content: "";
-    inset-block-start: 0;
-    /* Runs past the facts it heads, then dissolves into the panel. */
-    inset-inline: 0 -7rem;
-    position: absolute;
+    gap: 1.5rem 5rem;
+    margin: 3.25rem 0 0;
+    padding-top: 1.75rem;
   }
 
   .auth-page__aside-meta dt {
     color: var(--color-muted);
     font-size: var(--label-size-sm);
     font-weight: var(--label-weight);
-    letter-spacing: 0.24em;
+    letter-spacing: var(--label-tracking-sm);
     line-height: 1.4;
     text-transform: uppercase;
   }
 
   .auth-page__aside-meta dd {
     color: var(--color-ink);
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
     line-height: 1.6;
-    margin: 0.625rem 0 0;
+    margin: 0.5rem 0 0;
   }
 
   .auth-page-center {
@@ -3086,43 +3726,15 @@
     flex-direction: column;
   }
 
-  /* Navigational link: ink-2 at rest; on hover text and rule turn ink together. */
-  .auth-page-exit-link {
-    align-items: center;
-    align-self: flex-start;
-    border-bottom: 1px solid transparent;
-    color: var(--color-ink-2);
-    display: inline-flex;
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    gap: 0.625rem;
-    letter-spacing: var(--label-tracking);
-    line-height: 1.4;
-    min-height: 2.75rem;
-    text-decoration: none;
-    text-transform: uppercase;
-    transition:
-      border-color var(--duration-micro) var(--ease-luxury),
-      color var(--duration-micro) var(--ease-luxury);
-  }
-
-  .auth-page-exit-link:hover {
-    color: var(--color-ink);
-  }
-
-  .auth-page-exit-icon {
-    color: var(--color-brass);
-  }
-
-  .auth-page-form-stack > .auth-page-exit-link {
-    margin-bottom: 1.25rem;
+  .auth-page-form-stack > .storefront-back-link {
+    margin-block: 0 1.25rem;
   }
 
   .auth-page-form-eyebrow {
     color: var(--color-brass);
     font-size: var(--label-size-sm);
     font-weight: var(--label-weight);
-    letter-spacing: 0.3em;
+    letter-spacing: var(--label-tracking-sm);
     line-height: 1.4;
     margin: 0 0 1.125rem;
     text-transform: uppercase;
@@ -3146,7 +3758,10 @@
     margin: 0.875rem 0 0;
   }
 
+  /* A view that replaces the form may stack two actions here. */
   .auth-page-form-body {
+    display: grid;
+    gap: 0.75rem;
     margin-top: 2.75rem;
   }
 
@@ -3157,8 +3772,8 @@
     flex-wrap: wrap;
     gap: 0.5rem 1.5rem;
     justify-content: space-between;
-    margin-top: 2.5rem;
-    padding-top: 1.625rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
   }
 
   .auth-page-switch {
@@ -3173,15 +3788,13 @@
     border-bottom: 1px solid var(--color-brass);
     color: var(--color-ink);
     display: inline-flex;
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
+    font-size: 0.875rem;
+    font-weight: 500;
     gap: 0.5rem;
-    letter-spacing: var(--label-tracking);
     line-height: 1.4;
     min-height: 1.75rem;
     padding-bottom: 3px;
     text-decoration: none;
-    text-transform: uppercase;
     transition:
       border-color var(--duration-micro) var(--ease-luxury),
       color var(--duration-micro) var(--ease-luxury);
@@ -3192,24 +3805,30 @@
     color: var(--color-matcha-500);
   }
 
-  /* Auth fields are the tall storefront variant: 54px control, 8px label gap. */
+  /* Auth fields are the tall storefront variant: 54px control, 8px label gap.
+     One rhythm down the form: 24px between its parts, 12px under a field to
+     what explains it, 32px above the submit. */
   .auth-form {
     --field-control-height: 3.375rem;
     display: grid;
-    gap: 1.75rem;
+    gap: 1.5rem;
   }
 
   .auth-form .field-control {
     gap: 0.5rem;
   }
 
-  .auth-form .text-form-label {
-    letter-spacing: 0.24em;
-  }
-
+  /* On top of the 8px a form item already sets between its parts. */
   .auth-field {
     display: grid;
-    gap: 0.625rem;
+    gap: 0.25rem;
+  }
+
+  /* The checkboxes of a form. A checkbox's block padding is its target, not
+     space: the rhythm runs from its words, so the padding is taken back out. */
+  .auth-form__choices {
+    display: grid;
+    margin-block: -0.75rem;
   }
 
   .auth-forgot-link {
@@ -3219,7 +3838,7 @@
     display: inline-flex;
     font-size: 0.75rem;
     font-weight: 500;
-    min-height: 1.5rem;
+    min-height: 1.75rem;
     text-decoration: none;
     transition:
       border-color var(--duration-micro) var(--ease-luxury),
@@ -3239,15 +3858,18 @@
   }
 
   .auth-page-guest__link {
-    border-bottom: 1px solid transparent;
+    border-bottom: 1px solid var(--color-brass);
     color: var(--color-ink);
     font-weight: 500;
     text-decoration: none;
-    transition: border-color var(--duration-micro) var(--ease-luxury);
+    transition:
+      border-color var(--duration-micro) var(--ease-luxury),
+      color var(--duration-micro) var(--ease-luxury);
   }
 
   .auth-page-guest__link:hover {
-    border-bottom-color: var(--color-ink);
+    border-bottom-color: var(--color-matcha-500);
+    color: var(--color-matcha-500);
   }
 
   /* Checkbox with its label (CheckboxField): the whole line toggles the box, and
@@ -3312,19 +3934,18 @@
     border-color: var(--color-disabled);
   }
 
-  /* Scoped under .auth-form to outrank the theme button tracking. */
+  /* The sign-in forms' submit: full width, at the large button's height. */
   .auth-form .auth-submit {
-    --btn-control-font-size: var(--label-size);
-    --btn-control-min-height: 3.625rem;
-    letter-spacing: 0.26em;
-    margin-top: 0.625rem;
+    --btn-control-min-height: 3.5rem;
+    margin-top: 0.5rem;
     width: 100%;
   }
 
+  /* The password's rules on one line under it; they wrap on a narrow phone. */
   .auth-password-checklist {
-    display: grid;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem 1.25rem;
   }
 
   .auth-password-checklist-item {
@@ -3332,7 +3953,7 @@
     color: var(--color-muted);
     display: flex;
     font-size: 0.75rem;
-    gap: 0.5rem;
+    gap: 0.375rem;
     line-height: 1.5;
     transition: color var(--duration-micro) var(--ease-luxury);
   }
@@ -3341,46 +3962,36 @@
     color: var(--color-success);
   }
 
+  /* A rule's marker keeps one box: a dot until the rule is met, then a check,
+     so the shape changes with the colour. */
   .auth-password-checklist-dot {
     background-color: var(--color-line);
-    border-radius: var(--radius-pill);
+    block-size: 0.75rem;
     flex-shrink: 0;
-    height: 0.375rem;
-    width: 0.375rem;
+    inline-size: 0.75rem;
+    mask: radial-gradient(circle, black 0.1875rem, transparent 0.21875rem);
   }
 
   .auth-password-checklist-item-met .auth-password-checklist-dot {
     background-color: var(--color-success);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5L20 7'/%3E%3C/svg%3E")
+      center / contain no-repeat;
   }
 
   /* -----------------------------------------------------------------------------
      Catalog — product detail
      ----------------------------------------------------------------------------- */
-  .storefront-back-nav {
-    margin-block-end: 0.25rem;
-  }
-
-  .catalog-detail {
-    padding-block: 1.5rem 4.5rem;
-  }
-
-  @media (min-width: 40rem) {
-    .catalog-detail {
-      padding-block: 2rem 6rem;
-    }
-  }
-
   .catalog-detail__layout {
     display: grid;
     gap: 2rem;
-    margin-block-start: 1.5rem;
+    margin-block-start: 2rem;
   }
 
   @media (min-width: 64rem) {
     .catalog-detail__layout {
-      gap: 3rem;
-      grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
-      margin-block-start: 2rem;
+      align-items: start;
+      gap: 4.5rem;
+      grid-template-columns: minmax(0, 34rem) minmax(0, 36rem);
     }
   }
 
@@ -3390,23 +4001,61 @@
     gap: 0.75rem;
   }
 
-  .catalog-detail__category {
-    margin: 0;
+  .catalog-detail__thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .catalog-detail__thumb {
+    background-color: var(--color-paper-3);
+    block-size: 4rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    inline-size: 4rem;
+    overflow: hidden;
+    padding: 0;
+    transition: border-color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .catalog-detail__thumb:hover,
+  .catalog-detail__thumb:focus-visible {
+    border-color: var(--color-line-strong);
+  }
+
+  .catalog-detail__thumb[aria-current="true"] {
+    border-color: var(--color-matcha-500);
+  }
+
+  .catalog-detail__thumb img {
+    block-size: 100%;
+    inline-size: 100%;
+    object-fit: cover;
+  }
+
+  .catalog-detail__info {
+    min-width: 0;
+  }
+
+  @media (min-width: 64rem) {
+    .catalog-detail__info {
+      padding-block-start: 0.5rem;
+    }
   }
 
   .catalog-detail__title {
     color: var(--color-ink);
     font-family: var(--font-display);
     font-optical-sizing: auto;
-    font-size: clamp(2.375rem, 2.4vw + 1.4rem, 3.25rem);
+    font-size: clamp(2.375rem, 2.4vw + 1.4rem, 3.375rem);
     font-weight: 300;
-    letter-spacing: -0.016em;
+    letter-spacing: -0.012em;
     line-height: 1.04;
-    margin: 0.75rem 0 0;
+    margin: 0;
     text-wrap: balance;
   }
 
-  /* The detail price is the page's one metric — mono at the 28px display step. */
+  /* The detail price is the page's one metric, at the 28px display step. */
   .catalog-detail__price {
     font-size: 1.75rem;
     line-height: 1.2;
@@ -3439,48 +4088,62 @@
     max-width: 65ch;
   }
 
-  /* The purchase action, then the save toggles, a gap apart; a button keeps its
-     own width, the custom cake form takes the column. */
+  /* The page's one primary action, wide enough to be it, with the two lists
+     beside it; a row too narrow for all three sets the lists on the next one.
+     The custom cake form takes the column and ends on the same row. */
   .catalog-detail__actions {
-    display: grid;
-    gap: 1rem;
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     margin-block-start: 2rem;
   }
 
-  .catalog-detail__actions > button {
-    justify-self: start;
+  .catalog-detail__actions > form {
+    flex-basis: 100%;
   }
 
-  /* The heart (favorites) and the bookmark (wishlist): square 44px controls on
-     the surface, a hairline around them, the glyph filled while it is on the
-     list. */
+  .catalog-detail__actions .dashboard-profile-form-actions {
+    gap: 0.5rem;
+  }
+
+  .catalog-detail__actions > .btn-chrome,
+  .catalog-detail__actions > .storefront-guest-purchase,
+  .catalog-detail__actions .dashboard-profile-form-actions > .btn-chrome {
+    flex: 1 1 0;
+    max-inline-size: 22.5rem;
+  }
+
+  /* The heart (favorites) and the bookmark (wishlist), filled in matcha while
+     the product is on the list: bare glyphs in a 44px target on a card, two
+     outlined squares beside the purchase action on the product's page. */
   .saved-toggles {
     display: flex;
-    gap: 0.5rem;
   }
 
   .saved-toggle {
     align-items: center;
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-line);
-    color: var(--color-ink);
+    color: var(--color-ink-2);
     cursor: pointer;
     display: inline-flex;
-    height: 2.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: 0.5rem;
     justify-content: center;
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+    text-decoration: none;
     transition:
       background-color var(--duration-micro) var(--ease-luxury),
       border-color var(--duration-micro) var(--ease-luxury),
       color var(--duration-micro) var(--ease-luxury);
-    width: 2.75rem;
   }
 
   .saved-toggle:hover:not(:disabled) {
-    background-color: var(--color-paper-4);
+    color: var(--color-ink);
   }
 
   .saved-toggle[aria-pressed="true"] {
-    border-color: var(--color-matcha-500);
     color: var(--color-matcha-500);
   }
 
@@ -3488,15 +4151,36 @@
     fill: currentColor;
   }
 
-  /* Over a photo an outward ring can vanish into the bake behind it; inside,
-     it sits on the toggle's own white. */
-  .saved-toggle:focus-visible {
-    outline-offset: -4px;
-  }
-
   .saved-toggle:disabled {
     color: var(--color-disabled);
     cursor: default;
+  }
+
+  /* On the product's page the pair stands beside the purchase action, each a
+     square of its height: the hairline of the outline variant, matcha while on. */
+  .catalog-detail__actions .saved-toggles {
+    gap: 0.5rem;
+  }
+
+  .catalog-detail__actions .saved-toggle {
+    block-size: var(--btn-control-min-height);
+    border: 1px solid var(--color-line);
+    color: var(--color-ink);
+    inline-size: var(--btn-control-min-height);
+  }
+
+  .catalog-detail__actions .saved-toggle:hover:not(:disabled, [aria-pressed="true"]) {
+    border-color: var(--color-ink);
+  }
+
+  .catalog-detail__actions .saved-toggle[aria-pressed="true"] {
+    border-color: var(--color-matcha-500);
+    color: var(--color-matcha-500);
+  }
+
+  .catalog-detail__actions .saved-toggle:disabled {
+    border-color: var(--color-line-soft);
+    color: var(--color-disabled);
   }
 
   /* A rating reads in brass, the accent on paper: the stars it gives filled,
@@ -3573,8 +4257,9 @@
     border-top: 1px solid var(--color-border);
     display: grid;
     gap: 1.5rem;
-    margin-block-start: 3rem;
-    padding-block-start: 2rem;
+    margin-block-start: 4rem;
+    max-width: 46rem;
+    padding-block-start: 2.5rem;
   }
 
   .catalog-reviews__header {
@@ -3607,128 +4292,146 @@
   }
 
   /* -----------------------------------------------------------------------------
-     Catalog browse (/products)
+     Catalog browse (/products) — a row of category chips over the products,
+     which stand in one section per category until a filter narrows them.
      ----------------------------------------------------------------------------- */
-  .catalog-page {
-    padding-block: 1.5rem 4.5rem;
-  }
-
-  @media (min-width: 40rem) {
-    .catalog-page {
-      padding-block: 2rem 6rem;
-    }
-  }
-
-  .catalog-page:has(+ .catalog-combos) {
-    padding-block-end: 2rem;
-  }
-
-  @media (min-width: 40rem) {
-    .catalog-page:has(+ .catalog-combos) {
-      padding-block-end: 2.5rem;
-    }
-  }
-
-  .catalog-page__intro {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
+  /* The page's title and its chips stay under the header while the list
+     scrolls, so the page always says which list is on screen and the header
+     never cuts the title off. The negative margin gives the block 16px of
+     ground above the title once it sticks without moving it at rest. One
+     column the chips cannot widen: they scroll inside it on a phone. */
+  .catalog-page__top {
+    background-color: var(--color-bg);
+    display: grid;
+    gap: 0.875rem;
+    grid-template-columns: minmax(0, 1fr);
+    margin-block-start: -1rem;
+    padding-block-start: 1rem;
+    position: sticky;
+    top: var(--storefront-header-height);
+    z-index: 10;
   }
 
   .catalog-page__body {
-    align-items: start;
     display: grid;
     gap: 2rem;
     grid-template-columns: minmax(0, 1fr);
     padding-block-start: 2rem;
   }
 
-  @media (min-width: 64rem) {
-    .catalog-page__body {
-      gap: 3.5rem;
-      grid-template-columns: 14.75rem minmax(0, 1fr);
-      padding-block-start: 2rem;
-    }
+  .catalog-chips {
+    border-bottom: 1px solid var(--color-border);
+    padding-block: 0.625rem;
   }
 
-  .catalog-sidebar {
+  /* On a phone the chips scroll sideways; the padding keeps the focus ring
+     inside the scroller's clip. */
+  .catalog-chips__list {
     display: flex;
-    flex-direction: column;
-    gap: 2rem;
-  }
-
-  @media (min-width: 64rem) {
-    .catalog-sidebar {
-      position: sticky;
-      top: 1.5rem;
-    }
-  }
-
-  .catalog-sidebar__label {
-    color: var(--color-brass);
-    font-family: var(--font-body);
-    font-size: var(--label-size-sm);
-    font-weight: var(--label-weight);
-    letter-spacing: 0.2em;
-    line-height: 1.4;
-    margin: 0 0 0.875rem;
-    text-transform: uppercase;
-  }
-
-  .catalog-sidebar__list {
-    display: flex;
-    flex-direction: column;
+    gap: 0.5rem;
     list-style: none;
-    margin: 0;
-    padding: 0;
+    margin: 0 -0.25rem;
+    overflow-x: auto;
+    padding: 0.25rem;
+    scrollbar-width: none;
   }
 
-  .catalog-sidebar__link {
+  @media (min-width: 64rem) {
+    .catalog-chips__list {
+      flex-wrap: wrap;
+      overflow: visible;
+    }
+  }
+
+  .catalog-chips__list > li {
+    flex-shrink: 0;
+  }
+
+  .catalog-chip {
     align-items: center;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--color-line-soft);
-    color: var(--color-ink-2);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    color: var(--color-ink);
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     font-family: var(--font-body);
     font-size: 0.875rem;
-    font-weight: 400;
-    justify-content: space-between;
-    line-height: 1.5;
-    margin: 0;
-    padding-block: 0.625rem;
-    text-align: start;
-    text-decoration: none;
-    transition: color var(--duration-micro) var(--ease-luxury);
-    width: 100%;
-  }
-
-  .catalog-sidebar__link:hover {
-    color: var(--color-matcha-500);
-  }
-
-  .catalog-sidebar__link--active {
-    color: var(--color-ink);
     font-weight: 500;
+    gap: 0.625rem;
+    min-height: 2.75rem;
+    padding-inline: 1.125rem;
+    text-decoration: none;
+    transition:
+      background-color var(--duration-micro) var(--ease-luxury),
+      border-color var(--duration-micro) var(--ease-luxury),
+      color var(--duration-micro) var(--ease-luxury);
+    white-space: nowrap;
   }
 
-  .catalog-sidebar__link--anchor {
-    color: var(--color-ink-2);
+  .catalog-chip:hover {
+    border-color: var(--color-matcha-500);
+  }
+
+  .catalog-chip--active {
+    background-color: var(--color-matcha-500);
+    border-color: var(--color-matcha-500);
+    color: var(--theme-on-primary);
+  }
+
+  .catalog-chip__count {
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    opacity: 0.8;
   }
 
   .catalog-page__content {
+    align-content: start;
+    display: grid;
+    gap: 1.5rem;
     min-width: 0;
   }
 
   .catalog-page__toolbar {
     align-items: center;
-    border-bottom: 1px solid var(--color-border);
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem 2rem;
-    justify-content: space-between;
-    padding-bottom: 1.25rem;
+    gap: 0.5rem 1.5rem;
+  }
+
+  .catalog-page__toolbar:empty {
+    display: none;
+  }
+
+  .catalog-section {
+    display: grid;
+    gap: 2rem;
+    scroll-margin-top: calc(var(--storefront-header-height) + 5rem);
+  }
+
+  .catalog-section + .catalog-section {
+    padding-top: 3.5rem;
+  }
+
+  /* The category and how many it holds, on one baseline; no rule under them. */
+  .catalog-section__head {
+    align-items: baseline;
+    display: flex;
+    gap: 0.875rem;
+  }
+
+  .catalog-section__title {
+    font-family: var(--font-display);
+    font-size: 1.875rem;
+    font-weight: 400;
+    line-height: 1.1;
+    margin: 0;
+  }
+
+  .catalog-section__count {
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
   }
 
   .catalog-page__count {
@@ -3739,37 +4442,29 @@
     margin: 0;
   }
 
-  .catalog-page__search-note {
-    color: var(--color-muted);
-    font-size: 0.875rem;
-    line-height: 1.6;
-    margin: 0 0 1.5rem;
-  }
-
-  .catalog-page__results {
-    padding-block-start: 0;
-  }
-
+  /* Two across from a phone, where a card is its photo, name and price. */
   .catalog-product-grid {
     display: grid;
-    gap: 2rem;
-    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   @media (min-width: 40rem) {
     .catalog-product-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 2.5rem 2rem;
     }
   }
 
   @media (min-width: 64rem) {
     .catalog-product-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 
-  .catalog-product-grid--featured {
-    gap: 2rem;
+  @media (min-width: 40rem) {
+    .catalog-product-grid--featured {
+      gap: 2rem;
+    }
   }
 
   @media (min-width: 64rem) {
@@ -3778,63 +4473,113 @@
     }
   }
 
-  /* Product card — 4/5 portrait crop; the grid skeleton mirrors it. */
+  /* Product card — the photo and the name are the link to the product; the price
+     row carries the save toggles and the purchase closes the card, so a row's
+     prices and buttons line up. The grid skeleton mirrors it. */
   .catalog-product-card {
-    position: relative;
-  }
-
-  /* The card's controls sit over the photo's corner, beside the link that
-     fills the card rather than inside it. */
-  .catalog-product-card__actions {
-    inset-block-start: 0.75rem;
-    inset-inline-end: 0.75rem;
-    position: absolute;
+    display: flex;
+    flex-direction: column;
   }
 
   .catalog-product-card__link {
     color: inherit;
     display: flex;
+    flex: 1;
     flex-direction: column;
-    height: 100%;
+    gap: 0.5rem;
     text-decoration: none;
   }
 
-  .catalog-product-card__media {
-    aspect-ratio: 4 / 5;
-    background-color: var(--color-matcha-100);
-    overflow: hidden;
-    position: relative;
+  .catalog-product-card__link .catalog-tile {
+    margin-block-end: 0.5rem;
   }
 
-  .catalog-product-card__image {
-    height: 100%;
+  /* -----------------------------------------------------------------------------
+     Catalog tile (02-COMPONENTS §7c) — a product's own photo, or a paper tile
+     carrying its initial as a watermark. One treatment, four scales.
+     ----------------------------------------------------------------------------- */
+  .catalog-tile {
+    align-items: center;
+    background-color: var(--color-paper-3);
+    display: flex;
+    flex-shrink: 0;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .catalog-tile__image {
+    block-size: 100%;
+    inline-size: 100%;
     object-fit: cover;
     transition: opacity var(--duration-micro) var(--ease-luxury);
-    width: 100%;
   }
 
-  .catalog-product-card__link:hover .catalog-product-card__image {
+  .catalog-tile__initial {
+    color: var(--color-matcha-500);
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    line-height: 1;
+  }
+
+  .catalog-tile--hero,
+  .catalog-tile--card {
+    aspect-ratio: 1 / 1;
+    inline-size: 100%;
+  }
+
+  .catalog-tile--hero .catalog-tile__initial {
+    font-size: clamp(4.5rem, 6vw, 6.5rem);
+    font-weight: 300;
+    opacity: 0.42;
+  }
+
+  .catalog-tile--card .catalog-tile__initial {
+    font-size: 3.5rem;
+    font-weight: 300;
+    opacity: 0.42;
+  }
+
+  .catalog-tile--row {
+    block-size: 4rem;
+    inline-size: 4rem;
+  }
+
+  @media (min-width: 40rem) {
+    .catalog-tile--row {
+      block-size: 5.5rem;
+      inline-size: 5.5rem;
+    }
+  }
+
+  .catalog-tile--row .catalog-tile__initial {
+    font-size: clamp(1.625rem, 2vw + 1rem, 2.125rem);
+    font-weight: 300;
+    opacity: 0.45;
+  }
+
+  .catalog-tile--search {
+    block-size: 3.25rem;
+    border: 1px solid var(--color-border);
+    inline-size: 3.25rem;
+  }
+
+  .catalog-tile--search .catalog-tile__initial {
+    font-size: 1.375rem;
+    font-weight: 400;
+    opacity: 0.5;
+  }
+
+  .catalog-product-card__link:hover .catalog-tile__image {
     opacity: 0.92;
   }
 
-  .catalog-product-card__placeholder {
-    align-items: center;
-    color: var(--color-muted);
-    display: flex;
-    font-size: var(--label-size-sm);
-    font-weight: var(--label-weight);
-    height: 100%;
-    justify-content: center;
-    letter-spacing: var(--label-tracking-sm);
-    text-transform: uppercase;
-  }
-
+  /* The price row keeps to the card's foot, so the hairlines of a row align. */
   .catalog-product-card__body {
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: 0.5rem;
-    padding: 1.25rem 0 0;
+    gap: 0.625rem;
+    padding: 1.125rem 0 0;
   }
 
   .catalog-product-card__eyebrow {
@@ -3848,16 +4593,25 @@
     text-transform: uppercase;
   }
 
+  /* Body type two across on a phone; the display face from 40rem. */
   .catalog-product-card__name {
     color: var(--color-ink);
-    font-family: var(--font-display);
-    font-optical-sizing: auto;
-    font-size: 1.5625rem;
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
     font-weight: 500;
     letter-spacing: 0;
-    line-height: 1.2;
-    margin: 0.75rem 0 0;
+    line-height: 1.35;
+    margin: 0;
     transition: color var(--duration-micro) var(--ease-luxury);
+  }
+
+  @media (min-width: 40rem) {
+    .catalog-product-card__name {
+      font-family: var(--font-display);
+      font-optical-sizing: auto;
+      font-size: 1.5625rem;
+      line-height: 1.2;
+    }
   }
 
   .catalog-product-card__link:hover .catalog-product-card__name {
@@ -3868,41 +4622,107 @@
     margin: 0;
   }
 
-  /* The hairline above the transaction row separates identity from price. */
   .catalog-product-card__footer {
-    align-items: baseline;
-    border-top: 1px solid var(--color-border);
+    align-items: center;
     display: flex;
     gap: 1rem;
     justify-content: space-between;
-    margin-top: 0.875rem;
-    padding-top: 0.75rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
   }
 
-  .catalog-product-card__action {
-    color: var(--color-matcha-500);
-    font-family: var(--font-body);
-    font-size: var(--label-size-sm);
-    font-weight: var(--label-weight);
-    letter-spacing: var(--label-tracking);
-    line-height: 1.4;
-    text-transform: uppercase;
+  /* On a product card the heart and the bookmark close the price row, the last
+     one's glyph meeting the card's edge; with no name beside it, a glyph shows
+     its target on hover. A card too narrow for both (two across at 320px) sets
+     them on the next row, still at that edge. */
+  .catalog-product-card > .catalog-product-card__footer {
+    flex-wrap: wrap;
+    row-gap: 0;
   }
 
-  .catalog-empty-state {
-    align-items: center;
+  .catalog-product-card__footer .saved-toggles {
+    margin-inline: auto -0.8125rem;
+  }
+
+  .catalog-product-card__footer .saved-toggle:hover:not(:disabled) {
+    background-color: var(--color-paper-4);
+  }
+
+  /* The purchase spans the card: one wide target under the price. */
+  .catalog-product-card__purchase {
+    display: grid;
+    margin-top: 0.5rem;
+  }
+
+  /* Custom cake options: one tile per option, the chosen one tinted and ruled. */
+  .option-tiles {
+    border: 0;
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .option-tiles__legend {
+    margin-bottom: 0.75rem;
+    padding: 0;
+  }
+
+  .option-tiles__grid {
+    display: grid;
+    gap: 0.625rem;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  }
+
+  .option-tile {
     background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-line);
+    cursor: pointer;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    padding: 4.5rem 2.5rem;
-    text-align: center;
+    gap: 0.25rem;
+    min-height: 4rem;
+    padding: 0.75rem 0.875rem;
+    transition:
+      background-color var(--duration-micro) var(--ease-luxury),
+      border-color var(--duration-micro) var(--ease-luxury);
   }
 
-  .catalog-empty-state__hint {
-    margin: 0;
-    max-width: 42ch;
+  .option-tiles:not(:disabled) .option-tile:hover {
+    border-color: var(--color-matcha-500);
+  }
+
+  .option-tiles[aria-invalid="true"] .option-tile {
+    border-color: var(--color-danger);
+  }
+
+  .option-tile:has(input:focus-visible) {
+    outline: 2px solid var(--color-matcha-500);
+    outline-offset: 2px;
+  }
+
+  .option-tile--selected {
+    background-color: var(--color-matcha-100);
+    border-color: var(--color-matcha-500);
+  }
+
+  .option-tiles:disabled .option-tile {
+    color: var(--color-disabled);
+    cursor: not-allowed;
+  }
+
+  .option-tile__label {
+    color: var(--color-ink);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  .option-tile__note {
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
   }
 
   .catalog-pagination {
@@ -3926,288 +4746,99 @@
   }
 
   /* -----------------------------------------------------------------------------
-     Catalog — combos
+     Catalog — combos close the products column, in the product card's anatomy.
      ----------------------------------------------------------------------------- */
   .catalog-combos {
-    border-block-start: 1px solid var(--color-border);
-    margin-block-start: 2.5rem;
-    padding-block: 4rem;
-  }
-
-  @media (min-width: 64rem) {
-    .catalog-combos {
-      margin-block-start: 3rem;
-      padding-block: 6rem;
-    }
-  }
-
-  .catalog-combos__container {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .catalog-combos__main {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
+    border-top: 1px solid var(--color-border);
+    margin-top: 1.5rem;
+    padding-top: 3rem;
   }
 
   .catalog-combos__header {
     align-items: flex-end;
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem 2.5rem;
+    gap: 1rem 2rem;
     justify-content: space-between;
-    scroll-margin-top: calc(
-      var(--storefront-header-height) + var(--storefront-combos-anchor-gap)
-    );
+    margin-bottom: 2rem;
   }
 
-  /* Below 64rem the category bar is sticky under the header; offset for it. */
-  @media (max-width: 63.99rem) {
-    .catalog-combos__header {
-      scroll-margin-top: calc(
-        var(--storefront-header-height) + var(--storefront-combos-anchor-gap) +
-          4.5rem
-      );
-    }
-  }
-
-  .catalog-combos__header-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    max-width: 36rem;
-  }
-
-  .catalog-combos__eyebrow {
-    color: var(--color-brass);
-    font-size: var(--label-size);
-    font-weight: var(--label-weight);
-    letter-spacing: 0.26em;
-    line-height: 1.4;
-    margin: 0;
-    text-transform: uppercase;
+  .catalog-combos__copy {
+    display: grid;
+    gap: 0.5rem;
   }
 
   .catalog-combos__title {
-    color: var(--color-ink);
-    font-family: var(--font-display);
-    font-optical-sizing: auto;
-    font-size: clamp(2rem, 1.6vw + 1.3rem, 3rem);
-    font-weight: 300;
-    letter-spacing: -0.01em;
-    line-height: 1.08;
-    margin: 0;
-    text-wrap: balance;
+    scroll-margin-top: calc(var(--storefront-header-height) + var(--storefront-combos-anchor-gap));
   }
 
   .catalog-combos__lead {
     color: var(--color-muted);
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     line-height: 1.7;
     margin: 0;
-    max-width: 52ch;
-  }
-
-  .catalog-combos__count {
-    color: var(--color-muted);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.08em;
-    line-height: 1.5;
-    margin: 0;
-    white-space: nowrap;
-  }
-
-  .catalog-combo-grid {
-    align-items: stretch;
-    display: grid;
-    gap: 2rem;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  @media (min-width: 48rem) {
-    .catalog-combo-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 80rem) {
-    .catalog-combo-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
   }
 
   .catalog-combo-card {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
-    height: 100%;
-    min-height: 22.5rem;
-    overflow: hidden;
-    transition: border-color var(--duration-micro) var(--ease-luxury);
-  }
-
-  .catalog-combo-card:hover {
-    border-color: var(--color-ink);
-  }
-
-  .catalog-combo-card__header {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.5rem;
-  }
-
-  .catalog-combo-card__badges {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 0.75rem;
-    justify-content: space-between;
-  }
-
-  /* A filled pill reads as consumer-app chrome; a micro-label does not. */
-  .catalog-combo-card__badge {
-    color: var(--color-brass);
-    font-size: var(--label-size-sm);
-    font-weight: var(--label-weight);
-    letter-spacing: var(--label-tracking-sm);
-    line-height: 1.4;
-    text-transform: uppercase;
-  }
-
-  .catalog-combo-card__ends {
-    color: var(--color-muted);
-    font-size: 0.75rem;
-    line-height: 1.5;
-  }
-
-  .catalog-combo-card__title {
-    color: var(--color-ink);
-    font-family: var(--font-display);
-    font-optical-sizing: auto;
-    font-size: 1.75rem;
-    font-weight: 500;
-    letter-spacing: 0;
-    line-height: 1.2;
-    margin: 0;
-  }
-
-  .catalog-combo-card__meta {
-    color: var(--color-muted);
-    font-size: 0.8125rem;
-    line-height: 1.5;
-    margin: 0;
   }
 
   .catalog-combo-card__items {
-    align-items: flex-start;
-    border-top: 1px solid var(--color-line-soft);
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 0.75rem;
-    justify-content: flex-start;
-    list-style: none;
-    margin: 0;
-    min-height: 5.5rem;
-    padding: 1.5rem;
-  }
-
-  .catalog-combo-card__items li {
-    color: var(--color-ink-2);
-    font-size: 0.875rem;
-    line-height: 1.6;
-    text-align: start;
-    width: 100%;
-  }
-
-  .catalog-combo-card__item-line {
-    align-items: baseline;
-    display: inline-flex;
-    gap: 0.75rem;
-  }
-
-  .catalog-combo-card__item-name {
-    color: var(--color-ink-2);
-  }
-
-  .catalog-combo-card__qty {
     color: var(--color-muted);
-    flex-shrink: 0;
-    font-family: var(--font-mono);
     font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .catalog-combo-card__footer {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-block-start: auto;
-    padding: 1.5rem;
-  }
-
-  .catalog-combo-card__pricing {
-    align-items: baseline;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 0.75rem;
+    line-height: 1.6;
+    margin: 0;
   }
 
   .catalog-combo-card__price {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
     margin: 0;
   }
 
   .catalog-combo-card__savings {
     color: var(--color-brass);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    line-height: 1.4;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .catalog-combo-card__ends {
+    color: var(--color-muted);
+    font-size: 0.75rem;
     margin: 0;
+    white-space: nowrap;
   }
 
   .catalog-combo-card__actions {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    width: 100%;
-  }
-
-  .catalog-combo-card__actions > button {
-    width: 100%;
-  }
-
-  .catalog-combo-card__actions .storefront-guest-purchase {
-    width: 100%;
-  }
-
-  .catalog-combo-card__actions .storefront-guest-purchase > a,
-  .catalog-combo-card__actions .storefront-guest-purchase > button {
-    width: 100%;
-  }
-
-  .catalog-combos__pagination {
-    margin-block-start: 0.5rem;
+    padding-top: 0.25rem;
   }
 
   /* -----------------------------------------------------------------------------
-     Storefront footer — brass micro-labels, four-column grid.
+     Storefront footer — the one matcha ground on the storefront, so the page
+     visibly ends; light text, brass-on-dark micro-labels, four columns.
      ----------------------------------------------------------------------------- */
   .storefront-footer {
-    background-color: var(--color-bg);
-    border-top: 1px solid var(--color-border);
+    background-color: var(--color-matcha-500);
+    color: var(--theme-on-primary);
   }
 
-  /* The bottom clears the assistant's launcher, fixed in the corner (1.5rem
-     from the edge, 2.75rem tall), so the last links stay reachable. */
+  .storefront-footer :focus-visible {
+    outline-color: var(--theme-on-primary);
+  }
+
+  .storefront-footer .brand-logo,
+  .storefront-footer .brand-mark,
+  .storefront-footer .brand-wordmark {
+    color: var(--theme-on-primary);
+  }
+
+  /* The bottom clears the assistant's launcher, fixed in the corner (1rem
+     from the edge, 3rem tall), so the last links stay reachable. */
   .storefront-footer__inner {
     padding-block: 4.5rem 5.25rem;
   }
@@ -4231,20 +4862,20 @@
   }
 
   .storefront-footer__tagline {
-    color: var(--color-muted);
+    color: var(--color-on-matcha-muted);
     font-family: var(--font-body);
-    font-size: 0.875rem;
-    line-height: 1.8;
+    font-size: 0.9375rem;
+    line-height: 1.7;
     margin: 1.25rem 0 0;
-    max-width: 36ch;
+    max-width: 34ch;
   }
 
   .storefront-footer__label {
-    color: var(--color-brass);
+    color: var(--color-brass-on-dark);
     font-family: var(--font-body);
-    font-size: var(--label-size-sm);
+    font-size: var(--label-size);
     font-weight: var(--label-weight);
-    letter-spacing: 0.2em;
+    letter-spacing: var(--label-tracking);
     line-height: 1.4;
     margin: 0;
     text-transform: uppercase;
@@ -4254,44 +4885,67 @@
   .storefront-footer__hours {
     display: flex;
     flex-direction: column;
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     gap: 0.625rem;
     list-style: none;
     margin: 1.125rem 0 0;
     padding: 0;
   }
 
-  .storefront-footer__links a,
-  .storefront-footer__address a {
-    color: var(--color-ink-2);
-    display: inline-block;
-    padding-block: 0.25rem;
-    text-decoration: none;
-    transition: color var(--duration-micro) var(--ease-luxury);
-  }
-
-  .storefront-footer__links a:hover,
-  .storefront-footer__address a:hover {
-    color: var(--color-matcha-500);
-  }
-
+  /* Rows of 44px targets set their own distance, and start higher by what a
+     row stands taller than its words, so the columns' first lines still meet. */
+  .storefront-footer__links,
   .storefront-footer__address {
-    color: var(--color-ink-2);
-    display: flex;
-    flex-direction: column;
-    font-size: 0.875rem;
-    font-style: normal;
-    gap: 0.625rem;
-    margin: 1.125rem 0 0;
+    gap: 0;
+    margin-block-start: 0.5625rem;
+  }
+
+  .storefront-footer__hours-time {
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
   }
 
   .storefront-footer__hours-note {
-    color: var(--color-muted);
+    color: var(--color-on-matcha-muted);
+  }
+
+  /* A footer link is a 44px target; the hairline it takes on hover stays under
+     its words. */
+  .storefront-footer__address > *,
+  .storefront-footer__links a,
+  .storefront-footer__policies a {
+    align-items: center;
+    display: inline-flex;
+    min-height: 2.75rem;
+  }
+
+  .storefront-footer__links a,
+  .storefront-footer__address a,
+  .storefront-footer__policies a {
+    color: inherit;
+    text-decoration: underline transparent 1px;
+    text-underline-offset: 0.3em;
+    transition: text-decoration-color var(--duration-micro) var(--ease-luxury);
+  }
+
+  .storefront-footer__links a:hover,
+  .storefront-footer__address a:hover,
+  .storefront-footer__policies a:hover {
+    text-decoration-color: currentColor;
+  }
+
+  .storefront-footer__address {
+    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9375rem;
+    font-style: normal;
   }
 
   .storefront-footer__bar {
     align-items: center;
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-matcha-line);
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
@@ -4302,27 +4956,43 @@
 
   .storefront-footer__copyright,
   .storefront-footer__policies {
-    color: var(--color-muted);
-    font-size: 0.6875rem;
-    letter-spacing: 0.1em;
+    color: var(--color-on-matcha-muted);
+    font-size: 0.8125rem;
     margin: 0;
   }
 
+  /* The row keeps the bar's height: its targets stand taller than its words. */
   .storefront-footer__policies {
     display: flex;
     flex-wrap: wrap;
-    gap: 1.75rem;
+    gap: 0 1.5rem;
+    margin-block: -0.75rem;
   }
 
-  .storefront-footer__policies a {
-    color: inherit;
-    display: inline-block;
-    padding-block: 0.4375rem;
-    text-decoration: none;
-    transition: color var(--duration-micro) var(--ease-luxury);
+  /* The day field on the storefront: a boxed field whose open edge is matcha,
+     its date and the calendar's numerals in the body face. */
+  [data-theme="storefront"] .dashboard-datetime__trigger--open {
+    border-color: var(--field-border-focus);
   }
 
-  .storefront-footer__policies a:hover {
-    color: var(--color-ink);
+  [data-theme="storefront"] .dashboard-datetime__trigger-value,
+  [data-theme="storefront"] .dashboard-datetime__day {
+    font-family: var(--font-body);
+  }
+
+  /* The month's arrows are 44px targets here; seven days across leave a day
+     36px on a 320px phone. */
+  [data-theme="storefront"] .dashboard-datetime__nav-btn {
+    block-size: 2.75rem;
+    inline-size: 2.75rem;
+  }
+
+  /* A customer reads an order's status as words, the dot beside them — not the
+     dashboard's capitals. */
+  [data-theme="storefront"] .status-pill {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
   }
 }

@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 
+import { CloseIcon } from "@/components/icons/storefront-icons";
 import { Button } from "@/components/ui/button";
 import { ROUTE } from "@/constants/routes";
+import { CatalogTile } from "@/features/catalog";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useMoveToCart, useToggleSaved } from "../hooks";
@@ -26,7 +28,7 @@ export function SavedProductRow({ item }: SavedProductRowProps) {
   let purchase;
   if (product.is_customizable) {
     purchase = (
-      <Button asChild variant="outline">
+      <Button asChild size="sm" variant="outline">
         <Link href={ROUTE.productDetail(product.id)}>Customize</Link>
       </Button>
     );
@@ -35,39 +37,45 @@ export function SavedProductRow({ item }: SavedProductRowProps) {
       <Button
         aria-busy={move.isPending || undefined}
         disabled={move.isPending}
-        type="button"
         onClick={() => move.mutate(product.id)}
+        size="sm"
+        type="button"
+        variant="outline"
       >
         {move.isPending ? "Moving…" : "Move to cart"}
       </Button>
     );
   } else {
-    purchase = <AddToCartButton productId={product.id} />;
+    purchase = <AddToCartButton productId={product.id} secondary />;
   }
 
   return (
-    <li className="storefront-cart-line">
-      <div className="storefront-cart-line__header">
-        <div className="storefront-cart-line__copy">
-          <Link className="storefront-cart-line__name storefront-inline-link" href={ROUTE.productDetail(product.id)}>
-            {product.name}
-          </Link>
-          <p className="storefront-cart-line__meta text-caption">{product.category_name}</p>
-          {product.sold_out_today ? <p className="catalog-sold-out">Sold out today</p> : null}
-        </div>
-        <p className="text-price storefront-cart-line__total">{formatPriceCents(product.price_cents)}</p>
+    <li className="storefront-saved-line">
+      <Link aria-hidden="true" className="storefront-saved-line__tile" href={ROUTE.productDetail(product.id)} tabIndex={-1}>
+        <CatalogTile name={product.name} scale="row" url={product.image_urls[0]} />
+      </Link>
+      <div className="storefront-saved-line__copy">
+        <p className="storefront-line-eyebrow">{product.category_name}</p>
+        <Link className="storefront-line-name" href={ROUTE.productDetail(product.id)}>
+          {product.name}
+        </Link>
+        <p className="storefront-line-meta">
+          <span className="text-price">{formatPriceCents(product.price_cents)}</span>
+        </p>
+        {product.sold_out_today ? <p className="catalog-sold-out">Sold out today</p> : null}
       </div>
-      <div className="storefront-cart-line__actions">
+      <div className="storefront-saved-line__actions">
         {purchase}
         <button
           aria-busy={toggle.isPending || undefined}
           aria-label={`Remove ${product.name} from your ${SAVED_LIST_NOUN[item.list]}`}
-          className="storefront-cart-remove"
+          className="storefront-line-remove"
           disabled={toggle.isPending}
-          type="button"
           onClick={() => toggle.mutate({ list: item.list, product, onList: true })}
+          title="Remove"
+          type="button"
         >
-          Remove
+          <CloseIcon />
         </button>
       </div>
     </li>

@@ -15,20 +15,17 @@ export function HomeCategories({ children }: HomeCategoriesProps) {
       className="storefront-section storefront-section--tinted border-t border-border"
     >
       <div className="storefront-container">
-        <div className="storefront-section-header storefront-section-header--ruled">
+        <div className="storefront-section-header">
           <div className="storefront-section-header__copy">
-            <p className="storefront-section-header__eyebrow">Categories</p>
             <h2
               className="storefront-section-header__heading"
               id="home-categories-heading"
             >
-              From morning viennoiserie
-              <br />
-              to celebration cakes
+              Shop by <span className="storefront-section-header__accent">category</span>
             </h2>
           </div>
           <Link className="storefront-section-header__link" href={ROUTE.products}>
-            View all →
+            All products
           </Link>
         </div>
 

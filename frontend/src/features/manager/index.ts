@@ -1,5 +1,5 @@
 /**
- * Manager feature — the operations dashboard, catalog CRUD, review moderation, promotions, the incident log and the sales and engagement reports (manager-only).
+ * Manager feature — the operations dashboard, catalog CRUD, review moderation, promotions, the incident log, the sales and engagement reports and the store's pickup settings (manager-only).
  *
  * Internal: api/, components/, hooks/, schemas/
  */
@@ -19,6 +19,7 @@ export {
   ManagerPromotionsTable,
   ManagerReviews,
   ManagerSalesReport,
+  ManagerStoreSettings,
   ProductForm,
 } from "./components";
 export {

@@ -4,5 +4,6 @@ export {
   useCatalogCombos,
   useCatalogProduct,
   useCatalogProducts,
+  useCombosOnSale,
   useProductReviews,
 } from "./use-catalog-queries";

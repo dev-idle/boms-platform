@@ -66,8 +66,11 @@ type StaffListOrdersParams struct {
 	// OpenBefore narrows the list to the orders left open: still to accept or
 	// make with a pickup before it.
 	OpenBefore *time.Time
-	Limit      int32
-	Offset     int32
+	// Search narrows the list to the orders whose code, customer name or
+	// customer email holds it; empty lists them all.
+	Search string
+	Limit  int32
+	Offset int32
 }
 
 // StrandedPickupsParams finds the orders the bakery still has to make or hand
@@ -218,7 +221,8 @@ type OrderRepository interface {
 	ListByUserBefore(ctx context.Context, userID uuid.UUID, before *PageCursor, limit int32) ([]domainorder.Order, error)
 	ListCountByUser(ctx context.Context, userID uuid.UUID, filter OrderHistoryFilter) (int64, error)
 	StaffList(ctx context.Context, params StaffListOrdersParams) ([]StaffOrderListRow, error)
-	StaffListCount(ctx context.Context, status *domainorder.Status, openBefore *time.Time) (int64, error)
+	// StaffListCount counts what StaffList pages; Limit and Offset are not read.
+	StaffListCount(ctx context.Context, params StaffListOrdersParams) (int64, error)
 	UpdateStatus(ctx context.Context, params UpdateOrderStatusParams) (*domainorder.Order, error)
 	CreateItems(ctx context.Context, items []CreateOrderItemParams) error
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domainorder.Item, error)

@@ -99,6 +99,8 @@ export const staffOrdersListFilterSchema = z.object({
   page: z.number().int().min(1).default(1),
   page_size: z.number().int().min(1).max(100).default(20),
   status: staffOrdersStatusFilterSchema.optional(),
+  /** Part of an order code, a customer's name or their email. */
+  search: z.string().trim().default(""),
 });
 
 /** `PATCH /staff/orders/:id/pickup` — another pickup for an order not handed over yet. */
@@ -223,6 +225,8 @@ export const staffProductsFilterSchema = z.object({
   page: z.number().int().min(1).default(1),
   page_size: z.number().int().min(1).max(100).default(20),
   sold_out_today: z.boolean().default(false),
+  /** Part of a product's or its category's name. */
+  search: z.string().trim().default(""),
 });
 
 /** Whether a conversation still waits on the counter — mirrors backend `conversation.Status`. */

@@ -6,7 +6,7 @@ import type { RefObject } from "react";
 
 import { ChevronDownIcon } from "@/components/icons/storefront-icons";
 import { ROUTE } from "@/constants/routes";
-import { CATALOG_COMBOS_HEADING_ID } from "@/features/catalog";
+import { CATALOG_COMBOS_HEADING_ID, useCombosOnSale } from "@/features/catalog";
 import { cn } from "@/lib/utils";
 
 type StorefrontHeaderNavProps = {
@@ -16,7 +16,7 @@ type StorefrontHeaderNavProps = {
   triggerRef: RefObject<HTMLButtonElement | null>;
 };
 
-/** Three fixed links in the toolbar; the category list lives behind the menu trigger. */
+/** All products, the category menu and, while any are on sale, Combos; the category list lives behind the menu trigger. */
 export function StorefrontHeaderNav({
   menuOpen,
   menuPanelId,
@@ -26,6 +26,7 @@ export function StorefrontHeaderNav({
   const pathname = usePathname();
   const activeCategory = useSearchParams().get("category");
   const onBrowse = pathname === ROUTE.products;
+  const combosOnSale = useCombosOnSale();
 
   return (
     <nav aria-label="Shop categories" className="storefront-header-nav">
@@ -36,7 +37,7 @@ export function StorefrontHeaderNav({
             className="storefront-header-nav__link"
             href={ROUTE.products}
           >
-            Shop all
+            All products
           </Link>
         </li>
         <li>
@@ -46,8 +47,8 @@ export function StorefrontHeaderNav({
             aria-expanded={menuOpen}
             className={cn(
               "storefront-header-nav__link storefront-header-nav__trigger",
-              (menuOpen || Boolean(activeCategory)) &&
-                "storefront-header-nav__trigger--active",
+              menuOpen && "storefront-header-nav__trigger--active",
+              onBrowse && activeCategory && "storefront-header-nav__trigger--current",
             )}
             onClick={onToggleMenu}
             type="button"
@@ -61,14 +62,16 @@ export function StorefrontHeaderNav({
             />
           </button>
         </li>
-        <li>
-          <Link
-            className="storefront-header-nav__link"
-            href={`${ROUTE.products}#${CATALOG_COMBOS_HEADING_ID}`}
-          >
-            Combos
-          </Link>
-        </li>
+        {combosOnSale ? (
+          <li>
+            <Link
+              className="storefront-header-nav__link"
+              href={`${ROUTE.products}#${CATALOG_COMBOS_HEADING_ID}`}
+            >
+              Combos
+            </Link>
+          </li>
+        ) : null}
       </ul>
     </nav>
   );

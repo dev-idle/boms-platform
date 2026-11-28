@@ -197,7 +197,7 @@ type Querier interface {
 	//    AND p.deleted_at IS NULL
 	//    AND p.is_active = true
 	CatalogGetProductByID(ctx context.Context, id uuid.UUID) (CatalogGetProductByIDRow, error)
-	//CatalogGetProductsByIDs
+	// The cart's products, each with its gallery for the line's photo.
 	//
 	//  SELECT
 	//      p.id,
@@ -209,20 +209,51 @@ type Querier interface {
 	//      p.is_customizable,
 	//      p.sold_out_on,
 	//      c.name AS category_name,
-	//      c.slug AS category_slug
+	//      c.slug AS category_slug,
+	//      COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
 	//  FROM products p
 	//  INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+	//  LEFT JOIN LATERAL (
+	//      SELECT array_agg(pi.image_url ORDER BY pi.sort_order) AS urls
+	//      FROM product_images pi
+	//      WHERE pi.product_id = p.id
+	//  ) img ON true
 	//  WHERE p.id = ANY($1::uuid[])
 	//    AND p.deleted_at IS NULL
 	//    AND p.is_active = true
 	CatalogGetProductsByIDs(ctx context.Context, productIds []uuid.UUID) ([]CatalogGetProductsByIDsRow, error)
-	//CatalogListCategories
+	// Each category carries how many products the shop shows in it and a cover:
+	// the first photo of the first product (by name) that has one.
 	//
-	//  SELECT id, name, slug, sort_order
-	//  FROM categories
-	//  WHERE deleted_at IS NULL
-	//    AND is_active = true
-	//  ORDER BY sort_order ASC, name ASC
+	//  SELECT
+	//      c.id,
+	//      c.name,
+	//      c.slug,
+	//      c.sort_order,
+	//      shown.product_count,
+	//      -- sqlc reads a lateral column as non-null; '' stands for "no photo yet".
+	//      COALESCE(cover.image_url, '')::text AS image_url
+	//  FROM categories c
+	//  CROSS JOIN LATERAL (
+	//      SELECT count(*)::bigint AS product_count
+	//      FROM products p
+	//      WHERE p.category_id = c.id
+	//        AND p.deleted_at IS NULL
+	//        AND p.is_active = true
+	//  ) shown
+	//  LEFT JOIN LATERAL (
+	//      SELECT pi.image_url
+	//      FROM products p
+	//      INNER JOIN product_images pi ON pi.product_id = p.id
+	//      WHERE p.category_id = c.id
+	//        AND p.deleted_at IS NULL
+	//        AND p.is_active = true
+	//      ORDER BY p.name ASC, pi.sort_order ASC
+	//      LIMIT 1
+	//  ) cover ON true
+	//  WHERE c.deleted_at IS NULL
+	//    AND c.is_active = true
+	//  ORDER BY c.sort_order ASC, c.name ASC
 	//  LIMIT $1 OFFSET $2
 	CatalogListCategories(ctx context.Context, arg CatalogListCategoriesParams) ([]CatalogListCategoriesRow, error)
 	//CatalogListCategoriesCount
@@ -575,6 +606,7 @@ type Querier interface {
 	//  FROM order_tickets t
 	//  INNER JOIN orders o ON o.id = t.order_id
 	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 	//  WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
 	//    AND t.station = $1::station
 	//    AND t.status <> 'cancelled'::ticket_status
@@ -586,6 +618,17 @@ type Querier interface {
 	//    AND (
 	//      $3::timestamptz IS NULL
 	//      OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
+	//    )
+	//    -- Found by what the counter or the kitchen calls it: the order's code, the
+	//    -- customer's name, or an item on the ticket.
+	//    AND (
+	//      $5::text = ''
+	//      OR o.code ILIKE '%' || $5 || '%'
+	//      OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $5 || '%'
+	//      OR EXISTS (
+	//        SELECT 1 FROM order_ticket_items i
+	//        WHERE i.ticket_id = t.id AND i.name ILIKE '%' || $5 || '%'
+	//      )
 	//    )
 	CountStationTickets(ctx context.Context, arg CountStationTicketsParams) (int64, error)
 	// How many orders ListStrandedPickups finds.
@@ -1468,7 +1511,7 @@ type Querier interface {
 	//  FROM store_settings
 	//  WHERE id = 1
 	GetStoreSettings(ctx context.Context) (GetStoreSettingsRow, error)
-	// Locks the row so two admins editing at once cannot undo each other.
+	// Locks the row so two managers editing at once cannot undo each other.
 	//
 	//  SELECT opens_at_minute, closes_at_minute, preorder_min_lead_minutes, max_advance_days, slot_minutes, slot_capacity, instant_prep_minutes, payment_hold_minutes, updated_at
 	//  FROM store_settings
@@ -1833,44 +1876,46 @@ type Querier interface {
 	//  WHERE order_id = ANY($1::uuid[])
 	//  ORDER BY order_id, created_at ASC, id ASC
 	ListOrderIncidentsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]OrderIncident, error)
-	//ListOrderItemsByOrderID
+	// An order's lines, each with its product's first photo or its combo's photo
+	// now — empty for an item without one, or whose product or combo is deleted.
 	//
 	//  SELECT
-	//    id,
-	//    order_id,
-	//    line_type,
-	//    product_id,
-	//    combo_id,
-	//    configuration,
-	//    name,
-	//    slug,
-	//    quantity,
-	//    unit_price_cents,
-	//    line_total_cents,
-	//    created_at
-	//  FROM order_items
-	//  WHERE order_id = $1
-	//  ORDER BY created_at ASC
-	ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]OrderItem, error)
-	// The lines of many orders in one round trip, as a data export reads them.
+	//    oi.id, oi.order_id, oi.line_type, oi.product_id, oi.combo_id, oi.configuration, oi.name, oi.slug, oi.quantity, oi.unit_price_cents, oi.line_total_cents, oi.created_at,
+	//    COALESCE(
+	//      (
+	//        SELECT pi.image_url FROM product_images pi
+	//        INNER JOIN products p ON p.id = pi.product_id AND p.deleted_at IS NULL
+	//        WHERE pi.product_id = oi.product_id
+	//        ORDER BY pi.sort_order
+	//        LIMIT 1
+	//      ),
+	//      (SELECT c.image_url FROM combos c WHERE c.id = oi.combo_id AND c.deleted_at IS NULL),
+	//      ''
+	//    )::text AS image_url
+	//  FROM order_items oi
+	//  WHERE oi.order_id = $1
+	//  ORDER BY oi.created_at ASC
+	ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]ListOrderItemsByOrderIDRow, error)
+	// The lines of many orders in one round trip, as a data export reads them,
+	// each with its photo as ListOrderItemsByOrderID reads it.
 	//
 	//  SELECT
-	//    id,
-	//    order_id,
-	//    line_type,
-	//    product_id,
-	//    combo_id,
-	//    configuration,
-	//    name,
-	//    slug,
-	//    quantity,
-	//    unit_price_cents,
-	//    line_total_cents,
-	//    created_at
-	//  FROM order_items
-	//  WHERE order_id = ANY($1::uuid[])
-	//  ORDER BY order_id, created_at ASC
-	ListOrderItemsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]OrderItem, error)
+	//    oi.id, oi.order_id, oi.line_type, oi.product_id, oi.combo_id, oi.configuration, oi.name, oi.slug, oi.quantity, oi.unit_price_cents, oi.line_total_cents, oi.created_at,
+	//    COALESCE(
+	//      (
+	//        SELECT pi.image_url FROM product_images pi
+	//        INNER JOIN products p ON p.id = pi.product_id AND p.deleted_at IS NULL
+	//        WHERE pi.product_id = oi.product_id
+	//        ORDER BY pi.sort_order
+	//        LIMIT 1
+	//      ),
+	//      (SELECT c.image_url FROM combos c WHERE c.id = oi.combo_id AND c.deleted_at IS NULL),
+	//      ''
+	//    )::text AS image_url
+	//  FROM order_items oi
+	//  WHERE oi.order_id = ANY($1::uuid[])
+	//  ORDER BY oi.order_id, oi.created_at ASC
+	ListOrderItemsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]ListOrderItemsByOrderIDsRow, error)
 	//ListOrderStatusEvents
 	//
 	//  SELECT to_status, actor_role, reason, created_at
@@ -2072,11 +2117,13 @@ type Querier interface {
 	//  ORDER BY p.created_at DESC, p.id DESC
 	//  LIMIT $2 OFFSET $1
 	ListPromotions(ctx context.Context, arg ListPromotionsParams) ([]ListPromotionsRow, error)
-	// A page of a product's published reviews, latest first: the latest, or those
-	// written before the review before_id names.
+	// A page of a product's published reviews, latest first, each with the name
+	// its author gave: the latest, or those written before the review before_id
+	// names.
 	//
-	//  SELECT r.id, r.rating, r.comment, r.created_at
+	//  SELECT r.id, r.rating, r.comment, r.created_at, cp.display_name AS author_name
 	//  FROM reviews r
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = r.user_id
 	//  WHERE r.product_id = $1
 	//    AND r.status = 'published'::review_status
 	//    AND r.deleted_at IS NULL
@@ -2235,8 +2282,19 @@ type Querier interface {
 	//        $3::timestamptz IS NULL
 	//        OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
 	//      )
+	//      -- Found by what the counter or the kitchen calls it: the order's code, the
+	//      -- customer's name, or an item on the ticket.
+	//      AND (
+	//        $5::text = ''
+	//        OR o.code ILIKE '%' || $5 || '%'
+	//        OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $5 || '%'
+	//        OR EXISTS (
+	//          SELECT 1 FROM order_ticket_items i
+	//          WHERE i.ticket_id = t.id AND i.name ILIKE '%' || $5 || '%'
+	//        )
+	//      )
 	//    ORDER BY o.pickup_at ASC NULLS LAST, t.created_at ASC, t.id ASC
-	//    LIMIT $6 OFFSET $5
+	//    LIMIT $7 OFFSET $6
 	//  ) page
 	//  LEFT JOIN LATERAL (
 	//    SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name) AS list
@@ -2554,8 +2612,8 @@ type Querier interface {
 	//      OR p.slug ILIKE '%' || $2::text || '%'
 	//    )
 	ManagerListProductsCount(ctx context.Context, arg ManagerListProductsCountParams) (int64, error)
-	// A page of reviews to moderate, latest first, with the product, the order
-	// and the name the customer gave.
+	// A page of reviews, latest first, with the product, the order and the name
+	// the customer gave.
 	//
 	//  SELECT
 	//    r.id,
@@ -2650,7 +2708,8 @@ type Querier interface {
 	//    AND unread_by_customer > 0
 	//    AND reply_emailed_at IS NULL
 	MarkRepliesEmailed(ctx context.Context, id uuid.UUID) (int64, error)
-	// Publishes or hides a review, and returns it as the moderation list shows it.
+	// Hides a review or publishes it again, and returns it as the manager's list
+	// shows it.
 	//
 	//  WITH moderated AS (
 	//    UPDATE reviews
@@ -3104,12 +3163,11 @@ type Querier interface {
 	//    AND deleted_at IS NULL
 	//    AND NOT (id = ANY($2::uuid[]))
 	RetireProductOptions(ctx context.Context, arg RetireProductOptionsParams) error
-	// Every review not hidden of a product the bakery keeps: how many, how many
-	// wait for a manager, their ratings added up, and how many of each rating.
+	// Every review not hidden of a product the bakery keeps: how many, their
+	// ratings added up, and how many of each rating.
 	//
 	//  SELECT
 	//    count(*)::bigint AS review_count,
-	//    count(*) FILTER (WHERE r.status = 'pending'::review_status)::bigint AS pending_count,
 	//    COALESCE(sum(r.rating), 0)::bigint AS rating_total,
 	//    count(*) FILTER (WHERE r.rating = 1)::bigint AS one_star,
 	//    count(*) FILTER (WHERE r.rating = 2)::bigint AS two_stars,
@@ -3489,19 +3547,28 @@ type Querier interface {
 	//      OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
 	//          AND o.pickup_at < $2::timestamptz)
 	//    )
+	//    -- Found by what a customer says at the counter: the order's code, their
+	//    -- name or their email.
+	//    AND (
+	//      $3::text = ''
+	//      OR o.code ILIKE '%' || $3 || '%'
+	//      OR u.email ILIKE '%' || $3 || '%'
+	//      OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $3 || '%'
+	//    )
 	//  ORDER BY
 	//    o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
 	//    CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
 	//      THEN o.pickup_at END ASC NULLS LAST,
 	//    o.pickup_at DESC NULLS LAST,
 	//    o.created_at DESC
-	//  LIMIT $4 OFFSET $3
+	//  LIMIT $5 OFFSET $4
 	StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error)
 	//StaffListOrdersCount
 	//
 	//  SELECT COUNT(*)::bigint AS count
 	//  FROM orders o
 	//  LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+	//  LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 	//  WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
 	//    AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
 	//    AND (o.status <> 'cancelled'::order_status OR EXISTS (
@@ -3517,6 +3584,14 @@ type Querier interface {
 	//      $2::timestamptz IS NULL
 	//      OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
 	//          AND o.pickup_at < $2::timestamptz)
+	//    )
+	//    -- Found by what a customer says at the counter: the order's code, their
+	//    -- name or their email.
+	//    AND (
+	//      $3::text = ''
+	//      OR o.code ILIKE '%' || $3 || '%'
+	//      OR u.email ILIKE '%' || $3 || '%'
+	//      OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $3 || '%'
 	//    )
 	StaffListOrdersCount(ctx context.Context, arg StaffListOrdersCountParams) (int64, error)
 	// The pickups of one bakery day, by time: every order the bakery took with a
@@ -3596,8 +3671,14 @@ type Querier interface {
 	//      $1::date IS NULL
 	//      OR p.sold_out_on = $1::date
 	//    )
+	//    -- Found by the product's or its category's name.
+	//    AND (
+	//      $2::text = ''
+	//      OR p.name ILIKE '%' || $2 || '%'
+	//      OR c.name ILIKE '%' || $2 || '%'
+	//    )
 	//  ORDER BY c.sort_order ASC, p.name ASC, p.id ASC
-	//  LIMIT $3 OFFSET $2
+	//  LIMIT $4 OFFSET $3
 	StaffListProducts(ctx context.Context, arg StaffListProductsParams) ([]StaffListProductsRow, error)
 	//StaffListProductsCount
 	//
@@ -3610,7 +3691,13 @@ type Querier interface {
 	//      $1::date IS NULL
 	//      OR p.sold_out_on = $1::date
 	//    )
-	StaffListProductsCount(ctx context.Context, soldOutOn *time.Time) (int64, error)
+	//    -- Found by the product's or its category's name.
+	//    AND (
+	//      $2::text = ''
+	//      OR p.name ILIKE '%' || $2 || '%'
+	//      OR c.name ILIKE '%' || $2 || '%'
+	//    )
+	StaffListProductsCount(ctx context.Context, arg StaffListProductsCountParams) (int64, error)
 	// Moves the pickup of an order the bakery still has to hand over; its type
 	// stays as the order was prepared.
 	//

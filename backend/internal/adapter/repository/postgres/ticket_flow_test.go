@@ -199,7 +199,7 @@ func TestTickets_Integration(t *testing.T) {
 		order := f.placeConfirmed(t, []uuid.UUID{f.cake}, nil, 10)
 		tomorrow := domainstore.DayOf(tomorrowAt(12, 0))
 		listed := func(day time.Time) ([]string, int64) {
-			tickets, total, _, _, err := f.kitchen.List(ctx, 1, 100, "", day.Format(domainstore.DayLayout))
+			tickets, total, _, _, err := f.kitchen.List(ctx, 1, 100, "", day.Format(domainstore.DayLayout), "")
 			require.NoError(t, err)
 			ids := make([]string, 0, len(tickets))
 			for _, ticket := range tickets {
@@ -213,7 +213,7 @@ func TestTickets_Integration(t *testing.T) {
 		assert.Equal(t, int64(len(ids)), total, "the count follows the day")
 		ids, _ = listed(tomorrow.AddDate(0, 0, 1))
 		assert.NotContains(t, ids, order.ID, "another day does not list it")
-		_, _, _, _, err := f.kitchen.List(ctx, 1, 100, "", "tomorrow")
+		_, _, _, _, err := f.kitchen.List(ctx, 1, 100, "", "tomorrow", "")
 		var appErr *apperrors.AppError
 		require.ErrorAs(t, err, &appErr)
 		assert.Contains(t, appErr.Details, "date")
@@ -221,7 +221,7 @@ func TestTickets_Integration(t *testing.T) {
 
 	t.Run("a_queue_filters_only_by_the_statuses_it_holds", func(t *testing.T) {
 		for _, filter := range []string{"cancelled", "baking"} {
-			_, _, _, _, err := f.kitchen.List(ctx, 1, 20, filter, "")
+			_, _, _, _, err := f.kitchen.List(ctx, 1, 20, filter, "", "")
 			var appErr *apperrors.AppError
 			require.ErrorAs(t, err, &appErr, filter)
 			assert.Equal(t, apperrors.ErrValidation.Code, appErr.Code, filter)
@@ -400,9 +400,18 @@ func TestTickets_Integration(t *testing.T) {
 		change, err := f.counter.Move(ctx, clerk, domainuser.RoleStaff, pastry.ID, domaincategory.StationKitchen)
 		require.NoError(t, err)
 		assert.Equal(t, string(domaincategory.StationKitchen), change.Station)
-		queue, _, _, _, err := f.kitchen.List(ctx, 1, 100, "", "")
+		queue, _, _, _, err := f.kitchen.List(ctx, 1, 100, "", "", "")
 		require.NoError(t, err)
 		assert.True(t, containsTicket(queue, pastry.ID), "the kitchen now makes it")
+		for _, term := range []string{single.Code, "croissant"} {
+			found, total, _, _, err := f.kitchen.List(ctx, 1, 100, "", "", term)
+			require.NoError(t, err)
+			assert.True(t, containsTicket(found, pastry.ID), "found by its order code or an item: %q", term)
+			assert.Equal(t, int64(len(found)), total)
+		}
+		_, none, _, _, err := f.kitchen.List(ctx, 1, 100, "", "", "no such ticket")
+		require.NoError(t, err)
+		assert.Zero(t, none)
 
 		_, err = f.kitchen.PatchStatus(ctx, baker, domainuser.RoleBaker, pastry.ID, domainorder.TicketInProgress)
 		require.NoError(t, err)

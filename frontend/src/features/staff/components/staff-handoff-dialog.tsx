@@ -54,7 +54,7 @@ export function StaffHandoffDialog({ orderId, orderCode, cashDueCents, open, onC
           form.setError("pickup_code", { message: "Too many wrong codes for this order. Try again later" });
           return;
         }
-        toast.error(isApiError(error) ? error.message : "Failed to hand the order over");
+        toast.error(isApiError(error) ? error.message : "We could not hand the order over. Please try again.");
       },
     });
   }

@@ -4,6 +4,7 @@ import {
   activeOrderProgressIndex,
   isUncollected,
   isWithTheBakery,
+  orderHeadline,
   statusReachedAt,
 } from "./order-progress";
 
@@ -43,5 +44,13 @@ describe("order progress", () => {
     expect(statusReachedAt(timeline, "pending")).toBe("2026-09-28T03:00:00Z");
     expect(statusReachedAt(timeline, "confirmed")).toBe("2026-09-28T03:05:00Z");
     expect(statusReachedAt(timeline, "ready")).toBeUndefined();
+  });
+});
+
+describe("orderHeadline", () => {
+  it("says where the order stands in a few words", () => {
+    expect(orderHeadline("ready")).toBe("Ready for pickup");
+    expect(orderHeadline("in_production")).toBe("Being made");
+    expect(orderHeadline("no_show")).toBe("Not picked up");
   });
 });

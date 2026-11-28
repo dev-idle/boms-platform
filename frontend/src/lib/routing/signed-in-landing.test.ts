@@ -43,9 +43,7 @@ describe("signedInLanding", () => {
   it("keeps staff out of the storefront, where they have nothing to do", () => {
     // The wait for the session is what used to make this a visible jump.
     expect(signedInLanding(ROUTE.home, "", USER_ROLE.manager)).toBe(ROUTE.manager.dashboard);
-    expect(signedInLanding(ROUTE.products, "", USER_ROLE.staff)).toBe(
-      ROUTE.staff.account.profile,
-    );
+    expect(signedInLanding(ROUTE.products, "", USER_ROLE.staff)).toBe(ROUTE.staff.orders);
     expect(signedInLanding("/products/almond-croissant", "", USER_ROLE.admin)).toBe(
       ROUTE.admin.dashboard,
     );

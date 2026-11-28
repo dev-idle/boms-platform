@@ -12,11 +12,11 @@ const KPIS: ReadonlyArray<{ label: string; value: (summary: ReviewSummary) => st
     value: (summary) => (summary.average_rating === null ? "—" : formatAverageRating(summary.average_rating)),
   },
   { label: "Reviews", value: (summary) => String(summary.review_count) },
-  { label: "Pending", value: (summary) => String(summary.pending_count) },
+  { label: "4–5 stars", value: (summary) => String(summary.stars[3] + summary.stars[4]) },
   { label: "1–2 stars", value: (summary) => String(summary.stars[0] + summary.stars[1]) },
 ];
 
-/** What customers think, in four numbers: hidden reviews do not count, pending ones do. */
+/** What customers think, in four numbers: hidden reviews do not count. */
 export function ManagerReviewKpis() {
   const summaryQuery = useReviewSummary();
   const summary = summaryQuery.data;

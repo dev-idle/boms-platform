@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { BusyIndicator } from "@/components/ui/loading-state";
+import { DateInput } from "@/components/ui/date-input";
+import { DashboardStepGroup } from "@/components/ui/dashboard-step-group";
 import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
+import { DashboardSearchField } from "@/components/ui/dashboard-search-field";
 import { DashboardTableActionLink } from "@/components/ui/dashboard-table-action-link";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import {
@@ -15,21 +15,24 @@ import {
   ticketStatusToPillVariant,
 } from "@/components/ui/status-pill";
 import {
+  dashboardTableEmptyFiltersMessage,
   dashboardTableEmptyMessage,
   dashboardTableErrorMessage,
-  DASHBOARD_STAFF_ORDERS_PAGE_SIZE,
+  DASHBOARD_TABLE_PAGE_SIZE,
 } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { formatTicketItems } from "@/lib/schemas/ticket";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
+import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
 import { useNow } from "@/lib/hooks/use-now";
-import { bakeryDayOf, formatPickupDateTime, formatPickupWallTime } from "@/lib/validation/pickup";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
+import { bakeryDayOf, formatPickupDay, formatPickupWallTime } from "@/lib/validation/pickup";
 
 import { useKitchenTickets } from "../hooks";
 import { ticketItemCount, type ActiveTicketStatus } from "../schemas";
 
-const PAGE_SIZE = DASHBOARD_STAFF_ORDERS_PAGE_SIZE;
+const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 const MINUTE_MS = 60_000;
 
 const STATUS_FILTERS: Array<{ value: ActiveTicketStatus | undefined; label: string }> = [
@@ -45,18 +48,19 @@ const STATUS_FILTERS: Array<{ value: ActiveTicketStatus | undefined; label: stri
  */
 export function BakerProductionTable() {
   const today = bakeryDayOf(useNow(MINUTE_MS));
-  const [page, setPage] = useState(1);
+  const { clear, input, page, search, setInput, setPage } = useDebouncedTableSearch();
   const [status, setStatus] = useState<ActiveTicketStatus | undefined>(undefined);
   const [day, setDay] = useState<string | undefined>(undefined);
   const filter = useMemo(
-    () => ({ page, page_size: PAGE_SIZE, status, date: day }),
-    [page, status, day],
+    () => ({ page, page_size: PAGE_SIZE, status, date: day, search }),
+    [page, status, day, search],
   );
   const ticketsQuery = useKitchenTickets(filter);
   const { initialLoading, refetching } = getQuerySurface(ticketsQuery);
   const tickets = ticketsQuery.data?.tickets ?? [];
   const pagination = ticketsQuery.data?.pagination;
-  const hasActiveFilter = status !== undefined || day !== undefined;
+  keepPageInRange(page, setPage, pagination?.total_pages);
+  const hasActiveFilter = status !== undefined || day !== undefined || search !== "";
 
   function showDay(next: string | undefined): void {
     setDay(next);
@@ -66,39 +70,28 @@ export function BakerProductionTable() {
   return (
     <div className="dashboard-page-body">
       <div className="db-table-filters">
+        <DashboardSearchField
+          label="Search kitchen tickets"
+          onChange={setInput}
+          onClear={clear}
+          placeholder="Search order code, name, item"
+          value={input}
+        />
         <div className="db-table-day">
-          <Input
-            aria-label="Pickup day"
-            type="date"
+          <DateInput
+            id="baker-production-day"
+            label="Pickup day"
+            placeholder="Any day"
             value={day ?? ""}
-            variant="inline"
-            onChange={(event) => {
-              const parsed = z.iso.date().safeParse(event.target.value);
-              if (parsed.success) {
-                showDay(parsed.data);
-              }
-            }}
+            onChange={(next) => showDay(next || undefined)}
           />
-          <Button
-            disabled={day === today}
-            size="sm"
-            title={day === today ? "Already showing today" : undefined}
-            type="button"
-            variant="outline"
-            onClick={() => showDay(today)}
-          >
-            Today
-          </Button>
-          <Button
-            disabled={day === undefined}
-            size="sm"
-            title={day === undefined ? "Already showing every day" : undefined}
-            type="button"
-            variant="outline"
-            onClick={() => showDay(undefined)}
-          >
-            All days
-          </Button>
+          <DashboardStepGroup
+            aria-label="Pickup days to show"
+            steps={[
+              { label: "Today", blockedReason: day === today ? "Already showing today" : undefined, onClick: () => showDay(today) },
+              { label: "All days", blockedReason: day === undefined ? "Already showing every day" : undefined, onClick: () => showDay(undefined) },
+            ]}
+          />
         </div>
         <DashboardFilterGroup
           aria-label="Filter by ticket status"
@@ -113,17 +106,22 @@ export function BakerProductionTable() {
 
       <DashboardTableWrap refetching={refetching}>
         {initialLoading ? (
-          <div className="baker-production-empty" role="status">
-            <BusyIndicator />
+          <div aria-busy="true" className="baker-production-empty grid gap-4">
+            <span className="skeleton block h-6 w-1/2" />
+            <span className="skeleton block h-6 w-2/3" />
+            <span className="skeleton block h-6 w-1/3" />
           </div>
         ) : ticketsQuery.isError ? (
-          <p className="baker-production-empty baker-production-empty--error">
-            {dashboardTableErrorMessage("kitchen tickets")}
-          </p>
+          <div className="baker-production-empty db-table-error">
+            <p className="text-error">{dashboardTableErrorMessage("kitchen tickets")}</p>
+            <Button size="sm" type="button" variant="outline" onClick={() => void ticketsQuery.refetch()}>
+              Try again
+            </Button>
+          </div>
         ) : tickets.length === 0 ? (
           <p className="baker-production-empty">
             {hasActiveFilter
-              ? "No kitchen tickets match this filter."
+              ? dashboardTableEmptyFiltersMessage("kitchen tickets")
               : dashboardTableEmptyMessage("kitchen tickets")}
           </p>
         ) : (
@@ -140,11 +138,16 @@ export function BakerProductionTable() {
               {tickets.map((ticket) => (
                 <li key={ticket.id} className="baker-production-row">
                   <p className="baker-production-row__time">
-                    {ticket.pickup_at
-                      ? day === undefined
-                        ? formatPickupDateTime(ticket.pickup_at)
-                        : formatPickupWallTime(ticket.pickup_at)
-                      : "—"}
+                    {ticket.pickup_at ? (
+                      <>
+                        {day === undefined ? (
+                          <span className="baker-production-row__day">{formatPickupDay(ticket.pickup_at)}</span>
+                        ) : null}
+                        {formatPickupWallTime(ticket.pickup_at)}
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </p>
                   <div className="baker-production-row__customer">
                     <p className="baker-production-row__name">

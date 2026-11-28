@@ -4,7 +4,7 @@ Order code: {{.Code}}
 Pickup: {{.Pickup}}
 {{- end}}
 {{- if .PickupCode}}
-Pickup code: {{.PickupCode}} (give it at the counter when you collect your order)
+Pickup code: {{.PickupCode}} (give it at the counter when you pick up your order)
 {{- end}}
 {{if .Receipt}}
 {{range .Lines}}{{.Quantity}} x {{.Name}}  {{.Total}}

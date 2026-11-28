@@ -5,10 +5,10 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { CLOUDINARY_ALLOWED_IMAGE_TYPES } from "@/lib/cloudinary/config";
-import { CLOUDINARY_UPLOAD_COPY } from "@/lib/cloudinary/messages";
+import { cloudinaryImageTooLargeMessage } from "@/lib/cloudinary/messages";
 import { fetchReferenceUploadSignature } from "@/lib/cloudinary/signature";
 import { uploadImageToCloudinary } from "@/lib/cloudinary/upload";
-import { ApiErrorCode, isApiError } from "@/lib/errors";
+import { ApiErrorCode, isApiError, userFacingErrorMessage } from "@/lib/errors";
 
 /** The field's label, hint and error name the button that picks the file. */
 type ReferencePhotoFieldProps = Pick<ComponentProps<"button">, "id" | "aria-describedby" | "aria-invalid"> & {
@@ -23,13 +23,13 @@ type ReferencePhotoFieldProps = Pick<ComponentProps<"button">, "id" | "aria-desc
 function uploadErrorMessage(error: unknown): string {
   if (isApiError(error)) {
     if (error.code === ApiErrorCode.EmailNotVerified) {
-      return "Confirm your email address to upload a photo.";
+      return "Confirm your email address to upload a photo";
     }
     if (error.code === ApiErrorCode.ServiceUnavailable) {
       return "Photo upload is not available right now. Describe the cake in the message instead.";
     }
   }
-  return error instanceof Error ? error.message : CLOUDINARY_UPLOAD_COPY.uploadFailed;
+  return userFacingErrorMessage(error, "We could not upload your photo. Please try again.");
 }
 
 /** A reference photo for a custom cake: uploaded straight to the bakery's image store, previewed, replaced or removed. */
@@ -48,7 +48,14 @@ export function ReferencePhotoField({
   async function upload(file: File): Promise<void> {
     onUploadingChange(true);
     try {
-      onChange(await uploadImageToCloudinary(file, await fetchReferenceUploadSignature()));
+      const signature = await fetchReferenceUploadSignature();
+      // The one failure the customer can fix themselves, so it is named; the
+      // upload's other errors are written for the people who run it.
+      if (file.size > signature.max_bytes) {
+        toast.error(cloudinaryImageTooLargeMessage(signature.max_bytes));
+        return;
+      }
+      onChange(await uploadImageToCloudinary(file, signature));
     } catch (error) {
       toast.error(uploadErrorMessage(error));
     } finally {

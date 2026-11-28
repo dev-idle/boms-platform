@@ -7,8 +7,9 @@ import { AsyncPanel } from "@/components/ui/async-panel";
 import { Button } from "@/components/ui/button";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { ROUTE } from "@/constants/routes";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
-import { initialsOf } from "@/lib/user-initials";
+import { initialOf } from "@/lib/user-initials";
 import { splitDateTime } from "@/lib/validation/datetime";
 
 import { useStaffConversationCounts, useStaffConversations } from "../hooks";
@@ -37,6 +38,7 @@ export function StaffChatList({ activeId }: StaffChatListProps) {
   const { initialLoading, refetching } = getQuerySurface(listQuery);
   const conversations = listQuery.data?.conversations ?? [];
   const pagination = listQuery.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
 
   function show(next: ConversationStatus | undefined): void {
     setStatus(next);
@@ -112,15 +114,10 @@ export function StaffChatList({ activeId }: StaffChatListProps) {
                     }
                   >
                     <span aria-hidden="true" className="staff-chat__avatar">
-                      {initialsOf(conversation.customer_name, conversation.customer_email)}
+                      {initialOf(conversation.customer_name, conversation.customer_email)}
                     </span>
                     <span className="staff-chat__row-body">
-                      <span className="staff-chat__row-top">
-                        <span className="staff-chat__name">{name}</span>
-                        <time className="staff-chat__time" dateTime={conversation.last_message_at}>
-                          {whenLabel(conversation.last_message_at)}
-                        </time>
-                      </span>
+                      <span className="staff-chat__name">{name}</span>
                       <span className="staff-chat__preview">{conversation.preview}</span>
                       <span className="staff-chat__row-meta">
                         {conversation.order_code ? (
@@ -134,6 +131,9 @@ export function StaffChatList({ activeId }: StaffChatListProps) {
                             <span className="sr-only"> unread</span>
                           </span>
                         ) : null}
+                        <time className="staff-chat__time" dateTime={conversation.last_message_at}>
+                          {whenLabel(conversation.last_message_at)}
+                        </time>
                       </span>
                     </span>
                   </Link>

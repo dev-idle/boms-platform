@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
+import { InlineLoadingState } from "@/components/ui/loading-state";
 import { USER_ROLE, type UserRole } from "@/constants/roles";
 import {
   homeRouteForRole,
@@ -17,13 +18,15 @@ import { AuthGateShell } from "./auth-gate-shell";
 type RoleGateProps = {
   allowedRole: UserRole;
   children: ReactNode;
+  /** Shown while the session is checked: the whole page, or the page's content area. */
+  wait: ReactNode;
 };
 
 /**
  * Single gate per role layout: blocks UI until session matches role + namespace.
  * Wrong role or cross-namespace path → own home (never another role's area).
  */
-function RoleGate({ allowedRole, children }: RoleGateProps) {
+function RoleGate({ allowedRole, children, wait }: RoleGateProps) {
   const hydrated = useAuthHydrated();
   const status = useAuthStore((state) => state.status);
   const logoutIntent = useAuthStore((state) => state.logoutIntent);
@@ -57,37 +60,50 @@ function RoleGate({ allowedRole, children }: RoleGateProps) {
     }
   }, [status, role, pathname, router, allowedRole, logoutIntent]);
 
-  if (logoutIntent) {
-    return <AuthGateShell />;
-  }
-
-  if (!hydrated || status === "idle") {
-    return <AuthGateShell />;
-  }
-
-  if (!hasAccess) {
-    return <AuthGateShell />;
+  if (logoutIntent || !hydrated || status === "idle" || !hasAccess) {
+    return wait;
   }
 
   return children;
 }
 
+/** Inside the storefront chrome, so it waits in the content area as a page's own loader does. */
 export function CustomerGate({ children }: { children: ReactNode }) {
-  return <RoleGate allowedRole={USER_ROLE.customer}>{children}</RoleGate>;
+  return (
+    <RoleGate allowedRole={USER_ROLE.customer} wait={<InlineLoadingState />}>
+      {children}
+    </RoleGate>
+  );
 }
 
 export function StaffGate({ children }: { children: ReactNode }) {
-  return <RoleGate allowedRole={USER_ROLE.staff}>{children}</RoleGate>;
+  return (
+    <RoleGate allowedRole={USER_ROLE.staff} wait={<AuthGateShell />}>
+      {children}
+    </RoleGate>
+  );
 }
 
 export function BakerGate({ children }: { children: ReactNode }) {
-  return <RoleGate allowedRole={USER_ROLE.baker}>{children}</RoleGate>;
+  return (
+    <RoleGate allowedRole={USER_ROLE.baker} wait={<AuthGateShell />}>
+      {children}
+    </RoleGate>
+  );
 }
 
 export function ManagerGate({ children }: { children: ReactNode }) {
-  return <RoleGate allowedRole={USER_ROLE.manager}>{children}</RoleGate>;
+  return (
+    <RoleGate allowedRole={USER_ROLE.manager} wait={<AuthGateShell />}>
+      {children}
+    </RoleGate>
+  );
 }
 
 export function AdminGate({ children }: { children: ReactNode }) {
-  return <RoleGate allowedRole={USER_ROLE.admin}>{children}</RoleGate>;
+  return (
+    <RoleGate allowedRole={USER_ROLE.admin} wait={<AuthGateShell />}>
+      {children}
+    </RoleGate>
+  );
 }

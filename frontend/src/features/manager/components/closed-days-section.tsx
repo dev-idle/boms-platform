@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
+import { DateInput } from "@/components/ui/date-input";
 import { DashboardTableActionButton } from "@/components/ui/dashboard-table-action-button";
 import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
@@ -42,7 +43,7 @@ function AddClosedDayForm() {
       onSuccess: () => form.reset({ date: "", reason: "" }),
       onError: (error) => {
         if (!isApiError(error)) {
-          toast.error("Failed to add the closed day");
+          toast.error("We could not add the closed day. Please try again.");
           return;
         }
         if (error.hasValidationDetails()) {
@@ -80,7 +81,13 @@ function AddClosedDayForm() {
                 hintId="closed-day-date-hint"
                 label="Day"
               >
-                <Input max={bounds.max} min={bounds.min} type="date" {...field} />
+                <DateInput
+                  max={bounds.max}
+                  min={bounds.min}
+                  placeholder="Choose a day"
+                  value={field.value}
+                  onChange={field.onChange}
+                />
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -129,10 +136,11 @@ type ClosedDaysTableProps = {
   closedDates: ClosedDate[];
   initialLoading: boolean;
   isError: boolean;
+  onRetry: () => void;
   refetching: boolean;
 };
 
-function ClosedDaysTable({ closedDates, initialLoading, isError, refetching }: ClosedDaysTableProps) {
+function ClosedDaysTable({ closedDates, initialLoading, isError, onRetry, refetching }: ClosedDaysTableProps) {
   const deleteClosedDate = useDeleteClosedDate();
   const [reopening, setReopening] = useState<ClosedDate | null>(null);
 
@@ -147,9 +155,9 @@ function ClosedDaysTable({ closedDates, initialLoading, isError, refetching }: C
           </colgroup>
           <thead>
             <tr>
-              <th>Day</th>
-              <th>Reason</th>
-              <th className="db-table-detail">Actions</th>
+              <th scope="col">Day</th>
+              <th scope="col">Reason</th>
+              <th scope="col" className="db-table-detail">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -160,6 +168,7 @@ function ClosedDaysTable({ closedDates, initialLoading, isError, refetching }: C
               initialLoading={initialLoading}
               isEmpty={closedDates.length === 0}
               isError={isError}
+              onRetry={onRetry}
             />
             {closedDates.map((closed) => (
               <tr key={closed.id}>
@@ -201,7 +210,7 @@ function ClosedDaysTable({ closedDates, initialLoading, isError, refetching }: C
           deleteClosedDate.mutate(reopening.id, {
             onSettled: () => setReopening(null),
             onError: (error) => {
-              toast.error(isApiError(error) ? error.message : "Failed to reopen the day");
+              toast.error(isApiError(error) ? error.message : "We could not reopen the day. Please try again.");
             },
           });
         }}
@@ -221,6 +230,7 @@ export function ClosedDaysSection() {
         closedDates={closedDatesQuery.data ?? []}
         initialLoading={closedDatesQuery.isPending}
         isError={closedDatesQuery.isError}
+        onRetry={() => void closedDatesQuery.refetch()}
         refetching={closedDatesQuery.isFetching && !closedDatesQuery.isPending}
       />
     </div>

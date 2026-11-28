@@ -17,7 +17,7 @@ import {
  */
 export const STOREFRONT_CATEGORY_PAGE_SIZE = 8;
 
-/** Products in the home "Fresh from the oven" grid. */
+/** Products in the home "From the shop" grid. */
 export const HOME_FEATURED_PRODUCT_COUNT = 8;
 
 /** Request-deduped: the header nav and the home page share one fetch. */

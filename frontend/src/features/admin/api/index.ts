@@ -16,14 +16,6 @@ import {
   nextEmployeeCodeSchema,
   updateRoleSchema,
   adminUserActivityLogSchema,
-  closedDateFormSchema,
-  closedDateSchema,
-  storeSettingsPatchSchema,
-  storeSettingsSchema,
-  type ClosedDate,
-  type ClosedDateFormInput,
-  type StoreSettings,
-  type StoreSettingsPatch,
   type AdminUser,
   type AdminUserActivityLog,
   type CreateOperationalInput,
@@ -37,14 +29,7 @@ import {
   type UsersListResult,
   userActivityFilterSchema,
   adminDashboardSchema,
-  cancelStrandedFormSchema,
-  cancelStrandedResultSchema,
-  strandedPickupsSchema,
-  strandingChangeSchema,
   type AdminDashboard,
-  type CancelStrandedFormInput,
-  type StrandedPickups,
-  type StrandingChange,
 } from "../schemas";
 
 function usersPath(filter: ListFilterInput): string {
@@ -180,64 +165,7 @@ export async function listUserActivity(
   };
 }
 
-export async function getStoreSettings(): Promise<StoreSettings> {
-  return browserRequest<StoreSettings>("/api/v1/admin/settings", {
-    method: "GET",
-    schema: storeSettingsSchema,
-  });
-}
-
-export async function patchStoreSettings(
-  changes: StoreSettingsPatch,
-): Promise<StoreSettings> {
-  return browserRequest<StoreSettings>("/api/v1/admin/settings", {
-    method: "PATCH",
-    json: storeSettingsPatchSchema.parse(changes),
-    schema: storeSettingsSchema,
-  });
-}
-
-export async function listClosedDates(): Promise<ClosedDate[]> {
-  return browserRequest<ClosedDate[]>("/api/v1/admin/closed-dates", {
-    method: "GET",
-    schema: z.array(closedDateSchema),
-  });
-}
-
-export async function createClosedDate(input: ClosedDateFormInput): Promise<ClosedDate> {
-  return browserRequest<ClosedDate>("/api/v1/admin/closed-dates", {
-    method: "POST",
-    json: closedDateFormSchema.parse(input),
-    schema: closedDateSchema,
-  });
-}
-
 /** The admin home: the accounts, and whether the system runs as it should. */
 export async function getAdminDashboard(): Promise<AdminDashboard> {
   return browserRequest<AdminDashboard>("/api/v1/admin/dashboard", { method: "GET", schema: adminDashboardSchema });
-}
-
-/** The orders a closed day or new opening hours would strand. */
-export async function getStrandedPickups(change: StrandingChange): Promise<StrandedPickups> {
-  const params = new URLSearchParams(strandingChangeSchema.parse(change));
-  return browserRequest<StrandedPickups>(`/api/v1/admin/settings/stranded-pickups?${params.toString()}`, {
-    method: "GET",
-    schema: strandedPickupsSchema,
-  });
-}
-
-/** Cancels the orders a change would strand, each refunded and emailed the reason; returns how many. */
-export async function cancelStrandedPickups(change: StrandingChange, input: CancelStrandedFormInput): Promise<number> {
-  const result = await browserRequest<{ cancelled: number }>("/api/v1/admin/settings/stranded-pickups/cancel", {
-    method: "POST",
-    json: { ...strandingChangeSchema.parse(change), ...cancelStrandedFormSchema.parse(input) },
-    schema: cancelStrandedResultSchema,
-  });
-  return result.cancelled;
-}
-
-export async function deleteClosedDate(id: string): Promise<void> {
-  await browserRequestVoid(`/api/v1/admin/closed-dates/${z.uuid().parse(id)}`, {
-    method: "DELETE",
-  });
 }

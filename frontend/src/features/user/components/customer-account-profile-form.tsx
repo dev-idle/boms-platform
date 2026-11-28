@@ -3,11 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import { StorefrontErrorState } from "@/components/layouts/storefront-state";
 import { BRAND } from "@/constants/brand";
 import { USER_ROLE } from "@/constants/roles";
 import { CheckboxField } from "@/components/ui/checkbox-field";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
-import { InlineLoadingState } from "@/components/ui/loading-state";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -58,7 +58,7 @@ function CustomerAccountProfileFormBody({
       },
       {
         onError: (error) => {
-          applyApiFormFieldErrors(form, error, ["display_name", "phone"], "Failed to update profile");
+          applyApiFormFieldErrors(form, error, ["display_name", "phone"], "We could not save your profile. Please try again.");
         },
         onSuccess: (me) => {
           if (me.role !== USER_ROLE.customer) {
@@ -168,11 +168,22 @@ export function CustomerAccountProfileForm() {
   const me = useMe();
 
   if (me.isPending) {
-    return <InlineLoadingState />;
+    return (
+      <div aria-busy="true" className="grid gap-5">
+        <span className="skeleton block h-24 w-full" />
+        <span className="skeleton block h-12 w-full" />
+        <span className="skeleton block h-12 w-full" />
+      </div>
+    );
   }
 
-  if (!me.data || me.data.role !== USER_ROLE.customer) {
-    return <p className="text-sm text-muted">Customer profile not available.</p>;
+  if (me.isError) {
+    return <StorefrontErrorState onRetry={() => void me.refetch()} title="We could not load your profile" />;
+  }
+
+  // The customer gate admits only customers, so another role here is a bug.
+  if (me.data.role !== USER_ROLE.customer) {
+    throw new Error("The customer profile form rendered for another role");
   }
 
   return (

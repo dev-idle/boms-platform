@@ -28,11 +28,11 @@ type orderCopy struct {
 var orderCopies = map[domainorder.Notice]orderCopy{
 	domainorder.NoticePlaced: {
 		subject:   "We received your order %s",
-		preheader: "Your order is in. We will email you again when it is ready to collect.",
+		preheader: "Your order is in. We will email you again when it is ready for pickup.",
 		eyebrow:   "Order received",
 		heading:   "Thank you for your order",
 		lead: []string{
-			"We have your order and will have it ready for your pickup time. We will email you again when it is ready to collect.",
+			"We have your order and will have it ready for your pickup time. We will email you again when it is ready for pickup.",
 		},
 		receipt: true,
 	},
@@ -53,11 +53,11 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 		eyebrow:   "Order accepted",
 		heading:   "Your order is confirmed",
 		lead: []string{
-			"We checked your reference photo and will have your cake ready for your pickup time. We will email you again when it is ready to collect.",
+			"We checked your reference photo and will have your cake ready for your pickup time. We will email you again when it is ready for pickup.",
 		},
 	},
 	domainorder.NoticeReady: {
-		subject:   "Your order %s is ready to collect",
+		subject:   "Your order %s is ready for pickup",
 		preheader: "Come in during your pickup time and give your pickup code at the counter.",
 		eyebrow:   "Ready for pickup",
 		heading:   "Your order is ready",
@@ -73,12 +73,12 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 		heading:   "Your order was cancelled",
 	},
 	domainorder.NoticeNoShow: {
-		subject:   "Your order %s was not collected",
+		subject:   "Your order %s was not picked up",
 		preheader: "We kept your order until closing time on its pickup day.",
 		eyebrow:   "Missed pickup",
-		heading:   "Your order was not collected",
+		heading:   "Your order was not picked up",
 		lead: []string{
-			"Your order was ready, but it was not collected by closing time on its pickup day, so we recorded it as a missed pickup.",
+			"Your order was ready, but it was not picked up by closing time on its pickup day, so we recorded it as a missed pickup.",
 			"As our refund policy explains, a missed pickup is not refunded: it was made for you and cannot be sold again.",
 		},
 	},
@@ -100,16 +100,16 @@ var orderCopies = map[domainorder.Notice]orderCopy{
 var cashOrderCopies = map[domainorder.Notice]orderCopy{
 	domainorder.NoticePlaced: {
 		subject:   "We received your order %s",
-		preheader: "Your order is in. You pay in cash when you collect it.",
+		preheader: "Your order is in. You pay in cash when you pick it up.",
 		eyebrow:   "Order received",
 		heading:   "Thank you for your order",
 		lead: []string{
-			"We have your order and will have it ready for your pickup time. You pay in cash when you collect it, and we will email you again when it is ready.",
+			"We have your order and will have it ready for your pickup time. You pay in cash when you pick it up, and we will email you again when it is ready.",
 		},
 		receipt: true,
 	},
 	domainorder.NoticeReady: {
-		subject:   "Your order %s is ready to collect",
+		subject:   "Your order %s is ready for pickup",
 		preheader: "Come in during your pickup time and pay at the counter.",
 		eyebrow:   "Ready for pickup",
 		heading:   "Your order is ready",
@@ -118,12 +118,12 @@ var cashOrderCopies = map[domainorder.Notice]orderCopy{
 		},
 	},
 	domainorder.NoticeNoShow: {
-		subject:   "Your order %s was not collected",
+		subject:   "Your order %s was not picked up",
 		preheader: "We kept your order until closing time on its pickup day.",
 		eyebrow:   "Missed pickup",
-		heading:   "Your order was not collected",
+		heading:   "Your order was not picked up",
 		lead: []string{
-			"Your order was ready, but it was not collected by closing time on its pickup day, so we recorded it as a missed pickup.",
+			"Your order was ready, but it was not picked up by closing time on its pickup day, so we recorded it as a missed pickup.",
 		},
 	},
 }
@@ -199,7 +199,7 @@ func (c *OrderComposer) view(words orderCopy, msg port.OrderEmail) orderView {
 		Total:      utils.Dollars(order.TotalCents),
 	}
 	if msg.CustomerName != "" {
-		view.Greeting = "Hi " + msg.CustomerName + ","
+		view.Greeting = "Hello " + msg.CustomerName + ","
 	}
 	if msg.Notice == domainorder.NoticeCancelled {
 		view.Lead = cancelledLead(msg)

@@ -2,8 +2,7 @@
 
 import { useEffect } from "react";
 
-import { Button } from "@/components/ui/button";
-import { InlineLoadingState } from "@/components/ui/loading-state";
+import { StorefrontErrorState } from "@/components/layouts/storefront-state";
 import { MessageComposer } from "@/components/ui/message-composer";
 import { MessageThread } from "@/components/ui/message-thread";
 import { BRAND } from "@/constants/brand";
@@ -35,22 +34,20 @@ export function OrderMessages({ orderId }: OrderMessagesProps) {
   }, [unread, latestId, visible, markRead]);
 
   return (
-    <section aria-labelledby="order-messages" className="storefront-panel storefront-order-messages">
-      <div className="storefront-order-messages__header">
-        <h2 className="text-section-heading" id="order-messages">
+    <section aria-labelledby="order-messages" className="storefront-order-section storefront-order-messages">
+      <div className="storefront-order-section__header">
+        <h2 className="storefront-section-heading" id="order-messages">
           Messages
         </h2>
-        <p className="text-caption">Ask us anything about this order; our reply appears here.</p>
+        <p className="text-caption">Ask our staff anything about this order; their reply appears here.</p>
       </div>
       {thread.isPending ? (
-        <InlineLoadingState />
-      ) : thread.isError ? (
-        <div className="storefront-order-messages__error">
-          <p className="text-sm text-error">We could not load the messages.</p>
-          <Button type="button" variant="outline" onClick={() => void thread.refetch()}>
-            Try again
-          </Button>
+        <div aria-busy="true" className="grid gap-3">
+          <span className="skeleton block h-12 w-2/3" />
+          <span className="skeleton block h-12 w-1/2 justify-self-end" />
         </div>
+      ) : thread.isError ? (
+        <StorefrontErrorState onRetry={() => void thread.refetch()} title="We could not load the messages" />
       ) : (
         <MessageThread
           authorOf={bakeryAuthor}
@@ -65,7 +62,7 @@ export function OrderMessages({ orderId }: OrderMessagesProps) {
         />
       )}
       <MessageComposer
-        label="Write a message to the bakery"
+        label="Write a message to our staff"
         pending={post.isPending}
         placeholder="Write a message…"
         onSend={(input, sent) => post.mutate(input, { onSuccess: sent })}

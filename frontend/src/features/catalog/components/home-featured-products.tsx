@@ -17,19 +17,18 @@ export function HomeFeaturedProducts({ children }: HomeFeaturedProductsProps) {
       <div className="storefront-container">
         <div className="storefront-section-header">
           <div className="storefront-section-header__copy">
-            <p className="storefront-section-header__eyebrow">Selection</p>
             <h2
               className="storefront-section-header__heading"
               id="home-featured-heading"
             >
-              Fresh{" "}
+              From the{" "}
               <span className="storefront-section-header__accent">
-                from the oven
+                shop
               </span>
             </h2>
           </div>
           <Link className="storefront-section-header__link" href={ROUTE.products}>
-            All products →
+            All products
           </Link>
         </div>
 

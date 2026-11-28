@@ -48,16 +48,18 @@ func NewBakerTicketUsecase(
 }
 
 // List is a page of the kitchen's queue, soonest pickup first, narrowed to one
-// ticket status when statusFilter names one, and to one bakery day's pickups
-// when dateFilter names one (YYYY-MM-DD).
+// ticket status when statusFilter names one, to one bakery day's pickups when
+// dateFilter names one (YYYY-MM-DD), and to the tickets whose order code,
+// customer name or item holds search.
 func (u *BakerTicketUsecase) List(
 	ctx context.Context,
 	page, pageSize int32,
-	statusFilter, dateFilter string,
+	statusFilter, dateFilter, search string,
 ) ([]dto.StationTicketResponse, int64, int32, int32, error) {
 	page, pageSize = normalizeOrderListPage(page, pageSize)
 	params := port.StationTicketsParams{
 		Station: domaincategory.StationKitchen,
+		Search:  strings.TrimSpace(search),
 		Limit:   pageSize,
 		Offset:  utils.PageOffset(page, pageSize),
 	}

@@ -3,18 +3,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { CheckboxField } from "@/components/ui/checkbox-field";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { ROUTE } from "@/constants/routes";
-import { isApiError } from "@/lib/errors";
+import { isApiError, userFacingErrorMessage } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 import { registerHrefWithNext, validateNext } from "@/lib/validate-next";
 
@@ -33,9 +32,6 @@ export function LoginForm() {
   const registered = searchParams.get("registered") === "1";
   const changed = searchParams.get("changed") === "1";
   const reset = searchParams.get("reset") === "1";
-  // UI-only until the refresh-cookie lifetime becomes a login option on the API;
-  // the value is deliberately not sent with the credentials.
-  const [keepSignedIn, setKeepSignedIn] = useState(true);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -77,7 +73,7 @@ export function LoginForm() {
           }
           if (error.isInvalidCredentials()) {
             form.setError("root", {
-              message: "Invalid email or password",
+              message: "Email or password is incorrect",
             });
             return;
           }
@@ -89,7 +85,7 @@ export function LoginForm() {
             }
             return;
           }
-          toast.error(error.message);
+          toast.error(userFacingErrorMessage(error, "Something went wrong. Please try again."));
         },
       },
     );
@@ -105,9 +101,9 @@ export function LoginForm() {
       }}
       footerNote={
         <>
-          Collecting an order only?{" "}
+          Just browsing?{" "}
           <Link className="auth-page-guest__link" href={ROUTE.products}>
-            Continue as a guest
+            View all products
           </Link>
         </>
       }
@@ -148,7 +144,7 @@ export function LoginForm() {
                   label="Password"
                   labelAction={
                     <Link className="auth-forgot-link" href={ROUTE.forgotPassword}>
-                      Forgot?
+                      Forgot password?
                     </Link>
                   }
                 >
@@ -162,13 +158,6 @@ export function LoginForm() {
               </FormItem>
             )}
           />
-
-          <CheckboxField
-            checked={keepSignedIn}
-            onChange={(event) => setKeepSignedIn(event.target.checked)}
-          >
-            Keep me signed in on this device
-          </CheckboxField>
 
           {form.formState.errors.root?.message ? (
             <p className="text-caption text-error" role="alert">

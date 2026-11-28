@@ -1,7 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { InlineLoadingState } from "@/components/ui/loading-state";
+import { StorefrontErrorState } from "@/components/layouts/storefront-state";
 import { RatingStars } from "@/components/ui/rating-stars";
 import { reviewStatusToPillVariant, StatusPill } from "@/components/ui/status-pill";
 import type { ReviewStatus } from "@/lib/schemas/review";
@@ -16,9 +15,8 @@ type OrderReviewsProps = {
 };
 
 const STATUS_LABEL: Record<ReviewStatus, string> = {
-  pending: "Awaiting approval",
   published: "Published",
-  hidden: "Not published",
+  hidden: "Hidden by the bakery",
 };
 
 /** The products the customer picked up on an order, each reviewed once. */
@@ -27,31 +25,30 @@ export function OrderReviews({ orderId, products }: OrderReviewsProps) {
   const reviews = new Map(reviewsQuery.data?.map((review) => [review.product_id, review]));
 
   return (
-    <section aria-labelledby="order-reviews" className="storefront-panel storefront-order-reviews">
-      <div className="storefront-order-reviews__header">
-        <h2 className="text-section-heading" id="order-reviews">
+    <section aria-labelledby="order-reviews" className="storefront-order-section">
+      <div className="storefront-order-section__header">
+        <h2 className="storefront-section-heading" id="order-reviews">
           Reviews
         </h2>
         <p className="text-caption">
-          How was it? A manager reads every review before it appears on the product&apos;s page, without your name.
+          A review appears on the product&apos;s page right away, signed with your first name and last initial if your
+          account has a name.
         </p>
       </div>
       {reviewsQuery.isPending ? (
-        <InlineLoadingState />
-      ) : reviewsQuery.isError ? (
-        <div className="storefront-empty-state">
-          <p className="storefront-empty-state__message text-error">We could not load your reviews.</p>
-          <Button type="button" variant="outline" onClick={() => void reviewsQuery.refetch()}>
-            Try again
-          </Button>
+        <div aria-busy="true" className="grid gap-3">
+          <span className="skeleton block h-5 w-48" />
+          <span className="skeleton block h-4 w-full max-w-md" />
         </div>
+      ) : reviewsQuery.isError ? (
+        <StorefrontErrorState onRetry={() => void reviewsQuery.refetch()} title="We could not load your reviews" />
       ) : (
         <ul className="review-list">
           {products.map((product) => {
             const review = reviews.get(product.id);
             return (
               <li className="review-list__item" key={product.id}>
-                <p className="text-section-heading">{product.name}</p>
+                <p className="storefront-line-name">{product.name}</p>
                 {review ? (
                   <>
                     <div className="review-list__meta">

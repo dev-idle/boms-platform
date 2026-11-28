@@ -1,30 +1,20 @@
 "use client";
 
-import { z } from "zod";
-
-import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { orderStatusSchema, type OrderStatus } from "@/lib/schemas/order";
 import { bakeryDayOf } from "@/lib/validation/pickup";
+
+import { orderHeadline } from "../lib/order-progress";
 
 const ALL_STATUSES = "all";
 
 /** Every status a row can show, labelled as its status dot reads. */
 const ORDER_HISTORY_STATUS_OPTIONS: Array<{ value: OrderStatus | typeof ALL_STATUSES; label: string }> = [
   { value: ALL_STATUSES, label: "All orders" },
-  { value: "awaiting_payment", label: "Awaiting payment" },
-  { value: "pending", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "in_production", label: "In production" },
-  { value: "ready", label: "Ready" },
-  { value: "fulfilled", label: "Fulfilled" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "expired", label: "Expired" },
-  { value: "no_show", label: "No show" },
+  ...orderStatusSchema.options.map((status) => ({ value: status, label: orderHeadline(status) })),
 ];
-
-const dayInputSchema = z.union([z.literal(""), z.iso.date()]);
 
 export type OrderHistoryFilterValue = {
   status: OrderStatus | undefined;
@@ -41,8 +31,7 @@ type OrderHistoryFiltersProps = {
 /**
  * Status and placed-on range for the order history. A day picked past the
  * other end of the range moves that end with it, so the range is never empty
- * by construction. A day the browser lets through but the API cannot read
- * (a five-digit year) is ignored.
+ * by construction.
  */
 export function OrderHistoryFilters({ value, onChange }: OrderHistoryFiltersProps) {
   const today = bakeryDayOf(new Date());
@@ -52,7 +41,7 @@ export function OrderHistoryFilters({ value, onChange }: OrderHistoryFiltersProp
       <div className="storefront-orders__filter storefront-orders__filter--status">
         <Label htmlFor="orders-status">Status</Label>
         <Select
-          className="field-chrome--inline"
+          contentClassName="field-select-content--storefront"
           id="orders-status"
           value={value.status ?? ALL_STATUSES}
           onChange={(event) => {
@@ -69,18 +58,12 @@ export function OrderHistoryFilters({ value, onChange }: OrderHistoryFiltersProp
       </div>
       <div className="storefront-orders__filter">
         <Label htmlFor="orders-placed-from">Placed from</Label>
-        <Input
+        <DateInput
           id="orders-placed-from"
           max={value.to || today}
-          type="date"
+          placeholder="Any day"
           value={value.from}
-          variant="inline"
-          onChange={(event) => {
-            const parsed = dayInputSchema.safeParse(event.target.value);
-            if (!parsed.success) {
-              return;
-            }
-            const from = parsed.data;
+          onChange={(from) => {
             const to = from && value.to && value.to < from ? from : value.to;
             onChange({ ...value, from, to });
           }}
@@ -88,19 +71,14 @@ export function OrderHistoryFilters({ value, onChange }: OrderHistoryFiltersProp
       </div>
       <div className="storefront-orders__filter">
         <Label htmlFor="orders-placed-to">Placed to</Label>
-        <Input
+        <DateInput
+          align="end"
           id="orders-placed-to"
           max={today}
           min={value.from || undefined}
-          type="date"
+          placeholder="Any day"
           value={value.to}
-          variant="inline"
-          onChange={(event) => {
-            const parsed = dayInputSchema.safeParse(event.target.value);
-            if (!parsed.success) {
-              return;
-            }
-            const to = parsed.data;
+          onChange={(to) => {
             const from = to && value.from && value.from > to ? to : value.from;
             onChange({ ...value, from, to });
           }}

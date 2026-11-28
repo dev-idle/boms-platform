@@ -20,7 +20,6 @@ export default function StaffOrdersPage() {
         }
         description="Review customer orders and update their status."
         eyebrow={DASHBOARD_PAGE_EYEBROW.operations}
-        leadAside
         title={PAGE_TITLES.orders}
       />
       <StaffOrdersTable />

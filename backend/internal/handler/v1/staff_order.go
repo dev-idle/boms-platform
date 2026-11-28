@@ -26,9 +26,7 @@ func (h *StaffOrderHandler) List(c fiber.Ctx) error {
 		c.Query("page_size", usecase.OrderListDefaultPageSizeQuery),
 		usecase.OrderListDefaultPageSize,
 	)
-	status := c.Query("status", "")
-
-	items, total, page, pageSize, err := h.usecase.List(c.Context(), page, pageSize, status)
+	items, total, page, pageSize, err := h.usecase.List(c.Context(), page, pageSize, c.Query("status"), c.Query("search"))
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

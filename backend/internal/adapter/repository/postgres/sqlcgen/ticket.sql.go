@@ -62,6 +62,7 @@ SELECT count(*)::bigint AS count
 FROM order_tickets t
 INNER JOIN orders o ON o.id = t.order_id
 LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
   AND t.station = $1::station
   AND t.status <> 'cancelled'::ticket_status
@@ -74,6 +75,17 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
     $3::timestamptz IS NULL
     OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
   )
+  -- Found by what the counter or the kitchen calls it: the order's code, the
+  -- customer's name, or an item on the ticket.
+  AND (
+    $5::text = ''
+    OR o.code ILIKE '%' || $5 || '%'
+    OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $5 || '%'
+    OR EXISTS (
+      SELECT 1 FROM order_ticket_items i
+      WHERE i.ticket_id = t.id AND i.name ILIKE '%' || $5 || '%'
+    )
+  )
 `
 
 type CountStationTicketsParams struct {
@@ -81,6 +93,7 @@ type CountStationTicketsParams struct {
 	Status     *TicketStatus `json:"status"`
 	PickupFrom *time.Time    `json:"pickupFrom"`
 	PickupTo   *time.Time    `json:"pickupTo"`
+	Search     string        `json:"search"`
 }
 
 // CountStationTickets
@@ -89,6 +102,7 @@ type CountStationTicketsParams struct {
 //	FROM order_tickets t
 //	INNER JOIN orders o ON o.id = t.order_id
 //	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 //	WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
 //	  AND t.station = $1::station
 //	  AND t.status <> 'cancelled'::ticket_status
@@ -101,12 +115,24 @@ type CountStationTicketsParams struct {
 //	    $3::timestamptz IS NULL
 //	    OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
 //	  )
+//	  -- Found by what the counter or the kitchen calls it: the order's code, the
+//	  -- customer's name, or an item on the ticket.
+//	  AND (
+//	    $5::text = ''
+//	    OR o.code ILIKE '%' || $5 || '%'
+//	    OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $5 || '%'
+//	    OR EXISTS (
+//	      SELECT 1 FROM order_ticket_items i
+//	      WHERE i.ticket_id = t.id AND i.name ILIKE '%' || $5 || '%'
+//	    )
+//	  )
 func (q *Queries) CountStationTickets(ctx context.Context, arg CountStationTicketsParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countStationTickets,
 		arg.Station,
 		arg.Status,
 		arg.PickupFrom,
 		arg.PickupTo,
+		arg.Search,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -437,8 +463,19 @@ FROM (
       $3::timestamptz IS NULL
       OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
     )
+    -- Found by what the counter or the kitchen calls it: the order's code, the
+    -- customer's name, or an item on the ticket.
+    AND (
+      $5::text = ''
+      OR o.code ILIKE '%' || $5 || '%'
+      OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $5 || '%'
+      OR EXISTS (
+        SELECT 1 FROM order_ticket_items i
+        WHERE i.ticket_id = t.id AND i.name ILIKE '%' || $5 || '%'
+      )
+    )
   ORDER BY o.pickup_at ASC NULLS LAST, t.created_at ASC, t.id ASC
-  LIMIT $6 OFFSET $5
+  LIMIT $7 OFFSET $6
 ) page
 LEFT JOIN LATERAL (
   SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name) AS list
@@ -453,6 +490,7 @@ type ListStationTicketsParams struct {
 	Status     *TicketStatus `json:"status"`
 	PickupFrom *time.Time    `json:"pickupFrom"`
 	PickupTo   *time.Time    `json:"pickupTo"`
+	Search     string        `json:"search"`
 	Offset     int32         `json:"offset"`
 	Limit      int32         `json:"limit"`
 }
@@ -516,8 +554,19 @@ type ListStationTicketsRow struct {
 //	      $3::timestamptz IS NULL
 //	      OR (o.pickup_at >= $3::timestamptz AND o.pickup_at < $4::timestamptz)
 //	    )
+//	    -- Found by what the counter or the kitchen calls it: the order's code, the
+//	    -- customer's name, or an item on the ticket.
+//	    AND (
+//	      $5::text = ''
+//	      OR o.code ILIKE '%' || $5 || '%'
+//	      OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $5 || '%'
+//	      OR EXISTS (
+//	        SELECT 1 FROM order_ticket_items i
+//	        WHERE i.ticket_id = t.id AND i.name ILIKE '%' || $5 || '%'
+//	      )
+//	    )
 //	  ORDER BY o.pickup_at ASC NULLS LAST, t.created_at ASC, t.id ASC
-//	  LIMIT $6 OFFSET $5
+//	  LIMIT $7 OFFSET $6
 //	) page
 //	LEFT JOIN LATERAL (
 //	  SELECT json_agg(json_build_object('name', i.name, 'quantity', i.quantity) ORDER BY i.created_at, i.name) AS list
@@ -531,6 +580,7 @@ func (q *Queries) ListStationTickets(ctx context.Context, arg ListStationTickets
 		arg.Status,
 		arg.PickupFrom,
 		arg.PickupTo,
+		arg.Search,
 		arg.Offset,
 		arg.Limit,
 	)

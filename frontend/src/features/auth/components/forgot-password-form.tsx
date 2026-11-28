@@ -51,7 +51,7 @@ export function ForgotPasswordForm() {
         titleRef={focusOnMount}
       >
         <Button className="w-full" type="button" variant="outline" onClick={() => request.reset()}>
-          Use another address
+          Use another email
         </Button>
       </AuthFormShell>
     );
@@ -89,7 +89,7 @@ export function ForgotPasswordForm() {
             disabled={request.isPending}
             type="submit"
           >
-            {request.isPending ? "Sending…" : "Send the link"}
+            {request.isPending ? "Sending…" : "Send reset link"}
           </Button>
         </form>
       </Form>

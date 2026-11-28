@@ -20,7 +20,7 @@ function PickupRulesBody() {
   if (settingsQuery.isError) {
     return (
       <div className="dashboard-profile-section-stack">
-        <p className="text-error">Failed to load pickup rules.</p>
+        <p className="text-error">We could not load the pickup rules.</p>
         <div className="dashboard-profile-form-actions">
           <Button type="button" variant="outline" onClick={() => void settingsQuery.refetch()}>
             Try again
@@ -32,8 +32,8 @@ function PickupRulesBody() {
   return <StoreSettingsForm settings={settingsQuery.data} />;
 }
 
-/** Admin settings: the pickup rules checkout enforces, changed without a deploy. */
-export function AdminStoreSettings() {
+/** Store settings: the pickup rules checkout enforces, changed without a deploy. */
+export function ManagerStoreSettings() {
   return (
     <DashboardFormPage
       description="Pickup hours, notice and closed days. Checkout follows every change at once."

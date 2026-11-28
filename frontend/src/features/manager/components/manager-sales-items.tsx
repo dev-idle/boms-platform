@@ -69,9 +69,9 @@ export function ManagerSalesItems({ range }: ManagerSalesItemsProps) {
             </colgroup>
             <thead>
               <tr>
-                <th>Item</th>
-                <th className="db-table-num">Quantity</th>
-                <th className="db-table-num">Sales</th>
+                <th scope="col">Item</th>
+                <th scope="col" className="db-table-num">Quantity</th>
+                <th scope="col" className="db-table-num">Sales</th>
               </tr>
             </thead>
             <tbody>
@@ -81,6 +81,7 @@ export function ManagerSalesItems({ range }: ManagerSalesItemsProps) {
                 entityLabel="items"
                 isEmpty={items.length === 0}
                 isError={reportQuery.isError}
+                onRetry={() => void reportQuery.refetch()}
                 initialLoading={initialLoading}
               />
               {!initialLoading && !reportQuery.isError

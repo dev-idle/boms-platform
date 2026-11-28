@@ -4,8 +4,7 @@ import Link from "next/link";
 import type { RefObject } from "react";
 
 import { ROUTE } from "@/constants/routes";
-import { buildCatalogBrowseHref, catalogItemInitial } from "@/features/catalog";
-import { primaryCatalogProductImageUrl } from "@/lib/cloudinary/config";
+import { buildCatalogBrowseHref, CatalogTile } from "@/features/catalog";
 import type { CatalogProduct } from "@/lib/schemas/catalog";
 import { cn } from "@/lib/utils";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -51,12 +50,12 @@ export function StorefrontHeaderSearchResults({
     >
       <div className="storefront-container storefront-header-results__inner">
         <p className="storefront-header-results__head">
-          {loading ? "Searching" : `Matches for “${query}”`}
+          {loading ? "Searching…" : `Matches for “${query}”`}
         </p>
 
         {empty ? (
           <p className="storefront-header-results__empty">
-            Nothing matches yet — try a shorter word, or browse the whole shop.
+            No matches. Try a shorter word or browse all products.
           </p>
         ) : null}
 
@@ -66,51 +65,36 @@ export function StorefrontHeaderSearchResults({
           id={listboxId}
           role="listbox"
         >
-          {products.map((product, index) => {
-            const imageUrl = primaryCatalogProductImageUrl(
-              product.image_urls,
-              160,
-            );
-            return (
-              <li key={product.id} role="presentation">
-                <Link
-                  aria-selected={index === activeIndex}
-                  className={cn(
-                    "storefront-header-results__item",
-                    index === activeIndex &&
-                      "storefront-header-results__item--active",
-                  )}
-                  href={ROUTE.productDetail(product.id)}
-                  id={optionId(index)}
-                  onClick={onNavigate}
-                  role="option"
-                  tabIndex={-1}
-                >
-                  <span aria-hidden className="storefront-header-results__thumb">
-                    {imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are external manager-provided links
-                      <img alt="" src={imageUrl} />
-                    ) : (
-                      <span className="storefront-header-results__initial">
-                        {catalogItemInitial(product.name)}
-                      </span>
-                    )}
+          {products.map((product, index) => (
+            <li key={product.id} role="presentation">
+              <Link
+                aria-selected={index === activeIndex}
+                className={cn(
+                  "storefront-header-results__item",
+                  index === activeIndex &&
+                    "storefront-header-results__item--active",
+                )}
+                href={ROUTE.productDetail(product.id)}
+                id={optionId(index)}
+                onClick={onNavigate}
+                role="option"
+                tabIndex={-1}
+              >
+                <CatalogTile name={product.name} scale="search" url={product.image_urls[0]} />
+                <span className="storefront-header-results__copy">
+                  <span className="storefront-header-results__name">
+                    {product.name}
                   </span>
-                  <span className="storefront-header-results__copy">
-                    <span className="storefront-header-results__name">
-                      {product.name}
-                    </span>
-                    <span className="storefront-header-results__category">
-                      {product.category_name}
-                    </span>
+                  <span className="storefront-header-results__category">
+                    {product.category_name}
                   </span>
-                  <span className="storefront-header-results__price text-price">
-                    {formatPriceCents(product.price_cents)}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
+                </span>
+                <span className="storefront-header-results__price text-price">
+                  {formatPriceCents(product.price_cents)}
+                </span>
+              </Link>
+            </li>
+          ))}
 
           <li role="presentation">
             <Link
@@ -127,7 +111,7 @@ export function StorefrontHeaderSearchResults({
               tabIndex={-1}
             >
               <span>
-                {empty ? "Browse the whole shop" : "See every match"}
+                {empty ? "Browse all products" : "See every match"}
               </span>
               {empty ? null : (
                 <span className="storefront-header-results__count text-price">

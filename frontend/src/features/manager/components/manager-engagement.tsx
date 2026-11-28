@@ -11,7 +11,7 @@ export function ManagerEngagement() {
   return (
     <div className="dashboard-page-stack">
       <DashboardPageHeader
-        description={`How registered customers use reviews, favorites, the wishlist, messages and promotion emails. The goal is ${ENGAGEMENT_GOAL_PERCENT}% using two or more.`}
+        description={`How registered customers use reviews, favorites, the wishlist, messages, promotion emails and the assistant. The goal is ${ENGAGEMENT_GOAL_PERCENT}% using two or more.`}
         eyebrow={DASHBOARD_PAGE_EYEBROW.reports}
         title={PAGE_TITLES.engagement}
       />

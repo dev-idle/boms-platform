@@ -19,16 +19,16 @@ import {
 } from "@/components/ui/dashboard-table-actions";
 import { EntityActivePill } from "@/components/ui/status-pill";
 import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
-import { DASHBOARD_TABLE_PAGE_SIZE, DASHBOARD_TABLE_COLUMN_LABEL } from "@/constants/dashboard-table";
-import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolbar-meta";
+import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
-import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
+import { DashboardTableDateRangeCell } from "@/components/ui/dashboard-table-date-range-cell";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useCombos, useDeleteCombo } from "../hooks";
@@ -58,6 +58,7 @@ export function ManagerCombosTable() {
   const { initialLoading, refetching } = getQuerySurface(query);
   const combos = query.data?.combos ?? [];
   const pagination = query.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     combos.length,
     pagination,
@@ -80,50 +81,44 @@ export function ManagerCombosTable() {
       <div className="dashboard-page-body">
         <div className="db-table-filters">
           <DashboardSearchField
+            label="Search combos"
             onChange={setInput}
             onClear={clear}
             placeholder="Search name or slug"
             value={input}
           />
-          {pagination ? (
-            <DashboardTableToolbarMeta>
-              {pagination.total}{" "}
-              {pagination.total === 1 ? "combo" : "combos"}
-            </DashboardTableToolbarMeta>
-          ) : null}
         </div>
 
         <DashboardTableWrap refetching={refetching}>
-          <table className="db-table db-table--catalog">
+          <table className="db-table db-table--catalog db-table--combos">
             <colgroup>
               <col className="db-table-col-thumb" />
               <col />
               <col className="db-table-col-number" />
-              <col className="db-table-col-number" />
-              <col className="db-table-col-datetime" />
+              <col className="db-table-col-count" />
               <col className="db-table-col-datetime" />
             </colgroup>
             <thead>
               <tr>
-                <th className="db-table-cell-thumb">
+                <th scope="col" className="db-table-cell-thumb">
                   <span className="sr-only">Image</span>
                 </th>
-                <th>Name</th>
-                <th className="db-table-num">Price</th>
-                <th className="db-table-num">Items</th>
-                <th>{DASHBOARD_TABLE_COLUMN_LABEL.startsAt}</th>
-                <th>{DASHBOARD_TABLE_COLUMN_LABEL.endsAt}</th>
-                <th className="db-table-status">Status</th>
-                <th className="db-table-detail">Actions</th>
+                <th scope="col">Name</th>
+                <th scope="col" className="db-table-num">Price</th>
+                <th scope="col" className="db-table-num">Items</th>
+                <th scope="col">Runs</th>
+                <th scope="col" className="db-table-status">Status</th>
+                <th scope="col" className="db-table-detail">Actions</th>
               </tr>
             </thead>
             <tbody>
               <DashboardTableStateRows
-                columnCount={8}
+                columnCount={7}
                 entityLabel="combos"
                 hasActiveFilter={Boolean(search)}
                 isEmpty={combos.length === 0}
                 isError={query.isError}
+                onRetry={() => void query.refetch()}
                 initialLoading={initialLoading}
               />
               {!initialLoading && !query.isError && combos.length > 0
@@ -135,22 +130,21 @@ export function ManagerCombosTable() {
                     {formatPriceCents(combo.price_cents)}
                   </td>
                   <td className="db-table-num">{combo.items.length}</td>
-                  <DashboardTableDateTimeCell iso={combo.starts_at} />
-                  <DashboardTableDateTimeCell iso={combo.ends_at} />
+                  <DashboardTableDateRangeCell endsAt={combo.ends_at} startsAt={combo.starts_at} />
                   <td className="db-table-status">
                     <EntityActivePill active={combo.is_active} />
                   </td>
                   <td className="db-table-detail">
                     <DashboardTableRowActions>
-                      <DashboardTableEditLink
-                        href={ROUTE.manager.comboDetail(combo.id)}
-                        label={`Edit ${combo.name}`}
-                      />
                       <DashboardTableDeleteButton
                         label={`Delete ${combo.name}`}
                         onClick={() =>
                           setDeleteTarget({ id: combo.id, name: combo.name })
                         }
+                      />
+                      <DashboardTableEditLink
+                        href={ROUTE.manager.comboDetail(combo.id)}
+                        label={`Edit ${combo.name}`}
                       />
                     </DashboardTableRowActions>
                   </td>
@@ -158,7 +152,7 @@ export function ManagerCombosTable() {
               ))
                 : null}
               <DashboardTablePagePlaceholders
-                columnCount={8}
+                columnCount={7}
                 count={pagePlaceholderCount}
               />
             </tbody>
@@ -191,7 +185,7 @@ export function ManagerCombosTable() {
               toast.error(
                 isApiError(error)
                   ? error.message
-                  : "Failed to delete combo",
+                  : "We could not delete combo. Please try again.",
               );
             },
           });

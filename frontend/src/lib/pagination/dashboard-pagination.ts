@@ -69,74 +69,43 @@ export function paginatedPlaceholderCountFromMeta(
   );
 }
 
-const PAGINATION_EDGE_BLOCK = 6;
-const PAGINATION_EDGE_SIBLINGS = 2;
+/** Page slots the pager shows once a list has more pages than that. */
+const PAGINATION_SLOTS = 7;
 
-function pushPageRange(
-  items: PaginationWindowItem[],
-  from: number,
-  to: number,
-): void {
-  for (let current = from; current <= to; current += 1) {
-    items.push(current);
-  }
-}
-
-/** Compact page window — wide leading/trailing blocks, ellipses in the middle. */
+/**
+ * The pages the pager offers: every page of a short list; past seven, always
+ * seven slots — the first and last page, the current one with a neighbour on
+ * each side, and an ellipsis for each gap — so the pager keeps its width and
+ * its buttons their places as the reader pages through.
+ */
 export function buildPaginationWindow(
   page: number,
   totalPages: number,
 ): PaginationWindowItem[] {
-  const safeTotalPages = Math.max(totalPages, 1);
-  const safePage = Math.min(Math.max(page, 1), safeTotalPages);
+  const last = Math.max(totalPages, 1);
+  const current = Math.min(Math.max(page, 1), last);
 
-  if (safeTotalPages <= PAGINATION_EDGE_BLOCK + 1) {
-    return Array.from({ length: safeTotalPages }, (_, index) => index + 1);
+  if (last <= PAGINATION_SLOTS) {
+    return Array.from({ length: last }, (_, index) => index + 1);
   }
-
-  const items: PaginationWindowItem[] = [];
-  const startBlockEnd = Math.min(PAGINATION_EDGE_BLOCK, safeTotalPages - 1);
-  const endBlockStart = safeTotalPages - PAGINATION_EDGE_BLOCK + 1;
-  const startZoneEnd = startBlockEnd - PAGINATION_EDGE_SIBLINGS;
-
-  if (safePage <= startZoneEnd) {
-    pushPageRange(items, 1, startBlockEnd);
-
-    if (startBlockEnd < safeTotalPages - 1) {
-      items.push("ellipsis");
-    }
-
-    items.push(safeTotalPages);
-    return items;
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, "ellipsis", last];
   }
-
-  if (safePage >= endBlockStart) {
-    items.push(1);
-
-    if (endBlockStart > 2) {
-      items.push("ellipsis");
-    }
-
-    pushPageRange(items, endBlockStart, safeTotalPages);
-    return items;
+  if (current >= last - 3) {
+    return [1, "ellipsis", last - 4, last - 3, last - 2, last - 1, last];
   }
+  return [1, "ellipsis", current - 1, current, current + 1, "ellipsis", last];
+}
 
-  const left = Math.max(2, safePage - PAGINATION_EDGE_SIBLINGS);
-  const right = Math.min(safeTotalPages - 1, safePage + PAGINATION_EDGE_SIBLINGS);
-
-  items.push(1);
-
-  if (left > 2) {
-    items.push("ellipsis");
+/**
+ * Steps a table back to its last page when the list shrank under the page on
+ * show — a row deleted, a filter that empties its last page — instead of
+ * leaving an empty table with no pagination to leave it by. Called while
+ * rendering, with the page count of the settled response.
+ */
+export function keepPageInRange(page: number, setPage: (page: number) => void, totalPages: number | undefined): void {
+  const lastPage = Math.max(totalPages ?? page, 1);
+  if (page > lastPage) {
+    setPage(lastPage);
   }
-
-  pushPageRange(items, left, right);
-
-  if (right < safeTotalPages - 1) {
-    items.push("ellipsis");
-  }
-
-  items.push(safeTotalPages);
-
-  return items;
 }

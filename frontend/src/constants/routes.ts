@@ -9,9 +9,9 @@
  *   - Baker:    /baker/production, /baker/production/:id, /baker/account/*
  *   - Manager:  /manager, /manager/categories, /manager/products, /manager/combos,
  *               /manager/discount-codes, /manager/reviews, /manager/promotions, /manager/promotions/new,
- *               /manager/incidents, /manager/engagement, /manager/reports,
+ *               /manager/incidents, /manager/engagement, /manager/reports, /manager/settings,
  *               /manager/account/*
- *   - Admin:    /admin, /admin/users, /admin/settings, /admin/account/*
+ *   - Admin:    /admin, /admin/users, /admin/account/*
  */
 export const ROUTE = {
   home: "/",
@@ -83,6 +83,7 @@ export const ROUTE = {
     incidents: "/manager/incidents",
     engagement: "/manager/engagement",
     reports: "/manager/reports",
+    settings: "/manager/settings",
     account: {
       root: "/manager/account",
       profile: "/manager/account/profile",
@@ -94,7 +95,6 @@ export const ROUTE = {
     users: "/admin/users",
     usersNew: "/admin/users/new",
     userDetail: (id: string) => `/admin/users/${id}`,
-    settings: "/admin/settings",
     account: {
       root: "/admin/account",
       profile: "/admin/account/profile",

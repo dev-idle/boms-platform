@@ -690,7 +690,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("mail.smtp_tls", SMTPTLSNone)
 	v.SetDefault("mail.from_address", "orders@chouxbakery.example")
 	v.SetDefault("mail.from_name", "Choux")
-	v.SetDefault("mail.reply_to", "hello@chouxbakery.example")
+	v.SetDefault("mail.reply_to", "nghiantgcc19224@fpt.edu.vn")
 	v.SetDefault("mail.send_timeout", 10*time.Second)
 	v.SetDefault("mail.concurrency", 4)
 	v.SetDefault("mail.promotion_concurrency", 1)

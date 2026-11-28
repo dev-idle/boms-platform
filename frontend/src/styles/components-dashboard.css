@@ -15,7 +15,14 @@
 
   /* Dashboard shell — light sidebar on the page ground. */
   .dashboard-shell {
+    --db-topbar-height: 0rem;
     min-height: 100%;
+  }
+
+  /* Shown below 80rem only, where the sidebar leaves the page. */
+  .dashboard-topbar,
+  .dashboard-scrim {
+    display: none;
   }
 
   .dashboard-sidebar {
@@ -290,7 +297,7 @@
   /* Signing out: the row is held, so it reads in the muted tone and refuses the
      pointer like every other inert control. */
   .dashboard-account-item[data-disabled] {
-    color: var(--color-muted);
+    color: var(--color-disabled);
     cursor: not-allowed;
   }
 
@@ -321,21 +328,26 @@
     margin-block: 0.375rem;
   }
 
-  /* Square avatar with mono initials — the pill radius is reserved for dots. */
-  .dashboard-avatar {
+  /* Every avatar is the storefront's: one letter on a hairline square — the
+     pill radius is reserved for dots. */
+  .dashboard-avatar,
+  .db-table-avatar,
+  .staff-chat__avatar {
     align-items: center;
     background-color: transparent;
-    border: 1px solid var(--color-line);
-    color: var(--color-matcha-500);
+    border: 1px solid var(--color-line-strong);
+    color: var(--color-ink-2);
     display: inline-flex;
     flex-shrink: 0;
-    font-family: var(--font-mono);
-    font-size: var(--label-size);
-    font-weight: 500;
-    height: var(--db-sidebar-avatar-size);
+    font-size: 0.8125rem;
+    font-weight: 600;
     justify-content: center;
+    line-height: 1;
+  }
+
+  .dashboard-avatar {
+    height: var(--db-sidebar-avatar-size);
     justify-self: start;
-    letter-spacing: 0.04em;
     width: var(--db-sidebar-avatar-size);
   }
 
@@ -404,12 +416,6 @@
     justify-content: space-between;
   }
 
-  .dashboard-page-lead--aside {
-    margin: 0;
-    max-width: 40ch;
-    text-align: right;
-  }
-
   .dashboard-page-header-body {
     display: flex;
     flex-direction: column;
@@ -428,6 +434,11 @@
       width: 100%;
     }
 
+  }
+
+  /* A title can be an email: it breaks rather than push the page sideways. */
+  .dashboard-page-header .text-page-title {
+    overflow-wrap: anywhere;
   }
 
   .dashboard-page-header:has(.dashboard-breadcrumb)>.text-page-title {
@@ -660,7 +671,9 @@
     grid-template-columns: minmax(0,1fr);
   }
 
-  @media (min-width: 64rem) {
+  /* The sidebar takes 264px of the screen, so the rail stands beside the work
+     only from 80rem; below it the two stack. */
+  @media (min-width: 80rem) {
     .dashboard-detail-grid {
       gap: 4rem;
       grid-template-columns: minmax(0,1fr) 24.5rem;
@@ -1175,6 +1188,10 @@
     white-space: nowrap;
   }
 
+  .dashboard-datetime__trigger-value--empty {
+    color: var(--field-placeholder);
+  }
+
   .dashboard-datetime__trigger-icon-wrap {
     align-items: center;
     color: var(--color-muted);
@@ -1219,6 +1236,11 @@
     inset-block-start: auto;
   }
 
+  /* Hung from the field's far edge, for a field near the window's end. */
+  .dashboard-datetime__panel--end {
+    inset-inline-start: auto;
+  }
+
   .dashboard-datetime__panel-body {
     --datetime-cell-gap: 0.25rem;
     /* A day cell is a dense numeric target like a pagination cell, not a
@@ -1229,18 +1251,20 @@
     flex-direction: column;
   }
 
+  /* Literal steps of the 4px grid: the calendar also opens on the storefront,
+     where the dashboard spacing tokens are not defined. */
   .dashboard-datetime__calendar {
     align-items: center;
     display: flex;
     flex-direction: column;
-    gap: var(--db-space-2);
+    gap: 0.5rem;
     min-width: 0;
-    padding: var(--db-space-3);
+    padding: 0.75rem;
   }
   .dashboard-datetime__nav {
     align-items: center;
     display: flex;
-    gap: var(--db-space-2);
+    gap: 0.5rem;
     justify-content: space-between;
     width: var(--datetime-pane-width);
   }
@@ -1355,6 +1379,15 @@
     color: var(--color-line-strong);
   }
 
+  /* Outside the allowed range: struck through, and deaf to the pointer. */
+  .dashboard-datetime__day[aria-disabled="true"],
+  .dashboard-datetime__day[aria-disabled="true"]:hover {
+    background: 0 0;
+    color: var(--color-disabled);
+    cursor: not-allowed;
+    text-decoration: line-through;
+  }
+
   /* Two hairline-separated bands under the calendar: time, then the actions. */
   .dashboard-datetime__time {
     align-items: center;
@@ -1384,9 +1417,9 @@
   .dashboard-datetime__actions {
     border-top: 1px solid var(--color-line-soft);
     display: flex;
-    gap: var(--db-space-2);
+    gap: 0.5rem;
     justify-content: space-between;
-    padding: var(--db-space-2) var(--db-space-3);
+    padding: 0.5rem 0.75rem;
   }
 
   /* One line: hour, minute, meridiem — wrapping only where it cannot fit. */
@@ -1530,6 +1563,83 @@
     width: 100%;
   }
 
+  /* Below 80rem the sidebar's 264px are the work's — beside it a 1024px screen
+     would leave the tables 650px: a top bar opens the sidebar as a panel over
+     the page, a scrim behind it, and the work takes the width. */
+  @media (max-width: 79.99rem) {
+    .dashboard-shell {
+      --db-topbar-height: 3.5rem;
+    }
+
+    .dashboard-topbar {
+      align-items: center;
+      background-color: var(--color-db-sidebar-bg);
+      border-bottom: 1px solid var(--color-db-sidebar-border);
+      display: flex;
+      gap: 0.5rem;
+      height: var(--db-topbar-height);
+      inset-block-start: 0;
+      padding-inline: 0.5rem 1rem;
+      position: sticky;
+      z-index: 30;
+    }
+
+    .dashboard-topbar__toggle {
+      align-items: center;
+      color: var(--color-ink);
+      cursor: pointer;
+      display: inline-flex;
+      gap: 0.375rem;
+      height: 2.75rem;
+      justify-content: center;
+      min-width: 2.75rem;
+    }
+
+    /* The role and whether updates reach this tab, at the bar's end. */
+    .dashboard-topbar__meta {
+      align-items: center;
+      display: flex;
+      gap: 0.75rem;
+      margin-inline-start: auto;
+    }
+
+    .dashboard-sidebar {
+      max-width: 85vw;
+      transform: translateX(-100%);
+      transition:
+        transform var(--duration-standard) var(--ease-luxury),
+        visibility 0s var(--duration-standard);
+      visibility: hidden;
+    }
+
+    .dashboard-sidebar--open {
+      box-shadow: var(--shadow-overlay);
+      transform: none;
+      transition: transform var(--duration-standard) var(--ease-luxury);
+      visibility: visible;
+    }
+
+    .dashboard-scrim {
+      background-color: color-mix(in srgb, var(--color-ink) 48%, transparent);
+      display: block;
+      inset: 0;
+      position: fixed;
+      z-index: 35;
+    }
+
+    .dashboard-main {
+      margin-left: 0;
+      padding-block-start: 1.5rem;
+      padding-inline: 1rem;
+    }
+  }
+
+  @media (min-width: 48rem) and (max-width: 79.99rem) {
+    .dashboard-main {
+      padding-inline: 2rem;
+    }
+  }
+
   .dashboard-datetime-grid {
     align-items: start;
     grid-column: 1 / -1;
@@ -1573,17 +1683,6 @@
     padding-inline: 1.125rem;
   }
 
-  .db-table-toolbar-meta {
-    color: var(--color-muted);
-    font-family: var(--font-body);
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.08em;
-    line-height: 1.4;
-    margin: 0 0 0 auto;
-    white-space: nowrap;
-  }
-
   /* Width and max-width come from the unlayered .search-field contract. */
   .db-table-filters .search-field {
     flex: 1 1 14rem;
@@ -1597,9 +1696,11 @@
     overflow-x: auto;
   }
 
-  /* Table footer: summary left, pagination right. */
+  /* Table footer: summary left, pagination right; as tall with one page as with
+     several, so a filter that shortens the list does not move what is under it. */
   .dashboard-pagination {
     align-items: center;
+    min-height: calc(var(--db-pagination-hit) + 2 * var(--db-table-cell-padding-block));
     background-color: var(--color-db-row);
     border-top: 1px solid var(--color-line-soft);
     display: flex;
@@ -1715,7 +1816,7 @@
     height: var(--db-pagination-hit);
     justify-content: center;
     line-height: 1;
-    min-width: 1.5rem;
+    min-width: var(--db-pagination-page-min);
     user-select: none;
   }
 
@@ -1772,16 +1873,47 @@
     width: 100%;
   }
 
-  .db-table--admin-users col.db-table-col-email {
-    width: calc(
-      (100% - var(--db-table-admin-fixed-cols)) * var(--db-table-admin-email-share)
+  /* A table of five or more columns keeps the width its cells need: on a
+     narrow screen its wrapper scrolls instead of the columns running together. */
+  .db-table--catalog {
+    min-width: 46rem;
+  }
+
+  /* Staff orders: the customer is the one fluid column. */
+  .db-table--staff-orders {
+    min-width: calc(
+      var(--db-table-col-code) + 13.5rem + var(--db-table-col-number) + var(--db-table-col-status-pill) + 7rem + 9.5rem
     );
   }
 
-  .db-table--admin-users col.db-table-col-name {
-    width: calc(
-      (100% - var(--db-table-admin-fixed-cols)) * var(--db-table-admin-name-share)
+  .db-table--staff-orders col.db-table-col-pickup {
+    width: 13.5rem;
+  }
+
+  .db-table--staff-orders col.db-table-col-status {
+    width: var(--db-table-col-status-pill);
+  }
+
+  .db-table--staff-orders col.db-table-col-actions {
+    width: 7rem;
+  }
+
+  /* Discount codes: five fixed columns beside the code, which keeps its own. */
+  .db-table--discount-codes {
+    min-width: 54.5rem;
+  }
+
+  /* Users fix five columns; the account keeps room for an email before the
+     wrapper scrolls. */
+  .db-table--admin-users {
+    min-width: calc(
+      var(--db-table-col-lead) + var(--db-table-col-role) + var(--db-table-col-date) +
+        var(--db-table-col-status-pill) + var(--db-table-col-actions-group) + 10.5rem
     );
+  }
+
+  .db-table--admin-users col.db-table-col-joined {
+    width: var(--db-table-col-date);
   }
 
   .db-table--admin-users col.db-table-col-avatar {
@@ -1829,6 +1961,19 @@
 
   .db-table--catalog .db-table-row-actions {
     flex-wrap: nowrap;
+  }
+
+  /* Combos fix six columns; the name keeps room for two lines of a combo name
+     before the wrapper scrolls, rather than shrinking to nothing. */
+  .db-table--combos {
+    min-width: calc(
+      var(--db-table-col-lead) + var(--db-table-col-number) + var(--db-table-col-count) +
+        var(--db-table-col-datetime) + var(--db-table-col-status-pill) + var(--db-table-col-actions-pair) + 9rem
+    );
+  }
+
+  .db-table--combos col.db-table-col-count {
+    width: var(--db-table-col-count);
   }
 
   .db-table-datetime {
@@ -1902,6 +2047,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--db-space-2);
+  }
+
+  /* A day field in a toolbar keeps one width whatever date it shows. */
+  .db-table-day .dashboard-datetime {
+    inline-size: 10.5rem;
   }
 
   /* A range: each label stays with its field, the pairs and the grouping
@@ -2015,7 +2165,7 @@
         var(--db-table-col-actions-pair)
     );
 
-    min-width: calc(var(--db-table-reviews-fixed-cols) + 28rem);
+    min-width: calc(var(--db-table-reviews-fixed-cols) + 27rem);
   }
 
   .db-table--reviews col.db-table-col-product {
@@ -2164,8 +2314,10 @@
 
   /* Incidents: the time is fixed; the incident and its order (code over the
      pickup time) take three tenths of the rest each, the note what is left. */
+  /* Room for "Pickup Nov 26, 2026, 11:00 AM" on one line in the order column, so
+     on a phone the rows stand one height and the last page does not shrink. */
   .db-table--incidents {
-    min-width: calc(var(--db-table-col-datetime) + 36rem);
+    min-width: calc(var(--db-table-col-datetime) + 48rem);
   }
 
   .db-table--incidents col.db-table-col-incident,
@@ -2347,6 +2499,12 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
+  /* The item and its price in ink, as a table row: the section around them sets
+     muted text for its hints. */
+  .staff-order-items__row {
+    color: var(--color-ink);
+  }
+
   .staff-order-items__name {
     display: grid;
     gap: var(--db-space-1);
@@ -2434,10 +2592,20 @@
     display: block;
   }
 
-  /* What the filler stands in for: one line of text, unless the table holds
-     something taller. */
+  /* What the filler stands in for: the tallest thing a row of that table holds.
+     The rules run from the shortest to the tallest, so a table holding several
+     takes the last that applies: a line of text 20px, a text action or status
+     pill 28px, a timestamp 36px, a thumb 40px, a stacked cell 42px. */
   .db-table {
     --db-table-placeholder-fill: 1.25rem;
+  }
+
+  .db-table:has(.db-table-action, .status-pill) {
+    --db-table-placeholder-fill: var(--db-table-action-height);
+  }
+
+  .db-table:has(.db-table-datetime) {
+    --db-table-placeholder-fill: var(--db-table-datetime-height);
   }
 
   /* A thumb cell trades block padding for the tile; the filler keeps the ordinary
@@ -2449,8 +2617,8 @@
     );
   }
 
-  .db-table:has(.db-table-datetime) {
-    --db-table-placeholder-fill: var(--db-table-datetime-height);
+  .db-table:has(.db-table-stacked-cell) {
+    --db-table-placeholder-fill: var(--db-table-stacked-height);
   }
 
   .db-table-stacked-cell {
@@ -2483,6 +2651,14 @@
     line-height: 1.7;
     padding: 4.5rem 2.5rem;
     text-align: center;
+  }
+
+  /* A list that failed to load: what happened, then the way to ask again. */
+  .db-table-error {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .db-table tbody tr:last-child td {
@@ -2543,6 +2719,8 @@
     font-family: var(--font-body);
     font-size: var(--db-filter-chip-font);
     font-weight: var(--label-weight);
+    /* A step's arrow stands a space from its label. */
+    gap: 0.5rem;
     justify-content: center;
     letter-spacing: 0.14em;
     line-height: 1;
@@ -2559,8 +2737,14 @@
     border-right: 1px solid var(--color-line-soft);
   }
 
-  .db-filter-chip:hover:not([data-active="true"]) {
+  .db-filter-chip:hover:not([data-active="true"], :disabled) {
     color: var(--color-ink);
+  }
+
+  /* A step that cannot apply — already on today — stays in its slot, greyed. */
+  .db-filter-chip:disabled {
+    color: var(--color-disabled);
+    cursor: not-allowed;
   }
 
   .db-filter-chip[data-active="true"] {
@@ -2682,20 +2866,8 @@
     padding-inline-end: 0;
   }
 
-  /* Avatar is data (a person), so full-strength mono initials on a hairline square. */
   .db-table-avatar {
-    align-items: center;
-    background-color: transparent;
-    border: 1px solid var(--color-line);
-    color: var(--color-matcha-500);
-    display: inline-flex;
-    flex-shrink: 0;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 500;
     height: 2.125rem;
-    justify-content: center;
-    letter-spacing: 0.04em;
     width: 2.125rem;
   }
 
@@ -2741,20 +2913,20 @@
   }
 
   /* Admin user detail — Profile facts rail. */
-  .admin-user-profile {
+  .dashboard-detail-rail {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     padding: 1.75rem;
   }
 
-  @media (min-width: 64rem) {
-    .admin-user-profile {
+  @media (min-width: 80rem) {
+    .dashboard-detail-rail {
       position: sticky;
       top: 1.5rem;
     }
   }
 
-  .admin-user-profile__title {
+  .dashboard-detail-rail__title {
     color: var(--color-ink);
     font-family: var(--font-display);
     font-size: 1.75rem;
@@ -2763,14 +2935,14 @@
     margin: 0;
   }
 
-  .admin-user-profile__facts {
+  .dashboard-detail-rail__facts {
     display: flex;
     flex-direction: column;
     gap: 1.125rem;
     margin: 1.375rem 0 0;
   }
 
-  .admin-user-profile__facts dt {
+  .dashboard-detail-rail__facts dt {
     color: var(--color-muted);
     font-size: var(--label-size-sm);
     font-weight: var(--label-weight);
@@ -2780,12 +2952,12 @@
   }
 
   /* Opens a group: contact facts, then account state, then the timestamps. */
-  .admin-user-profile__group {
+  .dashboard-detail-rail__group {
     border-top: 1px solid var(--color-line-soft);
     padding-top: 1.125rem;
   }
 
-  .admin-user-profile__facts dd {
+  .dashboard-detail-rail__facts dd {
     color: var(--color-ink);
     font-size: 0.875rem;
     line-height: 1.5;
@@ -2793,7 +2965,7 @@
     overflow-wrap: anywhere;
   }
 
-  .admin-user-profile__facts dd.admin-user-profile__value--mono {
+  .dashboard-detail-rail__facts dd.dashboard-detail-rail__value--mono {
     font-family: var(--font-mono);
     font-size: 0.8125rem;
     font-variant-numeric: tabular-nums;
@@ -2884,7 +3056,7 @@
     align-items: center;
     display: grid;
     gap: 1.25rem;
-    grid-template-columns: 6.5rem minmax(0, 1fr) 6.875rem 9.5rem 4.5rem;
+    grid-template-columns: 8rem minmax(0, 1fr) 6.875rem 9.5rem 4.5rem;
     padding-inline: 1.75rem;
   }
 
@@ -2946,6 +3118,19 @@
     letter-spacing: -0.01em;
     line-height: 1;
     margin: 0;
+  }
+
+  /* Every day's queue: the day over the time, as a small label. */
+  .baker-production-row__day {
+    color: var(--color-muted);
+    display: block;
+    font-family: var(--font-body);
+    font-size: var(--label-size-sm);
+    font-weight: var(--label-weight);
+    letter-spacing: var(--label-tracking-sm);
+    line-height: 1.4;
+    margin-bottom: 0.375rem;
+    text-transform: uppercase;
   }
 
   .baker-production-row__customer {
@@ -3015,10 +3200,6 @@
     text-align: center;
   }
 
-  .baker-production-empty--error {
-    color: var(--color-danger-text);
-  }
-
   /* Messages (02 §13): the inbox, the open conversation and the order it is
      about fill the work area edge to edge, each pane scrolling on its own. One
      pane on a narrow screen, two from 64rem, the order beside them from 90rem. */
@@ -3033,7 +3214,7 @@
   .staff-chat {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    height: 100dvh;
+    height: calc(100dvh - var(--db-topbar-height));
   }
 
   .staff-chat--open .staff-chat__list,
@@ -3048,7 +3229,7 @@
   }
 
   .staff-chat__list-header {
-    padding: 1.75rem 1.5rem 1.25rem;
+    padding: 1.5rem 1.25rem 1rem;
   }
 
   .staff-chat__list-header .text-page-title {
@@ -3104,12 +3285,17 @@
     padding: 0;
   }
 
+  /* Conversations are told apart by a hairline, as table rows are. */
+  .staff-chat__rows > li {
+    border-bottom: 1px solid var(--color-line-soft);
+  }
+
   .staff-chat__row {
     color: inherit;
     display: grid;
     gap: 0.875rem;
-    grid-template-columns: 2.125rem minmax(0, 1fr);
-    padding: 1.125rem 1.5rem;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    padding: 0.875rem 1.25rem;
     text-decoration: none;
   }
 
@@ -3117,10 +3303,9 @@
     background-color: var(--color-paper-4);
   }
 
-  /* The selected conversation reads as the active nav item does. */
+  /* The open conversation: the tint alone, as a selected listbox option. */
   .staff-chat__row[aria-current="true"] {
     background-color: var(--color-matcha-100);
-    box-shadow: inset 1px 0 0 var(--color-matcha-500);
   }
 
   /* The list scrolls, which would clip a ring drawn outside a full-width row. */
@@ -3129,37 +3314,21 @@
   }
 
   .staff-chat__avatar {
-    align-items: center;
-    border: 1px solid var(--color-line);
-    color: var(--color-matcha-500);
-    display: inline-flex;
-    flex-shrink: 0;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 500;
-    height: 2.125rem;
-    justify-content: center;
-    width: 2.125rem;
+    height: 2rem;
+    width: 2rem;
   }
 
   /* The subject of the open conversation takes the one larger size. */
   .staff-chat__avatar--subject {
-    font-size: 0.75rem;
-    height: 2.5rem;
-    width: 2.5rem;
+    font-size: 0.875rem;
+    height: 2.25rem;
+    width: 2.25rem;
   }
 
   .staff-chat__row-body {
     display: flex;
     flex-direction: column;
     min-width: 0;
-  }
-
-  .staff-chat__row-top {
-    align-items: baseline;
-    display: flex;
-    gap: 0.75rem;
-    justify-content: space-between;
   }
 
   .staff-chat__name {
@@ -3171,11 +3340,14 @@
     white-space: nowrap;
   }
 
+  /* At the end of the meta line, so the name has the row's whole width. */
   .staff-chat__time {
     color: var(--color-muted);
     flex-shrink: 0;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
+    margin-inline-start: auto;
+    white-space: nowrap;
   }
 
   .staff-chat__preview {
@@ -3272,7 +3444,7 @@
     flex-wrap: wrap;
     gap: 1rem 1.5rem;
     justify-content: space-between;
-    padding: 1rem 2rem;
+    padding: 0.875rem 2rem;
   }
 
   .staff-chat__back {
@@ -3320,7 +3492,7 @@
 
   .staff-chat__composer {
     border-top: 1px solid var(--color-border);
-    padding: 1.25rem 2rem 1.5rem;
+    padding: 1rem 2rem 1.25rem;
   }
 
   .staff-chat__rail {
@@ -3339,7 +3511,7 @@
   }
 
   .staff-chat__rail-label--section {
-    border-top: 1px solid var(--color-paper-3);
+    border-top: 1px solid var(--color-line-soft);
     margin-top: 2.25rem;
     padding-top: 1.25rem;
   }
@@ -3354,7 +3526,7 @@
   }
 
   .staff-chat__facts {
-    border-top: 1px solid var(--color-paper-3);
+    border-top: 1px solid var(--color-line-soft);
     display: flex;
     flex-direction: column;
     font-size: 0.8125rem;

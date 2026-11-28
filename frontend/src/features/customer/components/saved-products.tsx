@@ -1,23 +1,25 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { InlineLoadingState } from "@/components/ui/loading-state";
+import { StorefrontAccountSection } from "@/components/layouts/storefront-account-layout";
+import { StorefrontEmptyState, StorefrontErrorState } from "@/components/layouts/storefront-state";
 
 import { useSavedProducts } from "../hooks";
 import type { SavedList } from "../schemas";
 import { SavedProductRow } from "./saved-product-row";
 
-const SECTIONS: ReadonlyArray<{ list: SavedList; title: string; lead: string; empty: string }> = [
+const SECTIONS: ReadonlyArray<{ list: SavedList; title: string; lead: string; emptyTitle: string; empty: string }> = [
   {
     list: "favorite",
     title: "Favorites",
-    lead: "The ones you come back for, ready to order again.",
+    lead: "Products you order again.",
+    emptyTitle: "No favorites yet",
     empty: "Select the heart on a product to keep it here.",
   },
   {
     list: "wishlist",
     title: "Wishlist",
-    lead: "What you want to try; moving one to the cart takes it off this list.",
+    lead: "Products to try. Moving one to the cart removes it from this list.",
+    emptyTitle: "Nothing on your wishlist",
     empty: "Select the bookmark on a product to save it for later.",
   },
 ];
@@ -27,44 +29,41 @@ export function SavedProducts() {
   const savedQuery = useSavedProducts();
 
   if (savedQuery.isPending) {
-    return <InlineLoadingState />;
-  }
-
-  if (savedQuery.isError) {
     return (
-      <div className="storefront-empty-state">
-        <p className="storefront-empty-state__message text-error">We could not load your lists.</p>
-        <Button type="button" variant="outline" onClick={() => void savedQuery.refetch()}>
-          Try again
-        </Button>
+      <div aria-busy="true" className="grid gap-6">
+        {[0, 1].map((row) => (
+          <div className="flex gap-6" key={row}>
+            <span className="catalog-tile catalog-tile--row skeleton" />
+            <div className="grid flex-1 content-start gap-3">
+              <span className="skeleton block h-3 w-24" />
+              <span className="skeleton block h-6 w-1/2" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
+  if (savedQuery.isError) {
+    return <StorefrontErrorState onRetry={() => void savedQuery.refetch()} title="We could not load your saved lists" />;
+  }
+
   return (
-    <div>
-      {SECTIONS.map(({ list, title, lead, empty }) => {
+    <div className="grid gap-6">
+      {SECTIONS.map(({ list, title, lead, emptyTitle, empty }) => {
         const items = savedQuery.data.filter((item) => item.list === list);
         return (
-          <section aria-labelledby={`saved-${list}`} className="storefront-account-section" key={list}>
-            <header className="storefront-account-section__header">
-              <h2 className="storefront-account-section__title" id={`saved-${list}`}>
-                {title}
-              </h2>
-              <p className="storefront-account-section__lead">{lead}</p>
-            </header>
+          <StorefrontAccountSection description={lead} id={`saved-${list}`} key={list} title={title}>
             {items.length === 0 ? (
-              <div className="storefront-empty-state storefront-empty-state--card">
-                <p className="storefront-empty-state__message">{empty}</p>
-              </div>
+              <StorefrontEmptyState message={empty} title={emptyTitle} />
             ) : (
-              <ul className="storefront-cart__lines">
+              <ul className="storefront-saved-lines">
                 {items.map((item) => (
                   <SavedProductRow item={item} key={item.product.id} />
                 ))}
               </ul>
             )}
-          </section>
+          </StorefrontAccountSection>
         );
       })}
     </div>

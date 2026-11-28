@@ -136,6 +136,8 @@ func (u *StaffOrderUsecase) CreateOrder(
 		}
 		return nil, err
 	}
+	recordAudit(u.log, u.audit, ctx, domainorder.AuditActionStaffCreatedOrder, actorID, actorRole, &created.ID, "order",
+		nil, map[string]any{"code": created.Code, "channel": string(created.Channel), "total_cents": created.TotalCents})
 	return u.Get(ctx, created.ID)
 }
 

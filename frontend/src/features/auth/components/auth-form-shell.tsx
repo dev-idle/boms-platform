@@ -1,8 +1,8 @@
 import type { ReactNode, Ref } from "react";
 import Link from "next/link";
 
-import { StorefrontBrowseLink } from "@/components/layouts/storefront-browse-link";
-import { STOREFRONT_NAV_COPY } from "@/constants/storefront-nav-copy";
+import { StorefrontBackLink } from "@/components/layouts/storefront-back-link";
+import { ROUTE } from "@/constants/routes";
 
 type AuthFormShellFooter = {
   href: string;
@@ -34,7 +34,7 @@ export function AuthFormShell({
 }: AuthFormShellProps) {
   return (
     <div className="auth-page-form-stack">
-      <StorefrontBrowseLink>{STOREFRONT_NAV_COPY.backToShop}</StorefrontBrowseLink>
+      <StorefrontBackLink href={ROUTE.products} label="Back to all products" />
 
       <header>
         <p className="auth-page-form-eyebrow">{eyebrow}</p>

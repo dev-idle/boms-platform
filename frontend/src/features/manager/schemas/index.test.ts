@@ -13,6 +13,10 @@ import {
   productFormSchema,
   promotionFormSchema,
   salesReportSchema,
+  closedDateFormSchema,
+  storeSettingsFormSchema,
+  strandedPickupsSchema,
+  strandingChangeSchema,
 } from "./index";
 
 /** The shape a valid product form submits, so each case changes one field. */
@@ -314,5 +318,76 @@ describe("operationsSchema", () => {
     expect(
       operationsSchema.safeParse({ ...operations, stations: [{ station: "oven", queued: 0, in_progress: 0, ready: 0 }] }).success,
     ).toBe(false);
+  });
+});
+
+describe("store settings form", () => {
+  const valid = {
+    opens_at: "08:00",
+    closes_at: "18:00",
+    preorder_min_lead_minutes: 120,
+    max_advance_days: 14,
+    slot_minutes: 30,
+    slot_capacity: 10,
+    instant_prep_minutes: 20,
+    payment_hold_minutes: 15,
+  };
+
+  it("accepts the seeded rules", () => {
+    expect(storeSettingsFormSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("names the field an impossible rule breaks", () => {
+    const paths = (input: object) => {
+      const result = storeSettingsFormSchema.safeParse({ ...valid, ...input });
+      return result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
+    };
+    expect(paths({ closes_at: "07:00" })).toEqual(["closes_at"]);
+    expect(paths({ opens_at: "17:45" })).toEqual(["slot_minutes"]);
+    expect(paths({ slot_minutes: 45 })).toEqual(["slot_minutes"]);
+    expect(paths({ slot_capacity: 0 })).toEqual(["slot_capacity"]);
+    expect(paths({ instant_prep_minutes: 241 })).toEqual(["instant_prep_minutes"]);
+    expect(paths({ payment_hold_minutes: 4 })).toEqual(["payment_hold_minutes"]);
+    expect(paths({ payment_hold_minutes: 121 })).toEqual(["payment_hold_minutes"]);
+    expect(paths({ max_advance_days: 1, preorder_min_lead_minutes: 1440 })).toEqual([
+      "preorder_min_lead_minutes",
+    ]);
+    expect(paths({ max_advance_days: 91 })).toEqual(["max_advance_days"]);
+  });
+});
+
+describe("closed day form", () => {
+  it("accepts a day with a plain reason", () => {
+    expect(closedDateFormSchema.safeParse({ date: "2026-10-20", reason: "Staff training" }).success).toBe(true);
+  });
+
+  it("refuses control and invisible formatting characters", () => {
+    for (const reason of ["Closed\nearly", "Tet \u202eyadiloh", "Zero\u200bwidth"]) {
+      expect(closedDateFormSchema.safeParse({ date: "2026-10-20", reason }).success).toBe(false);
+    }
+  });
+});
+
+describe("stranding change", () => {
+  it("names a closed day or a pair of opening hours", () => {
+    expect(strandingChangeSchema.safeParse({ closed_date: "2026-10-20" }).success).toBe(true);
+    expect(strandingChangeSchema.safeParse({ opens_at: "09:00", closes_at: "17:00" }).success).toBe(true);
+    expect(strandingChangeSchema.safeParse({ opens_at: "09:00" }).success).toBe(false);
+  });
+
+  it("reads the stranded orders the API lists", () => {
+    const parsed = strandedPickupsSchema.parse({
+      orders: [
+        {
+          id: "0f2f3a6e-5f4c-4f2e-9c1a-1d2b3c4d5e6f",
+          code: "CH-261125-001",
+          status: "awaiting_payment",
+          pickup_at: "2026-11-26T09:00:00+07:00",
+          customer: null,
+        },
+      ],
+      total: 3,
+    });
+    expect(parsed.total).toBe(3);
   });
 });

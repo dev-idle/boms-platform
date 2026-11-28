@@ -74,7 +74,7 @@ export function StaffReportIncidentDialog({ orderId, open, onClose }: StaffRepor
           onSubmit={form.handleSubmit((values) =>
             report.mutate(values, {
               onSuccess: close,
-              onError: (error) => applyApiFormFieldErrors(form, error, FIELDS, "Failed to report the issue"),
+              onError: (error) => applyApiFormFieldErrors(form, error, FIELDS, "We could not record the issue. Please try again."),
             }),
           )}
         >

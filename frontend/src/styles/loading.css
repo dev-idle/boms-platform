@@ -70,18 +70,6 @@
     background-color: var(--color-paper-3);
   }
 
-  .db-table-loading-cell {
-    padding-block: 0;
-    vertical-align: middle;
-  }
-
-  .db-table-loading-indicator {
-    align-items: center;
-    display: flex;
-    justify-content: center;
-    min-height: 3.5rem;
-  }
-
   /* Async panel (components/ui/async-panel.tsx) — one for both themes. A
      refetch dims the content to one strength everywhere; only the ground it
      dims toward follows the theme (page ground on the storefront, the panel

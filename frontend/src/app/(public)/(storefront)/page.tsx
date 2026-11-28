@@ -5,10 +5,10 @@ import {
   HomeCategories,
   HomeCategoryGridSkeleton,
   HomeCta,
-  HomeFeaturedProductGridSkeleton,
   HomeFeaturedProducts,
   HomeHero,
   HomeUspStrip,
+  ProductGridSkeleton,
 } from "@/features/catalog";
 import { HOME_FEATURED_PRODUCT_COUNT, STOREFRONT_CATEGORY_PAGE_SIZE } from "@/lib/dal/catalog";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
@@ -34,7 +34,11 @@ export default function HomePage() {
         </Suspense>
       </HomeCategories>
       <HomeFeaturedProducts>
-        <Suspense fallback={<HomeFeaturedProductGridSkeleton count={HOME_FEATURED_PRODUCT_COUNT} />}>
+        <Suspense
+          fallback={
+            <ProductGridSkeleton className="catalog-product-grid--featured mt-12" count={HOME_FEATURED_PRODUCT_COUNT} />
+          }
+        >
           <HomeFeaturedProductGridSection />
         </Suspense>
       </HomeFeaturedProducts>

@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 
 import { isApiError } from "@/lib/errors";
+import type { ReviewStatus } from "@/lib/schemas/review";
 
 import {
   createCategory,
@@ -44,6 +45,13 @@ import {
   updateCombo,
   updateDiscountCode,
   updateProduct,
+  cancelStrandedPickups,
+  createClosedDate,
+  deleteClosedDate,
+  getStoreSettings,
+  getStrandedPickups,
+  listClosedDates,
+  patchStoreSettings,
 } from "../api";
 import {
   categoryListFilterSchema,
@@ -67,8 +75,11 @@ import {
   type PromotionFormInput,
   type PromotionListFilterInput,
   type ReviewListFilterInput,
-  type ReviewModeration,
   type SalesReportFilterInput,
+  type CancelStrandedFormInput,
+  type ClosedDateFormInput,
+  type StoreSettingsPatch,
+  type StrandingChange,
 } from "../schemas";
 import { managerQueryKeys, MANAGER_LIST_STALE_TIME_MS } from "./query-options";
 
@@ -334,13 +345,13 @@ export function useReviewSummary() {
 export function useModerateReview() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ReviewModeration }) => moderateReview(id, status),
+    mutationFn: ({ id, status }: { id: string; status: ReviewStatus }) => moderateReview(id, status),
     onSuccess: (review) => {
       void queryClient.invalidateQueries({ queryKey: managerQueryKeys.reviewsRoot });
       toast.success(review.status === "published" ? "Review published" : "Review hidden");
     },
     onError: (error) => {
-      toast.error(isApiError(error) ? error.message : "Failed to update the review");
+      toast.error(isApiError(error) ? error.message : "We could not update the review. Please try again.");
     },
   });
 }
@@ -424,6 +435,72 @@ export function useSendPromotion() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: managerQueryKeys.promotionsRoot });
       toast.success("Promotion on its way");
+    },
+  });
+}
+
+export function useStoreSettings() {
+  return useQuery({
+    queryKey: managerQueryKeys.storeSettings,
+    queryFn: getStoreSettings,
+  });
+}
+
+export function usePatchStoreSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (changes: StoreSettingsPatch) => patchStoreSettings(changes),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(managerQueryKeys.storeSettings, settings);
+      toast.success("Pickup rules saved");
+    },
+  });
+}
+
+export function useClosedDates() {
+  return useQuery({
+    queryKey: managerQueryKeys.closedDates,
+    queryFn: listClosedDates,
+  });
+}
+
+export function useCreateClosedDate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ClosedDateFormInput) => createClosedDate(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: managerQueryKeys.closedDates });
+      toast.success("Closed day added");
+    },
+  });
+}
+
+/** The orders a change would strand, read fresh each time it is asked. */
+export function useStrandedPickups(change: StrandingChange) {
+  return useQuery({
+    queryKey: managerQueryKeys.strandedPickups(change),
+    queryFn: () => getStrandedPickups(change),
+    staleTime: 0,
+  });
+}
+
+/** Cancels the orders a change would strand; the dialog shows a failure. */
+export function useCancelStrandedPickups(change: StrandingChange) {
+  return useMutation({
+    mutationFn: (input: CancelStrandedFormInput) => cancelStrandedPickups(change, input),
+    onSuccess: (cancelled) => {
+      toast.success(cancelled === 1 ? "1 order cancelled" : `${cancelled} orders cancelled`);
+    },
+  });
+}
+
+export function useDeleteClosedDate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteClosedDate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: managerQueryKeys.closedDates });
+      toast.success("The bakery is open that day again");
     },
   });
 }

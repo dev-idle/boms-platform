@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BRAND } from "@/constants/brand";
+import { AUTH_REFRESH_COOKIE, AUTH_ROLE_COOKIE } from "@/constants/cookies";
 import { customerAccountSectionHref } from "@/constants/customer-account-sections";
 import { ROUTE } from "@/constants/routes";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
@@ -19,15 +20,17 @@ export function PrivacyPolicy() {
       <PolicySection id="privacy-who" title="1. Who looks after your data">
         <p>
           {BRAND.name}, {BRAND.addressLine}, decides how your personal data is used. For anything
-          in this policy, write to <a href={`mailto:${BRAND.contactEmail}`}>{BRAND.contactEmail}</a>.
+          in this policy, write to <a href={`mailto:${BRAND.contactEmail}`}>{BRAND.contactEmail}</a>{" "}
+          or call {BRAND.contactPhone}.
         </p>
       </PolicySection>
 
       <PolicySection id="privacy-what" title="2. What we keep">
         <ul>
           <li>
-            <strong>Your account:</strong> your email address and your password, which we store
-            only as a one-way hash that nobody can read back.
+            <strong>Your account:</strong> your email address, whether you confirmed it, the version
+            of our policies you accepted when you signed up, and your password, which we store only as
+            a one-way hash that nobody can read back.
           </li>
           <li>
             <strong>Your profile:</strong> the name and phone number you choose to give us.
@@ -71,7 +74,7 @@ export function PrivacyPolicy() {
           </li>
           <li>
             <strong>Reviews:</strong> the rating and comment you give a product you picked up, and
-            whether we published it.
+            whether we hid it.
           </li>
           <li>
             <strong>Custom cakes:</strong> the options and message you choose, and any reference photo
@@ -84,11 +87,16 @@ export function PrivacyPolicy() {
           </li>
           <li>
             <strong>Signing in:</strong> your sign-in sessions with the device and network address
-            they came from, so we can keep your account safe.
+            they came from, so we can keep your account safe, and the single-use links we email you
+            to confirm your address or reset your password.
           </li>
           <li>
             <strong>Changes to your account:</strong> what changed and when, and for the changes you
             make, the network and browser you made them from.
+          </li>
+          <li>
+            <strong>Technical logs:</strong> each request to our servers, with the network address and
+            browser it came from, so we can keep the service running and trace faults.
           </li>
         </ul>
       </PolicySection>
@@ -96,6 +104,11 @@ export function PrivacyPolicy() {
       <PolicySection id="privacy-why" title="3. Why we keep it">
         <ul>
           <li>To take, make and hand over your orders — the agreement you make with us.</li>
+          <li>
+            To send the emails your orders and account need: that we received, accepted or have ready
+            your order, that it was cancelled, not paid in time or not picked up, and the links that
+            confirm your address or reset your password.
+          </li>
           <li>
             To email you, at an address you confirmed, when a message from our staff has waited 15
             minutes unread — once, and not again until you have read it.
@@ -118,7 +131,11 @@ export function PrivacyPolicy() {
             To email you promotions — only if you agreed, when you signed up or on your account page.
           </li>
         </ul>
-        <p>We do not sell your data, and we send marketing only to customers who asked for it.</p>
+        <p>
+          In short, we use your data because our agreement with you needs it, because the law
+          requires it, to keep our service safe, and, for promotions, because you agreed. You
+          accept this policy when you sign up. We do not sell your data.
+        </p>
       </PolicySection>
 
       <PolicySection id="privacy-who-sees" title="4. Who sees it">
@@ -134,11 +151,13 @@ export function PrivacyPolicy() {
           <li>
             Managers see sales figures; the reviews you write with their order and the name on your
             profile, so they can tell real reviews from fake ones; the problems with your orders by order
-            number; and how many customers use each feature — not your contact details.
+            number; and how many customers use each feature. When a manager releases an order whose
+            pickup code cannot be shown, they see the name, email and phone on that order.
           </li>
           <li>
-            Anyone visiting our shop sees a review we published: its rating, comment and date, never
-            your name.
+            Anyone visiting our shop sees your review unless we hid it: its rating, comment and date,
+            signed with the first name and last initial on your profile, if you gave a name — never
+            your email or phone number.
           </li>
           <li>
             Administrators see your account and contact details, to look after accounts and the
@@ -146,12 +165,15 @@ export function PrivacyPolicy() {
           </li>
         </ul>
         <p>
-          Our database is hosted by Neon, reference photos are stored by Cloudinary, and payments
-          are processed by PayPal. They handle your data only to provide those services to us.
+          Our database is hosted by Neon, reference photos are stored by Cloudinary, payments are
+          processed by PayPal, and our emails are delivered by our mail service provider. They
+          handle your data only to provide those services to us. We send PayPal only the amount and
+          our order reference; what you enter on PayPal&apos;s own page is covered by PayPal&apos;s
+          privacy policy.
         </p>
         <p>
-          The assistant&apos;s answers are written by a language model that runs on our own server:
-          your questions are not sent to any other company, and they are not used to train it. Its
+          The assistant&apos;s answers are written by a language model that we run ourselves: your
+          questions are not sent to any other company, and they are not used to train it. Its
           answers are automated and can be wrong; our staff can help with anything it cannot.
         </p>
       </PolicySection>
@@ -161,18 +183,26 @@ export function PrivacyPolicy() {
           <li>
             Your account, profile, cart, favorites, wishlist, reviews, your agreement to promotions and
             your messages with our staff, until you delete your account. Deleting it erases your name,
-            phone number and email, empties your cart and your lists, erases those messages, your
-            reviews, your conversations with the assistant and the messages written on your cakes,
-            deletes the reference photos you uploaded, and removes your personal details from the
-            record of changes; you are signed out everywhere and the account cannot be restored.
+            phone number and email, withdraws your agreement to promotions, empties your cart and your
+            lists, erases those messages, your reviews, your conversations with the assistant and the
+            messages written on your cakes, takes your reference photos off your orders, and removes
+            your personal details from the record of changes; you are signed out everywhere and the
+            account cannot be restored.
           </li>
-          <li>Your sign-in sessions, until you sign out or they expire.</li>
+          <li>
+            Your sign-in sessions, until you sign out, or seven days after you last used the site
+            signed in.
+          </li>
+          <li>
+            A link we email you, until you use it or we send a newer one; it stops working after 48
+            hours, or after 30 minutes for a password reset.
+          </li>
           <li>
             A conversation with the assistant, for 60 days after its last message; then it is deleted.
           </li>
           <li>
-            A reference photo, as long as the order it was made for; one you uploaded without ordering,
-            until you ask us to delete it. Deleting your account deletes every photo you uploaded.
+            The reference photos you upload, whether you ordered with them or not, until you delete
+            your account; they are then deleted from Cloudinary shortly after.
           </li>
           <li>
             Your orders, as part of our sales records, for as long as accounting law requires — after
@@ -199,8 +229,9 @@ export function PrivacyPolicy() {
             <strong>Correct it:</strong> change your name and phone number on the same page.
           </li>
           <li>
-            <strong>Have it removed:</strong> delete your account there once no order of yours is
-            still waiting to be made or collected; your personal details are erased at once.
+            <strong>Have it removed:</strong> delete your account there, with your password, once none
+            of your orders is waiting to be paid, made or collected. Your personal details are erased
+            at once, and your reference photos shortly after.
           </li>
           <li>
             <strong>Withdraw consent or object:</strong> stop promotion emails on your account page or
@@ -215,9 +246,21 @@ export function PrivacyPolicy() {
       </PolicySection>
 
       <PolicySection id="privacy-cookies" title="7. Cookies and your browser">
+        <p>We set two cookies when you sign in:</p>
+        <ul>
+          <li>
+            <strong>{AUTH_REFRESH_COOKIE}:</strong> keeps you signed in.
+          </li>
+          <li>
+            <strong>{AUTH_ROLE_COOKIE}:</strong> holds only the kind of account you have, so we open
+            the right pages for you; it gives no access by itself.
+          </li>
+        </ul>
         <p>
-          We use only the cookies that keep you signed in, and your browser remembers your email
-          for the current tab. We use no analytics or advertising cookies.
+          Scripts on our pages cannot read either cookie. Both last seven days, are renewed while you
+          use the site, and are removed when you sign out. Your browser also keeps your email
+          address and the kind of account you have for the current tab, until you close it. We use
+          no analytics or advertising cookies.
         </p>
       </PolicySection>
 

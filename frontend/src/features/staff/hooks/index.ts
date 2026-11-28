@@ -6,6 +6,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
@@ -13,7 +14,8 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
-import { isApiError } from "@/lib/errors";
+import { pickupQueryKeys } from "@/features/customer";
+import { isApiError, userFacingErrorMessage } from "@/lib/errors";
 import { MESSAGE_REFUSED_TEXT, type MessageInput } from "@/lib/schemas/message";
 import {
   ticketChangeMessage,
@@ -61,21 +63,14 @@ import {
 } from "../schemas";
 import { staffQueryKeys } from "./query-options";
 
-const defaultOrdersFilter: StaffOrdersListFilterInput = {
-  page: 1,
-  page_size: 20,
-};
-
-function staffMutationErrorMessage(error: unknown, fallback: string): string {
-  if (isApiError(error)) {
-    return error.message;
+/** A slot taken, or refused as full, changes what the picker may offer next. */
+function invalidatePickupSlots(queryClient: QueryClient): void {
+  for (const queryKey of pickupQueryKeys) {
+    void queryClient.invalidateQueries({ queryKey });
   }
-  return fallback;
 }
 
-export function useStaffOrders(
-  input: StaffOrdersListFilterInput = defaultOrdersFilter,
-) {
+export function useStaffOrders(input: StaffOrdersListFilterInput) {
   const filter = staffOrdersListFilterSchema.parse(input);
   return useQuery({
     queryKey: staffQueryKeys.orders(filter),
@@ -126,7 +121,7 @@ export function usePatchStaffOrderStatus(orderId: string) {
     },
     onError: (error) => {
       toast.error(
-        staffMutationErrorMessage(error, "Failed to update order status"),
+        userFacingErrorMessage(error, "We could not update the order. Please try again."),
       );
     },
   });
@@ -140,10 +135,12 @@ export function useMoveStaffOrderPickup(orderId: string) {
     onSuccess: (order) => {
       queryClient.setQueryData(staffQueryKeys.order(orderId), order);
       queryClient.invalidateQueries({ queryKey: staffQueryKeys.ordersRoot });
+      invalidatePickupSlots(queryClient);
       toast.success("Pickup moved");
     },
     onError: (error) => {
-      toast.error(staffMutationErrorMessage(error, "Failed to move the pickup"));
+      invalidatePickupSlots(queryClient);
+      toast.error(userFacingErrorMessage(error, "We could not move the pickup. Please try again."));
     },
   });
 }
@@ -178,7 +175,7 @@ export function usePatchCounterTicketStatus() {
       toast.success(ticketChangeMessage(change));
     },
     onError: (error) => {
-      toast.error(staffMutationErrorMessage(error, "Failed to update the ticket"));
+      toast.error(userFacingErrorMessage(error, "We could not update the ticket. Please try again."));
     },
   });
 }
@@ -194,7 +191,7 @@ export function useMoveTicket(orderId: string) {
       toast.success("Ticket moved");
     },
     onError: (error) => {
-      toast.error(staffMutationErrorMessage(error, "Failed to move the ticket"));
+      toast.error(userFacingErrorMessage(error, "We could not move the ticket. Please try again."));
     },
   });
 }
@@ -222,11 +219,13 @@ export function useCreateStaffOrder() {
     onSuccess: (order) => {
       orderKey.current = crypto.randomUUID();
       queryClient.invalidateQueries({ queryKey: staffQueryKeys.ordersRoot });
+      invalidatePickupSlots(queryClient);
       toast.success(`${order.code} taken`);
       router.push(ROUTE.staff.orderDetail(order.id));
     },
     onError: (error) => {
-      toast.error(staffMutationErrorMessage(error, "Failed to take the order"));
+      invalidatePickupSlots(queryClient);
+      toast.error(userFacingErrorMessage(error, "We could not take the order. Please try again."));
     },
   });
 }
@@ -261,7 +260,7 @@ export function useSetProductSoldOut() {
       toast.success(product.sold_out_today ? `${product.name} is sold out today` : `${product.name} is back`);
     },
     onError: (error) => {
-      toast.error(staffMutationErrorMessage(error, "Failed to update the product"));
+      toast.error(userFacingErrorMessage(error, "We could not update the product. Please try again."));
     },
   });
 }
@@ -308,7 +307,7 @@ export function usePostStaffMessage(thread: StaffThreadRef) {
       toast.error(
         isApiError(error) && error.hasValidationDetails()
           ? MESSAGE_REFUSED_TEXT
-          : staffMutationErrorMessage(error, "Failed to send the message"),
+          : userFacingErrorMessage(error, "We could not send the message. Please try again."),
       );
     },
   });
@@ -337,7 +336,7 @@ export function useSetConversationStatus(thread: StaffThreadRef) {
       toast.success(conversation.status === "closed" ? "Conversation resolved" : "Conversation opened again");
     },
     onError: (error) => {
-      toast.error(staffMutationErrorMessage(error, "Failed to update the conversation"));
+      toast.error(userFacingErrorMessage(error, "We could not update the conversation. Please try again."));
     },
   });
 }

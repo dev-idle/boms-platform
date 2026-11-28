@@ -1,20 +1,14 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-
 import {
   CATALOG_COMBOS_HEADING_ID,
   scrollToStorefrontCombosSection,
 } from "../lib/scroll-to-storefront-anchor";
 
-type CatalogCombosMenuLinkProps = {
-  className?: string;
-};
-
-export function CatalogCombosMenuLink({ className }: CatalogCombosMenuLinkProps) {
+export function CatalogCombosMenuLink() {
   return (
     <a
-      className={cn("catalog-sidebar__link catalog-sidebar__link--anchor", className)}
+      className="catalog-chip"
       href={`#${CATALOG_COMBOS_HEADING_ID}`}
       onClick={(event) => {
         event.preventDefault();

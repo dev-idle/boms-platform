@@ -42,9 +42,9 @@ export function ManagerEngagementFeatures() {
           </colgroup>
           <thead>
             <tr>
-              <th>Feature</th>
-              <th className="db-table-num">Customers</th>
-              <th className="db-table-num">Share</th>
+              <th scope="col">Feature</th>
+              <th scope="col" className="db-table-num">Customers</th>
+              <th scope="col" className="db-table-num">Share</th>
             </tr>
           </thead>
           <tbody>
@@ -53,6 +53,7 @@ export function ManagerEngagementFeatures() {
               entityLabel="features"
               isEmpty={false}
               isError={reportQuery.isError}
+              onRetry={() => void reportQuery.refetch()}
               initialLoading={initialLoading}
             />
             {report && !initialLoading && !reportQuery.isError

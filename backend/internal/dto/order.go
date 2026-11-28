@@ -14,6 +14,8 @@ type OrderItemResponse struct {
 	LineTotalCents int64   `json:"line_total_cents"`
 	// Customization is how the customer configured the item, null for a plain one.
 	Customization *CustomizationResponse `json:"customization"`
+	// ImageURL is the product's first photo or the combo's photo, null without one.
+	ImageURL *string `json:"image_url"`
 }
 
 // CustomizationResponse is how a customer configured a custom item: the

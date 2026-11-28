@@ -1274,63 +1274,70 @@ func (q *Queries) ListMissedPickups(ctx context.Context, arg ListMissedPickupsPa
 
 const listOrderItemsByOrderID = `-- name: ListOrderItemsByOrderID :many
 SELECT
-  id,
-  order_id,
-  line_type,
-  product_id,
-  combo_id,
-  configuration,
-  name,
-  slug,
-  quantity,
-  unit_price_cents,
-  line_total_cents,
-  created_at
-FROM order_items
-WHERE order_id = $1
-ORDER BY created_at ASC
+  oi.id, oi.order_id, oi.line_type, oi.product_id, oi.combo_id, oi.configuration, oi.name, oi.slug, oi.quantity, oi.unit_price_cents, oi.line_total_cents, oi.created_at,
+  COALESCE(
+    (
+      SELECT pi.image_url FROM product_images pi
+      INNER JOIN products p ON p.id = pi.product_id AND p.deleted_at IS NULL
+      WHERE pi.product_id = oi.product_id
+      ORDER BY pi.sort_order
+      LIMIT 1
+    ),
+    (SELECT c.image_url FROM combos c WHERE c.id = oi.combo_id AND c.deleted_at IS NULL),
+    ''
+  )::text AS image_url
+FROM order_items oi
+WHERE oi.order_id = $1
+ORDER BY oi.created_at ASC
 `
 
-// ListOrderItemsByOrderID
+type ListOrderItemsByOrderIDRow struct {
+	OrderItem OrderItem `json:"orderItem"`
+	ImageUrl  string    `json:"imageUrl"`
+}
+
+// An order's lines, each with its product's first photo or its combo's photo
+// now — empty for an item without one, or whose product or combo is deleted.
 //
 //	SELECT
-//	  id,
-//	  order_id,
-//	  line_type,
-//	  product_id,
-//	  combo_id,
-//	  configuration,
-//	  name,
-//	  slug,
-//	  quantity,
-//	  unit_price_cents,
-//	  line_total_cents,
-//	  created_at
-//	FROM order_items
-//	WHERE order_id = $1
-//	ORDER BY created_at ASC
-func (q *Queries) ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]OrderItem, error) {
+//	  oi.id, oi.order_id, oi.line_type, oi.product_id, oi.combo_id, oi.configuration, oi.name, oi.slug, oi.quantity, oi.unit_price_cents, oi.line_total_cents, oi.created_at,
+//	  COALESCE(
+//	    (
+//	      SELECT pi.image_url FROM product_images pi
+//	      INNER JOIN products p ON p.id = pi.product_id AND p.deleted_at IS NULL
+//	      WHERE pi.product_id = oi.product_id
+//	      ORDER BY pi.sort_order
+//	      LIMIT 1
+//	    ),
+//	    (SELECT c.image_url FROM combos c WHERE c.id = oi.combo_id AND c.deleted_at IS NULL),
+//	    ''
+//	  )::text AS image_url
+//	FROM order_items oi
+//	WHERE oi.order_id = $1
+//	ORDER BY oi.created_at ASC
+func (q *Queries) ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]ListOrderItemsByOrderIDRow, error) {
 	rows, err := q.db.Query(ctx, listOrderItemsByOrderID, orderID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []OrderItem{}
+	items := []ListOrderItemsByOrderIDRow{}
 	for rows.Next() {
-		var i OrderItem
+		var i ListOrderItemsByOrderIDRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.OrderID,
-			&i.LineType,
-			&i.ProductID,
-			&i.ComboID,
-			&i.Configuration,
-			&i.Name,
-			&i.Slug,
-			&i.Quantity,
-			&i.UnitPriceCents,
-			&i.LineTotalCents,
-			&i.CreatedAt,
+			&i.OrderItem.ID,
+			&i.OrderItem.OrderID,
+			&i.OrderItem.LineType,
+			&i.OrderItem.ProductID,
+			&i.OrderItem.ComboID,
+			&i.OrderItem.Configuration,
+			&i.OrderItem.Name,
+			&i.OrderItem.Slug,
+			&i.OrderItem.Quantity,
+			&i.OrderItem.UnitPriceCents,
+			&i.OrderItem.LineTotalCents,
+			&i.OrderItem.CreatedAt,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -1344,63 +1351,70 @@ func (q *Queries) ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID
 
 const listOrderItemsByOrderIDs = `-- name: ListOrderItemsByOrderIDs :many
 SELECT
-  id,
-  order_id,
-  line_type,
-  product_id,
-  combo_id,
-  configuration,
-  name,
-  slug,
-  quantity,
-  unit_price_cents,
-  line_total_cents,
-  created_at
-FROM order_items
-WHERE order_id = ANY($1::uuid[])
-ORDER BY order_id, created_at ASC
+  oi.id, oi.order_id, oi.line_type, oi.product_id, oi.combo_id, oi.configuration, oi.name, oi.slug, oi.quantity, oi.unit_price_cents, oi.line_total_cents, oi.created_at,
+  COALESCE(
+    (
+      SELECT pi.image_url FROM product_images pi
+      INNER JOIN products p ON p.id = pi.product_id AND p.deleted_at IS NULL
+      WHERE pi.product_id = oi.product_id
+      ORDER BY pi.sort_order
+      LIMIT 1
+    ),
+    (SELECT c.image_url FROM combos c WHERE c.id = oi.combo_id AND c.deleted_at IS NULL),
+    ''
+  )::text AS image_url
+FROM order_items oi
+WHERE oi.order_id = ANY($1::uuid[])
+ORDER BY oi.order_id, oi.created_at ASC
 `
 
-// The lines of many orders in one round trip, as a data export reads them.
+type ListOrderItemsByOrderIDsRow struct {
+	OrderItem OrderItem `json:"orderItem"`
+	ImageUrl  string    `json:"imageUrl"`
+}
+
+// The lines of many orders in one round trip, as a data export reads them,
+// each with its photo as ListOrderItemsByOrderID reads it.
 //
 //	SELECT
-//	  id,
-//	  order_id,
-//	  line_type,
-//	  product_id,
-//	  combo_id,
-//	  configuration,
-//	  name,
-//	  slug,
-//	  quantity,
-//	  unit_price_cents,
-//	  line_total_cents,
-//	  created_at
-//	FROM order_items
-//	WHERE order_id = ANY($1::uuid[])
-//	ORDER BY order_id, created_at ASC
-func (q *Queries) ListOrderItemsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]OrderItem, error) {
+//	  oi.id, oi.order_id, oi.line_type, oi.product_id, oi.combo_id, oi.configuration, oi.name, oi.slug, oi.quantity, oi.unit_price_cents, oi.line_total_cents, oi.created_at,
+//	  COALESCE(
+//	    (
+//	      SELECT pi.image_url FROM product_images pi
+//	      INNER JOIN products p ON p.id = pi.product_id AND p.deleted_at IS NULL
+//	      WHERE pi.product_id = oi.product_id
+//	      ORDER BY pi.sort_order
+//	      LIMIT 1
+//	    ),
+//	    (SELECT c.image_url FROM combos c WHERE c.id = oi.combo_id AND c.deleted_at IS NULL),
+//	    ''
+//	  )::text AS image_url
+//	FROM order_items oi
+//	WHERE oi.order_id = ANY($1::uuid[])
+//	ORDER BY oi.order_id, oi.created_at ASC
+func (q *Queries) ListOrderItemsByOrderIDs(ctx context.Context, orderIds []uuid.UUID) ([]ListOrderItemsByOrderIDsRow, error) {
 	rows, err := q.db.Query(ctx, listOrderItemsByOrderIDs, orderIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []OrderItem{}
+	items := []ListOrderItemsByOrderIDsRow{}
 	for rows.Next() {
-		var i OrderItem
+		var i ListOrderItemsByOrderIDsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.OrderID,
-			&i.LineType,
-			&i.ProductID,
-			&i.ComboID,
-			&i.Configuration,
-			&i.Name,
-			&i.Slug,
-			&i.Quantity,
-			&i.UnitPriceCents,
-			&i.LineTotalCents,
-			&i.CreatedAt,
+			&i.OrderItem.ID,
+			&i.OrderItem.OrderID,
+			&i.OrderItem.LineType,
+			&i.OrderItem.ProductID,
+			&i.OrderItem.ComboID,
+			&i.OrderItem.Configuration,
+			&i.OrderItem.Name,
+			&i.OrderItem.Slug,
+			&i.OrderItem.Quantity,
+			&i.OrderItem.UnitPriceCents,
+			&i.OrderItem.LineTotalCents,
+			&i.OrderItem.CreatedAt,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -2394,18 +2408,27 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
     OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
         AND o.pickup_at < $2::timestamptz)
   )
+  -- Found by what a customer says at the counter: the order's code, their
+  -- name or their email.
+  AND (
+    $3::text = ''
+    OR o.code ILIKE '%' || $3 || '%'
+    OR u.email ILIKE '%' || $3 || '%'
+    OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $3 || '%'
+  )
 ORDER BY
   o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
   CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
     THEN o.pickup_at END ASC NULLS LAST,
   o.pickup_at DESC NULLS LAST,
   o.created_at DESC
-LIMIT $4 OFFSET $3
+LIMIT $5 OFFSET $4
 `
 
 type StaffListOrdersParams struct {
 	Status     *OrderStatus `json:"status"`
 	OpenBefore *time.Time   `json:"openBefore"`
+	Search     string       `json:"search"`
 	Offset     int32        `json:"offset"`
 	Limit      int32        `json:"limit"`
 }
@@ -2473,17 +2496,26 @@ type StaffListOrdersRow struct {
 //	    OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
 //	        AND o.pickup_at < $2::timestamptz)
 //	  )
+//	  -- Found by what a customer says at the counter: the order's code, their
+//	  -- name or their email.
+//	  AND (
+//	    $3::text = ''
+//	    OR o.code ILIKE '%' || $3 || '%'
+//	    OR u.email ILIKE '%' || $3 || '%'
+//	    OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $3 || '%'
+//	  )
 //	ORDER BY
 //	  o.status IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status),
 //	  CASE WHEN o.status NOT IN ('fulfilled'::order_status, 'cancelled'::order_status, 'no_show'::order_status)
 //	    THEN o.pickup_at END ASC NULLS LAST,
 //	  o.pickup_at DESC NULLS LAST,
 //	  o.created_at DESC
-//	LIMIT $4 OFFSET $3
+//	LIMIT $5 OFFSET $4
 func (q *Queries) StaffListOrders(ctx context.Context, arg StaffListOrdersParams) ([]StaffListOrdersRow, error) {
 	rows, err := q.db.Query(ctx, staffListOrders,
 		arg.Status,
 		arg.OpenBefore,
+		arg.Search,
 		arg.Offset,
 		arg.Limit,
 	)
@@ -2527,6 +2559,7 @@ const staffListOrdersCount = `-- name: StaffListOrdersCount :one
 SELECT COUNT(*)::bigint AS count
 FROM orders o
 LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
   AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
   AND (o.status <> 'cancelled'::order_status OR EXISTS (
@@ -2543,11 +2576,20 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
     OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
         AND o.pickup_at < $2::timestamptz)
   )
+  -- Found by what a customer says at the counter: the order's code, their
+  -- name or their email.
+  AND (
+    $3::text = ''
+    OR o.code ILIKE '%' || $3 || '%'
+    OR u.email ILIKE '%' || $3 || '%'
+    OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $3 || '%'
+  )
 `
 
 type StaffListOrdersCountParams struct {
 	Status     *OrderStatus `json:"status"`
 	OpenBefore *time.Time   `json:"openBefore"`
+	Search     string       `json:"search"`
 }
 
 // StaffListOrdersCount
@@ -2555,6 +2597,7 @@ type StaffListOrdersCountParams struct {
 //	SELECT COUNT(*)::bigint AS count
 //	FROM orders o
 //	LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+//	LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 //	WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
 //	  AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
 //	  AND (o.status <> 'cancelled'::order_status OR EXISTS (
@@ -2571,8 +2614,16 @@ type StaffListOrdersCountParams struct {
 //	    OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
 //	        AND o.pickup_at < $2::timestamptz)
 //	  )
+//	  -- Found by what a customer says at the counter: the order's code, their
+//	  -- name or their email.
+//	  AND (
+//	    $3::text = ''
+//	    OR o.code ILIKE '%' || $3 || '%'
+//	    OR u.email ILIKE '%' || $3 || '%'
+//	    OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || $3 || '%'
+//	  )
 func (q *Queries) StaffListOrdersCount(ctx context.Context, arg StaffListOrdersCountParams) (int64, error) {
-	row := q.db.QueryRow(ctx, staffListOrdersCount, arg.Status, arg.OpenBefore)
+	row := q.db.QueryRow(ctx, staffListOrdersCount, arg.Status, arg.OpenBefore, arg.Search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

@@ -17,13 +17,17 @@
   --color-line: #dcd7cd;
   --color-border: #e4e0da;
   --color-line-soft: #ebe7e1;
-  --color-line-sage: #b9c8b5;
 
   /* ---- Matcha (primary action / brand) ---- */
   --color-matcha-100: #edf2ec;
   --color-matcha-500: #23402f;
   --color-matcha-600: #1c3526;
   --color-matcha-700: #1a3024;
+
+  /* ---- On a matcha ground (the footer): secondary text 8.9:1 on matcha-500;
+     the hairline is decorative. Primary text is --theme-on-primary (10.8:1). ---- */
+  --color-on-matcha-muted: #dce6dd;
+  --color-matcha-line: #3d5a48;
 
   /* ---- Brass (value accent) — step is chosen by background, not taste ---- */
   --color-brass: #7d6432;
@@ -88,41 +92,49 @@
   --label-tracking: 0.16em;
   --label-tracking-sm: 0.22em;
 
-  /* ---- Layout — nav merged into the toolbar row.
-     Keep --storefront-header-height literal (no calc): scroll-offset JS parses it. */
-  --storefront-toolbar-height: 5.75rem;
-  --storefront-header-height: 5.75rem;
+  /* ---- Layout — nav merged into the toolbar row; a phone's toolbar is 64px,
+     the full one with the nav from 64rem (below). ---- */
+  --storefront-toolbar-height: 4rem;
+  --storefront-header-height: 4rem;
   --storefront-anchor-gap: 3.5rem;
   --storefront-combos-anchor-gap: 1.75rem;
   --storefront-gutter: 3.5rem;
   --storefront-container: 82.5rem;
 
-  /* ---- Fields: underline, not box ---- */
-  --field-bg: transparent;
-  --field-bg-focus: transparent;
+  /* ---- Fields: a boxed control on the storefront (fields.css draws all four
+     edges there); the dashboard keeps the underline (themes.css). ---- */
+  --field-bg: var(--color-surface);
+  --field-bg-focus: var(--color-surface);
   --field-bg-disabled: var(--color-paper-3);
-  --field-bg-readonly: transparent;
-  --field-border: var(--color-line-strong);
-  --field-border-hover: var(--color-ink-2);
+  --field-bg-readonly: var(--color-paper-3);
+  --field-border: var(--color-line);
+  --field-border-hover: var(--color-line-strong);
   --field-border-focus: var(--color-matcha-500);
-  --field-border-readonly: var(--color-border);
-  --field-text-readonly: var(--color-muted);
+  --field-border-readonly: var(--color-paper-3);
+  --field-text-readonly: var(--color-ink-2);
   --field-label-active: var(--color-ink);
   --field-caret: var(--color-matcha-500);
-  /* Ground behind a transparent field — repaints browser autofill. */
-  --field-autofill-ground: var(--color-bg);
+  /* The field's own ground — repaints browser autofill. */
+  --field-autofill-ground: var(--color-surface);
   /* Placeholders are real text: the old #A89F93 tint measured 2.48:1 and failed AA. */
   --field-placeholder: var(--color-muted);
 
   /* ---- Control scale — storefront default; dashboard overrides in themes.css ---- */
-  --field-control-height: 2.625rem;
+  --field-control-height: 3rem;
   --field-control-font-size: 1rem;
-  --field-control-padding-inline: 0.125rem;
+  --field-control-padding-inline: 0.875rem;
   --password-field-toggle-hit: 2.75rem;
   /* Trailing clear/close button in a search field — icon-only, so always Tier A. */
   --search-action-hit: 2.75rem;
   --btn-control-min-height: 3.25rem;
   --btn-control-min-width: 2.75rem;
-  --btn-control-font-size: 0.75rem;
+  --btn-control-font-size: 0.9375rem;
   --btn-control-padding-inline: 2.125rem;
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --storefront-toolbar-height: 5.75rem;
+    --storefront-header-height: 5.75rem;
+  }
 }

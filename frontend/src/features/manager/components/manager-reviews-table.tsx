@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
+import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
 import { DashboardTableActionButton } from "@/components/ui/dashboard-table-action-button";
 import { DashboardTableRowActions } from "@/components/ui/dashboard-table-actions";
 import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
@@ -12,6 +13,7 @@ import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { RatingStars } from "@/components/ui/rating-stars";
 import { reviewStatusToPillVariant, StatusPill } from "@/components/ui/status-pill";
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
+import { keepPageInRange, paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import type { ReviewStatus } from "@/lib/schemas/review";
 
@@ -21,27 +23,27 @@ const PAGE_SIZE = DASHBOARD_TABLE_PAGE_SIZE;
 const COLUMN_COUNT = 6;
 
 const STATUS_LABEL: Record<ReviewStatus, string> = {
-  pending: "Pending",
   published: "Published",
   hidden: "Hidden",
 };
 
 const FILTERS: Array<{ value: ReviewStatus | undefined; label: string }> = [
-  { value: "pending", label: "Pending" },
+  { value: undefined, label: "All" },
   { value: "published", label: "Published" },
   { value: "hidden", label: "Hidden" },
-  { value: undefined, label: "All" },
 ];
 
-/** Reviews to publish or hide, the ones waiting first. */
+/** Every review, latest first: a manager hides one, or publishes a hidden one again. */
 export function ManagerReviewsTable() {
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<ReviewStatus | undefined>("pending");
+  const [status, setStatus] = useState<ReviewStatus | undefined>(undefined);
   const reviewsQuery = useReviews({ page, page_size: PAGE_SIZE, status });
   const moderate = useModerateReview();
   const { initialLoading, refetching } = getQuerySurface(reviewsQuery);
   const reviews = reviewsQuery.data?.reviews ?? [];
   const pagination = reviewsQuery.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
+  const placeholderRows = paginatedPlaceholderCountFromMeta(reviews.length, pagination, PAGE_SIZE);
 
   return (
     <>
@@ -69,22 +71,22 @@ export function ManagerReviewsTable() {
           </colgroup>
           <thead>
             <tr>
-              <th>Product</th>
-              <th>Review</th>
-              <th>Order</th>
-              <th>Written</th>
-              <th className="db-table-status">Status</th>
-              <th className="db-table-detail">Actions</th>
+              <th scope="col">Product</th>
+              <th scope="col">Review</th>
+              <th scope="col">Order</th>
+              <th scope="col">Written</th>
+              <th scope="col" className="db-table-status">Status</th>
+              <th scope="col" className="db-table-detail">Actions</th>
             </tr>
           </thead>
           <tbody>
             <DashboardTableStateRows
               columnCount={COLUMN_COUNT}
-              emptyFilteredMessage={status === "pending" ? "No review is waiting for you." : undefined}
               entityLabel="reviews"
               hasActiveFilter={status !== undefined}
               isEmpty={reviews.length === 0}
               isError={reviewsQuery.isError}
+              onRetry={() => void reviewsQuery.refetch()}
               initialLoading={initialLoading}
             />
             {!initialLoading && !reviewsQuery.isError
@@ -150,6 +152,7 @@ export function ManagerReviewsTable() {
                   );
                 })
               : null}
+            <DashboardTablePagePlaceholders columnCount={COLUMN_COUNT} count={placeholderRows} />
           </tbody>
         </table>
         <DashboardTablePagination

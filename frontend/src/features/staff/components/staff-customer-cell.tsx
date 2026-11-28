@@ -7,13 +7,17 @@ type StaffCustomerCellProps = {
   channel: OrderChannel;
 };
 
-/** Who an order is for, in a list: the name over the email, or a guest's name over where staff took the order. */
+/**
+ * Who an order is for, in a list: the name over the email, or over where the
+ * order was taken when there is no email — always two lines, so the rows of a
+ * list stand the same height.
+ */
 export function StaffCustomerCell({ customer, channel }: StaffCustomerCellProps) {
-  const secondary = customer.display_name ? (customer.email ?? formatOrderChannelLabel(channel)) : null;
+  const secondary = (customer.display_name && customer.email) || formatOrderChannelLabel(channel);
   return (
     <div className="db-table-stacked-cell min-w-0">
       <span className="db-table-cell-primary truncate">{customer.display_name ?? customer.email}</span>
-      {secondary ? <span className="truncate text-caption-dashboard text-muted">{secondary}</span> : null}
+      <span className="truncate text-caption-dashboard text-muted">{secondary}</span>
     </div>
   );
 }

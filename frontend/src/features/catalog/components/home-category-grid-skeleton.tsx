@@ -8,7 +8,7 @@ export function HomeCategoryGridSkeleton({ count }: HomeCategoryGridSkeletonProp
       {Array.from({ length: count }, (_, index) => (
         <li key={index}>
           <div aria-hidden="true" className="storefront-category-tile">
-            <span className="skeleton h-3 w-6" />
+            <span className="skeleton aspect-[4/5] w-full" />
             <span className="skeleton h-6 w-3/4" />
           </div>
         </li>

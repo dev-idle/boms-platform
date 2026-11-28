@@ -34,15 +34,15 @@ var accountCopies = map[domainaccount.Purpose]accountCopy{
 	domainaccount.PurposeVerifyEmail: {
 		path:      verifyEmailPath,
 		subject:   "Confirm your email address for " + choux.Name,
-		preheader: "Confirm your address to order for pickup.",
+		preheader: "Confirm your email to order for pickup.",
 		eyebrow:   "Confirm your email",
 		heading:   "Confirm your email address",
 		lead: []string{
-			"Confirm that this address is yours to place orders and get updates about them.",
+			"Confirm that this email address is yours to place orders and get updates about them.",
 		},
 		action:     "Confirm email",
 		validity:   "The link works for %s.",
-		footerNote: "You are receiving this email because an account was created with this address at " + choux.Name + ". If that was not you, ignore it: nothing happens without the link.",
+		footerNote: "You are receiving this email because an account was created with this email address at " + choux.Name + ". If that was not you, ignore it: nothing happens without the link.",
 	},
 	domainaccount.PurposeResetPassword: {
 		path:      resetPasswordPath,
@@ -51,7 +51,7 @@ var accountCopies = map[domainaccount.Purpose]accountCopy{
 		eyebrow:   "Password reset",
 		heading:   "Choose a new password",
 		lead: []string{
-			"Someone asked to reset the password of the " + choux.Name + " account for this address. If it was you, choose a new one with the link below; doing so signs you out on every device.",
+			"Someone asked to reset the password of the " + choux.Name + " account for this email address. If it was you, choose a new one with the link below; doing so signs you out on every device.",
 		},
 		action:     "Choose a new password",
 		validity:   "The link works for %s, and only once.",

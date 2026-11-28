@@ -35,32 +35,30 @@ export function OrderChanges({ order, fulfillment }: OrderChangesProps) {
   }
 
   return (
-    <section aria-labelledby="order-changes" className="storefront-order-detail__changes">
-      <h2 className="text-form-label" id="order-changes">
-        Change of plans
-      </h2>
-      <p className="text-caption">You can move the pickup or cancel until we start making your order.</p>
-      <div className="storefront-order-detail__change-actions">
+    <div className="storefront-order-changes">
+      <p className="text-caption">You can change the pickup time or cancel until we start making your order.</p>
+      <div className="storefront-order-changes__actions">
         <Button
           ref={changeButton}
           aria-controls={RESCHEDULE_ID}
           aria-expanded={moving}
           disabled={cancel.isPending}
+          size="sm"
           type="button"
           variant="outline"
           onClick={() => setMoving(!moving)}
         >
-          Change pickup
+          Change pickup time
         </Button>
-        <Button
+        <button
+          className="storefront-text-action storefront-text-action--danger"
           disabled={cancel.isPending || inReview}
           title={inReview ? "PayPal is still reviewing your payment" : undefined}
           type="button"
-          variant="outline"
           onClick={() => setCancelling(true)}
         >
           Cancel order
-        </Button>
+        </button>
       </div>
       {moving ? (
         <OrderReschedule fulfillment={fulfillment} id={RESCHEDULE_ID} orderId={order.id} onDone={closePicker} />
@@ -80,6 +78,6 @@ export function OrderChanges({ order, fulfillment }: OrderChangesProps) {
         onCancel={() => setCancelling(false)}
         onConfirm={() => cancel.mutate(undefined, { onSettled: () => setCancelling(false) })}
       />
-    </section>
+    </div>
   );
 }

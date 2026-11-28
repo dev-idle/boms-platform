@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -73,6 +74,19 @@ func TestProductRepository_ListGallery_Integration(t *testing.T) {
 		assert.Equal(t, []string{first, second}, byID[withImages.ID.String()])
 		assert.Empty(t, byID[withoutImages.ID.String()],
 			"a product with no images returns an empty gallery, never a null array")
+	})
+
+	t.Run("the_cart_lookup_returns_the_same_gallery", func(t *testing.T) {
+		rows, err := products.CatalogGetByIDs(ctx, []uuid.UUID{withImages.ID, withoutImages.ID})
+		require.NoError(t, err)
+
+		byID := make(map[uuid.UUID][]string, len(rows))
+		for _, row := range rows {
+			byID[row.ID] = row.ImageURLs
+		}
+
+		assert.Equal(t, []string{first, second}, byID[withImages.ID])
+		assert.Empty(t, byID[withoutImages.ID])
 	})
 
 	t.Run("manager_list_returns_the_same_gallery", func(t *testing.T) {

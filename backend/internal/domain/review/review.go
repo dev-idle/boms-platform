@@ -1,10 +1,12 @@
-// Package review is a customer rating a product they picked up, and the
-// manager deciding whether the storefront shows it: only a pickup is reviewed,
-// and nothing is shown before a manager reads it, so a review cannot be faked.
+// Package review is a customer rating a product they picked up: only a pickup
+// is reviewed, so a review cannot be faked, and the storefront shows it from
+// the moment it is written until a manager hides it.
 package review
 
 import (
+	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -19,12 +21,11 @@ const (
 	MaxCommentLength = 1000
 )
 
-// Status is where a review stands with the manager: pending until read, then
-// published on the storefront or hidden from it.
+// Status is whether the storefront shows a review: published from the moment
+// it is written, hidden once a manager hides it.
 type Status string
 
 const (
-	StatusPending   Status = "pending"
 	StatusPublished Status = "published"
 	StatusHidden    Status = "hidden"
 )
@@ -42,17 +43,37 @@ type Review struct {
 
 // Valid reports whether s is a status this package defines.
 func (s Status) Valid() bool {
-	return s == StatusPending || s == StatusPublished || s == StatusHidden
+	return s == StatusPublished || s == StatusHidden
 }
 
-// NewModeration checks the status a manager gives a review: published or
-// hidden. A review read once is never pending again.
+// NewModeration checks the status a manager gives a review: hidden, or
+// published again.
 func NewModeration(status string) (Status, error) {
 	s := Status(status)
-	if s != StatusPublished && s != StatusHidden {
+	if !s.Valid() {
 		return "", ErrInvalidStatus
 	}
 	return s, nil
+}
+
+// PublicName is how the storefront names a review's author: the first word of
+// the name they gave and the initial of the last ("Mai Tran" reads "Mai T."),
+// so a review has a person behind it without spelling out who. Nil when they
+// gave no name.
+func PublicName(displayName *string) *string {
+	if displayName == nil {
+		return nil
+	}
+	words := strings.Fields(*displayName)
+	if len(words) == 0 {
+		return nil
+	}
+	name := words[0]
+	if len(words) > 1 {
+		initial, _ := utf8.DecodeRuneInString(words[len(words)-1])
+		name += " " + string(unicode.ToUpper(initial)) + "."
+	}
+	return &name
 }
 
 // NewRating checks a rating: whole stars from MinRating to MaxRating.

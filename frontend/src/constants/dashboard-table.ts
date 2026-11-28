@@ -1,17 +1,8 @@
-/** Shared dashboard data-table defaults (admin + manager + staff lists). */
+/** Rows a page of any dashboard table holds, so no list outruns the screen. */
 export const DASHBOARD_TABLE_PAGE_SIZE = 10;
 
-/** Staff order queue shows more rows per page (operational throughput). */
-export const DASHBOARD_STAFF_ORDERS_PAGE_SIZE = 20;
-
-/** Shared dashboard table column headers (manager + admin lists). */
-export const DASHBOARD_TABLE_COLUMN_LABEL = {
-  endsAt: "Ends",
-  startsAt: "Starts",
-} as const;
-
 export function dashboardTableErrorMessage(entityLabel: string): string {
-  return `Failed to load ${entityLabel}.`;
+  return `We could not load the ${entityLabel}.`;
 }
 
 export function dashboardTableEmptyMessage(entityLabel: string): string {

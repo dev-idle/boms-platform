@@ -26,6 +26,7 @@ export const ApiErrorCode = {
   CategoryHasProducts: "category_has_products",
   SlugExists: "slug_exists",
   CodeExists: "code_exists",
+  DiscountNotFound: "discount_not_found",
   DiscountInactive: "discount_inactive",
   DiscountExpired: "discount_expired",
   DiscountExhausted: "discount_exhausted",
@@ -191,6 +192,23 @@ export class ApiError extends Error {
 
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
+}
+
+/**
+ * What a failed request says to the person who made it: the API's message for
+ * a refusal it explains (a 4xx), one fixed line when they are sending too
+ * fast, and the caller's fallback for the rest — a server failure, a timeout,
+ * an unreadable response or an error that is not the API's — whose message is
+ * not written for them.
+ */
+export function userFacingErrorMessage(error: unknown, fallback: string): string {
+  if (!isApiError(error)) {
+    return fallback;
+  }
+  if (error.isRateLimited()) {
+    return "You are doing that too often. Wait a moment, then try again.";
+  }
+  return error.status >= 400 && error.status < 500 ? error.message : fallback;
 }
 
 /** Maps a parsed HTTP failure envelope to ApiError (browser + refresh paths). */

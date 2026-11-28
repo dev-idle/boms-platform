@@ -62,7 +62,7 @@ func (c *ReplyComposer) ComposeReplyEmail(msg port.ReplyEmail) (port.Email, erro
 		view.ActionURL = c.siteURL + domainorder.PagePath(*msg.OrderID)
 	}
 	if msg.ToName != "" {
-		view.Greeting = "Hi " + msg.ToName + ","
+		view.Greeting = "Hello " + msg.ToName + ","
 	}
 	return c.templates.render(view, msg.To, msg.ToName, view.Subject)
 }

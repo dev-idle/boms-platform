@@ -136,7 +136,7 @@ func defaultOutbox() config.OutboxConfig {
 func defaultMail() config.MailConfig {
 	return config.MailConfig{
 		SMTPHost: "127.0.0.1", SMTPPort: 1025, SMTPTLS: config.SMTPTLSNone,
-		FromAddress: "orders@chouxbakery.example", FromName: "Choux", ReplyTo: "hello@chouxbakery.example",
+		FromAddress: "orders@chouxbakery.example", FromName: "Choux", ReplyTo: "nghiantgcc19224@fpt.edu.vn",
 		SendTimeout: 10 * time.Second, Concurrency: 4, PromotionConcurrency: 1,
 	}
 }

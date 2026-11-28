@@ -15,6 +15,8 @@ const ASSISTANT_NAME = "Assistant";
 
 type AssistantChatProps = {
   chat: AssistantChatState;
+  /** Only a signed-in customer can ask about their orders. */
+  signedIn: boolean;
   /** Opens the conversation with staff. */
   onTalkToStaff: () => void;
 };
@@ -24,16 +26,20 @@ function authorOf(message: Message): string | null {
 }
 
 /** Questions to the assistant and its answers. */
-export function AssistantChat({ chat, onTalkToStaff }: AssistantChatProps) {
+export function AssistantChat({ chat, signedIn, onTalkToStaff }: AssistantChatProps) {
   const handOff = chat.lastAnswer?.hand_off ?? null;
 
   return (
     <>
-      <p className="assistant-panel__notice">Answers are written automatically and can be wrong.</p>
+      {chat.turns.length === 0 ? <p className="assistant-panel__greeting">How can we help?</p> : null}
       <MessageThread
         authorOf={authorOf}
         busy={chat.pending}
-        emptyText="Ask about our products, prices, opening hours or one of your orders."
+        emptyText={
+          signedIn
+            ? "Ask about our products, prices, opening hours or one of your orders."
+            : "Ask about our products, prices or opening hours. Sign in to ask about an order."
+        }
         hasMore={false}
         label="Conversation with the assistant"
         loadingMore={false}
@@ -49,16 +55,12 @@ export function AssistantChat({ chat, onTalkToStaff }: AssistantChatProps) {
             Open order {handOff.order_code}
           </Link>
         ) : null}
-      </div>
-      <div className="assistant-panel__staff">
-        <Button
-          size="sm"
-          type="button"
-          variant={chat.lastAnswer?.offer_staff || chat.failure ? "default" : "ghost"}
-          onClick={onTalkToStaff}
-        >
-          Talk to staff
-        </Button>
+        {/* The Staff tab is always there; the assistant points to it when it cannot help. */}
+        {chat.lastAnswer?.offer_staff || chat.failure ? (
+          <Button className="self-start" size="sm" type="button" variant="outline" onClick={onTalkToStaff}>
+            Talk to our staff
+          </Button>
+        ) : null}
       </div>
       <MessageComposer
         label="Ask the assistant a question"
@@ -67,6 +69,7 @@ export function AssistantChat({ chat, onTalkToStaff }: AssistantChatProps) {
         placeholder="Ask a question…"
         onSend={(input, sent) => void chat.ask(input, sent)}
       />
+      <p className="assistant-panel__notice">Answers are written automatically and can be wrong.</p>
     </>
   );
 }

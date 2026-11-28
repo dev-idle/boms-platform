@@ -1,4 +1,4 @@
-h1:udkzi7o1asbp8sraZ13odICCss0NZxuFcWPK03e19Zw=
+h1:FPEpaItGkmXB0Wh9HTMXZhVSPK270FiFUoL1I90RooE=
 20260601120000_initial_schema.sql h1:hWLNRIrLbMJTc/CLUGjWNH0Fb09J/y8XzuQEt/QGGrk=
 20260922102739_normalize_vietnam_phones.sql h1:4oExt+YB+B+QSWpmLCr5iOkIt9eXN1vbQEOgeop4cP0=
 20260923183657_add_combo_image_url.sql h1:NpmnOxO237rYpbOISIYiKx+e7OcCxw3JcWrpBlmMW9c=
@@ -41,3 +41,4 @@ h1:udkzi7o1asbp8sraZ13odICCss0NZxuFcWPK03e19Zw=
 20261125071252_track_refund_attempts.sql h1:H/itwz5IrYhc0R6K+nKKjju5Y4WN271GJNdO1cwRylQ=
 20261125075952_add_policy_versions_reply_emails_photo_erasures.sql h1:4pRxLzirRMa1QdHRsudis8wRtymHnHXoP++7/Ggny68=
 20261125080003_index_unread_replies.sql h1:Csa0N+yVOMWwDWJ3Fw2eM+xJh3YCuk019rKNDJQcMxM=
+20261127194456_publish_reviews_when_written.sql h1:93igdzbpRmmOkYQk+62GFT9qjYJuM1DsLLTBPk1+Q+I=

@@ -43,9 +43,9 @@ export function ManagerOperationsLate() {
           </colgroup>
           <thead>
             <tr>
-              <th>Order</th>
-              <th>Pickup</th>
-              <th className="db-table-status">Status</th>
+              <th scope="col">Order</th>
+              <th scope="col">Pickup</th>
+              <th scope="col" className="db-table-status">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -55,6 +55,7 @@ export function ManagerOperationsLate() {
               entityLabel="late pickups"
               isEmpty={late.length === 0}
               isError={operationsQuery.isError}
+              onRetry={() => void operationsQuery.refetch()}
               initialLoading={initialLoading}
             />
             {!initialLoading && !operationsQuery.isError

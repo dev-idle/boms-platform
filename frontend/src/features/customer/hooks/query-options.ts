@@ -1,9 +1,9 @@
-import { infiniteQueryOptions, type QueryKey } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions, type QueryKey } from "@tanstack/react-query";
 
 import { REALTIME_EVENT_TYPE, type RealtimeEvent } from "@/lib/realtime/events";
 
-import { getGeneralMessages } from "../api";
-import type { OrdersListFilterInput } from "../schemas";
+import { getGeneralMessages, listOrders } from "../api";
+import { ordersListFilterSchema, type OrdersListFilterInput } from "../schemas";
 
 export const customerQueryKeys = {
   cart: ["customer", "cart"] as const,
@@ -22,6 +22,18 @@ export const customerQueryKeys = {
   reviews: (orderId: string) => [...customerQueryKeys.reviewsRoot, orderId] as const,
   saved: ["customer", "saved"] as const,
 };
+
+/**
+ * A page of the customer's orders. The orders page and the header's glance at
+ * them (next pickup, unread replies) read the same first page through this.
+ */
+export function ordersQueryOptions(input: OrdersListFilterInput) {
+  const filter = ordersListFilterSchema.parse(input);
+  return queryOptions({
+    queryKey: customerQueryKeys.orders(filter),
+    queryFn: () => listOrders(filter),
+  });
+}
 
 /**
  * The customer's general conversation with the counter, the latest page
@@ -63,6 +75,9 @@ export const customerLiveQueryKeys: readonly QueryKey[] = [
  * the general conversation. A review written in another tab, or published or
  * hidden by a manager, changes the order's reviews.
  */
+/** What a pickup picker reads, on the storefront or at the counter: the rules and the days' slots. */
+export const pickupQueryKeys: readonly QueryKey[] = [customerQueryKeys.pickupRules, customerQueryKeys.pickupSlotsRoot];
+
 export function customerQueryKeysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
     case REALTIME_EVENT_TYPE.orderCreated:

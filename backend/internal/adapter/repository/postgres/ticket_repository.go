@@ -208,6 +208,7 @@ func (r *TicketRepository) ListByStation(ctx context.Context, params port.Statio
 		Status:     optionalTicketStatus(params.Status),
 		PickupFrom: params.PickupFrom,
 		PickupTo:   params.PickupTo,
+		Search:     params.Search,
 		Limit:      params.Limit,
 		Offset:     params.Offset,
 	})
@@ -245,6 +246,7 @@ func (r *TicketRepository) CountByStation(ctx context.Context, params port.Stati
 		Status:     optionalTicketStatus(params.Status),
 		PickupFrom: params.PickupFrom,
 		PickupTo:   params.PickupTo,
+		Search:     params.Search,
 	})
 	if err != nil {
 		return 0, mapRepoError(err, "count station tickets")

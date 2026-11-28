@@ -1,4 +1,4 @@
-import type { ListFilterInput, StrandingChange, UserActivityFilterInput } from "../schemas";
+import type { ListFilterInput, UserActivityFilterInput } from "../schemas";
 
 export const adminQueryKeys = {
   users: (filter: ListFilterInput) =>
@@ -10,7 +10,4 @@ export const adminQueryKeys = {
     ["admin", "user", id, "activity", filter.page, filter.page_size] as const,
   userActivityRoot: (id: string) => ["admin", "user", id, "activity"] as const,
   dashboard: ["admin", "dashboard"] as const,
-  storeSettings: ["admin", "store-settings"] as const,
-  closedDates: ["admin", "closed-dates"] as const,
-  strandedPickups: (change: StrandingChange) => ["admin", "stranded-pickups", change] as const,
 };

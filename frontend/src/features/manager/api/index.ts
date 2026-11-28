@@ -8,6 +8,7 @@ import {
 import { staffOrderSummarySchema, type StaffOrderSummary } from "@/features/staff";
 import { parsePaginatedList } from "@/lib/pagination/parse-paginated-list";
 import { orderCodeSchema } from "@/lib/schemas/order";
+import { reviewStatusSchema, type ReviewStatus } from "@/lib/schemas/review";
 
 import {
   categoryFormSchema,
@@ -33,7 +34,6 @@ import {
   promotionFormSchema,
   promotionListFilterSchema,
   reviewListFilterSchema,
-  reviewModerationSchema,
   reviewSummarySchema,
   salesReportFilterSchema,
   salesReportSchema,
@@ -66,13 +66,27 @@ import {
   type PromotionListFilterInput,
   type PromotionsListResult,
   type ReviewListFilterInput,
-  type ReviewModeration,
   type ReviewsListResult,
   type ReviewSummary,
   type SalesReport,
   type SalesReportFilterInput,
   managerHandoverInputSchema,
   type ManagerHandoverInput,
+  cancelStrandedFormSchema,
+  cancelStrandedResultSchema,
+  closedDateFormSchema,
+  closedDateSchema,
+  storeSettingsPatchSchema,
+  storeSettingsSchema,
+  strandedPickupsSchema,
+  strandingChangeSchema,
+  type CancelStrandedFormInput,
+  type ClosedDate,
+  type ClosedDateFormInput,
+  type StoreSettings,
+  type StoreSettingsPatch,
+  type StrandedPickups,
+  type StrandingChange,
 } from "../schemas";
 
 function categoriesPath(filter: CategoryListFilterInput): string {
@@ -379,13 +393,13 @@ export async function getReviewSummary(): Promise<ReviewSummary> {
   });
 }
 
-/** Publishes a review on the storefront, or hides it. */
-export async function moderateReview(id: string, status: ReviewModeration): Promise<ManagerReview> {
+/** Hides a review from the storefront, or publishes it again. */
+export async function moderateReview(id: string, status: ReviewStatus): Promise<ManagerReview> {
   const parsedId = z.uuid().parse(id);
   return browserRequest<ManagerReview>(`/api/v1/manager/reviews/${parsedId}`, {
     method: "PATCH",
     schema: managerReviewSchema,
-    json: { status: reviewModerationSchema.parse(status) },
+    json: { status: reviewStatusSchema.parse(status) },
   });
 }
 
@@ -484,5 +498,62 @@ export async function sendPromotion(input: PromotionFormInput): Promise<ManagerP
     method: "POST",
     schema: managerPromotionSchema,
     json: promotionFormSchema.parse(input),
+  });
+}
+
+export async function getStoreSettings(): Promise<StoreSettings> {
+  return browserRequest<StoreSettings>("/api/v1/manager/settings", {
+    method: "GET",
+    schema: storeSettingsSchema,
+  });
+}
+
+export async function patchStoreSettings(
+  changes: StoreSettingsPatch,
+): Promise<StoreSettings> {
+  return browserRequest<StoreSettings>("/api/v1/manager/settings", {
+    method: "PATCH",
+    json: storeSettingsPatchSchema.parse(changes),
+    schema: storeSettingsSchema,
+  });
+}
+
+export async function listClosedDates(): Promise<ClosedDate[]> {
+  return browserRequest<ClosedDate[]>("/api/v1/manager/closed-dates", {
+    method: "GET",
+    schema: z.array(closedDateSchema),
+  });
+}
+
+export async function createClosedDate(input: ClosedDateFormInput): Promise<ClosedDate> {
+  return browserRequest<ClosedDate>("/api/v1/manager/closed-dates", {
+    method: "POST",
+    json: closedDateFormSchema.parse(input),
+    schema: closedDateSchema,
+  });
+}
+
+/** The orders a closed day or new opening hours would strand. */
+export async function getStrandedPickups(change: StrandingChange): Promise<StrandedPickups> {
+  const params = new URLSearchParams(strandingChangeSchema.parse(change));
+  return browserRequest<StrandedPickups>(`/api/v1/manager/settings/stranded-pickups?${params.toString()}`, {
+    method: "GET",
+    schema: strandedPickupsSchema,
+  });
+}
+
+/** Cancels the orders a change would strand, each refunded and emailed the reason; returns how many. */
+export async function cancelStrandedPickups(change: StrandingChange, input: CancelStrandedFormInput): Promise<number> {
+  const result = await browserRequest<{ cancelled: number }>("/api/v1/manager/settings/stranded-pickups/cancel", {
+    method: "POST",
+    json: { ...strandingChangeSchema.parse(change), ...cancelStrandedFormSchema.parse(input) },
+    schema: cancelStrandedResultSchema,
+  });
+  return result.cancelled;
+}
+
+export async function deleteClosedDate(id: string): Promise<void> {
+  await browserRequestVoid(`/api/v1/manager/closed-dates/${z.uuid().parse(id)}`, {
+    method: "DELETE",
   });
 }

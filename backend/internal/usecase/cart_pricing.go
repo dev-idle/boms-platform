@@ -30,6 +30,10 @@ type pricedCartLine struct {
 	IsAvailable    bool
 	// Customization is the line as configured, priced now; nil for a plain line.
 	Customization *domainorder.Customization
+	// ImageURL is the line's product or combo photo, empty without one;
+	// CategoryName comes with a product line's product, empty for a combo.
+	ImageURL     string
+	CategoryName string
 }
 
 type cartTotals struct {
@@ -109,6 +113,10 @@ func (p *cartPricer) priceLines(ctx context.Context, items []domaincart.Item) ([
 			}
 			line.Name = product.Name
 			line.Slug = product.Slug
+			line.CategoryName = product.CategoryName
+			if len(product.ImageURLs) > 0 {
+				line.ImageURL = product.ImageURLs[0]
+			}
 			unitPrice, customization, available, err := customizedPrice(product, optionsByProduct[product.ID], item.Configuration)
 			if err != nil {
 				return nil, err
@@ -132,6 +140,9 @@ func (p *cartPricer) priceLines(ctx context.Context, items []domaincart.Item) ([
 			}
 			line.Name = combo.Name
 			line.Slug = combo.Slug
+			if combo.ImageURL != nil {
+				line.ImageURL = *combo.ImageURL
+			}
 			line.UnitPriceCents = combo.PriceCents
 			line.LineTotalCents = combo.PriceCents * int64(item.Quantity)
 			line.IsAvailable = true

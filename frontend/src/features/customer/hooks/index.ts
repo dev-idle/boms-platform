@@ -13,7 +13,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 import { ROUTE } from "@/constants/routes";
-import { ApiErrorCode, isApiError } from "@/lib/errors";
+import { ApiErrorCode, isApiError, userFacingErrorMessage } from "@/lib/errors";
 import type { CatalogProduct } from "@/lib/schemas/catalog";
 import { MESSAGE_REFUSED_TEXT, type MessageInput } from "@/lib/schemas/message";
 
@@ -30,7 +30,6 @@ import {
   getPickupRules,
   getPickupSlots,
   listOrderReviews,
-  listOrders,
   listSavedProducts,
   markGeneralMessagesRead,
   markOrderMessagesRead,
@@ -45,7 +44,6 @@ import {
   updateCartItem,
 } from "../api";
 import {
-  ordersListFilterSchema,
   type AddCartItemInput,
   type ApplyCartDiscountInput,
   type CheckoutInput,
@@ -56,14 +54,8 @@ import {
   type SavedProduct,
   type UpdateCartItemInput,
 } from "../schemas";
-import { customerQueryKeys, generalMessagesQueryOptions } from "./query-options";
-
-function cartMutationErrorMessage(error: unknown, fallback: string): string {
-  if (isApiError(error)) {
-    return error.message;
-  }
-  return fallback;
-}
+import { nextPickup, unreadOrderMessages } from "../lib/orders-glance";
+import { customerQueryKeys, generalMessagesQueryOptions, ordersQueryOptions } from "./query-options";
 
 type UseCartOptions = {
   /** Skip fetch when false — use on public chrome for guests (avoids 401 → login redirect). */
@@ -98,7 +90,7 @@ export function useUpdateCartItem(itemId: string) {
       queryClient.setQueryData(customerQueryKeys.cart, cart);
     },
     onError: (error) => {
-      toast.error(cartMutationErrorMessage(error, "Failed to update cart item"));
+      toast.error(userFacingErrorMessage(error, "We could not change the quantity. Please try again."));
     },
   });
 }
@@ -112,10 +104,20 @@ export function useRemoveCartItem() {
       toast.success("Item removed");
     },
     onError: (error) => {
-      toast.error(cartMutationErrorMessage(error, "Failed to remove cart item"));
+      toast.error(userFacingErrorMessage(error, "We could not remove the item. Please try again."));
     },
   });
 }
+
+/** Why the API refused a discount code, as the customer reads it. */
+const DISCOUNT_REFUSALS: ReadonlyMap<string, string> = new Map([
+  [ApiErrorCode.DiscountNotFound, "This code is not valid"],
+  [ApiErrorCode.DiscountInactive, "This code is not valid"],
+  [ApiErrorCode.DiscountExpired, "This code has expired"],
+  [ApiErrorCode.DiscountExhausted, "This code has been fully used"],
+  [ApiErrorCode.DiscountMinOrderNotMet, "Your subtotal is below this code's minimum"],
+  [ApiErrorCode.DiscountUsedUp, "You have already used this code"],
+]);
 
 export function useApplyCartDiscount() {
   const queryClient = useQueryClient();
@@ -126,7 +128,13 @@ export function useApplyCartDiscount() {
       toast.success("Discount applied");
     },
     onError: (error) => {
-      toast.error(cartMutationErrorMessage(error, "Failed to apply discount"));
+      // A code the request's own length check refuses never reaches the API.
+      if (error instanceof z.ZodError) {
+        toast.error("Enter the full code");
+        return;
+      }
+      const refusal = isApiError(error) ? DISCOUNT_REFUSALS.get(error.code) : undefined;
+      toast.error(refusal ?? userFacingErrorMessage(error, "We could not apply the code. Please try again."));
     },
   });
 }
@@ -140,7 +148,7 @@ export function useRemoveCartDiscount() {
       toast.success("Discount removed");
     },
     onError: (error) => {
-      toast.error(cartMutationErrorMessage(error, "Failed to remove discount"));
+      toast.error(userFacingErrorMessage(error, "We could not remove the code. Please try again."));
     },
   });
 }
@@ -170,7 +178,7 @@ export function useCheckoutCart() {
       checkoutKey.current = crypto.randomUUID();
       queryClient.invalidateQueries({ queryKey: customerQueryKeys.cart });
       queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
-      toast.success("Order placed. Pay with PayPal to confirm it.");
+      toast.success("Order placed. Pay with PayPal to complete it.");
       router.push(ROUTE.orderDetail(order.id));
     },
     onError: (error) => {
@@ -186,7 +194,7 @@ export function useCheckoutCart() {
           ? "Our policies were just updated. Reload the page, then read and accept the current version."
           : isApiError(error) && error.code === ApiErrorCode.EmailNotVerified
             ? "Confirm your email address before placing an order. We sent you a link."
-            : cartMutationErrorMessage(error, "Checkout failed"),
+            : userFacingErrorMessage(error, "We could not place your order. Please try again."),
       );
     },
   });
@@ -198,11 +206,25 @@ const defaultOrdersFilter: OrdersListFilterInput = {
 };
 
 export function useOrders(input: OrdersListFilterInput = defaultOrdersFilter) {
-  const filter = ordersListFilterSchema.parse(input);
   return useQuery({
-    queryKey: customerQueryKeys.orders(filter),
-    queryFn: () => listOrders(filter),
+    ...ordersQueryOptions(input),
     placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * What the header shows a signed-in customer about their orders: the next
+ * pickup and the replies they have not read. It reads the first page of the
+ * order list, the same cache the orders page opens on.
+ */
+export function useOrdersGlance(signedIn: boolean) {
+  return useQuery({
+    ...ordersQueryOptions(defaultOrdersFilter),
+    enabled: signedIn,
+    select: (result) => ({
+      next: nextPickup(result.orders, new Date()),
+      unread: unreadOrderMessages(result.orders),
+    }),
   });
 }
 
@@ -217,7 +239,7 @@ export function useStartPayment(orderId: string) {
     onError: (error) => {
       if (isApiError(error) && error.code === ApiErrorCode.OrderNotPayable) {
         void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
-        toast.error("This order can no longer be paid.");
+        toast.error("This order can no longer be paid");
         return;
       }
       toast.error("We could not open PayPal. Please try again.");
@@ -234,8 +256,8 @@ function useCapturePayment(orderId: string) {
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
       toast.success(
         status === "captured"
-          ? "Payment received. Your order is confirmed."
-          : "PayPal is reviewing your payment. Your order is confirmed as soon as it clears.",
+          ? "Payment received"
+          : "PayPal is reviewing your payment. We will update your order as soon as it clears.",
       );
     },
     onError: (error) => {
@@ -318,13 +340,13 @@ export function useCancelOrder(orderId: string) {
       toast.success(
         order.payment?.refund_requested_at
           ? "Order cancelled. Your refund is on its way to PayPal."
-          : "Order cancelled.",
+          : "Order cancelled",
       );
     },
     onError: (error) => {
       if (isApiError(error) && error.code === ApiErrorCode.InvalidOrderStatusTransition) {
         void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
-        toast.error("We have started making this order, so it can no longer be cancelled.");
+        toast.error("We have started making this order, so it can no longer be cancelled");
         return;
       }
       if (isApiError(error) && error.code === ApiErrorCode.PaymentUnderReview) {
@@ -345,12 +367,12 @@ export function useRescheduleOrder(orderId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.ordersRoot });
-      toast.success("Pickup time changed.");
+      toast.success("Pickup time changed");
     },
     onError: (error) => {
       if (isApiError(error) && error.code === ApiErrorCode.InvalidOrderStatusTransition) {
         void queryClient.invalidateQueries({ queryKey: customerQueryKeys.order(orderId) });
-        toast.error("We have started making this order, so its pickup can no longer be changed.");
+        toast.error("We have started making this order, so its pickup time can no longer be changed");
         return;
       }
       // The rules or the slots may be older than the server's.
@@ -358,7 +380,7 @@ export function useRescheduleOrder(orderId: string) {
         void queryClient.invalidateQueries({ queryKey: customerQueryKeys.pickupRules });
         void queryClient.invalidateQueries({ queryKey: customerQueryKeys.pickupSlotsRoot });
       }
-      toast.error(cartMutationErrorMessage(error, "We could not change the pickup time."));
+      toast.error(userFacingErrorMessage(error, "We could not change the pickup time. Please try again."));
     },
   });
 }
@@ -387,7 +409,7 @@ function toastMessageError(error: Error): void {
     toast.error(MESSAGE_REFUSED_TEXT);
     return;
   }
-  toast.error(cartMutationErrorMessage(error, "We could not send your message. Please try again."));
+  toast.error(userFacingErrorMessage(error, "We could not send your message. Please try again."));
 }
 
 /** Writes the customer's message to the counter about their order. */
@@ -487,7 +509,7 @@ export function useCreateReview(orderId: string) {
       if (isApiError(error) && error.hasValidationDetails()) {
         return;
       }
-      toast.error(cartMutationErrorMessage(error, "We could not post your review. Please try again."));
+      toast.error(userFacingErrorMessage(error, "We could not post your review. Please try again."));
     },
   });
 }
@@ -545,8 +567,8 @@ export function useToggleSaved() {
       );
       toast.error(
         isApiError(error) && error.code === ApiErrorCode.SavedListFull
-          ? "A list holds up to 100 products. Remove one to save another."
-          : cartMutationErrorMessage(error, "We could not update your list. Please try again."),
+          ? "A saved list holds up to 100 products. Remove one to save another."
+          : userFacingErrorMessage(error, "We could not update your saved list. Please try again."),
       );
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: customerQueryKeys.saved }),
@@ -569,7 +591,7 @@ export function useMoveToCart() {
     onError: (error) => {
       // The product may be in the cart already, and only taking it off the wishlist failed.
       void queryClient.invalidateQueries({ queryKey: customerQueryKeys.cart });
-      toast.error(cartMutationErrorMessage(error, "We could not move it to your cart. Please try again."));
+      toast.error(userFacingErrorMessage(error, "We could not move it to your cart. Please try again."));
     },
     // Pending until the list is fresh, so a moved product cannot be moved twice.
     onSettled: () => queryClient.invalidateQueries({ queryKey: customerQueryKeys.saved }),

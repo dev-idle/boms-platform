@@ -7,10 +7,12 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DashboardFormCancelLink } from "@/components/ui/dashboard-form-cancel-link";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
 
@@ -58,7 +60,7 @@ export function PromotionForm({ onSent }: PromotionFormProps) {
           applyFormFieldErrors(form, error.details!, FIELDS);
           return;
         }
-        toast.error(isApiError(error) ? error.message : "Failed to send the promotion");
+        toast.error(isApiError(error) ? error.message : "We could not send the promotion. Please try again.");
       },
     });
   }
@@ -124,6 +126,7 @@ export function PromotionForm({ onSent }: PromotionFormProps) {
             isPending={send.isPending}
             pendingLabel="Sending…"
           />
+          <DashboardFormCancelLink href={ROUTE.manager.promotions} />
         </div>
       </form>
       <ConfirmDialog

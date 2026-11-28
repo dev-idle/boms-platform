@@ -6,6 +6,7 @@ import { ASSIGNABLE_OPERATIONAL_ROLES } from "@/constants/roles";
 import { cn } from "@/lib/utils";
 
 import {
+  adminUserRowActions,
   ERASED_ACCOUNT_REASON,
   isAdminAccountManagementLocked,
 } from "../lib/account-management";
@@ -70,6 +71,8 @@ export function AdminUserDetailActions({
   const busyReason = actionsPending ? "Another action is finishing…" : undefined;
   const showReset = canResetPassword(user);
   const accountLocked = isAdminAccountManagementLocked(user);
+  // The same rule as the list: a disabled or erased account has no session left to revoke.
+  const sessions = adminUserRowActions(user, undefined).sessions;
 
   // §"Inline action groups take a hairline between members": three uppercase text
   // actions in a row read as one run, so a 1px rule divides them. Building the list
@@ -100,9 +103,9 @@ export function AdminUserDetailActions({
       ) : null,
     !accountLocked ? (
       <InlineAction
-          disabled={actionsPending}
+          disabled={actionsPending || sessions.kind === "blocked"}
           onClick={onRevokeSessions}
-          title={busyReason}
+          title={sessions.kind === "blocked" ? sessions.reason : busyReason}
           tone="warning"
         >
           Revoke all sessions

@@ -18,16 +18,16 @@ import {
 } from "@/components/ui/dashboard-table-actions";
 import { EntityActivePill } from "@/components/ui/status-pill";
 import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
-import { DASHBOARD_TABLE_PAGE_SIZE, DASHBOARD_TABLE_COLUMN_LABEL } from "@/constants/dashboard-table";
-import { DashboardTableToolbarMeta } from "@/components/ui/dashboard-table-toolbar-meta";
+import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
-import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
+import { DashboardTableDateRangeCell } from "@/components/ui/dashboard-table-date-range-cell";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
 import { formatPriceCents } from "@/lib/validation/catalog";
 
 import { useDeleteDiscountCode, useDiscountCodes } from "../hooks";
@@ -68,6 +68,7 @@ export function ManagerDiscountCodesTable() {
   const { initialLoading, refetching } = getQuerySurface(query);
   const discountCodes = query.data?.discount_codes ?? [];
   const pagination = query.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     discountCodes.length,
     pagination,
@@ -82,7 +83,7 @@ export function ManagerDiscountCodesTable() {
             <Link href={ROUTE.manager.discountCodesNew}>+ New discount code</Link>
           </Button>
         }
-        description="Create promotion codes for checkout (validated server-side at cart)."
+        description="Codes a customer enters at checkout for money or a percent off."
         eyebrow={DASHBOARD_PAGE_EYEBROW.promotions}
         title={PAGE_TITLES.discountCodes}
       />
@@ -90,46 +91,40 @@ export function ManagerDiscountCodesTable() {
       <div className="dashboard-page-body">
         <div className="db-table-filters">
           <DashboardSearchField
+            label="Search discount codes"
             onChange={setInput}
             onClear={clear}
             placeholder="Search code"
             value={input}
           />
-          {pagination ? (
-            <DashboardTableToolbarMeta>
-              {pagination.total}{" "}
-              {pagination.total === 1 ? "code" : "codes"}
-            </DashboardTableToolbarMeta>
-          ) : null}
         </div>
 
         <DashboardTableWrap refetching={refetching}>
-          <table className="db-table db-table--catalog">
+          <table className="db-table db-table--catalog db-table--discount-codes">
             <colgroup>
-              <col />
+              <col className="db-table-col-code" />
               <col className="db-table-col-number" />
               <col className="db-table-col-number" />
-              <col className="db-table-col-datetime" />
               <col className="db-table-col-datetime" />
             </colgroup>
             <thead>
               <tr>
-                <th>Code</th>
-                <th className="db-table-num">Value</th>
-                <th className="db-table-num">Uses</th>
-                <th>{DASHBOARD_TABLE_COLUMN_LABEL.startsAt}</th>
-                <th>{DASHBOARD_TABLE_COLUMN_LABEL.endsAt}</th>
-                <th className="db-table-status">Status</th>
-                <th className="db-table-detail">Actions</th>
+                <th scope="col">Code</th>
+                <th scope="col" className="db-table-num">Value</th>
+                <th scope="col" className="db-table-num">Uses</th>
+                <th scope="col">Runs</th>
+                <th scope="col" className="db-table-status">Status</th>
+                <th scope="col" className="db-table-detail">Actions</th>
               </tr>
             </thead>
             <tbody>
               <DashboardTableStateRows
-                columnCount={7}
+                columnCount={6}
                 entityLabel="discount codes"
                 hasActiveFilter={Boolean(search)}
                 isEmpty={discountCodes.length === 0}
                 isError={query.isError}
+                onRetry={() => void query.refetch()}
                 initialLoading={initialLoading}
               />
               {!initialLoading && !query.isError && discountCodes.length > 0
@@ -150,17 +145,12 @@ export function ManagerDiscountCodesTable() {
                       ? ` / ${discountCode.max_uses}`
                       : ""}
                   </td>
-                  <DashboardTableDateTimeCell iso={discountCode.starts_at} />
-                  <DashboardTableDateTimeCell iso={discountCode.ends_at} />
+                  <DashboardTableDateRangeCell endsAt={discountCode.ends_at} startsAt={discountCode.starts_at} />
                   <td className="db-table-status">
                     <EntityActivePill active={discountCode.is_active} />
                   </td>
                   <td className="db-table-detail">
                     <DashboardTableRowActions>
-                      <DashboardTableEditLink
-                        href={ROUTE.manager.discountCodeDetail(discountCode.id)}
-                        label={`Edit ${discountCode.code}`}
-                      />
                       <DashboardTableDeleteButton
                         label={`Delete ${discountCode.code}`}
                         onClick={() =>
@@ -170,13 +160,17 @@ export function ManagerDiscountCodesTable() {
                           })
                         }
                       />
+                      <DashboardTableEditLink
+                        href={ROUTE.manager.discountCodeDetail(discountCode.id)}
+                        label={`Edit ${discountCode.code}`}
+                      />
                     </DashboardTableRowActions>
                   </td>
                 </tr>
               ))
                 : null}
               <DashboardTablePagePlaceholders
-                columnCount={7}
+                columnCount={6}
                 count={pagePlaceholderCount}
               />
             </tbody>
@@ -209,7 +203,7 @@ export function ManagerDiscountCodesTable() {
               toast.error(
                 isApiError(error)
                   ? error.message
-                  : "Failed to delete discount code",
+                  : "We could not delete discount code. Please try again.",
               );
             },
           });

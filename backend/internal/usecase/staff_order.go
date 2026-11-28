@@ -79,7 +79,7 @@ func NewStaffOrderUsecase(
 func (u *StaffOrderUsecase) List(
 	ctx context.Context,
 	page, pageSize int32,
-	statusFilter string,
+	statusFilter, search string,
 ) ([]dto.StaffOrderSummaryResponse, int64, int32, int32, error) {
 	page, pageSize = normalizeOrderListPage(page, pageSize)
 
@@ -104,17 +104,19 @@ func (u *StaffOrderUsecase) List(
 		status = &parsed
 	}
 
+	params := port.StaffListOrdersParams{
+		Status:     status,
+		OpenBefore: openBefore,
+		Search:     strings.TrimSpace(search),
+		Limit:      pageSize,
+		Offset:     utils.PageOffset(page, pageSize),
+	}
 	rows, total, err := listWithTotal(ctx,
 		func(ctx context.Context) ([]port.StaffOrderListRow, error) {
-			return u.orders.StaffList(ctx, port.StaffListOrdersParams{
-				Status:     status,
-				OpenBefore: openBefore,
-				Limit:      pageSize,
-				Offset:     utils.PageOffset(page, pageSize),
-			})
+			return u.orders.StaffList(ctx, params)
 		},
 		func(ctx context.Context) (int64, error) {
-			return u.orders.StaffListCount(ctx, status, openBefore)
+			return u.orders.StaffListCount(ctx, params)
 		},
 	)
 	if err != nil {

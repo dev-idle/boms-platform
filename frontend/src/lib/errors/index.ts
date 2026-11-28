@@ -5,6 +5,7 @@ export {
   apiErrorFromPayload,
   isApiError,
   throwApiErrorFromEnvelope,
+  userFacingErrorMessage,
 } from "./api-error";
 
 /** Server-side DAL errors (RSC / Fiber api-client). */

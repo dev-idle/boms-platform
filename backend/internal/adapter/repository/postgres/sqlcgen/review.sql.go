@@ -142,8 +142,9 @@ func (q *Queries) GetReviewForUpdate(ctx context.Context, id uuid.UUID) (GetRevi
 }
 
 const listPublishedReviews = `-- name: ListPublishedReviews :many
-SELECT r.id, r.rating, r.comment, r.created_at
+SELECT r.id, r.rating, r.comment, r.created_at, cp.display_name AS author_name
 FROM reviews r
+LEFT JOIN customer_profiles cp ON cp.user_id = r.user_id
 WHERE r.product_id = $1
   AND r.status = 'published'::review_status
   AND r.deleted_at IS NULL
@@ -165,17 +166,20 @@ type ListPublishedReviewsParams struct {
 }
 
 type ListPublishedReviewsRow struct {
-	ID        uuid.UUID `json:"id"`
-	Rating    int16     `json:"rating"`
-	Comment   *string   `json:"comment"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID         uuid.UUID `json:"id"`
+	Rating     int16     `json:"rating"`
+	Comment    *string   `json:"comment"`
+	CreatedAt  time.Time `json:"createdAt"`
+	AuthorName *string   `json:"authorName"`
 }
 
-// A page of a product's published reviews, latest first: the latest, or those
-// written before the review before_id names.
+// A page of a product's published reviews, latest first, each with the name
+// its author gave: the latest, or those written before the review before_id
+// names.
 //
-//	SELECT r.id, r.rating, r.comment, r.created_at
+//	SELECT r.id, r.rating, r.comment, r.created_at, cp.display_name AS author_name
 //	FROM reviews r
+//	LEFT JOIN customer_profiles cp ON cp.user_id = r.user_id
 //	WHERE r.product_id = $1
 //	  AND r.status = 'published'::review_status
 //	  AND r.deleted_at IS NULL
@@ -202,6 +206,7 @@ func (q *Queries) ListPublishedReviews(ctx context.Context, arg ListPublishedRev
 			&i.Rating,
 			&i.Comment,
 			&i.CreatedAt,
+			&i.AuthorName,
 		); err != nil {
 			return nil, err
 		}
@@ -391,8 +396,8 @@ type ManagerListReviewsRow struct {
 	ModeratorName *string      `json:"moderatorName"`
 }
 
-// A page of reviews to moderate, latest first, with the product, the order
-// and the name the customer gave.
+// A page of reviews, latest first, with the product, the order and the name
+// the customer gave.
 //
 //	SELECT
 //	  r.id,
@@ -522,7 +527,8 @@ type ModerateReviewRow struct {
 	ModeratorName *string      `json:"moderatorName"`
 }
 
-// Publishes or hides a review, and returns it as the moderation list shows it.
+// Hides a review or publishes it again, and returns it as the manager's list
+// shows it.
 //
 //	WITH moderated AS (
 //	  UPDATE reviews
@@ -571,7 +577,6 @@ func (q *Queries) ModerateReview(ctx context.Context, arg ModerateReviewParams) 
 const reviewRatingCounts = `-- name: ReviewRatingCounts :one
 SELECT
   count(*)::bigint AS review_count,
-  count(*) FILTER (WHERE r.status = 'pending'::review_status)::bigint AS pending_count,
   COALESCE(sum(r.rating), 0)::bigint AS rating_total,
   count(*) FILTER (WHERE r.rating = 1)::bigint AS one_star,
   count(*) FILTER (WHERE r.rating = 2)::bigint AS two_stars,
@@ -585,22 +590,20 @@ WHERE r.deleted_at IS NULL
 `
 
 type ReviewRatingCountsRow struct {
-	ReviewCount  int64 `json:"reviewCount"`
-	PendingCount int64 `json:"pendingCount"`
-	RatingTotal  int64 `json:"ratingTotal"`
-	OneStar      int64 `json:"oneStar"`
-	TwoStars     int64 `json:"twoStars"`
-	ThreeStars   int64 `json:"threeStars"`
-	FourStars    int64 `json:"fourStars"`
-	FiveStars    int64 `json:"fiveStars"`
+	ReviewCount int64 `json:"reviewCount"`
+	RatingTotal int64 `json:"ratingTotal"`
+	OneStar     int64 `json:"oneStar"`
+	TwoStars    int64 `json:"twoStars"`
+	ThreeStars  int64 `json:"threeStars"`
+	FourStars   int64 `json:"fourStars"`
+	FiveStars   int64 `json:"fiveStars"`
 }
 
-// Every review not hidden of a product the bakery keeps: how many, how many
-// wait for a manager, their ratings added up, and how many of each rating.
+// Every review not hidden of a product the bakery keeps: how many, their
+// ratings added up, and how many of each rating.
 //
 //	SELECT
 //	  count(*)::bigint AS review_count,
-//	  count(*) FILTER (WHERE r.status = 'pending'::review_status)::bigint AS pending_count,
 //	  COALESCE(sum(r.rating), 0)::bigint AS rating_total,
 //	  count(*) FILTER (WHERE r.rating = 1)::bigint AS one_star,
 //	  count(*) FILTER (WHERE r.rating = 2)::bigint AS two_stars,
@@ -616,7 +619,6 @@ func (q *Queries) ReviewRatingCounts(ctx context.Context) (ReviewRatingCountsRow
 	var i ReviewRatingCountsRow
 	err := row.Scan(
 		&i.ReviewCount,
-		&i.PendingCount,
 		&i.RatingTotal,
 		&i.OneStar,
 		&i.TwoStars,

@@ -26,8 +26,7 @@ type ReviewRepository interface {
 	// GetForUpdate holds the review until the transaction ends.
 	GetForUpdate(ctx context.Context, id uuid.UUID) (LockedReview, error)
 	Moderate(ctx context.Context, id, moderatorID uuid.UUID, status domainreview.Status) (*ManagerReview, error)
-	// RatingCounts adds up every review not hidden, and counts those pending
-	// and each rating.
+	// RatingCounts adds up every review not hidden, and counts each rating.
 	RatingCounts(ctx context.Context) (RatingCounts, error)
 	// RatingsByProduct adds up each reviewed product's reviews not hidden, the
 	// lowest average first. Both leave out the products the bakery deleted.
@@ -47,12 +46,14 @@ type CreateReviewParams struct {
 	Comment   *string
 }
 
-// PublishedReview is a review as the storefront shows it, without its author.
+// PublishedReview is a review as the storefront shows it, with the name its
+// author gave.
 type PublishedReview struct {
-	ID        uuid.UUID
-	Rating    int16
-	Comment   *string
-	CreatedAt time.Time
+	ID         uuid.UUID
+	Rating     int16
+	Comment    *string
+	CreatedAt  time.Time
+	AuthorName *string
 }
 
 // LockedReview is where a review stands and who wrote it.
@@ -67,13 +68,12 @@ type RatingTotal struct {
 	Total int64
 }
 
-// RatingCounts adds up reviews, counts those pending and each rating:
-// Stars[0] holds the one-star reviews.
+// RatingCounts adds up reviews and counts each rating: Stars[0] holds the
+// one-star reviews.
 type RatingCounts struct {
-	Count   int64
-	Pending int64
-	Total   int64
-	Stars   [domainreview.MaxRating]int64
+	Count int64
+	Total int64
+	Stars [domainreview.MaxRating]int64
 }
 
 // ProductRating adds up one product's reviews.
@@ -84,7 +84,7 @@ type ProductRating struct {
 	Total       int64
 }
 
-// ManagerListReviewsParams pages the reviews to moderate. Status nil lists
+// ManagerListReviewsParams pages the reviews a manager reads. Status nil lists
 // every review.
 type ManagerListReviewsParams struct {
 	Status *domainreview.Status
@@ -92,8 +92,8 @@ type ManagerListReviewsParams struct {
 	Offset int32
 }
 
-// ManagerReview is a review as a manager moderates it: with its order,
-// product, the name its author gave and who moderated it last.
+// ManagerReview is a review as a manager reads it: with its order, product,
+// the name its author gave and who hid it or published it again last.
 type ManagerReview struct {
 	ID            uuid.UUID
 	OrderCode     string

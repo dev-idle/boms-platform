@@ -72,6 +72,9 @@ export async function listStaffOrders(
   if (filter.status) {
     params.set("status", filter.status);
   }
+  if (filter.search) {
+    params.set("search", filter.search);
+  }
   const result = await browserRequestWithMeta<z.infer<typeof staffOrderSummarySchema>[]>(
     `/api/v1/staff/orders?${params.toString()}`,
     { method: "GET", schema: z.array(staffOrderSummarySchema) },
@@ -208,6 +211,9 @@ export async function listStaffProducts(input: StaffProductsFilterInput): Promis
   const params = new URLSearchParams({ page: String(filter.page), page_size: String(filter.page_size) });
   if (filter.sold_out_today) {
     params.set("sold_out_today", "true");
+  }
+  if (filter.search) {
+    params.set("search", filter.search);
   }
   const result = await browserRequestWithMeta<StaffProduct[]>(`/api/v1/staff/products?${params.toString()}`, {
     method: "GET",

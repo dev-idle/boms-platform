@@ -1,20 +1,20 @@
 /** Ordinals carry the rhythm here — the strip deliberately has no icons. */
 const USP_ITEMS = [
   {
-    title: "Baked fresh daily",
-    text: "Small batches from our ovens every morning.",
+    title: "Order online",
+    text: "Pay with PayPal to complete your order.",
   },
   {
-    title: "Order ahead",
-    text: "Reserve your pickup time at checkout.",
+    title: "Reserve your slot",
+    text: "Choose your pickup time at checkout.",
   },
   {
-    title: "Handcrafted",
-    text: "Patisserie made by hand, no shortcuts.",
+    title: "Made to order",
+    text: "Custom cakes in your size, flavor, filling and decoration.",
   },
   {
-    title: "Easy pickup",
-    text: "Skip the line — grab and go in store.",
+    title: "Pick up with a code",
+    text: "Give your 4-digit pickup code at the counter.",
   },
 ] as const;
 

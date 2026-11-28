@@ -11,8 +11,8 @@ export function DownloadMyDataCard() {
   return (
     <div className="storefront-account-data">
       <p className="storefront-account-data__copy">
-        Your account, profile, the policies you accepted, and every order with its items and
-        history, in one JSON file.
+        Your account, profile, sign-in history, cart, saved lists, reviews, messages and every
+        order with its payment and history, in one file.
       </p>
       <Button
         aria-busy={download.isPending || undefined}

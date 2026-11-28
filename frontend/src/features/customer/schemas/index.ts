@@ -30,6 +30,10 @@ const cartItemSchema = z.object({
   is_available: z.boolean(),
   /** How the line is configured, null for a plain line. */
   customization: customizationSchema.nullable(),
+  /** The product's first photo or the combo's photo; null without one. */
+  image_url: z.string().nullable(),
+  /** The product's category; null for a combo. */
+  category_name: z.string().nullable(),
 });
 
 const cartDiscountSchema = z.object({
@@ -114,6 +118,8 @@ const orderItemSchema = z.object({
   line_total_cents: z.number().int().min(0),
   /** How the customer configured it, null for a plain item. */
   customization: customizationSchema.nullable(),
+  /** The product's first photo or the combo's photo; null without one. */
+  image_url: z.string().nullable(),
 });
 
 export const orderSchema = z.object({
@@ -256,7 +262,7 @@ export type RescheduleInput = z.infer<typeof rescheduleInputSchema>;
 export type Order = z.infer<typeof orderSchema>;
 export type PaymentStart = z.infer<typeof paymentStartSchema>;
 export type PaymentCapture = z.infer<typeof paymentCaptureSchema>;
-type OrderSummary = z.infer<typeof orderSummarySchema>;
+export type OrderSummary = z.infer<typeof orderSummarySchema>;
 export type OrdersListFilterInput = z.infer<typeof ordersListFilterSchema>;
 export type PickupRules = z.infer<typeof pickupRulesSchema>;
 export type PickupSlots = z.infer<typeof pickupSlotsSchema>;

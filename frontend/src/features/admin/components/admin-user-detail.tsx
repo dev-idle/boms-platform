@@ -4,8 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DashboardLoadError } from "@/components/ui/dashboard-load-error";
 import { InlineLoadingState } from "@/components/ui/loading-state";
-import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { useAuthStore } from "@/stores/auth-store";
 
 import {
@@ -15,6 +15,7 @@ import {
   useRevokeSessions,
   useUserDetail,
 } from "../hooks";
+import { accountActionErrorMessage } from "../lib/account-action-error";
 import { isAdminAccountManagementLocked } from "../lib/account-management";
 
 import { AdminUserAccountStatus } from "./admin-user-account-status";
@@ -44,19 +45,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
   }
 
   function handleActionError(error: unknown, fallback: string): void {
-    if (isApiError(error) && error.isCannotModifySelf()) {
-      toast.error("You cannot perform this action on your own account.");
-      return;
-    }
-    if (isApiError(error) && error.isCannotModifyAdmin()) {
-      toast.error("Admin accounts cannot be disabled or have sessions revoked.");
-      return;
-    }
-    if (isApiError(error) && error.code === ApiErrorCode.AccountHasOpenOrders) {
-      toast.error("This customer has orders the bakery has not handed over or cancelled yet. Settle those first.");
-      return;
-    }
-    toast.error(isApiError(error) ? error.message : fallback);
+    toast.error(accountActionErrorMessage(error, fallback));
   }
 
   return (
@@ -64,7 +53,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       {userQuery.isPending ? (
         <InlineLoadingState />
       ) : !user ? (
-        <p className="text-sm text-muted">Unable to load this user.</p>
+        <DashboardLoadError message="We could not load this user." onRetry={() => void userQuery.refetch()} />
       ) : (
         <div className="dashboard-page-stack">
           <AdminUserDetailHeader
@@ -104,14 +93,14 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       <ConfirmDialog
         confirmLabel="Disable account"
         confirmVariant="destructive"
-        description="This action soft-deletes the account and revokes active sessions."
+        description="The account can no longer sign in and its sessions end. You can enable it again."
         isPending={disableUser.isPending}
         onCancel={clearPendingAction}
         onConfirm={() => {
           disableUser.mutate(userId, {
             onSuccess: clearPendingAction,
             onError: (error) => {
-              handleActionError(error, "Failed to disable account");
+              handleActionError(error, "We could not disable account. Please try again.");
               clearPendingAction();
             },
           });
@@ -129,7 +118,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
           enableUser.mutate(userId, {
             onSuccess: clearPendingAction,
             onError: (error) => {
-              handleActionError(error, "Failed to enable account");
+              handleActionError(error, "We could not enable account. Please try again.");
               clearPendingAction();
             },
           });
@@ -148,7 +137,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
           revokeSessions.mutate(userId, {
             onSuccess: clearPendingAction,
             onError: (error) => {
-              handleActionError(error, "Failed to revoke sessions");
+              handleActionError(error, "We could not revoke sessions. Please try again.");
               clearPendingAction();
             },
           });
@@ -166,7 +155,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
           resetPassword.mutate(userId, {
             onSuccess: () => clearPendingAction(),
             onError: (error) => {
-              handleActionError(error, "Failed to reset password");
+              handleActionError(error, "We could not reset password. Please try again.");
               clearPendingAction();
             },
           })

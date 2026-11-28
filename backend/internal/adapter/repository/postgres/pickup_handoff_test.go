@@ -166,7 +166,7 @@ func TestPickupHandoff_Integration(t *testing.T) {
 		setStatus(closedSooner.ID, domainorder.StatusFulfilled)
 		setStatus(closedLater.ID, domainorder.StatusNoShow)
 
-		list, _, _, _, err := f.staff.List(ctx, 1, 100, "")
+		list, _, _, _, err := f.staff.List(ctx, 1, 100, "", "")
 
 		require.NoError(t, err)
 		ids := pickupIDs(list)

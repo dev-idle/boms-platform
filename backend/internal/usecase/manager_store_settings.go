@@ -19,9 +19,9 @@ import (
 	"github.com/boms/backend/internal/shared/utils"
 )
 
-// AdminStoreSettingsUsecase lets admins change the pickup rules without a
+// ManagerStoreSettingsUsecase lets managers change the pickup rules without a
 // deploy. Every change is audited and announced to open pages as it commits.
-type AdminStoreSettingsUsecase struct {
+type ManagerStoreSettingsUsecase struct {
 	store       port.StoreSettingsRepository
 	orders      port.OrderRepository
 	payment     *PaymentUsecase
@@ -32,7 +32,7 @@ type AdminStoreSettingsUsecase struct {
 	log         *zap.Logger
 }
 
-func NewAdminStoreSettingsUsecase(
+func NewManagerStoreSettingsUsecase(
 	store port.StoreSettingsRepository,
 	orders port.OrderRepository,
 	tickets port.TicketRepository,
@@ -43,8 +43,8 @@ func NewAdminStoreSettingsUsecase(
 	events port.EventOutbox,
 	audit *auditlogger.Service,
 	log *zap.Logger,
-) *AdminStoreSettingsUsecase {
-	return &AdminStoreSettingsUsecase{
+) *ManagerStoreSettingsUsecase {
+	return &ManagerStoreSettingsUsecase{
 		store:   store,
 		orders:  orders,
 		payment: payment,
@@ -67,8 +67,8 @@ const (
 )
 
 // StrandedPickups lists the orders a closed day or new opening hours would
-// strand, for the admin to see before making the change.
-func (u *AdminStoreSettingsUsecase) StrandedPickups(ctx context.Context, q dto.StrandedPickupsQuery) (*dto.StrandedPickupsResponse, error) {
+// strand, for the manager to see before making the change.
+func (u *ManagerStoreSettingsUsecase) StrandedPickups(ctx context.Context, q dto.StrandedPickupsQuery) (*dto.StrandedPickupsResponse, error) {
 	params, err := u.strandedParams(ctx, q, time.Now())
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (u *AdminStoreSettingsUsecase) StrandedPickups(ctx context.Context, q dto.S
 // or the hours change. Each order is tried once, a page at a time; one that
 // cannot be cancelled is reported, and the change stays refused while it
 // remains.
-func (u *AdminStoreSettingsUsecase) CancelStrandedPickups(
+func (u *ManagerStoreSettingsUsecase) CancelStrandedPickups(
 	ctx context.Context,
 	actorID uuid.UUID,
 	actorRole domainuser.Role,
@@ -157,7 +157,7 @@ func (u *AdminStoreSettingsUsecase) CancelStrandedPickups(
 // Under the order's lock it is cancelled only while the change still strands
 // it — one moved or handed over meanwhile is left, reporting false — and the
 // cancellation commits with its audit row.
-func (u *AdminStoreSettingsUsecase) cancelStranded(
+func (u *ManagerStoreSettingsUsecase) cancelStranded(
 	ctx context.Context,
 	actor port.OrderActor,
 	order port.StrandedPickup,
@@ -189,7 +189,7 @@ func (u *AdminStoreSettingsUsecase) cancelStranded(
 			return err
 		}
 		done = true
-		return u.audit.Log(txCtx, domainstore.AuditActionAdminCancelledStrandedOrder, actor.ID, actor.Role, &order.ID, "order",
+		return u.audit.Log(txCtx, domainstore.AuditActionManagerCancelledStrandedOrder, actor.ID, actor.Role, &order.ID, "order",
 			map[string]any{"status": locked.Status, "pickup_at": locked.PickupAt},
 			map[string]any{"status": domainorder.StatusCancelled, "reason": reason})
 	})
@@ -211,7 +211,7 @@ func strands(params port.StrandedPickupsParams, at time.Time) bool {
 
 // strandedParams reads the change q names, checked as the change itself would
 // be: a day the bakery may close, or opening hours the settings accept.
-func (u *AdminStoreSettingsUsecase) strandedParams(ctx context.Context, q dto.StrandedPickupsQuery, now time.Time) (port.StrandedPickupsParams, error) {
+func (u *ManagerStoreSettingsUsecase) strandedParams(ctx context.Context, q dto.StrandedPickupsQuery, now time.Time) (port.StrandedPickupsParams, error) {
 	switch {
 	case q.ClosedDate != "" && q.OpensAt == "" && q.ClosesAt == "":
 		// A calendar day, as DayOf and ClosedDateWindow give one.
@@ -264,7 +264,7 @@ func hoursParams(opens, closes time.Duration, now time.Time) port.StrandedPickup
 }
 
 // refuseStranded refuses a change while orders it would strand remain.
-func (u *AdminStoreSettingsUsecase) refuseStranded(txCtx context.Context, params port.StrandedPickupsParams) error {
+func (u *ManagerStoreSettingsUsecase) refuseStranded(txCtx context.Context, params port.StrandedPickupsParams) error {
 	stranded, err := u.orders.CountStrandedPickups(txCtx, params)
 	if err != nil {
 		return err
@@ -275,7 +275,7 @@ func (u *AdminStoreSettingsUsecase) refuseStranded(txCtx context.Context, params
 	return nil
 }
 
-func (u *AdminStoreSettingsUsecase) GetSettings(ctx context.Context) (*dto.StoreSettingsResponse, error) {
+func (u *ManagerStoreSettingsUsecase) GetSettings(ctx context.Context) (*dto.StoreSettingsResponse, error) {
 	settings, err := u.store.GetSettings(ctx)
 	if err != nil {
 		return nil, err
@@ -284,7 +284,7 @@ func (u *AdminStoreSettingsUsecase) GetSettings(ctx context.Context) (*dto.Store
 }
 
 // PatchSettings applies the fields req names to the current settings.
-func (u *AdminStoreSettingsUsecase) PatchSettings(
+func (u *ManagerStoreSettingsUsecase) PatchSettings(
 	ctx context.Context,
 	actorID uuid.UUID,
 	actorRole domainuser.Role,
@@ -326,7 +326,7 @@ func (u *AdminStoreSettingsUsecase) PatchSettings(
 		return nil, err
 	}
 	resp := toStoreSettingsResponse(after)
-	recordAudit(u.log, u.audit, ctx, domainstore.AuditActionAdminUpdatedSettings, actorID, actorRole, nil, "store_settings",
+	recordAudit(u.log, u.audit, ctx, domainstore.AuditActionManagerUpdatedSettings, actorID, actorRole, nil, "store_settings",
 		toStoreSettingsResponse(before), resp)
 	return resp, nil
 }
@@ -386,7 +386,7 @@ func patchedSettings(current domainstore.Settings, req dto.PatchStoreSettingsReq
 }
 
 // ListClosedDates returns the closures from today on, earliest first.
-func (u *AdminStoreSettingsUsecase) ListClosedDates(ctx context.Context) ([]dto.ClosedDateResponse, error) {
+func (u *ManagerStoreSettingsUsecase) ListClosedDates(ctx context.Context) ([]dto.ClosedDateResponse, error) {
 	from, to := domainstore.ClosedDateWindow(time.Now())
 	closed, err := u.store.ListClosedDates(ctx, from, to)
 	if err != nil {
@@ -400,7 +400,7 @@ func (u *AdminStoreSettingsUsecase) ListClosedDates(ctx context.Context) ([]dto.
 }
 
 // AddClosedDate closes the bakery on a day from today to a year ahead.
-func (u *AdminStoreSettingsUsecase) AddClosedDate(
+func (u *ManagerStoreSettingsUsecase) AddClosedDate(
 	ctx context.Context,
 	actorID uuid.UUID,
 	actorRole domainuser.Role,
@@ -438,12 +438,12 @@ func (u *AdminStoreSettingsUsecase) AddClosedDate(
 		return nil, err
 	}
 	resp := toClosedDateResponse(added)
-	recordAudit(u.log, u.audit, ctx, domainstore.AuditActionAdminAddedClosedDate, actorID, actorRole, &added.ID, "store_closed_date", nil, resp)
+	recordAudit(u.log, u.audit, ctx, domainstore.AuditActionManagerAddedClosedDate, actorID, actorRole, &added.ID, "store_closed_date", nil, resp)
 	return &resp, nil
 }
 
 // RemoveClosedDate reopens the bakery on a closed day.
-func (u *AdminStoreSettingsUsecase) RemoveClosedDate(
+func (u *ManagerStoreSettingsUsecase) RemoveClosedDate(
 	ctx context.Context,
 	actorID uuid.UUID,
 	actorRole domainuser.Role,
@@ -464,7 +464,7 @@ func (u *AdminStoreSettingsUsecase) RemoveClosedDate(
 	if err != nil {
 		return err
 	}
-	recordAudit(u.log, u.audit, ctx, domainstore.AuditActionAdminRemovedClosedDate, actorID, actorRole, &removed.ID, "store_closed_date",
+	recordAudit(u.log, u.audit, ctx, domainstore.AuditActionManagerRemovedClosedDate, actorID, actorRole, &removed.ID, "store_closed_date",
 		toClosedDateResponse(removed), nil)
 	return nil
 }

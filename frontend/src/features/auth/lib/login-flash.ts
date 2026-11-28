@@ -10,7 +10,7 @@ const LOGIN_FLASH_TOAST_IDS = {
 const LOGIN_FLASH_MESSAGES = {
   passwordChanged: "Password changed. Sign in again.",
   passwordReset: "Password reset. Sign in with your new password.",
-  accountRegistered: "Account created. We emailed you a link to confirm your address.",
+  accountRegistered: "Account created. Check your inbox for a link to confirm your email.",
 } as const;
 
 export type LoginFlashKind = keyof typeof LOGIN_FLASH_MESSAGES;

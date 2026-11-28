@@ -11,8 +11,8 @@ export const MAX_RATING = 5;
  */
 export const REVIEW_COMMENT_MAX_LENGTH = 1000;
 
-/** Where a review stands with the manager — mirrors backend `review.Status`. */
-export const reviewStatusSchema = z.enum(["pending", "published", "hidden"]);
+/** Whether the storefront shows a review — mirrors backend `review.Status`. */
+export const reviewStatusSchema = z.enum(["published", "hidden"]);
 
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 
@@ -24,7 +24,8 @@ export const averageRatingSchema = z.number().min(1).max(MAX_RATING);
 /**
  * GET /catalog/products/:id/reviews — a page of a product's published reviews,
  * latest first, with how many it has and their average, null before the first.
- * A review shows no author: everyone who wrote one picked the product up.
+ * Everyone who wrote one picked the product up; `author_name` is the short
+ * form of the name they gave ("Mai T."), null when they gave none.
  */
 export const productReviewsSchema = z.object({
   review_count: z.number().int().min(0),
@@ -35,6 +36,7 @@ export const productReviewsSchema = z.object({
       rating: ratingSchema,
       comment: z.string().min(1).nullable(),
       created_at: apiDateTimeSchema,
+      author_name: z.string().min(1).nullable(),
     }),
   ),
   has_more: z.boolean(),

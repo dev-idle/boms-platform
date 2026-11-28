@@ -36,34 +36,12 @@ export function CartIcon({ className }: IconProps) {
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="1.4"
+      strokeWidth="1.65"
       viewBox={STOREFRONT_ICON_VIEWBOX}
       width="18"
     >
       <path d="M6.5 8h11l1.2 11.2a1.6 1.6 0 0 1-1.6 1.8H6.9a1.6 1.6 0 0 1-1.6-1.8L6.5 8Z" />
       <path d="M9.2 8V6.6a2.8 2.8 0 0 1 5.6 0V8" />
-    </svg>
-  );
-}
-
-export function OrdersIcon({ className }: IconProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={cn("storefront-icon", className)}
-      fill="none"
-      height="24"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.65"
-      viewBox={STOREFRONT_ICON_VIEWBOX}
-      width="24"
-    >
-      <path d="M8 3h8l1.25 4.25V19a2 2 0 0 1-2 2H8.75a2 2 0 0 1-2-2V7.25L8 3z" />
-      <path d="M8 7.5h8" />
-      <path d="M9.5 11.5h5" />
-      <path d="M9.5 15h5" />
     </svg>
   );
 }
@@ -77,11 +55,28 @@ export function CloseIcon({ className }: IconProps) {
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="1.75"
+      strokeWidth="1.65"
       viewBox="0 0 24 24"
     >
       <path d="M6 6l12 12" />
       <path d="M18 6 6 18" />
+    </svg>
+  );
+}
+
+export function MenuIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={cn("size-[1.125rem]", className)}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.65"
+      viewBox="0 0 24 24"
+    >
+      <path d="M1 8.5h22M1 15.5h22" />
     </svg>
   );
 }
@@ -95,7 +90,7 @@ export function ChevronDownIcon({ className }: IconProps) {
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="1.75"
+      strokeWidth="1.65"
       viewBox="0 0 24 24"
     >
       <path d="m6 9 6 6 6-6" />
@@ -122,27 +117,6 @@ export function UserIcon({ className }: IconProps) {
     </svg>
   );
 }
-export function SignOutIcon({ className }: IconProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={cn("storefront-icon", className)}
-      fill="none"
-      height="24"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.65"
-      viewBox={STOREFRONT_ICON_VIEWBOX}
-      width="24"
-    >
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="m16 17 5-5-5-5" />
-      <path d="M21 12H9" />
-    </svg>
-  );
-}
-
 /** A product kept among favorites; filled while it is on the list. */
 export function HeartIcon({ className }: IconProps) {
   return (

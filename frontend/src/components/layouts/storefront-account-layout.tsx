@@ -10,7 +10,7 @@ type StorefrontAccountSectionProps = {
   variant?: "default" | "danger";
 };
 
-/** Section block for unified customer account page. */
+/** A framed section of the customer's own pages: account and saved lists. */
 export function StorefrontAccountSection({
   children,
   description,
@@ -35,7 +35,7 @@ export function StorefrontAccountSection({
           <p className="storefront-account-section__lead">{description}</p>
         ) : null}
       </header>
-      <div className="storefront-account-section__body">{children}</div>
+      <div>{children}</div>
     </section>
   );
 }

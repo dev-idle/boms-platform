@@ -9,9 +9,12 @@ import {
   bakeryDayOf,
   bakeryPickupISOFromLocalInput,
   earliestPickupLocalValue,
+  formatPickupDay,
+  formatPickupDayChoice,
   formatPickupLocalInputValue,
   lastPickupDay,
   pickupInstantFromLocalInput,
+  pickupDaysBetween,
   pickupOrderType,
   pickupProblem,
   pickupSlotsOfDay,
@@ -163,5 +166,39 @@ describe("shiftDay", () => {
   it("moves across months and years", () => {
     expect(shiftDay("2026-10-01", -1)).toBe("2026-09-30");
     expect(shiftDay("2026-12-31", 1)).toBe("2027-01-01");
+  });
+});
+
+describe("formatPickupDay", () => {
+  it("names the bakery day, not the UTC one", () => {
+    // 18:30 UTC on Nov 25 is 01:30 on Nov 26 in the bakery.
+    expect(formatPickupDay("2026-11-25T18:30:00Z")).toBe("Nov 26");
+  });
+});
+
+describe("pickupDaysBetween", () => {
+  it("lists every day from the first to the last, across a month end", () => {
+    expect(pickupDaysBetween("2026-11-29", "2026-12-02")).toEqual([
+      "2026-11-29",
+      "2026-11-30",
+      "2026-12-01",
+      "2026-12-02",
+    ]);
+  });
+
+  it("lists nothing while a bound is unknown", () => {
+    expect(pickupDaysBetween("", "2026-12-02")).toEqual([]);
+    expect(pickupDaysBetween("2026-11-29", "")).toEqual([]);
+  });
+});
+
+describe("formatPickupDayChoice", () => {
+  it("reads the calendar day, whatever the browser's zone", () => {
+    expect(formatPickupDayChoice("2026-11-26")).toEqual({
+      weekday: "Thu",
+      date: "26",
+      month: "Nov",
+      monthLong: "November",
+    });
   });
 });

@@ -19,7 +19,7 @@ import (
 const productReviewPageSize int32 = 10
 
 // ReviewUsecase is a customer reviewing the products they picked up, and the
-// storefront showing the reviews a manager published.
+// storefront showing the reviews no manager hid.
 type ReviewUsecase struct {
 	users   port.UserRepository
 	orders  port.OrderRepository
@@ -52,8 +52,8 @@ func (u *ReviewUsecase) ListByOrder(ctx context.Context, userID, orderID uuid.UU
 }
 
 // Create records the customer's review of a product they picked up on their
-// order: one per product on the order. It waits for a manager, who hears of
-// it at once.
+// order: one per product on the order. The product's page shows it at once,
+// and managers hear of it.
 func (u *ReviewUsecase) Create(ctx context.Context, userID, orderID uuid.UUID, req dto.CreateReviewRequest) (*dto.ReviewResponse, error) {
 	rating, err := domainreview.NewRating(req.Rating)
 	if err != nil {
@@ -146,10 +146,11 @@ func (u *ReviewUsecase) ProductReviews(ctx context.Context, productID uuid.UUID,
 	out := make([]dto.PublishedReviewResponse, 0, len(reviews))
 	for _, review := range reviews {
 		out = append(out, dto.PublishedReviewResponse{
-			ID:        review.ID.String(),
-			Rating:    review.Rating,
-			Comment:   review.Comment,
-			CreatedAt: review.CreatedAt,
+			ID:         review.ID.String(),
+			Rating:     review.Rating,
+			Comment:    review.Comment,
+			CreatedAt:  review.CreatedAt,
+			AuthorName: domainreview.PublicName(review.AuthorName),
 		})
 	}
 	return &dto.ProductReviewsResponse{

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { CatalogImageListField } from "@/components/ui/catalog-image-list-field";
 import { CatalogNameSlugFields } from "@/components/ui/catalog-name-slug-fields";
+import { DashboardFormCancelLink } from "@/components/ui/dashboard-form-cancel-link";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import {
@@ -25,6 +26,7 @@ import {
   FORM_SWITCH_LABEL,
 } from "@/constants/dashboard-form-copy";
 import { Select } from "@/components/ui/select";
+import { ROUTE } from "@/constants/routes";
 import { isCloudinaryConfigured } from "@/lib/cloudinary/config";
 import { cloudinaryProductImageFieldHint } from "@/lib/cloudinary/messages";
 import { isApiError } from "@/lib/errors";
@@ -144,7 +146,7 @@ function ProductFormFields({
       },
       onError: (error) => {
         if (!isApiError(error)) {
-          toast.error("Failed to save product");
+          toast.error("We could not save product. Please try again.");
           return;
         }
         if (error.hasValidationDetails()) {
@@ -324,6 +326,7 @@ function ProductFormFields({
             isPending={isPending}
             pendingLabel={mode === "create" ? "Creating…" : "Saving…"}
           />
+          <DashboardFormCancelLink href={ROUTE.manager.products} />
         </div>
       </form>
     </Form>

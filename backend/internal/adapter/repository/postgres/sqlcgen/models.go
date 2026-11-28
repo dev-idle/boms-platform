@@ -544,7 +544,6 @@ func (ns NullPromotionStatus) Value() (driver.Value, error) {
 type ReviewStatus string
 
 const (
-	ReviewStatusPending   ReviewStatus = "pending"
 	ReviewStatusPublished ReviewStatus = "published"
 	ReviewStatusHidden    ReviewStatus = "hidden"
 )

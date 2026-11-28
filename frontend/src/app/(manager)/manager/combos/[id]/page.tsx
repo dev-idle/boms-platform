@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { use } from "react";
 
 import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
+import { DashboardLoadError } from "@/components/ui/dashboard-load-error";
 import { InlineLoadingState } from "@/components/ui/loading-state";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import { ComboForm, managerCombosBreadcrumb, useCombo } from "@/features/manager";
 import { ROUTE } from "@/constants/routes";
+import { isApiError } from "@/lib/errors";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 
 type PageProps = {
@@ -24,16 +26,16 @@ export default function ManagerEditComboPage({ params }: PageProps) {
   }
 
   if (comboQuery.isError) {
-    return <p className="text-sm text-error">Failed to load combo.</p>;
-  }
-
-  if (!comboQuery.data) {
-    return <p className="text-sm text-muted">Combo not found.</p>;
+    return isApiError(comboQuery.error) && comboQuery.error.status === 404 ? (
+      <DashboardLoadError message="Combo not found." />
+    ) : (
+      <DashboardLoadError message="We could not load this combo." onRetry={() => void comboQuery.refetch()} />
+    );
   }
 
   return (
     <DashboardFormPage
-      breadcrumbItems={managerCombosBreadcrumb(PAGE_TITLES.editCombo)}
+      breadcrumbItems={managerCombosBreadcrumb(comboQuery.data.name)}
       description="Update bundle items, pricing, and availability window."
       title={PAGE_TITLES.editCombo}
     >

@@ -29,7 +29,7 @@ func TestAccountComposer(t *testing.T) {
 		for _, part := range []string{email.HTML, email.Text} {
 			assert.Contains(t, part, "https://shop.example/verify-email#token=tok-123", "the token rides in the fragment")
 			assert.Contains(t, part, "48 hours")
-			assert.Contains(t, part, "123 Greige Lane")
+			assert.Contains(t, part, "Ninh Kieu, Can Tho")
 		}
 	})
 

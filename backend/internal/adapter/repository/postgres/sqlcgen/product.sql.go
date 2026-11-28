@@ -91,9 +91,15 @@ SELECT
     p.is_customizable,
     p.sold_out_on,
     c.name AS category_name,
-    c.slug AS category_slug
+    c.slug AS category_slug,
+    COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
 FROM products p
 INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+LEFT JOIN LATERAL (
+    SELECT array_agg(pi.image_url ORDER BY pi.sort_order) AS urls
+    FROM product_images pi
+    WHERE pi.product_id = p.id
+) img ON true
 WHERE p.id = ANY($1::uuid[])
   AND p.deleted_at IS NULL
   AND p.is_active = true
@@ -110,9 +116,10 @@ type CatalogGetProductsByIDsRow struct {
 	SoldOutOn      *time.Time `json:"soldOutOn"`
 	CategoryName   string     `json:"categoryName"`
 	CategorySlug   string     `json:"categorySlug"`
+	ImageUrls      []string   `json:"imageUrls"`
 }
 
-// CatalogGetProductsByIDs
+// The cart's products, each with its gallery for the line's photo.
 //
 //	SELECT
 //	    p.id,
@@ -124,9 +131,15 @@ type CatalogGetProductsByIDsRow struct {
 //	    p.is_customizable,
 //	    p.sold_out_on,
 //	    c.name AS category_name,
-//	    c.slug AS category_slug
+//	    c.slug AS category_slug,
+//	    COALESCE(img.urls, ARRAY[]::text[])::text[] AS image_urls
 //	FROM products p
 //	INNER JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL AND c.is_active = true
+//	LEFT JOIN LATERAL (
+//	    SELECT array_agg(pi.image_url ORDER BY pi.sort_order) AS urls
+//	    FROM product_images pi
+//	    WHERE pi.product_id = p.id
+//	) img ON true
 //	WHERE p.id = ANY($1::uuid[])
 //	  AND p.deleted_at IS NULL
 //	  AND p.is_active = true
@@ -150,6 +163,7 @@ func (q *Queries) CatalogGetProductsByIDs(ctx context.Context, productIds []uuid
 			&i.SoldOutOn,
 			&i.CategoryName,
 			&i.CategorySlug,
+			&i.ImageUrls,
 		); err != nil {
 			return nil, err
 		}
@@ -885,12 +899,19 @@ WHERE p.deleted_at IS NULL
     $1::date IS NULL
     OR p.sold_out_on = $1::date
   )
+  -- Found by the product's or its category's name.
+  AND (
+    $2::text = ''
+    OR p.name ILIKE '%' || $2 || '%'
+    OR c.name ILIKE '%' || $2 || '%'
+  )
 ORDER BY c.sort_order ASC, p.name ASC, p.id ASC
-LIMIT $3 OFFSET $2
+LIMIT $4 OFFSET $3
 `
 
 type StaffListProductsParams struct {
 	SoldOutOn *time.Time `json:"soldOutOn"`
+	Search    string     `json:"search"`
 	Offset    int32      `json:"offset"`
 	Limit     int32      `json:"limit"`
 }
@@ -920,10 +941,21 @@ type StaffListProductsRow struct {
 //	    $1::date IS NULL
 //	    OR p.sold_out_on = $1::date
 //	  )
+//	  -- Found by the product's or its category's name.
+//	  AND (
+//	    $2::text = ''
+//	    OR p.name ILIKE '%' || $2 || '%'
+//	    OR c.name ILIKE '%' || $2 || '%'
+//	  )
 //	ORDER BY c.sort_order ASC, p.name ASC, p.id ASC
-//	LIMIT $3 OFFSET $2
+//	LIMIT $4 OFFSET $3
 func (q *Queries) StaffListProducts(ctx context.Context, arg StaffListProductsParams) ([]StaffListProductsRow, error) {
-	rows, err := q.db.Query(ctx, staffListProducts, arg.SoldOutOn, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, staffListProducts,
+		arg.SoldOutOn,
+		arg.Search,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -958,7 +990,18 @@ WHERE p.deleted_at IS NULL
     $1::date IS NULL
     OR p.sold_out_on = $1::date
   )
+  -- Found by the product's or its category's name.
+  AND (
+    $2::text = ''
+    OR p.name ILIKE '%' || $2 || '%'
+    OR c.name ILIKE '%' || $2 || '%'
+  )
 `
+
+type StaffListProductsCountParams struct {
+	SoldOutOn *time.Time `json:"soldOutOn"`
+	Search    string     `json:"search"`
+}
 
 // StaffListProductsCount
 //
@@ -971,8 +1014,14 @@ WHERE p.deleted_at IS NULL
 //	    $1::date IS NULL
 //	    OR p.sold_out_on = $1::date
 //	  )
-func (q *Queries) StaffListProductsCount(ctx context.Context, soldOutOn *time.Time) (int64, error) {
-	row := q.db.QueryRow(ctx, staffListProductsCount, soldOutOn)
+//	  -- Found by the product's or its category's name.
+//	  AND (
+//	    $2::text = ''
+//	    OR p.name ILIKE '%' || $2 || '%'
+//	    OR c.name ILIKE '%' || $2 || '%'
+//	  )
+func (q *Queries) StaffListProductsCount(ctx context.Context, arg StaffListProductsCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, staffListProductsCount, arg.SoldOutOn, arg.Search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

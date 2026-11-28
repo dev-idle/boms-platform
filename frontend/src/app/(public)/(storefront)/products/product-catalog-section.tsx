@@ -1,9 +1,17 @@
 "use client";
 
 import { ProductCatalog } from "@/features/catalog";
-import { ProductSaveButtons } from "@/features/customer";
+import { ProductCardPurchase, ProductSaveButtons } from "@/features/customer";
 
-/** Composes the catalog with the customer's lists (FSD boundary at app layer). */
+import { ComboCatalogSection } from "./combo-catalog-section";
+
+/** Composes the catalog with the customer's lists and cart (FSD boundary at app layer). */
 export function ProductCatalogSection() {
-  return <ProductCatalog renderProductActions={(product) => <ProductSaveButtons product={product} />} />;
+  return (
+    <ProductCatalog
+      combos={<ComboCatalogSection />}
+      renderProductPurchase={(product) => <ProductCardPurchase product={product} />}
+      renderProductSaves={(product) => <ProductSaveButtons product={product} />}
+    />
+  );
 }

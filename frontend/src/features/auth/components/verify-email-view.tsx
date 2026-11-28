@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/auth-store";
 
 import { useLinkToken, useVerifyEmail } from "../hooks";
 import { AUTH_FORM_COPY } from "../lib/auth-form-copy";
+import { focusOnMount } from "../lib/focus-on-mount";
 import { AuthFormShell } from "./auth-form-shell";
 import { AuthFormSkeleton } from "./auth-form-skeleton";
 
@@ -42,9 +43,14 @@ export function VerifyEmailView() {
     ? { href: ROUTE.products, label: "Continue shopping" }
     : { href: ROUTE.login, label: "Sign in" };
 
+  // Each outcome replaces the skeleton, so its title takes the focus and is read out.
   if (verify.isSuccess) {
     return (
-      <AuthFormShell description="You can now place orders, and updates about them come to this address." title="Your email is confirmed">
+      <AuthFormShell
+        description="You can now place orders, and updates about them come to this email address."
+        title="Your email is confirmed"
+        titleRef={focusOnMount}
+      >
         <Button asChild className="w-full">
           <Link href={onward.href}>{onward.label}</Link>
         </Button>
@@ -55,7 +61,11 @@ export function VerifyEmailView() {
   const linkUnusable = token === null || (isApiError(verify.error) && verify.error.code === ApiErrorCode.InvalidLink);
   if (linkUnusable && signedIn && confirmed) {
     return (
-      <AuthFormShell description="This link was already used, and your address is confirmed: there is nothing more to do." title="Your email is already confirmed">
+      <AuthFormShell
+        description="This link was already used, and your email is confirmed: there is nothing more to do."
+        title="Your email is already confirmed"
+        titleRef={focusOnMount}
+      >
         <Button asChild className="w-full">
           <Link href={ROUTE.products}>Continue shopping</Link>
         </Button>
@@ -70,10 +80,16 @@ export function VerifyEmailView() {
           ? `This link has expired or has already been used. ${
               signedIn ? "Ask for a new one from your account page." : "Sign in to ask for a new one."
             }`
-          : "We could not confirm your address just now. Please try the link again in a moment."
+          : "We could not confirm your email just now. Please try the link again in a moment."
       }
       title={linkUnusable ? "This link no longer works" : "Something went wrong"}
+      titleRef={focusOnMount}
     >
+      {token && !linkUnusable ? (
+        <Button className="w-full" onClick={() => verify.mutate(token)} type="button">
+          Try again
+        </Button>
+      ) : null}
       <Button asChild className="w-full" variant="outline">
         <Link href={signedIn ? ROUTE.customer.account.profile : ROUTE.login}>
           {signedIn ? "Go to your account" : "Sign in"}

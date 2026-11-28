@@ -9,9 +9,6 @@ export function staffNewOrderBreadcrumbItems(): DashboardBreadcrumbItem[] {
   ];
 }
 
-export function staffOrderDetailBreadcrumbItems(): DashboardBreadcrumbItem[] {
-  return [
-    { label: PAGE_TITLES.orders, href: ROUTE.staff.orders },
-    { label: PAGE_TITLES.breadcrumbDetail },
-  ];
+export function staffOrderDetailBreadcrumbItems(code: string): DashboardBreadcrumbItem[] {
+  return [{ label: PAGE_TITLES.orders, href: ROUTE.staff.orders }, { label: code }];
 }

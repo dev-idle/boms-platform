@@ -179,4 +179,8 @@ type Item struct {
 	UnitPriceCents int64
 	LineTotalCents int64
 	CreatedAt      time.Time
+	// ImageURL is its product's first photo or its combo's photo now, read
+	// with the line and never kept on it; empty for an item without one, or
+	// whose product or combo is deleted.
+	ImageURL string
 }

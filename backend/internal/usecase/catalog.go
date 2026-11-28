@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 
-	domaincategory "github.com/boms/backend/internal/domain/category"
 	domaincombo "github.com/boms/backend/internal/domain/combo"
 	domainstore "github.com/boms/backend/internal/domain/store"
 	"github.com/boms/backend/internal/dto"
@@ -38,7 +37,7 @@ func (u *CatalogUsecase) ListCategories(
 	page, pageSize = normalizeCatalogListPage(page, pageSize)
 
 	items, total, err := listWithTotal(ctx,
-		func(ctx context.Context) ([]domaincategory.Category, error) {
+		func(ctx context.Context) ([]port.CatalogCategory, error) {
 			return u.categories.CatalogList(ctx, port.CatalogListCategoriesParams{
 				Limit:  pageSize,
 				Offset: utils.PageOffset(page, pageSize),
@@ -55,10 +54,12 @@ func (u *CatalogUsecase) ListCategories(
 	out := make([]dto.CatalogCategoryResponse, 0, len(items))
 	for _, item := range items {
 		out = append(out, dto.CatalogCategoryResponse{
-			ID:        item.ID.String(),
-			Name:      item.Name,
-			Slug:      item.Slug,
-			SortOrder: item.SortOrder,
+			ID:           item.ID.String(),
+			Name:         item.Name,
+			Slug:         item.Slug,
+			SortOrder:    item.SortOrder,
+			ProductCount: item.ProductCount,
+			ImageURL:     item.ImageURL,
 		})
 	}
 	return out, total, page, pageSize, nil

@@ -90,7 +90,7 @@ func TestOrderChanges_Integration(t *testing.T) {
 		assert.Equal(t, "cancelled", cancelled.Status)
 		_, err = f.staff.Get(ctx, uuid.MustParse(order.ID))
 		require.ErrorIs(t, err, domainorder.ErrNotFound, "never paid, never the bakery's")
-		list, _, _, _, err := f.staff.List(ctx, 1, 100, "cancelled")
+		list, _, _, _, err := f.staff.List(ctx, 1, 100, "cancelled", "")
 		require.NoError(t, err)
 		for _, row := range list {
 			assert.NotEqual(t, order.ID, row.ID)

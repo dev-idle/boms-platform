@@ -13,6 +13,9 @@ export type CalendarCell = {
   year: number;
 };
 
+/** A day on the calendar; `month` is 0-based, as in `Date`. */
+export type CalendarDay = Pick<CalendarCell, "day" | "month" | "year">;
+
 const CALENDAR_CELL_COUNT = 42;
 
 export function parseIsoToLocalParts(iso: string): LocalDatetimeParts {
@@ -80,10 +83,7 @@ export function buildCalendarMonthGrid(
   return cells;
 }
 
-export function isSameLocalDay(
-  parts: LocalDatetimeParts,
-  cell: CalendarCell,
-): boolean {
+export function isSameLocalDay(parts: CalendarDay, cell: CalendarDay): boolean {
   return (
     parts.year === cell.year &&
     parts.month === cell.month &&
@@ -146,7 +146,7 @@ export function formatMinuteLabel(minute: number): string {
 }
 
 /** Stable key for a calendar day (`YYYY-M-D`, month 0-based) — used to find its button. */
-export function calendarDayKey(day: Pick<CalendarCell, "day" | "month" | "year">): string {
+export function calendarDayKey(day: CalendarDay): string {
   return `${day.year}-${day.month}-${day.day}`;
 }
 
@@ -160,8 +160,8 @@ export function formatCalendarDayLabel(cell: CalendarCell): string {
   }).format(new Date(cell.year, cell.month, cell.day));
 }
 
-/** Moves the draft date by whole days, keeping its time; month and year roll over. */
-export function shiftDraftDays(parts: LocalDatetimeParts, days: number): LocalDatetimeParts {
+/** Moves a date by whole days, keeping whatever time it carries; month and year roll over. */
+export function shiftDraftDays<T extends CalendarDay>(parts: T, days: number): T {
   const moved = new Date(parts.year, parts.month, parts.day + days);
   return { ...parts, year: moved.getFullYear(), month: moved.getMonth(), day: moved.getDate() };
 }

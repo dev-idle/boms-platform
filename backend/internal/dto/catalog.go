@@ -97,10 +97,12 @@ type ProductOptionResponse struct {
 }
 
 type CatalogCategoryResponse struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Slug      string `json:"slug"`
-	SortOrder int32  `json:"sort_order"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Slug         string  `json:"slug"`
+	SortOrder    int32   `json:"sort_order"`
+	ProductCount int64   `json:"product_count"`
+	ImageURL     *string `json:"image_url"`
 }
 
 type CatalogProductResponse struct {

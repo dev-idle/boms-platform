@@ -1,18 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { initialsOf } from "./user-initials";
+import { initialOf } from "./user-initials";
 
-describe("initialsOf", () => {
-  it("takes the first letters of a name's first two words", () => {
-    expect(initialsOf("  linh  tran nguyen ", "linh@example.com")).toBe("LT");
+describe("initialOf", () => {
+  it("takes the first letter of the name", () => {
+    expect(initialOf("  linh tran ", "linh@example.com")).toBe("L");
   });
 
-  it("takes the first two letters of a one-word name", () => {
-    expect(initialsOf("Mai", "mai@example.com")).toBe("MA");
-  });
-
-  it("falls back to the start of the email without a name", () => {
-    expect(initialsOf(null, "nghia@example.com")).toBe("NG");
-    expect(initialsOf("   ", "nghia@example.com")).toBe("NG");
+  it("falls back to the email without a name", () => {
+    expect(initialOf(null, "nghia@example.com")).toBe("N");
+    expect(initialOf("   ", "nghia@example.com")).toBe("N");
   });
 });

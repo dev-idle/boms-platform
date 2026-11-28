@@ -29,7 +29,7 @@ func (h *StaffProductHandler) List(c fiber.Ctx) error {
 		c.Query("page_size", usecase.CatalogListDefaultPageSizeQuery),
 		usecase.CatalogListDefaultPageSize,
 	)
-	out, total, page, pageSize, err := h.usecase.List(c.Context(), page, pageSize, c.Query("sold_out_today") == "true")
+	out, total, page, pageSize, err := h.usecase.List(c.Context(), page, pageSize, c.Query("sold_out_today") == "true", c.Query("search"))
 	if err != nil {
 		return writeMapUsecaseError(c, err)
 	}

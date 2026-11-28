@@ -52,12 +52,12 @@ func TestCancelStranded_LeavesAnOrderMovedSince(t *testing.T) {
 	moved := day.AddDate(0, 0, 1).Add(9 * time.Hour)
 	listed := port.StrandedPickup{ID: uuid.New(), Code: "CH-310210-001", Status: domainorder.StatusConfirmed, PickupAt: day.Add(9 * time.Hour)}
 	// No transitions or audit: either would fail the test if the order were cancelled.
-	u := &AdminStoreSettingsUsecase{
+	u := &ManagerStoreSettingsUsecase{
 		orders: movedOrders{now: domainorder.Order{ID: listed.ID, Status: domainorder.StatusConfirmed, PickupAt: &moved}},
 		tx:     inlineTx{},
 	}
 
-	done, err := u.cancelStranded(context.Background(), port.OrderActor{ID: uuid.New(), Role: domainuser.RoleAdmin},
+	done, err := u.cancelStranded(context.Background(), port.OrderActor{ID: uuid.New(), Role: domainuser.RoleManager},
 		listed, closedDayParams(day), "Power cut")
 
 	require.NoError(t, err)

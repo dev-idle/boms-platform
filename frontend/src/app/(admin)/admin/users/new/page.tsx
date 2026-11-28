@@ -12,7 +12,7 @@ export default function AdminUsersNewPage() {
   return (
     <DashboardFormPage
       breadcrumbItems={adminUsersBreadcrumb(PAGE_TITLES.newUser)}
-      description="Create staff, baker, or manager accounts. Platform admins are created via dev seed only."
+      description="Create staff, baker, or manager accounts. Admin accounts are not created here."
       title={PAGE_TITLES.newUser}
     >
       <DashboardProfileSection

@@ -1,9 +1,4 @@
-import {
-  BakerTicketDetail,
-  bakerProductionDetailBreadcrumbItems,
-} from "@/features/baker";
-
-import { DashboardFormPage } from "@/components/ui/dashboard-form-page";
+import { BakerTicketDetail } from "@/features/baker";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 
 export const metadata = pageTitle(PAGE_TITLES.ticket);
@@ -15,13 +10,5 @@ type BakerTicketPageProps = {
 export default async function BakerTicketPage({ params }: BakerTicketPageProps) {
   const { id } = await params;
 
-  return (
-    <DashboardFormPage
-      breadcrumbItems={bakerProductionDetailBreadcrumbItems()}
-      description="Start the ticket, then mark it ready when it is done."
-      title={PAGE_TITLES.ticket}
-    >
-      <BakerTicketDetail ticketId={id} />
-    </DashboardFormPage>
-  );
+  return <BakerTicketDetail ticketId={id} />;
 }

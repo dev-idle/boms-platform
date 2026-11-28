@@ -1,21 +1,17 @@
 import type { Me } from "@/lib/schemas/me";
 
-/** Two-letter initials for dashboard avatar (email fallback). */
-export function userInitials(user: Me | null | undefined): string {
+/** The one letter every avatar shows: the name's first, else the email's. */
+export function initialOf(name: string | null | undefined, email: string): string {
+  return (name?.trim() || email).charAt(0).toUpperCase();
+}
+
+/** The signed-in account's avatar letter. */
+export function userInitial(user: Me | null | undefined): string {
   if (!user) {
     return "?";
   }
-
-  if (user.profile.type === "customer") {
-    const name = user.profile.display_name?.trim();
-    if (name) {
-      return name.slice(0, 1).toUpperCase();
-    }
-  } else if (user.profile.full_name.trim()) {
-    return initialsOf(user.profile.full_name, user.email);
-  }
-
-  return user.email.slice(0, 1).toUpperCase();
+  const name = user.profile.type === "customer" ? user.profile.display_name : user.profile.full_name;
+  return initialOf(name, user.email);
 }
 
 /** Display name for dashboard account chrome (sidebar footer). */
@@ -29,16 +25,4 @@ export function userDisplayName(user: Me | null | undefined): string {
   }
 
   return user.profile.full_name.trim() || user.email;
-}
-
-/** Up to two letters for an avatar: a name's first two words, else the start of the email. */
-export function initialsOf(name: string | null | undefined, email: string): string {
-  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
-  if (parts.length >= 2) {
-    return `${parts[0]!.slice(0, 1)}${parts[1]!.slice(0, 1)}`.toUpperCase();
-  }
-  if (parts.length === 1) {
-    return parts[0]!.slice(0, 2).toUpperCase();
-  }
-  return email.slice(0, 2).toUpperCase();
 }

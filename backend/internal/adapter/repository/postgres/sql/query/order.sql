@@ -307,41 +307,44 @@ WHERE order_id = ANY(sqlc.arg('order_ids')::uuid[])
 GROUP BY order_id;
 
 -- name: ListOrderItemsByOrderID :many
+-- An order's lines, each with its product's first photo or its combo's photo
+-- now — empty for an item without one, or whose product or combo is deleted.
 SELECT
-  id,
-  order_id,
-  line_type,
-  product_id,
-  combo_id,
-  configuration,
-  name,
-  slug,
-  quantity,
-  unit_price_cents,
-  line_total_cents,
-  created_at
-FROM order_items
-WHERE order_id = $1
-ORDER BY created_at ASC;
+  sqlc.embed(oi),
+  COALESCE(
+    (
+      SELECT pi.image_url FROM product_images pi
+      INNER JOIN products p ON p.id = pi.product_id AND p.deleted_at IS NULL
+      WHERE pi.product_id = oi.product_id
+      ORDER BY pi.sort_order
+      LIMIT 1
+    ),
+    (SELECT c.image_url FROM combos c WHERE c.id = oi.combo_id AND c.deleted_at IS NULL),
+    ''
+  )::text AS image_url
+FROM order_items oi
+WHERE oi.order_id = $1
+ORDER BY oi.created_at ASC;
 
 -- name: ListOrderItemsByOrderIDs :many
--- The lines of many orders in one round trip, as a data export reads them.
+-- The lines of many orders in one round trip, as a data export reads them,
+-- each with its photo as ListOrderItemsByOrderID reads it.
 SELECT
-  id,
-  order_id,
-  line_type,
-  product_id,
-  combo_id,
-  configuration,
-  name,
-  slug,
-  quantity,
-  unit_price_cents,
-  line_total_cents,
-  created_at
-FROM order_items
-WHERE order_id = ANY(sqlc.arg('order_ids')::uuid[])
-ORDER BY order_id, created_at ASC;
+  sqlc.embed(oi),
+  COALESCE(
+    (
+      SELECT pi.image_url FROM product_images pi
+      INNER JOIN products p ON p.id = pi.product_id AND p.deleted_at IS NULL
+      WHERE pi.product_id = oi.product_id
+      ORDER BY pi.sort_order
+      LIMIT 1
+    ),
+    (SELECT c.image_url FROM combos c WHERE c.id = oi.combo_id AND c.deleted_at IS NULL),
+    ''
+  )::text AS image_url
+FROM order_items oi
+WHERE oi.order_id = ANY(sqlc.arg('order_ids')::uuid[])
+ORDER BY oi.order_id, oi.created_at ASC;
 
 -- name: StaffListOrders :many
 SELECT
@@ -383,6 +386,14 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
     sqlc.narg('open_before')::timestamptz IS NULL
     OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
         AND o.pickup_at < sqlc.narg('open_before')::timestamptz)
+  )
+  -- Found by what a customer says at the counter: the order's code, their
+  -- name or their email.
+  AND (
+    sqlc.arg('search')::text = ''
+    OR o.code ILIKE '%' || sqlc.arg('search') || '%'
+    OR u.email ILIKE '%' || sqlc.arg('search') || '%'
+    OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || sqlc.arg('search') || '%'
   )
 -- What still needs doing comes first, soonest pickup first; then the orders
 -- already closed, latest pickup first.
@@ -457,6 +468,7 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
 SELECT COUNT(*)::bigint AS count
 FROM orders o
 LEFT JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL
+LEFT JOIN customer_profiles cp ON cp.user_id = u.id
 WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
   AND o.status NOT IN ('awaiting_payment'::order_status, 'expired'::order_status)
   AND (o.status <> 'cancelled'::order_status OR EXISTS (
@@ -472,6 +484,14 @@ WHERE (o.user_id IS NULL OR u.id IS NOT NULL)
     sqlc.narg('open_before')::timestamptz IS NULL
     OR (o.status IN ('pending'::order_status, 'confirmed'::order_status, 'in_production'::order_status)
         AND o.pickup_at < sqlc.narg('open_before')::timestamptz)
+  )
+  -- Found by what a customer says at the counter: the order's code, their
+  -- name or their email.
+  AND (
+    sqlc.arg('search')::text = ''
+    OR o.code ILIKE '%' || sqlc.arg('search') || '%'
+    OR u.email ILIKE '%' || sqlc.arg('search') || '%'
+    OR COALESCE(cp.display_name, o.guest_name, '') ILIKE '%' || sqlc.arg('search') || '%'
   );
 
 -- name: StaffGetOrderByID :one

@@ -3,7 +3,6 @@
 import { useId, useRef, useState } from "react";
 
 import { ChatIcon } from "@/components/icons/storefront-icons";
-import { Button } from "@/components/ui/button";
 import { BRAND } from "@/constants/brand";
 import { USER_ROLE } from "@/constants/roles";
 import { useGeneralUnread } from "@/features/customer";
@@ -59,19 +58,19 @@ export function AssistantWidget() {
           onViewChange={setView}
         />
       ) : null}
-      <Button
+      <button
         aria-controls={open ? panelId : undefined}
         aria-expanded={open}
         aria-label={unread > 0 ? `Ask ${BRAND.name}, ${plural(unread, "new message")} from our staff` : undefined}
+        className="assistant__launcher"
         ref={launcherRef}
-        size="sm"
         type="button"
         onClick={() => (open ? close() : launch())}
       >
         <ChatIcon />
         Ask {BRAND.name}
         {unread > 0 ? <span className="assistant__unread">{unread}</span> : null}
-      </Button>
+      </button>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { DashboardActivityFeedPagePlaceholders } from "@/components/ui/dashboard
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { roleDisplayLabel } from "@/constants/roles";
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { formatDateTime } from "@/lib/validation/datetime";
@@ -31,6 +32,7 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
 
   const entries = activityQuery.data?.entries ?? [];
   const pagination = activityQuery.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     entries.length,
     pagination,
@@ -68,7 +70,7 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
       >
         {activityQuery.isError ? (
           <p className="dashboard-activity-feed-status text-error">
-            Failed to load activity log.
+            We could not load the activity log.
           </p>
         ) : entries.length === 0 ? (
           <p className="dashboard-activity-feed-status">
@@ -102,7 +104,6 @@ export function AdminUserActivityLog({ userId }: AdminUserActivityLogProps) {
           </ul>
         )}
         <DashboardTablePagination
-          className="dashboard-activity-feed-pagination"
           disabled={refetching}
           itemLabel="events"
           onPageChange={handlePageChange}

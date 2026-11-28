@@ -150,7 +150,7 @@ func main() {
 		userRepo, customerProfileRepo, staffProfileRepo, adminProfileRepo, orderRepo, paymentRepo, conversationRepo, assistantRepo, savedProductRepo, reviewRepo, cartRepo, sessionStore,
 		auditLogRepo,
 	)
-	adminStoreSettingsUC := usecase.NewAdminStoreSettingsUsecase(storeSettingsRepo, orderRepo, ticketRepo, discountCodeRepo, paymentRepo, paymentUC,
+	managerStoreSettingsUC := usecase.NewManagerStoreSettingsUsecase(storeSettingsRepo, orderRepo, ticketRepo, discountCodeRepo, paymentRepo, paymentUC,
 		pgPool, outboxRepo, auditLogger, zlog)
 	staffOrderUC := usecase.NewStaffOrderUsecase(userRepo, orderRepo, ticketRepo, pgPool, outboxRepo, auditLogger, zlog, paymentRepo, discountCodeRepo, storeSettingsRepo, cartUC,
 		pickupCodes, quota, port.QuotaLimit{Max: cfg.RateRedis.PickupCodeMax, Window: cfg.RateRedis.PickupCodeWindow})
@@ -217,7 +217,7 @@ func main() {
 	bakerTicketHandler := v1.NewBakerTicketHandler(bakerTicketUC)
 	realtimeHandler := v1.NewRealtimeHandler(realtimeUC)
 	storeHandler := v1.NewStoreHandler(storeUC)
-	adminStoreSettingsHandler := v1.NewAdminStoreSettingsHandler(adminStoreSettingsUC)
+	managerStoreSettingsHandler := v1.NewManagerStoreSettingsHandler(managerStoreSettingsUC)
 
 	resources := []port.HealthResource{pgPool, redisClient}
 	readinessTimeout := cfg.Postgres.HealthCheckTimeout
@@ -323,27 +323,6 @@ func main() {
 	)
 	adminDashboard.Get("", adminDashboardHandler.Get)
 
-	adminSettings := apiV1.Group(
-		"/admin/settings",
-		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
-		middleware.RequireRole(domainuser.RoleAdmin),
-		passwordChanged,
-	)
-	adminSettings.Get("", adminStoreSettingsHandler.Get)
-	adminSettings.Patch("", middleware.AdminWriteRateLimit(rdb, cfg.RateRedis), adminStoreSettingsHandler.Patch)
-	adminSettings.Get("/stranded-pickups", adminStoreSettingsHandler.StrandedPickups)
-	adminSettings.Post("/stranded-pickups/cancel", middleware.AdminWriteRateLimit(rdb, cfg.RateRedis), adminStoreSettingsHandler.CancelStrandedPickups)
-
-	adminClosedDates := apiV1.Group(
-		"/admin/closed-dates",
-		middleware.RequireAuthWithSession(tokenSigner, sessionStore),
-		middleware.RequireRole(domainuser.RoleAdmin),
-		passwordChanged,
-	)
-	adminClosedDates.Get("", adminStoreSettingsHandler.ListClosedDates)
-	adminClosedDates.Post("", middleware.AdminWriteRateLimit(rdb, cfg.RateRedis), adminStoreSettingsHandler.CreateClosedDate)
-	adminClosedDates.Delete("/:id", middleware.AdminWriteRateLimit(rdb, cfg.RateRedis), adminStoreSettingsHandler.DeleteClosedDate)
-
 	// Public storefront read — proxy secret only; no JWT (guest browse).
 	catalogRead := apiV1.Group("/catalog")
 	catalogRead.Get("/categories", catalogHandler.ListCategories)
@@ -426,6 +405,9 @@ func main() {
 	managerRead.Get("/reports/sales", managerSalesReportHandler.Sales)
 	managerRead.Get("/operations", managerOperationsHandler.Dashboard)
 	managerRead.Get("/orders/lookup", managerOrderHandler.Lookup)
+	managerRead.Get("/settings", managerStoreSettingsHandler.Get)
+	managerRead.Get("/settings/stranded-pickups", managerStoreSettingsHandler.StrandedPickups)
+	managerRead.Get("/closed-dates", managerStoreSettingsHandler.ListClosedDates)
 	managerRead.Get(
 		"/media/cloudinary-signature",
 		middleware.ManagerMediaRateLimit(rdb, cfg.RateRedis),
@@ -454,6 +436,10 @@ func main() {
 	managerWrite.Patch("/reviews/:id", managerReviewHandler.Moderate)
 	managerWrite.Post("/promotions", managerPromotionHandler.Send)
 	managerWrite.Post("/orders/:id/handover", managerOrderHandler.HandOver)
+	managerWrite.Patch("/settings", managerStoreSettingsHandler.Patch)
+	managerWrite.Post("/settings/stranded-pickups/cancel", managerStoreSettingsHandler.CancelStrandedPickups)
+	managerWrite.Post("/closed-dates", managerStoreSettingsHandler.CreateClosedDate)
+	managerWrite.Delete("/closed-dates/:id", managerStoreSettingsHandler.DeleteClosedDate)
 
 	staffOrders := apiV1.Group(
 		"/staff",

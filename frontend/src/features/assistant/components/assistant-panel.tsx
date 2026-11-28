@@ -2,8 +2,8 @@
 
 import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 
+import { BrandMark } from "@/components/brand/brand-mark";
 import { CloseIcon } from "@/components/icons/storefront-icons";
-import { DashboardFilterGroup } from "@/components/ui/dashboard-filter-group";
 import { BRAND } from "@/constants/brand";
 
 import type { AssistantChatState } from "../hooks";
@@ -60,17 +60,30 @@ export function AssistantPanel({ id, view, chat, signedIn, onViewChange, onClose
       onKeyDown={closeOnEscape}
     >
       <header className="assistant-panel__header">
+        <BrandMark />
         <h2 className="assistant-panel__title" id={titleId}>
           Ask {BRAND.name}
         </h2>
-        <DashboardFilterGroup aria-label="Who answers" options={VIEWS} value={view} onChange={onViewChange} />
         <button aria-label="Close" className="assistant-panel__close" type="button" onClick={onClose}>
           <CloseIcon />
         </button>
       </header>
+      <div aria-label="Who answers" className="assistant-panel__views" role="group">
+        {VIEWS.map((option) => (
+          <button
+            aria-pressed={option.value === view}
+            className="assistant-panel__view"
+            key={option.value}
+            type="button"
+            onClick={() => onViewChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
       <div className="assistant-panel__body">
         {view === "assistant" ? (
-          <AssistantChat chat={chat} onTalkToStaff={() => onViewChange("staff")} />
+          <AssistantChat chat={chat} signedIn={signedIn} onTalkToStaff={() => onViewChange("staff")} />
         ) : (
           <AssistantStaff signedIn={signedIn} />
         )}

@@ -1,10 +1,7 @@
 import { z } from "zod";
 
 import { USER_ROLE } from "@/constants/roles";
-import { clockTimeSchema, clockToMinutes } from "@/lib/validation/clock";
-import { orderCodeSchema, orderStatusSchema } from "@/lib/schemas/order";
 import { apiDateTimeSchema } from "@/lib/validation/datetime";
-import { reasonSchema } from "@/lib/validation/reason";
 import { vietnamPhoneZodString } from "@/lib/validation/phone";
 import type { PaginatedListResult } from "@/lib/pagination/parse-paginated-list";
 
@@ -155,135 +152,6 @@ export type UserActivityListResult = {
   request_id?: string;
 };
 
-/** GET/PATCH /api/v1/admin/settings — the pickup rules an admin edits. */
-export const storeSettingsSchema = z.object({
-  opens_at: clockTimeSchema,
-  closes_at: clockTimeSchema,
-  preorder_min_lead_minutes: z.number().int().min(0),
-  max_advance_days: z.number().int().min(1),
-  slot_minutes: z.number().int().min(1),
-  slot_capacity: z.number().int().min(1),
-  instant_prep_minutes: z.number().int().min(0),
-  payment_hold_minutes: z.number().int().min(1),
-  updated_at: apiDateTimeSchema,
-});
-
-/**
- * Bounds of backend `store.Settings`: at most seven days' notice, 1 to 90 days
- * ahead, slots that divide an hour, 1 to 200 orders a slot, at most four
- * hours to pack an instant order, and 5 to 120 minutes to pay.
- */
-export const MAX_PREORDER_LEAD_MINUTES = 7 * 24 * 60;
-export const MIN_ADVANCE_DAYS = 1;
-export const MAX_ADVANCE_DAYS = 90;
-export const SLOT_MINUTE_OPTIONS = [10, 15, 20, 30, 60] as const;
-export const MAX_SLOT_CAPACITY = 200;
-export const MAX_INSTANT_PREP_MINUTES = 4 * 60;
-export const MIN_PAYMENT_HOLD_MINUTES = 5;
-export const MAX_PAYMENT_HOLD_MINUTES = 120;
-
-const storeSettingsFieldsSchema = z.object({
-  opens_at: clockTimeSchema,
-  closes_at: clockTimeSchema,
-  preorder_min_lead_minutes: z
-    .number({ error: "Enter the notice in minutes" })
-    .int()
-    .min(0)
-    .max(MAX_PREORDER_LEAD_MINUTES, `At most ${MAX_PREORDER_LEAD_MINUTES} minutes (7 days)`),
-  max_advance_days: z
-    .number({ error: "Enter the number of days" })
-    .int()
-    .min(MIN_ADVANCE_DAYS, `At least ${MIN_ADVANCE_DAYS} day`)
-    .max(MAX_ADVANCE_DAYS, `At most ${MAX_ADVANCE_DAYS} days`),
-  slot_minutes: z
-    .number({ error: "Choose a slot length" })
-    .refine((minutes) => SLOT_MINUTE_OPTIONS.some((option) => option === minutes), "Choose a slot length"),
-  slot_capacity: z
-    .number({ error: "Enter the number of orders" })
-    .int()
-    .min(1, "At least 1 order")
-    .max(MAX_SLOT_CAPACITY, `At most ${MAX_SLOT_CAPACITY} orders`),
-  instant_prep_minutes: z
-    .number({ error: "Enter the time in minutes" })
-    .int()
-    .min(0)
-    .max(MAX_INSTANT_PREP_MINUTES, `At most ${MAX_INSTANT_PREP_MINUTES} minutes (4 hours)`),
-  payment_hold_minutes: z
-    .number({ error: "Enter the time in minutes" })
-    .int()
-    .min(MIN_PAYMENT_HOLD_MINUTES, `At least ${MIN_PAYMENT_HOLD_MINUTES} minutes`)
-    .max(MAX_PAYMENT_HOLD_MINUTES, `At most ${MAX_PAYMENT_HOLD_MINUTES} minutes (2 hours)`),
-});
-
-/**
- * PATCH /api/v1/admin/settings — only the fields the admin changed, so an edit
- * never overwrites a setting someone else saved meanwhile. The server checks
- * the merged result.
- */
-export const storeSettingsPatchSchema = storeSettingsFieldsSchema.partial();
-
-/** The settings form; mirrors backend `store.Settings.Validate`. */
-export const storeSettingsFormSchema = storeSettingsFieldsSchema
-  .refine((v) => clockToMinutes(v.opens_at) < clockToMinutes(v.closes_at), {
-    path: ["closes_at"],
-    message: "Closing time must be after opening time",
-  })
-  .refine((v) => v.preorder_min_lead_minutes < v.max_advance_days * 24 * 60, {
-    path: ["preorder_min_lead_minutes"],
-    message: "Notice must be shorter than the booking window",
-  })
-  // Only once the hours are in order: an inverted pair is one mistake, already named.
-  .refine((v) => clockToMinutes(v.closes_at) <= clockToMinutes(v.opens_at) ||
-    clockToMinutes(v.closes_at) - clockToMinutes(v.opens_at) >= v.slot_minutes, {
-    path: ["slot_minutes"],
-    message: "The opening hours must hold at least one slot",
-  });
-
-/** GET /api/v1/admin/closed-dates — a day the bakery takes no pickups. */
-export const closedDateSchema = z.object({
-  id: z.uuid(),
-  date: z.iso.date(),
-  reason: z.string().min(1),
-  created_at: apiDateTimeSchema,
-});
-
-export const closedDateFormSchema = z.object({
-  date: z.iso.date("Choose a day"),
-  reason: reasonSchema("Tell customers why the bakery is closed"),
-});
-
-/**
- * A change that can strand booked pickups: a day the bakery closes, or new
- * opening and closing times from now on.
- */
-export const strandingChangeSchema = z.union([
-  z.object({ closed_date: z.iso.date() }),
-  z.object({ opens_at: clockTimeSchema, closes_at: clockTimeSchema }),
-]);
-
-/** GET /api/v1/admin/settings/stranded-pickups — an order a change would strand. */
-const strandedPickupSchema = z.object({
-  id: z.uuid(),
-  code: orderCodeSchema,
-  status: orderStatusSchema,
-  pickup_at: apiDateTimeSchema,
-  customer: z.string().nullable(),
-});
-
-export const strandedPickupsSchema = z.object({
-  orders: z.array(strandedPickupSchema),
-  total: z.number().int().min(0),
-});
-
-/** The reason the stranded orders' customers read. */
-export const cancelStrandedFormSchema = z.object({
-  reason: reasonSchema("Tell the customers why"),
-});
-
-export const cancelStrandedResultSchema = z.object({
-  cancelled: z.number().int().min(0),
-});
-
 const count = z.number().int().min(0);
 const upDownSchema = z.enum(["up", "down"]);
 
@@ -307,11 +175,3 @@ export const adminDashboardSchema = z.object({
 });
 
 export type AdminDashboard = z.infer<typeof adminDashboardSchema>;
-export type StrandingChange = z.infer<typeof strandingChangeSchema>;
-export type StrandedPickups = z.infer<typeof strandedPickupsSchema>;
-export type CancelStrandedFormInput = z.infer<typeof cancelStrandedFormSchema>;
-export type StoreSettings = z.infer<typeof storeSettingsSchema>;
-export type StoreSettingsFormInput = z.infer<typeof storeSettingsFormSchema>;
-export type StoreSettingsPatch = z.infer<typeof storeSettingsPatchSchema>;
-export type ClosedDate = z.infer<typeof closedDateSchema>;
-export type ClosedDateFormInput = z.infer<typeof closedDateFormSchema>;

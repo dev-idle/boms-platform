@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   buildPaginationWindow,
   formatPaginationRange,
+  keepPageInRange,
   paginatedPlaceholderCount,
   paginatedPlaceholderCountFromMeta,
   paginationRange,
@@ -55,56 +56,45 @@ describe("buildPaginationWindow", () => {
     expect(buildPaginationWindow(3, 7)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
-  it("shows a wide leading block on page 1", () => {
-    expect(buildPaginationWindow(1, 13)).toEqual([
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      "ellipsis",
-      13,
-    ]);
+  it("keeps the first five pages in view near the start", () => {
+    expect(buildPaginationWindow(1, 13)).toEqual([1, 2, 3, 4, 5, "ellipsis", 13]);
+    expect(buildPaginationWindow(4, 13)).toEqual([1, 2, 3, 4, 5, "ellipsis", 13]);
   });
 
-  it("keeps the leading block through page 4", () => {
-    expect(buildPaginationWindow(4, 13)).toEqual([
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      "ellipsis",
-      13,
-    ]);
+  it("centres the current page in the middle", () => {
+    expect(buildPaginationWindow(5, 13)).toEqual([1, "ellipsis", 4, 5, 6, "ellipsis", 13]);
+    expect(buildPaginationWindow(9, 13)).toEqual([1, "ellipsis", 8, 9, 10, "ellipsis", 13]);
   });
 
-  it("uses a centered window in the middle", () => {
-    expect(buildPaginationWindow(6, 13)).toEqual([
-      1,
-      "ellipsis",
-      4,
-      5,
-      6,
-      7,
-      8,
-      "ellipsis",
-      13,
-    ]);
+  it("keeps the last five pages in view near the end", () => {
+    expect(buildPaginationWindow(10, 13)).toEqual([1, "ellipsis", 9, 10, 11, 12, 13]);
+    expect(buildPaginationWindow(13, 13)).toEqual([1, "ellipsis", 9, 10, 11, 12, 13]);
   });
 
-  it("shows a wide trailing block near the end", () => {
-    expect(buildPaginationWindow(13, 13)).toEqual([
-      1,
-      "ellipsis",
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-    ]);
+  it("shows seven slots on every page of a long list", () => {
+    for (let page = 1; page <= 40; page += 1) {
+      expect(buildPaginationWindow(page, 40)).toHaveLength(7);
+    }
+  });
+});
+
+describe("keepPageInRange", () => {
+  it("steps back to the last page when the list shrank under the page on show", () => {
+    const setPage = vi.fn();
+    keepPageInRange(3, setPage, 2);
+    expect(setPage).toHaveBeenCalledWith(2);
+  });
+
+  it("goes to the first page when nothing is left", () => {
+    const setPage = vi.fn();
+    keepPageInRange(2, setPage, 0);
+    expect(setPage).toHaveBeenCalledWith(1);
+  });
+
+  it("leaves a page inside the list, or one whose count is not known yet, alone", () => {
+    const setPage = vi.fn();
+    keepPageInRange(2, setPage, 2);
+    keepPageInRange(4, setPage, undefined);
+    expect(setPage).not.toHaveBeenCalled();
   });
 });

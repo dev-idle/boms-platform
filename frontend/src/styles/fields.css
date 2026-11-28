@@ -1,9 +1,10 @@
 /* -----------------------------------------------------------------------------
    Field system — unlayered SSOT for Input, Select, search chrome.
 
-   Contract: underline, not a box. A field is a 42px control on a transparent
-   ground with a single bottom hairline; the hairline colour carries hover,
-   focus and error.
+   Contract: one edge colour carries hover, focus and error. On the dashboard a
+   field is a 42px control on a transparent ground with a single bottom hairline;
+   on the storefront it is a 48px white box with that colour on all four edges
+   (the rules at the end of this file).
    ----------------------------------------------------------------------------- */
 
 .field-control {
@@ -662,12 +663,6 @@ textarea.field-chrome {
   border-bottom-color: var(--field-border);
 }
 
-/* A day, week or range field sits in a row with its steps, at its own width.
-   Unlayered, so it outranks `.field-chrome` and the `w-full` utility. */
-.db-table-day .field-chrome {
-  width: auto;
-}
-
 .field-chrome--inline:hover:not(:disabled):not(:focus):not(:focus-visible) {
   border-bottom-color: var(--field-border-hover);
 }
@@ -898,6 +893,11 @@ textarea.field-chrome {
   background-image: none;
 }
 
+/* A boxed storefront select keeps its chevron as far from the edge as its text. */
+[data-theme="storefront"] .field-select-trigger.field-chrome--select {
+  padding-inline-end: 0.875rem;
+}
+
 .field-select {
   position: relative;
   width: 100%;
@@ -1022,6 +1022,12 @@ textarea.field-chrome {
   color: var(--color-db-muted);
 }
 
+/* The menu opens in a portal, outside the theme's scope: a storefront select
+   names itself to give its options the storefront's 44px target. */
+.field-select-content--storefront .field-select-item {
+  min-height: 2.75rem;
+}
+
 @keyframes field-select-reveal-down {
   from {
     opacity: 0;
@@ -1109,4 +1115,80 @@ textarea.field-chrome {
   padding-inline-start: calc(
     var(--field-control-padding-inline) + 1ch + var(--money-prefix-gap)
   );
+}
+
+/* -----------------------------------------------------------------------------
+   Storefront — the control is boxed: the same colour states as the underline
+   above, on all four edges. The dashboard keeps the underline.
+   ----------------------------------------------------------------------------- */
+
+[data-theme="storefront"] .field-chrome {
+  border: 1px solid var(--field-border);
+}
+
+[data-theme="storefront"] .field-chrome:hover:not(:disabled):not(:read-only):not(:focus):not(:focus-visible),
+[data-theme="storefront"]
+  .field-control:not(.field-control--readonly):hover
+  .field-chrome:not(:disabled):not(:read-only):not(:focus):not(:focus-visible) {
+  border-color: var(--field-border-hover);
+}
+
+[data-theme="storefront"] .field-chrome:focus:not([readonly]):not(.field-chrome--readonly),
+[data-theme="storefront"] .field-chrome:focus-visible:not([readonly]):not(.field-chrome--readonly),
+[data-theme="storefront"] .field-chrome:focus-within:not([readonly]):not(.field-chrome--readonly) {
+  border-color: var(--field-border-focus);
+}
+
+[data-theme="storefront"] .field-chrome--readonly,
+[data-theme="storefront"] .field-chrome[readonly] {
+  border-color: var(--field-border-readonly);
+}
+
+[data-theme="storefront"] .field-chrome[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+[data-theme="storefront"] .field-chrome:disabled {
+  border-color: var(--color-border);
+}
+
+[data-theme="storefront"] .field-label-optional {
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* A disabled box keeps its padding, so its text does not shift. */
+[data-theme="storefront"] .field-chrome:disabled {
+  padding-inline: var(--field-control-padding-inline);
+}
+
+[data-theme="storefront"] .search-field__box {
+  border: 1px solid var(--field-border);
+  padding-inline-start: var(--field-control-padding-inline);
+}
+
+[data-theme="storefront"] .search-field__box:hover {
+  border-color: var(--field-border-hover);
+}
+
+[data-theme="storefront"] .search-field__box:focus-within {
+  border-color: var(--field-border-focus);
+}
+
+/* The header's search: from 48rem it fills the nav's slot up to the toolbar
+   toggle beside it, which closes it, so the field drops its own close and that
+   column. */
+@media (min-width: 48rem) {
+  .storefront-header-search .search-field {
+    max-inline-size: none;
+  }
+
+  .storefront-header-search .search-field__box {
+    grid-template-columns: 1.375rem minmax(0, 1fr);
+    padding-inline-end: var(--field-control-padding-inline);
+  }
+
+  .storefront-header-search .search-field__action {
+    display: none;
+  }
 }

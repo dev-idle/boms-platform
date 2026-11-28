@@ -11,7 +11,6 @@ export default function StaffPickupsPage() {
       <DashboardPageHeader
         description="The day's pickups by time. Get the counter's part of each order ready, then hand the order over with the customer's code, or once its cash is paid."
         eyebrow={DASHBOARD_PAGE_EYEBROW.operations}
-        leadAside
         title={PAGE_TITLES.pickups}
       />
       <StaffPickupSchedule />

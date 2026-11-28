@@ -62,7 +62,7 @@ export function MessageComposer({
                   aria-label={label}
                   className="message-composer__input"
                   placeholder={placeholder}
-                  rows={2}
+                  rows={1}
                   onKeyDown={sendOnEnter}
                   {...field}
                 />
@@ -71,14 +71,12 @@ export function MessageComposer({
             </FormItem>
           )}
         />
-        <div className="message-composer__toolbar">
-          <p className="message-composer__hint" id={hintId}>
-            <span>Enter</span> to send · <span>Shift + Enter</span> for a new line
-          </p>
-          <Button aria-busy={pending || undefined} disabled={pending} size="sm" type="submit">
-            {pending ? "Sending…" : "Send"}
-          </Button>
-        </div>
+        <Button aria-busy={pending || undefined} className="message-composer__send" disabled={pending} type="submit">
+          {pending ? "Sending…" : "Send"}
+        </Button>
+        <p className="message-composer__hint" id={hintId}>
+          <span>Enter</span> to send · <span>Shift + Enter</span> for a new line
+        </p>
       </form>
     </Form>
   );

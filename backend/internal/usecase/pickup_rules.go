@@ -14,7 +14,7 @@ import (
 )
 
 // readPickupRules reads the settings and the closed days inside their booking
-// window, checked at now. The widest window an admin may set is known before
+// window, checked at now. The widest window a manager may set is known before
 // the settings are, so both queries run at once and a checkout pays one round
 // trip for them. Like listWithTotal it refuses to run inside a transaction.
 func readPickupRules(

@@ -23,7 +23,6 @@ export function useDebouncedTableSearch(delayMs = DEFAULT_DELAY_MS) {
 
   return {
     clear,
-    hasInput: input.length > 0,
     input,
     page,
     search,

@@ -65,11 +65,9 @@ export function ticketStatusToPillVariant(status: TicketStatus): StatusPillVaria
   }
 }
 
-/** Map review statuses onto the same pills: a review waiting for a manager is pending like an order. */
+/** Map review statuses onto the same pills. */
 export function reviewStatusToPillVariant(status: ReviewStatus): StatusPillVariant {
   switch (status) {
-    case "pending":
-      return "pending";
     case "published":
       return "ready";
     case "hidden":

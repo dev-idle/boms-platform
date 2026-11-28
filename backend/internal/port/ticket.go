@@ -26,8 +26,11 @@ type StationTicketsParams struct {
 	Status     *domainorder.TicketStatus
 	PickupFrom *time.Time
 	PickupTo   *time.Time
-	Limit      int32
-	Offset     int32
+	// Search narrows the queue to the tickets whose order code, customer name
+	// or item holds it; empty lists them all.
+	Search string
+	Limit  int32
+	Offset int32
 }
 
 // StationTicket is a ticket in a station's queue with what the station needs

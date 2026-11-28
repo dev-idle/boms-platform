@@ -7,7 +7,7 @@ export const AUTH_FORM_COPY = {
     title: PAGE_TITLES.signIn,
   },
   createAccount: {
-    description: "Create your account to order for pickup.",
+    description: "Order online and pick up at the counter.",
     title: PAGE_TITLES.createAccount,
   },
   forgotPassword: {
@@ -15,15 +15,15 @@ export const AUTH_FORM_COPY = {
     title: PAGE_TITLES.forgotPassword,
   },
   resetPassword: {
-    description: "Choose a new password. Saving it signs you out on every device.",
+    description: "Saving it signs you out on every device.",
     title: PAGE_TITLES.resetPassword,
   },
   verifyEmail: {
-    description: "Confirming your address lets you order and get updates about your orders.",
+    description: "Confirming your email lets you order and get updates about your orders.",
     title: PAGE_TITLES.verifyEmail,
   },
   unsubscribe: {
-    description: "Stopping promotion emails to your address.",
+    description: "Stopping promotion emails to your email address.",
     title: PAGE_TITLES.unsubscribe,
   },
 } as const;

@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 type DashboardSearchFieldProps = {
   className?: string;
   id?: string;
+  /** Names the field where no visible label does. */
+  label?: string;
   onChange: (value: string) => void;
   onClear: () => void;
   placeholder: string;
@@ -37,6 +39,7 @@ export function DashboardSearchField({
   className,
   id,
   onChange,
+  label,
   onClear,
   placeholder,
   value,
@@ -45,12 +48,13 @@ export function DashboardSearchField({
   const inputId = id ?? fallbackId;
 
   return (
-    <div className={cn("search-field", className)} role="search">
+    <div aria-label={label} className={cn("search-field", className)} role="search">
       <div className="search-field__box">
         <span aria-hidden className="search-field__leading">
           <SearchGlyph className="search-field__glyph" />
         </span>
         <input
+          aria-label={label}
           autoComplete="off"
           className="search-field__input"
           id={inputId}

@@ -13,8 +13,6 @@ type DashboardPageHeaderProps = {
   description?: ReactNode;
   /** Micro-label above the title — the section this page belongs to. */
   eyebrow?: string;
-  /** Renders the description opposite the title block. */
-  leadAside?: boolean;
   meta?: ReactNode;
   title: string;
 };
@@ -26,12 +24,10 @@ export function DashboardPageHeader({
   className,
   description,
   eyebrow,
-  leadAside = false,
   meta,
   title,
 }: DashboardPageHeaderProps) {
-  const hasAsideLead = leadAside && Boolean(description);
-  const hasToolbar = (Boolean(actions) || hasAsideLead) && !meta;
+  const hasToolbar = Boolean(actions) && !meta;
   const hasBreadcrumb = Boolean(breadcrumbItems && breadcrumbItems.length > 0);
 
   const body = (
@@ -41,7 +37,7 @@ export function DashboardPageHeader({
       ) : null}
       {eyebrow ? <p className="dashboard-page-eyebrow">{eyebrow}</p> : null}
       <h1 className="text-page-title">{title}</h1>
-      {description && !hasAsideLead ? (
+      {description ? (
         <p className="dashboard-page-lead">{description}</p>
       ) : null}
       {meta}
@@ -53,16 +49,10 @@ export function DashboardPageHeader({
       className={cn(
         "dashboard-page-header",
         hasToolbar && "dashboard-page-header--toolbar",
-        hasAsideLead && "dashboard-page-header--lead-aside",
         className,
       )}
     >
       {hasToolbar ? <div className="dashboard-page-header-body">{body}</div> : body}
-      {hasAsideLead ? (
-        <p className="dashboard-page-lead dashboard-page-lead--aside">
-          {description}
-        </p>
-      ) : null}
       {hasToolbar && actions ? (
         <div className="dashboard-page-header-actions">{actions}</div>
       ) : null}

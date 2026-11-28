@@ -10,8 +10,9 @@ type DashboardTableActionButtonProps = {
   blockedReason?: string;
 };
 
+/** The accent tone is the action's own: ink that turns matcha. */
 const TONE_CLASS = {
-  accent: "db-table-action--edit",
+  accent: undefined,
   danger: "db-table-action--delete",
   warning: "db-table-action--revoke",
 } as const;

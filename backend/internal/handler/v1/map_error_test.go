@@ -63,7 +63,7 @@ func TestWriteMapUsecaseError_mapsKnownErrors(t *testing.T) {
 		{name: "customization", err: domainproduct.ErrCustomization, wantStatus: 400, wantCode: "validation_error"},
 		{name: "combo_not_found", err: domaincombo.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
 		{name: "combo_slug_exists", err: domaincombo.ErrSlugExists, wantStatus: 409, wantCode: "slug_exists"},
-		{name: "discount_code_not_found", err: domaindiscount.ErrNotFound, wantStatus: 404, wantCode: "not_found"},
+		{name: "discount_code_not_found", err: domaindiscount.ErrNotFound, wantStatus: 404, wantCode: "discount_not_found"},
 		{name: "discount_code_exists", err: domaindiscount.ErrCodeExists, wantStatus: 409, wantCode: "code_exists"},
 		{name: "discount_inactive", err: domaindiscount.ErrInactive, wantStatus: 422, wantCode: "discount_inactive"},
 		{name: "discount_expired", err: domaindiscount.ErrExpired, wantStatus: 422, wantCode: "discount_expired"},

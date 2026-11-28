@@ -42,6 +42,8 @@ export const stationTicketsListFilterSchema = z.object({
   status: activeTicketStatusSchema.optional(),
   /** One bakery day's pickups (YYYY-MM-DD); every day's when left out. */
   date: z.iso.date().optional(),
+  /** Part of an order code, a customer's name or an item on the ticket. */
+  search: z.string().trim().default(""),
 });
 
 export type StationTicketsListFilterInput = z.infer<typeof stationTicketsListFilterSchema>;

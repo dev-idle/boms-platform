@@ -46,7 +46,7 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
       {
         onError: (error) => {
           if (!isApiError(error)) {
-            toast.error("Failed to change password");
+            toast.error("We could not change your password. Please try again.");
             return;
           }
           if (error.hasValidationDetails()) {
@@ -96,7 +96,7 @@ export function ChangePasswordForm({ formClassName }: ChangePasswordFormProps) {
           render={({ field }) => (
             <FormItem>
               <FieldControl
-                hint={`At least ${PASSWORD_MIN_LENGTH} characters.`}
+                hint={`At least ${PASSWORD_MIN_LENGTH} characters, with a letter and a number.`}
                 label="New password"
               >
                 <PasswordInput autoComplete="new-password" {...field} />

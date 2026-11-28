@@ -14,7 +14,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { BRAND } from "@/constants/brand";
 import { PolicyConsent } from "@/features/legal";
 import { loginHrefWithNext, validateNext } from "@/lib/validate-next";
-import { ApiErrorCode, isApiError } from "@/lib/errors";
+import { ApiErrorCode, isApiError, userFacingErrorMessage } from "@/lib/errors";
 import { mapValidationDetailsToFormErrors } from "@/lib/validation";
 
 import { useRegister } from "../hooks";
@@ -54,7 +54,7 @@ export function RegisterForm() {
             return;
           }
           if (error.isEmailExists()) {
-            form.setError("email", { message: "Email already registered" });
+            form.setError("email", { message: "An account already uses this email. Sign in instead." });
             return;
           }
           // The policies changed while the form was open: the ones on screen are
@@ -74,7 +74,7 @@ export function RegisterForm() {
             }
             return;
           }
-          toast.error(error.message);
+          toast.error(userFacingErrorMessage(error, "Something went wrong. Please try again."));
         },
       },
     );
@@ -134,41 +134,43 @@ export function RegisterForm() {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="accept_terms"
-            render={({ field, fieldState }) => (
-              <FormItem className="auth-field">
-                <PolicyConsent
-                  checked={field.value}
-                  describedBy={fieldState.error ? "register-terms-error" : undefined}
-                  invalid={Boolean(fieldState.error)}
-                  onCheckedChange={field.onChange}
-                  scope="account"
-                />
-                <FormMessage id="register-terms-error" />
-              </FormItem>
-            )}
-          />
+          <div className="auth-form__choices">
+            <FormField
+              control={form.control}
+              name="accept_terms"
+              render={({ field, fieldState }) => (
+                <FormItem className="space-y-0">
+                  <PolicyConsent
+                    checked={field.value}
+                    describedBy={fieldState.error ? "register-terms-error" : undefined}
+                    invalid={Boolean(fieldState.error)}
+                    onCheckedChange={field.onChange}
+                    scope="account"
+                  />
+                  <FormMessage id="register-terms-error" />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="marketing_opt_in"
-            render={({ field }) => (
-              <FormItem className="auth-field">
-                <CheckboxField
-                  checked={field.value}
-                  name={field.name}
-                  ref={field.ref}
-                  onBlur={field.onBlur}
-                  onChange={(event) => field.onChange(event.target.checked)}
-                >
-                  Email me promotions from {BRAND.name}: new bakes and offers, now and then. You can stop them at any
-                  time.
-                </CheckboxField>
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="marketing_opt_in"
+              render={({ field }) => (
+                <FormItem>
+                  <CheckboxField
+                    checked={field.value}
+                    name={field.name}
+                    ref={field.ref}
+                    onBlur={field.onBlur}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                  >
+                    Email me promotions from {BRAND.name}: new bakes and offers, now and then. You can stop them at any
+                    time.
+                  </CheckboxField>
+                </FormItem>
+              )}
+            />
+          </div>
 
           <Button
             className="auth-submit w-full"

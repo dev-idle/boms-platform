@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
 import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
 import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
@@ -14,6 +15,7 @@ import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
 import { ROUTE } from "@/constants/routes";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
+import { keepPageInRange, paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 
 import { usePromotions } from "../hooks";
@@ -28,6 +30,8 @@ export function ManagerPromotionsTable() {
   const { initialLoading, refetching } = getQuerySurface(promotionsQuery);
   const promotions = promotionsQuery.data?.promotions ?? [];
   const pagination = promotionsQuery.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
+  const placeholderRows = paginatedPlaceholderCountFromMeta(promotions.length, pagination, PAGE_SIZE);
 
   return (
     <div className="dashboard-page-stack">
@@ -37,7 +41,7 @@ export function ManagerPromotionsTable() {
             <Link href={ROUTE.manager.promotionsNew}>+ New promotion</Link>
           </Button>
         }
-        description="Email offers to the customers who asked for them. Each promotion goes to everyone who has agreed and confirmed their address when it is sent."
+        description="Email offers to the customers who asked for them. Each promotion goes to everyone who has agreed and confirmed their email when it is sent."
         eyebrow={DASHBOARD_PAGE_EYEBROW.promotions}
         title={PAGE_TITLES.promotions}
       />
@@ -54,11 +58,11 @@ export function ManagerPromotionsTable() {
             </colgroup>
             <thead>
               <tr>
-                <th>Subject</th>
-                <th>Sent by</th>
-                <th>Sent</th>
-                <th className="db-table-num">Recipients</th>
-                <th className="db-table-status">Status</th>
+                <th scope="col">Subject</th>
+                <th scope="col">Sent by</th>
+                <th scope="col">Sent</th>
+                <th scope="col" className="db-table-num">Recipients</th>
+                <th scope="col" className="db-table-status">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -68,6 +72,7 @@ export function ManagerPromotionsTable() {
                 entityLabel="promotions"
                 isEmpty={promotions.length === 0}
                 isError={promotionsQuery.isError}
+                onRetry={() => void promotionsQuery.refetch()}
                 initialLoading={initialLoading}
               />
               {!initialLoading && !promotionsQuery.isError
@@ -86,6 +91,7 @@ export function ManagerPromotionsTable() {
                     </tr>
                   ))
                 : null}
+              <DashboardTablePagePlaceholders columnCount={COLUMN_COUNT} count={placeholderRows} />
             </tbody>
           </table>
           <DashboardTablePagination

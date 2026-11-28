@@ -10,7 +10,7 @@ import { MessageThread } from "@/components/ui/message-thread";
 import { ROUTE } from "@/constants/routes";
 import { usePageVisible } from "@/lib/hooks/use-page-visible";
 import type { Message } from "@/lib/schemas/message";
-import { initialsOf } from "@/lib/user-initials";
+import { initialOf } from "@/lib/user-initials";
 
 import {
   useMarkStaffMessagesRead,
@@ -66,7 +66,7 @@ export function StaffChatThread({ thread: ref, customerName, customerEmail, orde
         />
         <div className="staff-chat__who">
           <span aria-hidden="true" className="staff-chat__avatar staff-chat__avatar--subject">
-            {initialsOf(customerName, customerEmail)}
+            {initialOf(customerName, customerEmail)}
           </span>
           <span className="staff-chat__who-text">
             <h2 className="staff-chat__thread-name">{name}</h2>

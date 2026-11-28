@@ -3,12 +3,14 @@
 import { useState } from "react";
 
 import { DashboardTableDateTimeCell } from "@/components/ui/dashboard-table-datetime-cell";
+import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
 import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
+import { keepPageInRange, paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { INCIDENT_TYPE_LABEL, incidentTypeSchema, type IncidentType } from "@/lib/schemas/incident";
 import { formatPickupDateTime } from "@/lib/validation/pickup";
@@ -42,6 +44,8 @@ export function ManagerIncidentsTable({ week }: ManagerIncidentsTableProps) {
   const { initialLoading, refetching } = getQuerySurface(incidentsQuery);
   const incidents = incidentsQuery.data?.incidents ?? [];
   const pagination = incidentsQuery.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
+  const placeholderRows = paginatedPlaceholderCountFromMeta(incidents.length, pagination, PAGE_SIZE);
   const counted = (label: string, count: number | undefined) => (summary ? `${label} (${count ?? 0})` : label);
 
   return (
@@ -81,10 +85,10 @@ export function ManagerIncidentsTable({ week }: ManagerIncidentsTableProps) {
           </colgroup>
           <thead>
             <tr>
-              <th>Incident</th>
-              <th>Order</th>
-              <th>Note</th>
-              <th>Recorded</th>
+              <th scope="col">Incident</th>
+              <th scope="col">Order</th>
+              <th scope="col">Note</th>
+              <th scope="col">Recorded</th>
             </tr>
           </thead>
           <tbody>
@@ -96,6 +100,7 @@ export function ManagerIncidentsTable({ week }: ManagerIncidentsTableProps) {
               hasActiveFilter={type !== undefined}
               isEmpty={incidents.length === 0}
               isError={incidentsQuery.isError}
+              onRetry={() => void incidentsQuery.refetch()}
               initialLoading={initialLoading}
             />
             {!initialLoading && !incidentsQuery.isError
@@ -103,7 +108,7 @@ export function ManagerIncidentsTable({ week }: ManagerIncidentsTableProps) {
                   <tr key={incident.id}>
                     <td>
                       <div className="db-table-stacked-cell min-w-0">
-                        <span className="db-table-cell-primary">{INCIDENT_TYPE_LABEL[incident.type]}</span>
+                        <span className="db-table-cell-primary truncate">{INCIDENT_TYPE_LABEL[incident.type]}</span>
                         <span className="truncate text-caption-dashboard text-muted">{recordedBy(incident)}</span>
                       </div>
                     </td>
@@ -111,7 +116,7 @@ export function ManagerIncidentsTable({ week }: ManagerIncidentsTableProps) {
                       <div className="db-table-stacked-cell min-w-0">
                         <span className="text-order-code">{incident.order_code}</span>
                         {incident.pickup_at ? (
-                          <span className="text-caption-dashboard text-muted">
+                          <span className="truncate text-caption-dashboard text-muted">
                             Pickup {formatPickupDateTime(incident.pickup_at)}
                           </span>
                         ) : null}
@@ -128,6 +133,7 @@ export function ManagerIncidentsTable({ week }: ManagerIncidentsTableProps) {
                   </tr>
                 ))
               : null}
+            <DashboardTablePagePlaceholders columnCount={COLUMN_COUNT} count={placeholderRows} />
           </tbody>
         </table>
         <DashboardTablePagination

@@ -24,6 +24,9 @@ type MessageThreadProps = {
   onLoadMore: () => void;
 };
 
+/** Messages one side sends this close together read as one block. */
+const RUN_GAP_MS = 5 * 60 * 1000;
+
 /** "Today", "Yesterday" or the date: what the day rule between messages reads. */
 function dayLabel(iso: string, now: Date): string {
   const day = new Date(iso);
@@ -39,7 +42,9 @@ function dayLabel(iso: string, now: Date): string {
 }
 
 /**
- * A conversation read top to bottom, a rule between days. It keeps the latest
+ * A conversation read top to bottom, a rule between days. Messages one side
+ * sends within a few minutes stand close together, the time under the last
+ * of them only. It keeps the latest
  * message in view as messages arrive, or as the last one is written; loading
  * older ones leaves the reader where they were.
  */
@@ -68,6 +73,18 @@ export function MessageThread({
 
   const now = new Date();
   const days = messages.map((message) => dayLabel(message.created_at, now));
+  // Whether a message continues the one before it: same side, same author,
+  // same day, sent within the gap.
+  const continues = messages.map((message, index) => {
+    const previous = messages[index - 1];
+    return (
+      previous !== undefined &&
+      previous.from === message.from &&
+      authorOf(previous) === authorOf(message) &&
+      days[index - 1] === days[index] &&
+      Date.parse(message.created_at) - Date.parse(previous.created_at) < RUN_GAP_MS
+    );
+  });
   return (
     <div aria-busy={busy || undefined} aria-label={label} className="message-thread" ref={logRef} role="log" tabIndex={0}>
       {hasMore ? (
@@ -87,17 +104,19 @@ export function MessageThread({
         const author = authorOf(message);
         const sender = author ?? (message.from === ownSide ? "You" : otherName);
         return (
-          <div className="message-thread__entry" key={message.id}>
+          <div className={continues[index] ? "message-thread__entry message-thread__entry--continued" : "message-thread__entry"} key={message.id}>
             {days[index] !== days[index - 1] ? <p className="message-thread__day">{days[index]}</p> : null}
             <div className={message.from === ownSide ? "message message--own" : "message"}>
               <p className="message__bubble">
                 <span className="sr-only">{sender}: </span>
                 {message.body}
               </p>
-              <p className="message__meta">
-                <time dateTime={message.created_at}>{splitDateTime(message.created_at).time}</time>
-                {author ? ` · ${author}` : null}
-              </p>
+              {continues[index + 1] ? null : (
+                <p className="message__meta">
+                  <time dateTime={message.created_at}>{splitDateTime(message.created_at).time}</time>
+                  {author ? ` · ${author}` : null}
+                </p>
+              )}
             </div>
           </div>
         );

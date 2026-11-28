@@ -61,7 +61,7 @@ function FullNamePhoneSelfProfileFormBody({
       },
       {
         onError: (error) => {
-          applyApiFormFieldErrors(form, error, ["full_name", "phone"], "Failed to update profile");
+          applyApiFormFieldErrors(form, error, ["full_name", "phone"], "We could not update profile. Please try again.");
         },
         onSuccess: (me) => {
           if (me.role === USER_ROLE.customer) {

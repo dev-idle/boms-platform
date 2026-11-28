@@ -236,6 +236,7 @@ func (r *ProductRepository) FulfillmentOf(
 func (r *ProductRepository) StaffList(ctx context.Context, params port.StaffListProductsParams) ([]port.StaffProduct, error) {
 	rows, err := r.q(ctx).StaffListProducts(ctx, sqlcgen.StaffListProductsParams{
 		SoldOutOn: params.SoldOutOn,
+		Search:    params.Search,
 		Limit:     params.Limit,
 		Offset:    params.Offset,
 	})
@@ -256,8 +257,11 @@ func (r *ProductRepository) StaffList(ctx context.Context, params port.StaffList
 }
 
 // StaffListCount implements port.ProductRepository.
-func (r *ProductRepository) StaffListCount(ctx context.Context, soldOutOn *time.Time) (int64, error) {
-	count, err := r.q(ctx).StaffListProductsCount(ctx, soldOutOn)
+func (r *ProductRepository) StaffListCount(ctx context.Context, params port.StaffListProductsParams) (int64, error) {
+	count, err := r.q(ctx).StaffListProductsCount(ctx, sqlcgen.StaffListProductsCountParams{
+		SoldOutOn: params.SoldOutOn,
+		Search:    params.Search,
+	})
 	if err != nil {
 		return 0, mapRepoError(err, "staff list products count")
 	}
@@ -496,7 +500,7 @@ func mapCatalogGetProductRow(row sqlcgen.CatalogGetProductByIDRow) port.CatalogL
 }
 
 func mapCatalogGetProductsByIDsRow(row sqlcgen.CatalogGetProductsByIDsRow) port.CatalogListProduct {
-	return mapCatalogProductFields(
+	item := mapCatalogProductFields(
 		row.ID,
 		row.CategoryID,
 		row.Name,
@@ -508,6 +512,8 @@ func mapCatalogGetProductsByIDsRow(row sqlcgen.CatalogGetProductsByIDsRow) port.
 		row.CategoryName,
 		row.CategorySlug,
 	)
+	item.ImageURLs = row.ImageUrls
+	return item
 }
 
 func mapCatalogProductFields(

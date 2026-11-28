@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { PolicyConsent } from "@/features/legal";
 import { EmailVerificationNotice } from "@/features/user";
 import { ApiErrorCode, isApiError } from "@/lib/errors";
+import { formatPriceCents } from "@/lib/validation/catalog";
 import { useAuthStore } from "@/stores/auth-store";
 
 import { useCheckoutCart } from "../hooks";
@@ -19,17 +20,30 @@ const CONSENT_HINT_ID = "checkout-consent-hint";
 type CartCheckoutPanelProps = {
   checkoutReady: boolean;
   fulfillment: Cart["fulfillment"];
+  totalCents: number;
+  /** The money — totals, code, total — between the pickup and the checkout. */
+  children: ReactNode;
 };
 
-/** Pickup day, slot and checkout for the cart's items. */
-export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPanelProps) {
+/** Pickup day and slot, then the money, then checkout for the cart's items. */
+export function CartCheckoutPanel({ checkoutReady, fulfillment, totalCents, children }: CartCheckoutPanelProps) {
   const checkout = useCheckoutCart();
   const choice = usePickupChoice(fulfillment, checkout.isPending);
   const [accepted, setAccepted] = useState(false);
 
   // Order updates go to the account's address, so it must be confirmed first.
   const unconfirmed = useAuthStore((state) => state.user?.email_verified === false);
-  const canCheckout = checkoutReady && !unconfirmed && accepted && choice.ready && !checkout.isPending;
+  // Why the order cannot be placed yet, in the order the customer meets the causes.
+  const blockedReason = !checkoutReady
+    ? "Remove the items that are no longer available to place the order"
+    : unconfirmed
+      ? "Confirm your email to place an order"
+      : !choice.ready
+        ? "Choose a pickup time to place the order"
+        : !accepted
+          ? "Accept the terms of sale and the refund policy to place the order"
+          : undefined;
+  const canCheckout = blockedReason === undefined && !checkout.isPending;
 
   function placeOrder(): void {
     const pickupAt = canCheckout ? choice.pickupAt() : null;
@@ -54,8 +68,10 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
     <>
       <PickupSlotPicker {...choice.picker} errorId={ERROR_ID} />
 
+      {children}
+
       <div className="storefront-cart-summary__checkout">
-        <EmailVerificationNotice reason="Confirm your address to place this order." />
+        <EmailVerificationNotice reason="Confirm your email to place this order." />
         <PolicyConsent
           checked={accepted}
           describedBy={accepted ? undefined : CONSENT_HINT_ID}
@@ -65,29 +81,23 @@ export function CartCheckoutPanel({ checkoutReady, fulfillment }: CartCheckoutPa
         />
         {accepted ? null : (
           <p className="sr-only" id={CONSENT_HINT_ID}>
-            Checkout opens once you accept the terms and the refund policy.
+            Placing the order opens once you accept the terms of sale and the refund policy.
           </p>
         )}
         <Button
           className="storefront-cart-summary__checkout-btn"
           disabled={!canCheckout}
-          title={
-            unconfirmed
-              ? "Confirm your email to place an order"
-              : accepted
-                ? undefined
-                : "Accept the terms and the refund policy to check out"
-          }
+          title={blockedReason}
           type="button"
           onClick={placeOrder}
         >
-          {checkout.isPending ? "Placing order…" : "Checkout"}
+          {checkout.isPending ? "Placing order…" : `Place order · ${formatPriceCents(totalCents)}`}
         </Button>
         <p className="storefront-pickup-picker__error text-caption" id={ERROR_ID} role="status">
           {choice.message}
         </p>
         {choice.retry ? (
-          <Button type="button" variant="outline" onClick={choice.retry}>
+          <Button size="sm" type="button" variant="outline" onClick={choice.retry}>
             Try again
           </Button>
         ) : null}

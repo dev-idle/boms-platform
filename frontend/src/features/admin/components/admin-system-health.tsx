@@ -86,9 +86,9 @@ export function AdminSystemHealth() {
           </colgroup>
           <thead>
             <tr>
-              <th>Check</th>
-              <th>Status</th>
-              <th>Detail</th>
+              <th scope="col">Check</th>
+              <th scope="col">Status</th>
+              <th scope="col">Detail</th>
             </tr>
           </thead>
           <tbody>
@@ -98,6 +98,7 @@ export function AdminSystemHealth() {
               initialLoading={initialLoading}
               isEmpty={false}
               isError={dashboardQuery.isError}
+              onRetry={() => void dashboardQuery.refetch()}
             />
             {health
               ? checks(health).map((check) => (

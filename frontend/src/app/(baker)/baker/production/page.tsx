@@ -1,20 +1,16 @@
-import { connection } from "next/server";
-
 import { DashboardPageHeader } from "@/components/ui/dashboard-page-header";
-import { BakerProductionTable, formatBakerShiftEyebrow } from "@/features/baker";
+import { DASHBOARD_PAGE_EYEBROW } from "@/constants/dashboard-page-copy";
+import { BakerProductionTable } from "@/features/baker";
 import { PAGE_TITLES, pageTitle } from "@/lib/metadata/page-title";
 
 export const metadata = pageTitle(PAGE_TITLES.production);
 
-export default async function BakerProductionPage() {
-  await connection();
-
+export default function BakerProductionPage() {
   return (
     <div className="dashboard-page-stack">
       <DashboardPageHeader
-        description="Kitchen queue sorted by pickup time."
-        eyebrow={formatBakerShiftEyebrow(new Date())}
-        leadAside
+        description="The kitchen's tickets, the soonest pickup first."
+        eyebrow={DASHBOARD_PAGE_EYEBROW.operations}
         title={PAGE_TITLES.production}
       />
       <BakerProductionTable />

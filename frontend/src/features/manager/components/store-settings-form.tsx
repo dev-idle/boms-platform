@@ -8,11 +8,11 @@ import { toast } from "sonner";
 import { DashboardFormSaveButton } from "@/components/ui/dashboard-form-save-button";
 import { FieldControl } from "@/components/ui/field-control";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { IntegerFieldInput } from "@/components/ui/integer-field-input";
 import { Select } from "@/components/ui/select";
 import { ApiErrorCode, isApiError } from "@/lib/errors";
 import { applyFormFieldErrors } from "@/lib/validation";
+import { clockToMinutes, formatClockMinutes } from "@/lib/validation/clock";
 
 import { usePatchStoreSettings } from "../hooks";
 import { StrandedPickupsDialog } from "./stranded-pickups-dialog";
@@ -42,6 +42,19 @@ const STORE_SETTINGS_FIELDS = [
   "payment_hold_minutes",
 ] as const;
 
+/** The times the bakery can open or close at: every half hour of the day. */
+const HALF_HOURS = Array.from({ length: 48 }, (_, index) => {
+  const minutes = index * 30;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+});
+
+/** The half hours, with a saved time that falls between them kept in its place. */
+function clockOptions(saved: string): string[] {
+  return HALF_HOURS.includes(saved)
+    ? HALF_HOURS
+    : [...HALF_HOURS, saved].sort((a, b) => clockToMinutes(a) - clockToMinutes(b));
+}
+
 type StoreSettingsFormProps = {
   settings: StoreSettings;
 };
@@ -70,7 +83,7 @@ export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
   });
 
   function onSubmit(values: StoreSettingsFormInput): void {
-    // Only what this admin changed: a save must not undo what another admin
+    // Only what this manager changed: a save must not undo what another manager
     // saved to the other fields in the meantime.
     const { dirtyFields } = form.formState;
     const changes: StoreSettingsPatch = Object.fromEntries(
@@ -94,7 +107,7 @@ export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
           setStranding(values);
           return;
         }
-        toast.error(isApiError(error) ? error.message : "Failed to save pickup rules");
+        toast.error(isApiError(error) ? error.message : "We could not save pickup rules. Please try again.");
       },
     });
   }
@@ -117,7 +130,13 @@ export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
                 hintId="store-opens-at-hint"
                 label="Pickups open"
               >
-                <Input step={60} type="time" {...field} />
+                <Select name={field.name} ref={field.ref} value={field.value} onBlur={field.onBlur} onChange={field.onChange}>
+                  {clockOptions(field.value).map((time) => (
+                    <option key={time} value={time}>
+                      {formatClockMinutes(clockToMinutes(time))}
+                    </option>
+                  ))}
+                </Select>
               </FieldControl>
               <FormMessage />
             </FormItem>
@@ -134,7 +153,13 @@ export function StoreSettingsForm({ settings }: StoreSettingsFormProps) {
                 hintId="store-closes-at-hint"
                 label="Pickups close"
               >
-                <Input step={60} type="time" {...field} />
+                <Select name={field.name} ref={field.ref} value={field.value} onBlur={field.onBlur} onChange={field.onChange}>
+                  {clockOptions(field.value).map((time) => (
+                    <option key={time} value={time}>
+                      {formatClockMinutes(clockToMinutes(time))}
+                    </option>
+                  ))}
+                </Select>
               </FieldControl>
               <FormMessage />
             </FormItem>

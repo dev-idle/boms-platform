@@ -18,6 +18,10 @@ export const catalogCategorySchema = z.object({
   name: z.string().min(1),
   slug: catalogSlugSchema,
   sort_order: z.number().int().min(0),
+  /** How many products the shop shows in it. */
+  product_count: z.number().int().min(0),
+  /** The first photo of its first photographed product; null until one has a photo. */
+  image_url: catalogImageUrlResponseSchema,
 });
 
 /** What an option sets on a custom cake; a customer picks one from each group offered. */

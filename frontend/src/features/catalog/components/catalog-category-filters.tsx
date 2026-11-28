@@ -11,7 +11,7 @@ type CatalogCategoryFiltersProps = {
   showCombosLink?: boolean;
 };
 
-/** Vertical category list for the products page sidebar. */
+/** One row of category chips over the shop, each with how many products it holds. */
 export function CatalogCategoryFilters({
   categories,
   selectedCategoryId,
@@ -22,49 +22,36 @@ export function CatalogCategoryFilters({
     return null;
   }
 
+  const total = categories.reduce((sum, category) => sum + category.product_count, 0);
+  const chips = [
+    { id: undefined, name: "All", count: total },
+    ...categories.map((category) => ({ id: category.id, name: category.name, count: category.product_count })),
+  ];
+
   return (
-    <nav aria-label="Category filters" className="catalog-sidebar__nav">
-      <p className="catalog-sidebar__label">Category</p>
-      <ul className="catalog-sidebar__list">
-        {categories.length > 0 ? (
-          <li>
-            <button
-              aria-current={
-                selectedCategoryId === undefined ? "true" : undefined
-              }
-              className={cn(
-                "catalog-sidebar__link",
-                selectedCategoryId === undefined &&
-                  "catalog-sidebar__link--active",
-              )}
-              onClick={() => onSelectCategory(undefined)}
-              type="button"
-            >
-              All products
-            </button>
-          </li>
-        ) : null}
-        {categories.map((category) => (
-          <li key={category.id}>
-            <button
-              aria-current={
-                selectedCategoryId === category.id ? "true" : undefined
-              }
-              className={cn(
-                "catalog-sidebar__link",
-                selectedCategoryId === category.id &&
-                  "catalog-sidebar__link--active",
-              )}
-              onClick={() => onSelectCategory(category.id)}
-              type="button"
-            >
-              {category.name}
-            </button>
-          </li>
-        ))}
+    <nav aria-label="Category filters" className="catalog-chips">
+      <ul className="catalog-chips__list">
+        {categories.length > 0
+          ? chips.map((chip) => {
+              const selected = selectedCategoryId === chip.id;
+              return (
+                <li key={chip.id ?? "all"}>
+                  <button
+                    aria-pressed={selected}
+                    className={cn("catalog-chip", selected && "catalog-chip--active")}
+                    onClick={() => onSelectCategory(chip.id)}
+                    type="button"
+                  >
+                    {chip.name}
+                    <span className="catalog-chip__count">{chip.count}</span>
+                  </button>
+                </li>
+              );
+            })
+          : null}
         {showCombosLink ? (
           <li>
-            <CatalogCombosMenuLink className="catalog-sidebar__link catalog-sidebar__link--anchor" />
+            <CatalogCombosMenuLink />
           </li>
         ) : null}
       </ul>

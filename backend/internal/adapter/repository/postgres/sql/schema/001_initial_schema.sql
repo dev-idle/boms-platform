@@ -605,7 +605,7 @@ CREATE TABLE "saved_products" (
 CREATE INDEX "saved_products_user_list_saved_idx" ON "saved_products" ("user_id", "list", "saved_at") WHERE (deleted_at IS NULL);
 CREATE UNIQUE INDEX "saved_products_user_product_list_idx" ON "saved_products" ("user_id", "product_id", "list");
 
-CREATE TYPE "review_status" AS ENUM ('pending', 'published', 'hidden');
+CREATE TYPE "review_status" AS ENUM ('published', 'hidden');
 
 CREATE TABLE "reviews" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -614,7 +614,7 @@ CREATE TABLE "reviews" (
   "user_id" uuid NOT NULL,
   "rating" smallint NOT NULL,
   "comment" text NULL,
-  "status" "review_status" NOT NULL DEFAULT 'pending',
+  "status" "review_status" NOT NULL DEFAULT 'published',
   "moderated_by" uuid NULL,
   "moderated_at" timestamptz NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
@@ -626,7 +626,7 @@ CREATE TABLE "reviews" (
   CONSTRAINT "reviews_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products" ("id") ON DELETE RESTRICT,
   CONSTRAINT "reviews_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT,
   CONSTRAINT "reviews_comment_check" CHECK ((comment IS NULL) OR ((char_length(comment) >= 1) AND (char_length(comment) <= 1000))),
-  CONSTRAINT "reviews_moderation_check" CHECK (((moderated_by IS NULL) = (moderated_at IS NULL)) AND ((status = 'pending'::review_status) = (moderated_at IS NULL))),
+  CONSTRAINT "reviews_moderation_check" CHECK (((moderated_by IS NULL) = (moderated_at IS NULL)) AND ((status = 'published'::review_status) OR (moderated_at IS NOT NULL))),
   CONSTRAINT "reviews_rating_check" CHECK ((rating >= 1) AND (rating <= 5))
 );
 CREATE UNIQUE INDEX "reviews_order_product_idx" ON "reviews" ("order_id", "product_id");

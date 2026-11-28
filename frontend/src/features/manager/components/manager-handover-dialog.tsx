@@ -64,7 +64,7 @@ export function ManagerHandoverDialog({ order, onClose }: ManagerHandoverDialogP
           onSubmit={form.handleSubmit((values) =>
             handOver.mutate(values, {
               onSuccess: onClose,
-              onError: (error) => applyApiFormFieldErrors(form, error, FIELDS, "Failed to hand the order over"),
+              onError: (error) => applyApiFormFieldErrors(form, error, FIELDS, "We could not hand the order over. Please try again."),
             }),
           )}
         >

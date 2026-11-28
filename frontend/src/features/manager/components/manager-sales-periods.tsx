@@ -1,9 +1,15 @@
 "use client";
 
+import { useState } from "react";
+
 import { DashboardProfileSection } from "@/components/layouts/dashboard-profile-layout";
 import { Button } from "@/components/ui/button";
+import { DashboardTablePagePlaceholders } from "@/components/ui/dashboard-table-page-placeholders";
+import { DashboardTablePagination } from "@/components/ui/dashboard-table-pagination";
 import { DashboardTableStateRows } from "@/components/ui/dashboard-table-state-rows";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
+import { DASHBOARD_TABLE_PAGE_SIZE } from "@/constants/dashboard-table";
+import { paginatedPlaceholderCount } from "@/lib/pagination/dashboard-pagination";
 import { saveFile } from "@/lib/dom/save-file";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { formatPriceCents } from "@/lib/validation/catalog";
@@ -34,16 +40,25 @@ type ManagerSalesPeriodsProps = {
   range: SalesReportFilterInput;
 };
 
-/** Net revenue by period, drawn and listed with what each period took and gave back. */
+/**
+ * Net revenue by period, drawn and listed with what each period took and gave
+ * back: the chart reads left to right, the table a page at a time from the
+ * latest period. Mounted per range, so a new range opens on its first page.
+ */
 export function ManagerSalesPeriods({ range }: ManagerSalesPeriodsProps) {
+  const [page, setPage] = useState(1);
   const reportQuery = useSalesReport(range);
   const { initialLoading, refetching } = getQuerySurface(reportQuery);
   const report = reportQuery.data;
   const blockedReason = downloadBlockedReason(report, reportQuery.isError, false);
+  const periods = report ? [...report.periods].reverse() : [];
+  const shown = periods.slice((page - 1) * DASHBOARD_TABLE_PAGE_SIZE, page * DASHBOARD_TABLE_PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(periods.length / DASHBOARD_TABLE_PAGE_SIZE));
+  const placeholderRows = paginatedPlaceholderCount(shown.length, DASHBOARD_TABLE_PAGE_SIZE, totalPages);
 
   return (
     <DashboardProfileSection
-      description="Payments taken and refunds made in each period: a refund counts on the day the money went back."
+      description="Payments taken and refunds made in each period, the latest first: a refund counts on the day the money went back."
       id="manager-sales-periods"
       title="By period"
       variant="plain"
@@ -78,11 +93,11 @@ export function ManagerSalesPeriods({ range }: ManagerSalesPeriodsProps) {
               </colgroup>
               <thead>
                 <tr>
-                  <th>Period</th>
-                  <th className="db-table-num">Orders</th>
-                  <th className="db-table-num">Sales</th>
-                  <th className="db-table-num">Refunds</th>
-                  <th className="db-table-num">Net</th>
+                  <th scope="col">Period</th>
+                  <th scope="col" className="db-table-num">Orders</th>
+                  <th scope="col" className="db-table-num">Sales</th>
+                  <th scope="col" className="db-table-num">Refunds</th>
+                  <th scope="col" className="db-table-num">Net</th>
                 </tr>
               </thead>
               <tbody>
@@ -91,10 +106,11 @@ export function ManagerSalesPeriods({ range }: ManagerSalesPeriodsProps) {
                   entityLabel="periods"
                   isEmpty={false}
                   isError={reportQuery.isError}
+                  onRetry={() => void reportQuery.refetch()}
                   initialLoading={initialLoading}
                 />
                 {report && !initialLoading && !reportQuery.isError
-                  ? report.periods.map((period) => (
+                  ? shown.map((period) => (
                       <tr key={period.start}>
                         <td className="db-table-cell-primary">{formatPeriod(period.start, report.group)}</td>
                         <td className="db-table-num">{period.orders}</td>
@@ -104,8 +120,17 @@ export function ManagerSalesPeriods({ range }: ManagerSalesPeriodsProps) {
                       </tr>
                     ))
                   : null}
+                <DashboardTablePagePlaceholders columnCount={COLUMN_COUNT} count={placeholderRows} />
               </tbody>
             </table>
+            <DashboardTablePagination
+              itemLabel="periods"
+              onPageChange={setPage}
+              page={page}
+              pageSize={DASHBOARD_TABLE_PAGE_SIZE}
+              totalItems={periods.length}
+              totalPages={totalPages}
+            />
           </DashboardTableWrap>
         </div>
       </div>

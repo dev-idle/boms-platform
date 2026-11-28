@@ -24,13 +24,13 @@ import {
 } from "@/constants/dashboard-table";
 import { USER_ROLE, roleDisplayLabel } from "@/constants/roles";
 import { ROUTE } from "@/constants/routes";
-import { isApiError } from "@/lib/errors";
 import { useDebouncedTableSearch } from "@/lib/hooks/use-debounced-table-search";
 import { getQuerySurface } from "@/lib/react-query/query-surface";
 import { PAGE_TITLES } from "@/lib/metadata/page-title";
 import { paginatedPlaceholderCountFromMeta } from "@/lib/pagination/dashboard-pagination";
 import { DashboardTableWrap } from "@/components/ui/dashboard-table-wrap";
-import { cn } from "@/lib/utils";
+import { keepPageInRange } from "@/lib/pagination/dashboard-pagination";
+import { formatDateTime, splitDateTime } from "@/lib/validation/datetime";
 import { useAuthStore } from "@/stores/auth-store";
 
 import { useDisable, useEnable, useRevokeSessions, useUsers } from "../hooks";
@@ -38,7 +38,8 @@ import {
   adminUserAccountStatus,
   adminUserRowActions,
 } from "../lib/account-management";
-import { adminUserInitials, adminUserListName } from "../lib/user-display";
+import { accountActionErrorMessage } from "../lib/account-action-error";
+import { adminUserAccountNote, adminUserInitial } from "../lib/user-display";
 import type { AdminUser, AdminUserRoleFilter } from "../schemas";
 
 type PendingAction = "disable" | "enable" | "revoke";
@@ -80,6 +81,7 @@ export function AdminUsersTable() {
   const { initialLoading, refetching } = getQuerySurface(usersQuery);
   const users = usersQuery.data?.users ?? [];
   const pagination = usersQuery.data?.pagination;
+  keepPageInRange(page, setPage, pagination?.total_pages);
   const pagePlaceholderCount = paginatedPlaceholderCountFromMeta(
     users.length,
     pagination,
@@ -97,15 +99,7 @@ export function AdminUsersTable() {
   }
 
   function handleActionError(error: unknown, fallback: string): void {
-    if (isApiError(error) && error.isCannotModifySelf()) {
-      toast.error("You cannot perform this action on your own account.");
-      return;
-    }
-    if (isApiError(error) && error.isCannotModifyAdmin()) {
-      toast.error("Admin accounts cannot be disabled or have sessions revoked.");
-      return;
-    }
-    toast.error(isApiError(error) ? error.message : fallback);
+    toast.error(accountActionErrorMessage(error, fallback));
   }
 
   function runPendingAction<TData>(
@@ -140,6 +134,7 @@ export function AdminUsersTable() {
       <div className="dashboard-page-body">
         <div className="db-table-filters">
           <DashboardSearchField
+            label="Search users"
             onChange={setInput}
             onClear={clear}
             placeholder="Search email, name, employee code"
@@ -160,22 +155,22 @@ export function AdminUsersTable() {
           <table className="db-table db-table--admin-users">
             <colgroup>
               <col className="db-table-col-avatar" />
-              <col className="db-table-col-email" />
-              <col className="db-table-col-name" />
+              <col />
               <col className="db-table-col-role" />
+              <col className="db-table-col-joined" />
               <col className="db-table-col-status" />
               <col className="db-table-col-actions" />
             </colgroup>
             <thead>
               <tr>
-                <th className="db-table-cell-avatar">
+                <th scope="col" className="db-table-cell-avatar">
                   <span className="sr-only">Avatar</span>
                 </th>
-                <th className="db-table-cell-email">Email</th>
-                <th className="db-table-cell-name">Name</th>
-                <th>Role</th>
-                <th className="db-table-status">Status</th>
-                <th className="db-table-detail">Actions</th>
+                <th scope="col">Account</th>
+                <th scope="col">Role</th>
+                <th scope="col">Joined</th>
+                <th scope="col" className="db-table-status">Status</th>
+                <th scope="col" className="db-table-detail">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -186,11 +181,11 @@ export function AdminUsersTable() {
                 hasActiveFilter={Boolean(search || role)}
                 isEmpty={users.length === 0}
                 isError={usersQuery.isError}
+                onRetry={() => void usersQuery.refetch()}
                 initialLoading={initialLoading}
               />
               {!initialLoading && !usersQuery.isError && users.length > 0
                 ? users.map((user) => {
-                    const listName = adminUserListName(user);
                     const accountStatus = adminUserAccountStatus(user);
                     const { account, sessions } = adminUserRowActions(user, currentUserId);
                     const accountAction = account.label === "Enable" ? "enable" : "disable";
@@ -199,25 +194,25 @@ export function AdminUsersTable() {
                       <tr key={user.id}>
                         <td className="db-table-cell-avatar">
                           <span aria-hidden className="db-table-avatar">
-                            {adminUserInitials(user)}
+                            {adminUserInitial(user)}
                           </span>
                         </td>
-                        <td
-                          className="db-table-cell-email db-table-cell-primary db-table-cell-truncate"
-                          title={user.email}
-                        >
-                          {user.email}
-                        </td>
-                        <td
-                          className={cn(
-                            "db-table-cell-name db-table-cell-truncate",
-                            listName === "—" ? "db-table-cell-placeholder" : "text-muted",
-                          )}
-                          title={listName === "—" ? undefined : listName}
-                        >
-                          {listName}
+                        <td>
+                          <div className="db-table-stacked-cell min-w-0">
+                            <span className="db-table-cell-primary truncate" title={user.email}>
+                              {user.email}
+                            </span>
+                            <span className="truncate text-caption-dashboard text-muted">
+                              {adminUserAccountNote(user, currentUserId)}
+                            </span>
+                          </div>
                         </td>
                         <td className="db-table-cell-role">{roleDisplayLabel(user.role)}</td>
+                        <td className="db-table-datetime" title={formatDateTime(user.created_at)}>
+                          <time dateTime={user.created_at}>
+                            <span className="db-table-datetime__date">{splitDateTime(user.created_at).date}</span>
+                          </time>
+                        </td>
                         <td className="db-table-status">
                           <StatusPill
                             label={accountStatus.label}
@@ -278,10 +273,10 @@ export function AdminUsersTable() {
       <ConfirmDialog
         confirmLabel="Disable account"
         confirmVariant="destructive"
-        description="This action soft-deletes the account and revokes active sessions."
+        description="The account can no longer sign in and its sessions end. You can enable it again."
         isPending={disableUser.isPending}
         onCancel={clearPendingAction}
-        onConfirm={() => runPendingAction(disableUser, "Failed to disable account")}
+        onConfirm={() => runPendingAction(disableUser, "We could not disable account. Please try again.")}
         open={pendingAction === "disable" && actionUser !== null}
         title="Disable account?"
       />
@@ -291,7 +286,7 @@ export function AdminUsersTable() {
         description="This account will be restored and can sign in again."
         isPending={enableUser.isPending}
         onCancel={clearPendingAction}
-        onConfirm={() => runPendingAction(enableUser, "Failed to enable account")}
+        onConfirm={() => runPendingAction(enableUser, "We could not enable account. Please try again.")}
         open={pendingAction === "enable" && actionUser !== null}
         title="Enable account?"
       />
@@ -302,7 +297,7 @@ export function AdminUsersTable() {
         description="All active sessions for this user will be revoked."
         isPending={revokeSessions.isPending}
         onCancel={clearPendingAction}
-        onConfirm={() => runPendingAction(revokeSessions, "Failed to revoke sessions")}
+        onConfirm={() => runPendingAction(revokeSessions, "We could not revoke sessions. Please try again.")}
         open={pendingAction === "revoke" && actionUser !== null}
         title="Revoke all sessions?"
       />

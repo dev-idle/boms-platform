@@ -135,7 +135,7 @@ export function useResendVerificationEmail() {
   return useMutation({
     mutationFn: () => resendVerificationEmail(),
     onSuccess: () => {
-      toast.success("We sent you a new link.");
+      toast.success("We sent you a new link");
     },
     onError: (error) => {
       const user = useAuthStore.getState().user;
@@ -144,7 +144,7 @@ export function useResendVerificationEmail() {
         const confirmed = { ...user, email_verified: true };
         useAuthStore.getState().updateUser(confirmed);
         primeMeQueryCache(queryClient, confirmed);
-        toast.success("Your email is already confirmed.");
+        toast.success("Your email is already confirmed");
         return;
       }
       toast.error(
